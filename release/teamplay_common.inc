@@ -157,7 +157,7 @@
 #define NANAIMO_ADAPTER_EVIDENCE_LOG_V2 1
 #define MONSTER_HP_ENABLE_PON_ATTACK_CANDIDATES 1
 #ifndef CARD_ORDINARY_DROP_PERCENT
-#define CARD_ORDINARY_DROP_PERCENT 1u
+#define CARD_ORDINARY_DROP_PERCENT 5u
 #endif
 typedef void FILE;
 extern void* __attribute__((cdecl)) fopen(const char*, const char*);extern int __attribute__((cdecl)) fclose(void*);extern char* __attribute__((cdecl)) fgets(char*, int, void*);extern int __attribute__((cdecl)) sscanf(const char*, const char*, ...);extern char* __attribute__((cdecl)) strchr(const char*, int);extern int __attribute__((cdecl)) fprintf(void*, const char*, ...);extern int __attribute__((cdecl)) remove(const char*);extern int __attribute__((cdecl)) rename(const char*,const char*);
@@ -311,6 +311,9 @@ static void send_cf72_initial_owner_reset_initial_owner_policy_policy(SOCKET c){
 static void shopping_inventory_bootstrap(void){shopping_inventory_bootstrap_inventory_profile_base_base();inventory_migration_migrate_native_cash_units_to_bundles();inventory_instances_instances_reconcile();game_session_revival_load();pet_crafting_pet_sync_selected_age();}
 /* APARTMENTS keeps C40A routing and hardens apartment transactions, work buffers and scene snapshots. */
 #include "components/apartments/apartment_runtime.inc"
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+#include "components/game_session/managed_bridge.inc"
+#endif
 #include "components/game_session/gs_runtime.inc"
 #include "components/combat_economy/collision_damage_runtime.inc"
 #if TEAMPLAY_FEATURE_NETWORK_CF72_SUPPRESSION
@@ -324,6 +327,5 @@ static void shopping_inventory_bootstrap(void){shopping_inventory_bootstrap_inve
 #else
 #include "components/network/network_main.inc"
 #endif
-
 
 

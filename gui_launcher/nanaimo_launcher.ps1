@@ -6,7 +6,14 @@ Add-Type -AssemblyName System.Drawing
 
 $Root=Split-Path $PSScriptRoot -Parent
 $Client=Join-Path $Root 'game.exe'
-$Adapter=Join-Path $Root 'adapter\nanaimo_adapter.exe'
+$AdapterRuntimeRoot=Join-Path $Root 'adapter_runtime'
+$Adapter=Join-Path $AdapterRuntimeRoot 'Nanaimo.Adapter.exe'
+$AdapterBridge=Join-Path $AdapterRuntimeRoot 'nanaimo_gameplay_bridge.exe'
+$AdapterManifest=Join-Path $AdapterRuntimeRoot 'adapter_manifest.json'
+$LegacyAdapter=Join-Path $Root 'adapter\nanaimo_adapter.exe'
+$AdapterData=Join-Path $Root 'adapter_data'
+$AdapterLogs=Join-Path $AdapterData 'logs'
+$AdapterStop=Join-Path $AdapterData 'stop.request'
 $ProfileIni=if($ProfileIniOverride){[IO.Path]::GetFullPath($ProfileIniOverride)}else{Join-Path $Root 'nanaimo_launcher_profile.ini'}
 $ProfileJson=if($ProfileJsonOverride){[IO.Path]::GetFullPath($ProfileJsonOverride)}else{Join-Path $Root 'nanaimo_launcher_profile.json'}
 $ProfileStateRoot=if($ProfileIniOverride){Split-Path $ProfileIni -Parent}else{$Root}
@@ -25,9 +32,18 @@ $LaunchModeDir=Join-Path $Root 'gui_launcher\launch_modes'
 $NetworkOptionTemplate=Join-Path $LaunchModeDir 'gamestartoption.network.ini'
 $ActiveGameOption=Join-Path $Root 'StateOption\gamestartoption.ini'
 $ExpectedClientHash='6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90'
-$ExpectedAdapterHash='017B284DABE6FC701A8E70C2F42042C125ACD610CD9D0DC56171ABB2E85C2B25'
+$ExpectedAdapterHash=''
+$ExpectedAdapterSize=0
+$ExpectedBridgeHash=''
+$ExpectedBridgeSize=0
+if(Test-Path -LiteralPath $AdapterManifest){
+    $adapterContract=Get-Content -LiteralPath $AdapterManifest -Raw -Encoding UTF8|ConvertFrom-Json
+    $adapterRow=@($adapterContract.files|Where-Object name -eq 'Nanaimo.Adapter.exe')[0]
+    $bridgeRow=@($adapterContract.files|Where-Object name -eq 'nanaimo_gameplay_bridge.exe')[0]
+    if($adapterRow){$ExpectedAdapterHash=[string]$adapterRow.sha256;$ExpectedAdapterSize=[long]$adapterRow.size}
+    if($bridgeRow){$ExpectedBridgeHash=[string]$bridgeRow.sha256;$ExpectedBridgeSize=[long]$bridgeRow.size}
+}
 $ExpectedClientSize=14198272
-$ExpectedAdapterSize=18281984
 $VillagePack=Join-Path $Root 'Village_map_image\Village_map_image.pack'
 $ExpectedVillagePackHash='69EF0FA688DBCB4EE2A36151F76F78A5A3D4F051253ABE81EA824F37749FCD56'
 $ExpectedVillagePackSize=17011373
@@ -307,7 +323,7 @@ if($ValidateOnly){
     Test-LocalResourcePatches
     $inventoryValidation=Test-InventoryAdminInstallation $Root
     if($pets.Count-ne868){throw 'pet catalog count'};if($equips.Count-ne3885){throw 'equipment catalog count'};if($attackModes.Count-ne868){throw 'attack mode catalog count'};if($petPreviewRows.Count-ne868-or$equipPreviewRows.Count-ne3885-or-not(Test-Path -LiteralPath $PetPreviewPng)-or-not(Test-Path -LiteralPath $EquipPreviewPng)){throw 'catalog preview assets'}
-    if(-not(Test-Path -LiteralPath $Adapter)){throw 'adapter missing'};if((Get-Item -LiteralPath $Adapter).Length-ne$ExpectedAdapterSize){throw 'adapter size validation'};if((Get-FileHash -Algorithm SHA256 -LiteralPath $Adapter).Hash-ne$ExpectedAdapterHash){throw 'adapter hash validation'}
+    foreach($path in @($AdapterManifest,$Adapter,$AdapterBridge)){if(-not(Test-Path -LiteralPath $path)){throw "adapter artifact missing: $path"}};if((Get-Item -LiteralPath $Adapter).Length-ne$ExpectedAdapterSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $Adapter).Hash-ne$ExpectedAdapterHash){throw 'adapter validation'};if((Get-Item -LiteralPath $AdapterBridge).Length-ne$ExpectedBridgeSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $AdapterBridge).Hash-ne$ExpectedBridgeHash){throw 'bridge validation'}
     foreach($id in 15009205,10130337,10100028,10110337,10120352,10150103,10160017){if(-not($petById.ContainsKey([uint32]$id)-or$equipById.ContainsKey([uint32]$id))){throw "missing default id $id"}}
     $round=Decode-NameHex (Encode-NameHex '测试角色');if($round-ne'测试角色'){throw 'GBK name roundtrip'}
     $pt=New-GridTable 'pet' $pets;$et=New-GridTable 'equip' $equips;if($pt.Rows.Count-ne868-or$et.Rows.Count-ne3885){throw 'grid table count'}
@@ -438,14 +454,14 @@ foreach($part in @('body','hair','top','bottom','accessory','effect')){
 $comboMap.body.add_SelectedIndexChanged({$d=Get-SelectedData $comboMap.body;if($d-and$d.gender-eq'M'){$genderCombo.SelectedIndex=1}elseif($d-and$d.gender-eq'F'){$genderCombo.SelectedIndex=0}})
 $warning=New-Object Windows.Forms.Label;$warning.Text='进入游戏时保存配置并重启本地协议适配器。';$warning.ForeColor=[Drawing.Color]::DarkOrange;$warning.AutoSize=$true;$warning.Location=New-Object Drawing.Point(190,608);$tabStart.Controls.Add($warning)
 
-$saveBtn=New-Object Windows.Forms.Button;$saveBtn.Text='保存配置';$saveBtn.Size=New-Object Drawing.Size(125,40);$saveBtn.Location=New-Object Drawing.Point(95,650);$tabStart.Controls.Add($saveBtn)
-$adapterBtn=New-Object Windows.Forms.Button;$adapterBtn.Text='启动本地协议适配器';$adapterBtn.Size=New-Object Drawing.Size(180,40);$adapterBtn.Location=New-Object Drawing.Point(235,650);$adapterBtn.BackColor=[Drawing.Color]::LightSkyBlue;$tabStart.Controls.Add($adapterBtn)
-$clientBtn=New-Object Windows.Forms.Button;$clientBtn.Text='保存并进入游戏';$clientBtn.Size=New-Object Drawing.Size(180,40);$clientBtn.Location=New-Object Drawing.Point(430,650);$clientBtn.BackColor=[Drawing.Color]::LightGreen;$tabStart.Controls.Add($clientBtn)
-$folderBtn=New-Object Windows.Forms.Button;$folderBtn.Text='打开日志目录';$folderBtn.Size=New-Object Drawing.Size(140,40);$folderBtn.Location=New-Object Drawing.Point(625,650);$tabStart.Controls.Add($folderBtn)
-$defaultBtn=New-Object Windows.Forms.Button;$defaultBtn.Text='恢复默认';$defaultBtn.Size=New-Object Drawing.Size(120,40);$defaultBtn.Location=New-Object Drawing.Point(780,650);$tabStart.Controls.Add($defaultBtn)
+$saveBtn=New-Object Windows.Forms.Button;$saveBtn.Text='保存配置';$saveBtn.Size=New-Object Drawing.Size(125,40);$saveBtn.Location=New-Object Drawing.Point(75,650);$tabStart.Controls.Add($saveBtn)
+$clientBtn=New-Object Windows.Forms.Button;$clientBtn.Text='一键进入 Nanaimo';$clientBtn.Size=New-Object Drawing.Size(230,40);$clientBtn.Location=New-Object Drawing.Point(215,650);$clientBtn.BackColor=[Drawing.Color]::LightGreen;$tabStart.Controls.Add($clientBtn)
+$adapterBtn=New-Object Windows.Forms.Button;$adapterBtn.Text='仅启动适配器';$adapterBtn.Size=New-Object Drawing.Size(175,40);$adapterBtn.Location=New-Object Drawing.Point(460,650);$adapterBtn.BackColor=[Drawing.Color]::LightSkyBlue;$tabStart.Controls.Add($adapterBtn)
+$folderBtn=New-Object Windows.Forms.Button;$folderBtn.Text='打开日志目录';$folderBtn.Size=New-Object Drawing.Size(140,40);$folderBtn.Location=New-Object Drawing.Point(650,650);$tabStart.Controls.Add($folderBtn)
+$defaultBtn=New-Object Windows.Forms.Button;$defaultBtn.Text='恢复默认';$defaultBtn.Size=New-Object Drawing.Size(120,40);$defaultBtn.Location=New-Object Drawing.Point(805,650);$tabStart.Controls.Add($defaultBtn)
 $status=New-Object Windows.Forms.Label;$status.Location=New-Object Drawing.Point(35,705);$status.Size=New-Object Drawing.Size(1000,60);$status.ForeColor=[Drawing.Color]::DarkBlue;$tabStart.Controls.Add($status)
 function Update-LaunchModePresentation {
-    $clientBtn.Text='保存并进入游戏'
+    $clientBtn.Text='一键进入 Nanaimo'
     $warning.Text='进入游戏时保存配置并重启本地协议适配器。'
 }
 
@@ -474,9 +490,10 @@ function Get-ResourceSelection {
 function Get-SelectedDungeonTitle {if($titleCombo.SelectedIndex-lt0-or-not$titleCombo.Tag-or$titleCombo.SelectedIndex-ge$titleCombo.Tag.Count){throw '请选择称号。'};return $titleCombo.Tag[$titleCombo.SelectedIndex]}
 function Update-LaunchPreview([switch]$ComputeHashes){
     $pet=Get-SelectedData $petCombo;$mode=Selected-AttackMode;$resources=Get-ResourceSelection;$skills=Get-SkillSelection;$equipSummary=@();foreach($part in @('body','hair','top','bottom','accessory','effect')){$d=Get-SelectedData $comboMap[$part];if($d){$equipSummary+=("{0}={1}[{2}]"-f$PartLabels[$part],$d.name,$d.id)}}
-    $processFilter={param($p)($p.ProcessName-like'nanaimo_adapter*')-or($p.ProcessName-eq'game'-and$p.Path-eq$Client)}
+    $processFilter={param($p)(@($Adapter,$AdapterBridge,$LegacyAdapter)-contains$p.Path)-or($p.ProcessName-eq'game'-and$p.Path-eq$Client)}
     $running=@(Get-Process -ErrorAction SilentlyContinue|Where-Object $processFilter|ForEach-Object{"$($_.ProcessName)(PID=$($_.Id))"});if(-not$running){$running=@('<none>')}
-    $adapterState=File-State-Line 'Local adapter' $Adapter $ExpectedAdapterSize $ExpectedAdapterHash -ComputeHash:$ComputeHashes
+    $adapterState=File-State-Line 'Full adapter' $Adapter $ExpectedAdapterSize $ExpectedAdapterHash -ComputeHash:$ComputeHashes
+    $bridgeState=File-State-Line 'Gameplay bridge' $AdapterBridge $ExpectedBridgeSize $ExpectedBridgeHash -ComputeHash:$ComputeHashes
     $lines=@(
         '=== Character and profile ===',
         "Character=$($nameBox.Text.Trim()) | Level=$([int]$levelBox.Value) | Gender=$(if($genderCombo.SelectedIndex-eq1){'M'}else{'F'}) | Title=$((Get-SelectedDungeonTitle).Display)",
@@ -486,13 +503,13 @@ function Update-LaunchPreview([switch]$ComputeHashes){
         "Pet=$(if($pet){$pet.name+'['+$pet.id+'] age='+$(Selected-PetAge)+'/'+$pet.max_age}else{'<none>'}) | initial_attack_mode=$mode",
         ('Equipment: '+($equipSummary-join '; ')),
         "Profile INI : $ProfileIni","Profile JSON: $ProfileJson",'',
-        '=== Binary validation ===',$adapterState,
+        '=== Binary validation ===',$adapterState,$bridgeState,
         (File-State-Line 'Village pack' $VillagePack $ExpectedVillagePackSize $ExpectedVillagePackHash -ComputeHash:$ComputeHashes),
         (File-State-Line 'Client' $Client $ExpectedClientSize $ExpectedClientHash -ComputeHash:$ComputeHashes),
         '=== Pre-launch actions ===',
         ('Processes to stop: '+($running-join ', ')),
-        'Adapter button: save profile; start/stop only the local adapter; never launch the game.',
-        'Client button: stop detected local adapters; save profile; validate files; prepare configuration; restart local adapter; register profile; launch game.','',
+        'Adapter button: save profile; start/stop the complete local adapter; never launch the game.',
+        'One-click button: stop detected adapter processes; save profile; validate files; restart the complete adapter; register profile; launch game.','',
         ('Working directory: '+$Root),'',
         '这是韩国飞行射击游戏 Nanaimo 的启动器。'
     )
@@ -528,9 +545,15 @@ Update-PetAgeOptions $defaultPetAge;Update-AttackModes;Update-PetDetail;Update-L
 if($PreviewOnly){Update-LaunchPreview -ComputeHashes;Write-Output $launchInfoBox.Text;exit 0}
 
 function Test-AdapterBinary {
-    if(-not(Test-Path -LiteralPath $Adapter)){throw "Adapter missing: $Adapter"}
-    if((Get-Item -LiteralPath $Adapter).Length-ne$ExpectedAdapterSize){throw 'Adapter size mismatch; launch refused.'}
-    if((Get-FileHash -Algorithm SHA256 -LiteralPath $Adapter).Hash-ne$ExpectedAdapterHash){throw 'Adapter SHA-256 mismatch; launch refused.'}
+    foreach($path in @($AdapterManifest,$Adapter,$AdapterBridge)){if(-not(Test-Path -LiteralPath $path)){throw "完整适配器文件缺失: $path"}}
+    $contract=Get-Content -LiteralPath $AdapterManifest -Raw -Encoding UTF8|ConvertFrom-Json
+    foreach($spec in @(@('Nanaimo.Adapter.exe',$Adapter),@('nanaimo_gameplay_bridge.exe',$AdapterBridge))){
+        $row=@($contract.files|Where-Object name -eq $spec[0])[0]
+        if(-not$row){throw "适配器清单缺少: $($spec[0])"}
+        $item=Get-Item -LiteralPath $spec[1]
+        if($item.Length-ne[long]$row.size){throw "适配器文件大小不匹配: $($spec[0])"}
+        if((Get-FileHash -Algorithm SHA256 -LiteralPath $spec[1]).Hash-ne[string]$row.sha256){throw "适配器文件 SHA-256 不匹配: $($spec[0])"}
+    }
 }
 function Test-ClientBinary {
     Test-VillagePack
@@ -546,10 +569,40 @@ function Register-ClientProfile([string]$ip){
         $tcp.Connect($ip,11999);$stream=$tcp.GetStream();$bytes=[IO.File]::ReadAllBytes($ProfileIni);$len=[BitConverter]::GetBytes([uint32]$bytes.Length)
         $stream.Write($len,0,4);$stream.Write($bytes,0,$bytes.Length);$stream.Flush();$ack=New-Object byte[] 3;$got=$stream.Read($ack,0,3)
         if($got-ne3-or[Text.Encoding]::ASCII.GetString($ack)-ne"OK`n"){throw 'profile registry rejected'}
-    }catch{throw '协议适配器配置注册失败，请检查协议适配器状态及端口11999。'}finally{if($tcp){$tcp.Close()}}
+    }catch{throw '适配器配置注册失败，请检查适配器状态及端口11999。'}finally{if($tcp){$tcp.Close()}}
 }
-function Get-LocalAdapters {return @(Get-Process -Name nanaimo_adapter -ErrorAction SilentlyContinue|Where-Object{$_.Path-eq$Adapter})}
-$inventoryAdmin=Initialize-InventoryAdmin $tabs $Root $(if($ini.name_hex){[string]$ini.name_hex}else{Encode-NameHex $defaultName})
+function Get-LocalAdapters {
+    $paths=@($Adapter,$AdapterBridge,$LegacyAdapter)
+    return @(Get-Process -ErrorAction SilentlyContinue|Where-Object{try{$_.Path-and($paths-contains$_.Path)}catch{$false}})
+}
+function Stop-LocalAdapter {
+    $running=Get-LocalAdapters
+    if(-not$running.Count){return}
+    if(@($running|Where-Object{$_.Path-eq$Adapter}).Count){
+        if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
+        New-Item -ItemType File -Path $AdapterStop -Force|Out-Null
+        foreach($p in @($running|Where-Object{$_.Path-eq$Adapter})){Wait-Process -Id $p.Id -Timeout 8 -ErrorAction SilentlyContinue}
+    }
+    $remaining=Get-LocalAdapters
+    if($remaining.Count){$remaining|Stop-Process -Force;foreach($p in $remaining){Wait-Process -Id $p.Id -Timeout 5 -ErrorAction SilentlyContinue}}
+    Start-Sleep -Milliseconds 250
+    if((Get-LocalAdapters).Count){throw '适配器进程未能退出，请在任务管理器中关闭后重试。'}
+}
+function Test-AdapterPort([int]$port){$tcp=New-Object Net.Sockets.TcpClient;try{$ar=$tcp.BeginConnect('127.0.0.1',$port,$null,$null);if(-not$ar.AsyncWaitHandle.WaitOne(150)){return $false};$tcp.EndConnect($ar);return $true}catch{return $false}finally{$tcp.Close()}}
+function Start-LocalAdapter {
+    Test-AdapterBinary
+    foreach($path in @($AdapterData,$AdapterLogs)){if(-not(Test-Path -LiteralPath $path)){New-Item -ItemType Directory -Path $path -Force|Out-Null}}
+    Remove-Item -LiteralPath $AdapterStop,$AdapterLog,$AdapterErr -Force -ErrorAction SilentlyContinue
+    $args=@('--data',$AdapterData,'--native',$AdapterBridge,'--profile',$ProfileIni,'--login-port','11005','--world-port','12050','--profile-port','11999','--log-directory',$AdapterLogs)
+    $proc=Start-Process -FilePath $Adapter -ArgumentList $args -WorkingDirectory $AdapterRuntimeRoot -WindowStyle Hidden -RedirectStandardOutput $AdapterLog -RedirectStandardError $AdapterErr -PassThru
+    for($i=0;$i-lt100;$i++){
+        Start-Sleep -Milliseconds 100
+        if($proc.HasExited){$detail=if(Test-Path -LiteralPath $AdapterErr){Get-Content -LiteralPath $AdapterErr -Raw}else{'无错误日志。'};throw "适配器退出，代码 $($proc.ExitCode)：$detail"}
+        if((Test-AdapterPort 11005)-and(Test-AdapterPort 11999)-and(Test-AdapterPort 12050)){return $proc}
+    }
+    Stop-LocalAdapter
+    throw '适配器未在10秒内准备完成；请检查日志。'
+}$inventoryAdmin=Initialize-InventoryAdmin $tabs $Root $(if($ini.name_hex){[string]$ini.name_hex}else{Encode-NameHex $defaultName})
 function Save-Profile {
     if((Get-LocalAdapters).Count){throw 'Inventory files are live. Stop the local Nanaimo protocol adapter first, or use Save and Enter Game to stop-save-restart safely.'}
     $name=$nameBox.Text.Trim();$hex=Encode-NameHex $name;$pet=Get-SelectedData $petCombo;if(-not$pet){throw '请选择宠物。'}
@@ -581,35 +634,30 @@ if($SelfTestProfileIO){
     Write-Output ("NETWORK_PROFILE_IO_PASS title_grade=$([int]$expectTitle.Grade) launch_mode={0} network_ip={1} hp={2}/{3} mp={4}/{5} attack={6} defense={7} coin={8} nana_point={9} skip_tutorial={10} skill_routes={11}/{12} Z={13} X={14}"-f$expectMode,$expectIp,$expect.hp_current,$expect.hp_max,$expect.mp_current,$expect.mp_max,$expect.attack,$expect.defense,$expect.coin,$expect.nana_point,$expectSkip,$skillExpect.projectile_route,$skillExpect.meat_route,$skillExpect.slot_z,$skillExpect.slot_x);exit 0
 }
 $saveBtn.add_Click({try{Save-Profile;[Windows.Forms.MessageBox]::Show('配置已保存。','Nanaimo 启动器')|Out-Null}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'配置错误')|Out-Null}})
-$folderBtn.add_Click({Start-Process explorer.exe -ArgumentList $Root})
+$folderBtn.add_Click({$target=if(Test-Path -LiteralPath $AdapterLogs){$AdapterLogs}else{$Root};Start-Process explorer.exe -ArgumentList $target})
 $resetProgressBtn.add_Click({try{if((Get-LocalAdapters).Count){throw 'Stop the local Nanaimo protocol adapter first.'};$name=$nameBox.Text.Trim();if(-not$name){throw 'Character name is required.'};$hex=Encode-NameHex $name;$paths=@((Join-Path $Root ("level_progress_state_v1_{0}.dat"-f$hex)),(Join-Path $Root ("level_progress_state_v1_{0}.bak"-f$hex)),(Join-Path $Root ("level_progress_state_v1_{0}.new"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.dat"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.bak"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.new"-f$hex)));Remove-Item -LiteralPath $paths -Force -ErrorAction SilentlyContinue;$status.Text="Reset level, EXP, and dungeon-title progress for $name. Next start seeds level $([int]$levelBox.Value) and dungeon grade 0."}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Reset failed')|Out-Null}})
 $defaultBtn.add_Click({$skipTutorialBox.Checked=$false;$nameBox.Text='Greyrat';$titleCombo.SelectedIndex=0;$levelBox.Value=25;$hpMaxBox.Value=1500;$hpCurrentBox.Value=1500;$mpMaxBox.Value=500;$mpCurrentBox.Value=500;$attackBox.Value=0;$defenseBox.Value=0;$coinBox.Value=0;$nanaPointBox.Value=0;$cardKeyNormalBox.Value=99;$cardKeyGoldBox.Value=99;$cardKeyMysteryBox.Value=99;$cardKeySpecialBox.Value=99;$freeMagicKeyExpiryBox.Value=2099123123;$projectileRouteCombo.SelectedIndex=0;$meatRouteCombo.SelectedIndex=0;for($i=0;$i-lt16;$i++){$skillGradeBoxes[$i].Value=0};foreach($i in 0,1,8,9){$skillGradeBoxes[$i].Value=5};Set-SkillSlotChoices 0 0;Update-SkillWarning;$genderCombo.SelectedIndex=1;Select-ComboId $petCombo 15009205|Out-Null;Update-PetAgeOptions 3;Select-ComboId $comboMap.hair 10130337|Out-Null;Select-ComboId $comboMap.body 10100028|Out-Null;Select-ComboId $comboMap.top 10110337|Out-Null;Select-ComboId $comboMap.bottom 10120352|Out-Null;Select-ComboId $comboMap.accessory 10150103|Out-Null;Select-ComboId $comboMap.effect 10160017|Out-Null;Update-PetDetail;Update-LaunchModePresentation})
 $adapterBtn.add_Click({
     try{
-        $running=Get-LocalAdapters;$current=@($running|Where-Object{$_.Path-eq$Adapter})
-        if($current.Count){$current|Stop-Process -Force;$adapterBtn.Text='Start local adapter';$status.Text='The Nanaimo protocol adapter has stopped.';return}
-        if($running.Count){$oldNames=($running|ForEach-Object{"$($_.ProcessName)(PID=$($_.Id))"})-join', ';$running|Stop-Process -Force;Start-Sleep -Milliseconds 500;$status.Text="Stopped old adapters: $oldNames; starting Nanaimo protocol adapter."}
-        Save-Profile;Test-AdapterBinary;Remove-Item -LiteralPath $AdapterLog,$AdapterErr -ErrorAction SilentlyContinue
-        $proc=Start-Process -FilePath $Adapter -ArgumentList @('11005','0','0','0',$ProfileIni) -WorkingDirectory $Root -WindowStyle Hidden -RedirectStandardOutput $AdapterLog -RedirectStandardError $AdapterErr -PassThru
-        Start-Sleep -Milliseconds 1400;if($proc.HasExited){throw "Adapter exited with code $($proc.ExitCode). Check $AdapterErr"}
-        $adapterBtn.Text='停止本地协议适配器';$status.Text="本地协议适配器已启动 PID=$($proc.Id)。`r`n日志: $AdapterLog"
-    }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'协议适配器启动失败')|Out-Null}
+        if((Get-LocalAdapters).Count){Stop-LocalAdapter;$adapterBtn.Text='仅启动适配器';$status.Text='适配器已停止。';return}
+        Save-Profile
+        $proc=Start-LocalAdapter
+        $adapterBtn.Text='停止适配器';$status.Text="完整适配器已启动 PID=$($proc.Id)。`r`n日志: $AdapterLogs"
+    }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'适配器启动失败')|Out-Null}
 })
 $clientBtn.add_Click({
     try{
         $launchModeInfo=Get-SelectedLaunchModeInfo
-        $running=Get-LocalAdapters
-        $restartLocal=[bool]($launchModeInfo.StartLocalAdapter-or$running.Count)
-        if($running.Count){$pids=@($running|ForEach-Object{$_.Id});$running|Stop-Process -Force;foreach($pidValue in $pids){Wait-Process -Id $pidValue -Timeout 6 -ErrorAction SilentlyContinue};Start-Sleep -Milliseconds 250;if((Get-LocalAdapters).Count){throw 'A local Nanaimo protocol adapter did not exit. Close it in Task Manager and retry.'}}
+        Stop-LocalAdapter
         Save-Profile;Test-ClientBinary;Install-LaunchModeConfig $launchModeInfo
-        if($restartLocal){Test-AdapterBinary;Remove-Item -LiteralPath $AdapterLog,$AdapterErr -ErrorAction SilentlyContinue;$proc=Start-Process -FilePath $Adapter -ArgumentList @('11005','0','0','0',$ProfileIni) -WorkingDirectory $Root -WindowStyle Hidden -RedirectStandardOutput $AdapterLog -RedirectStandardError $AdapterErr -PassThru;Start-Sleep -Milliseconds 1400;if($proc.HasExited){throw "Adapter exited with code $($proc.ExitCode). Check $AdapterErr"};$adapterBtn.Text='停止本地协议适配器'}
+        $proc=Start-LocalAdapter
+        $adapterBtn.Text='停止适配器'
         if($launchModeInfo.Key-eq'network'){Register-ClientProfile $launchModeInfo.AdapterIP}
         Get-Process -Name game -ErrorAction SilentlyContinue|Where-Object{$_.Path-eq$Client}|Stop-Process -Force;Start-Sleep -Milliseconds 250
         if($launchModeInfo.ClientArgs.Count){Start-Process -FilePath $Client -ArgumentList ([string[]]$launchModeInfo.ClientArgs) -WorkingDirectory $Root|Out-Null}else{Start-Process -FilePath $Client -WorkingDirectory $Root|Out-Null}
-        $status.Text='Profile, title selection, and five inventory domains saved; any detected local adapter was stop-save-restarted before client launch.'
-    }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'启动客户端失败')|Out-Null}
+        $status.Text='角色配置已保存；完整适配器已重启并完成注册，Nanaimo 客户端已启动。'
+    }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'启动 Nanaimo 失败')|Out-Null}
 })
-
 # Pet lookup tab
 $petSearch=New-Object Windows.Forms.TextBox;$petSearch.Location=New-Object Drawing.Point(18,18);$petSearch.Size=New-Object Drawing.Size(500,28);$tabPets.Controls.Add($petSearch)
 $petSearchBtn=New-Object Windows.Forms.Button;$petSearchBtn.Text='筛选';$petSearchBtn.Location=New-Object Drawing.Point(530,16);$petSearchBtn.Size=New-Object Drawing.Size(90,32);$tabPets.Controls.Add($petSearchBtn)
@@ -663,7 +711,7 @@ if($SelfTestLayout){
         $tabs.SelectedTab=$tabLaunchInfo;Update-LaunchPreview -ComputeHashes
         Assert-NoVisibleConnectionText $form
         $tabs.SelectedTab=$tabStart;[Windows.Forms.Application]::DoEvents()
-        if($levelBox.Top-ne144-or$titleCombo.Top-ne190-or$comboMap.body.Top-ne321-or$saveBtn.Top-ne650-or$status.Top-ne705){throw 'startup row compaction'}
+        if($levelBox.Top-ne144-or$titleCombo.Top-ne190-or$comboMap.body.Top-ne321-or$saveBtn.Top-ne650-or$clientBtn.Left-ne215-or$adapterBtn.Left-ne460-or$status.Top-ne705){throw 'startup row compaction'}
         if($levelBox.Top-$nameBox.Top-ne40){throw 'empty startup connection row'}
         $tabs.SelectedTab=$tabResources
         $previousScale=1.0

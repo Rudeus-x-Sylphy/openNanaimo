@@ -40,7 +40,11 @@ struct multi_pending_profile {int state;unsigned ip,serial,reservation;struct mu
 static struct multi_pending_profile g_multi_pending[MULTI_PENDING_PROFILES];static unsigned g_multi_profile_serial=0,g_multi_reservation_serial=0;
 static void multiplayer_global_lock(void){while(InterlockedCompareExchange(&g_multi_lock_word,1,0)!=0)sleep(0);}
 static void multiplayer_global_unlock(void){InterlockedExchange(&g_multi_lock_word,0);}
-#ifdef MULTIPLAYER_TESTPORTS
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+static int g_managed_front_port=52050,g_managed_back_port=62050,g_managed_profile_port=51999;
+#define MULTI_FRONT_PORT g_managed_front_port
+#define MULTI_BACK_BASE g_managed_back_port
+#elif defined(MULTIPLAYER_TESTPORTS)
 #define MULTI_FRONT_PORT 52050
 #define MULTI_BACK_BASE 62050
 #else
@@ -168,7 +172,11 @@ static int multi_take_pending_profile(unsigned ip,struct multiplayer_profile*out
     if(best<0)return 0;*out=g_multi_pending[best].profile;printf("  [MULTI_PROFILE] gs-consume ip=0x%08X serial=%u reservation=%u mode=%s\n",ip,g_multi_pending[best].serial,g_multi_pending[best].reservation,g_multi_pending[best].state==MULTI_PROFILE_RESERVED?"reserved":"latest-direct");fflush(0);g_multi_pending[best].state=0;return 1;
 }
 #ifdef MULTIPLAYER_TESTPORTS
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+#define MULTI_PROFILE_PORT g_managed_profile_port
+#else
 #define MULTI_PROFILE_PORT 51999
+#endif
 #else
 #define MULTI_PROFILE_PORT 11999
 #endif

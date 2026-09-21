@@ -1,5 +1,9 @@
 #ifndef NANAIMO_STABLE_CORE_PROTOCOL_STATE_SYNC_PROTOCOL_SYNC_BASE_INC
 #define NANAIMO_STABLE_CORE_PROTOCOL_STATE_SYNC_PROTOCOL_SYNC_BASE_INC
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+static unsigned g_managed_pet_level=0u;
+static unsigned g_managed_pet_experience=0u;
+#endif
 /* ROOM_START_BASE derives from the REALTIME_CORE protocol baseline but replaces only the
    room-slot carriers whose original-wire/static meaning is now closed. */
 #define send_cfd2_p2p_my_info send_cfd2_p2p_my_info_roster_base_legacy
@@ -22,7 +26,13 @@ static void send_cfd2_p2p_my_info(SOCKET c){
    launcher/PetLevel update path (sub_6D7300).  Unlike the retired UID1
    experiment, this refresh targets the dynamic UID that CF71 just created. */
 static void send_cf72_dynamic_actor_refresh(SOCKET c,unsigned actor_uid){
-    char p[4096];unsigned i,hm,hc,mm,mc,qb[6]={0,0,0,0,0,0},pet_level=g_initial_attack_mode+1u;if(pet_level<1u)pet_level=1u;if(pet_level>3u)pet_level=3u;pet_crafting_pet_effective_resources(&hm,&hc,&mm,&mc);
+    char p[4096];unsigned i,hm,hc,mm,mc,qb[6]={0,0,0,0,0,0};
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+    unsigned pet_level=g_managed_pet_level;
+#else
+    unsigned pet_level=g_initial_attack_mode+1u;if(pet_level<1u)pet_level=1u;if(pet_level>3u)pet_level=3u;
+#endif
+    pet_crafting_pet_effective_resources(&hm,&hc,&mm,&mc);
     mkpkt(p,0xCF72,0x74,1);stable_resource_put16(p,0x08,actor_uid);
     stable_resource_put16(p,0x0A,hm);stable_resource_put16(p,0x0C,mm);stable_resource_put16(p,0x0E,hc);stable_resource_put16(p,0x10,mc);stable_resource_put16(p,0x12,0u);
     for(i=0;i<5u;i++)stable_put32(p,0x14+(int)(i*4u),stable_equip[i]);stable_put32(p,0x28,0u);stable_put32(p,0x2C,g_effect_equipped);stable_put32(p,0x30,STABLE_PET);

@@ -43,3 +43,7 @@ __pycache__/
 /adapter_pet_items_*
 
 /adapter_cash_bundle_migration_*
+/adapter_runtime/
+/adapter_data/
+**/bin/
+**/obj/

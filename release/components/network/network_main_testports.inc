@@ -70,7 +70,7 @@ static void login_thread(void* arg){
                     } else if(type==0x2730 && stage==0){   /* 10032 hello (NETWORK first pkt, spec 4.4) */
                         printf("  GOT 0x2730(10032) hello len=%d -> S10033 sub=%d\n",len, 1); fflush(0);
                         sleep(0);
-                        
+
                         {
                             if(!login_profile_valid)login_profile_valid=multi_reserve_login_profile(login_peer.sin_addr,&login_profile,&login_reservation);
                             send_10033(c, 1);
@@ -100,7 +100,7 @@ static void login_thread(void* arg){
                             printf("  GOT 0x2717(10007) create-char -> ack 10008 subcode=0xa\n"); fflush(0);
                             sleep(0); send_10008(c, (const unsigned char*)&buf[off], 0xa);
                         }
-                        
+
                     } else if(type==0x271D){            /* 10013 REQ_CHANNEL_CONNECTION -> ack 10014 status=1 */
                         printf("  GOT 0x271D(10013) channel-conn -> ack 10014\n"); fflush(0);
                         sleep(0); send_ack_10013(c);
@@ -145,14 +145,14 @@ static void login_thread(void* arg){
                         /* mode=24: stable flow only.  50057 is a separate probe
                            because sending it after world entry is not part of
                            the normal map-switch sequence and causes 10053 noise. */
-                        
+
                         stage=5;
                     } else if(type==0xC351){            /* REACCEPT */
                         printf("  GOT 0xC351 REACCEPT -> S0xC352 + S0xEA61(reference)\n"); fflush(0);
                         sleep(0); send_c352(c);
                         sleep(0);
                         send_ea61(c);
-                        
+
                         stage=5;
                     } else if(type>=0xC469 && type<=0xC483){
                         /* C4-range inventory/item request -> proper ANS (subagent):
@@ -188,6 +188,9 @@ static void login_thread(void* arg){
 }
 int __attribute__((cdecl)) main(int argc, char** argv){
     int lport=31005;
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+    if(argc>6){int first=atoi(argv[6]);if(first<1024||first>65520)return 2;g_managed_front_port=first;g_managed_back_port=first+1;g_managed_profile_port=first+7;}
+#endif
     if(argc>1) lport=atoi(argv[1]);
     /* Standalone account state is adapter-maintained and persisted to
        accounts.dat.  has_char=1 (default) = existing account -> real-log
@@ -214,15 +217,15 @@ int __attribute__((cdecl)) main(int argc, char** argv){
        model, and the lists all agree from the first frame */
         for(int i=0;i<5;i++)g_equipped[i]=stable_equip[i]; g_equipped_n=5; g_effect_equipped=STABLE_EFFECT;
     }
-    
-    
-    
+
+
+
     pW(0x202,&wd);
         printf("%s: clean-profile zero-delay protocol, login=%d\n",NANAIMO_ADAPTER_BUILD_LABEL,lport); fflush(0);
     g_loginport=lport;
     multiplayer_start_listeners();
     _beginthread(login_thread,0,0);
-    
+
     for(;;) sleep(1000);
     return 0;
 }

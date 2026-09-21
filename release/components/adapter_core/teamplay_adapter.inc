@@ -1,7 +1,7 @@
 #ifndef CARD_ORDINARY_DROP_PERCENT
-#define CARD_ORDINARY_DROP_PERCENT 1u
+#define CARD_ORDINARY_DROP_PERCENT 5u
 #endif
-/* COMBAT_ECONOMY keeps the 1% private card roll, but only for monsters whose actual
+/* COMBAT_ECONOMY keeps the 5% card roll, but only for monsters whose actual
    initialized max HP is at least 200. A card terminal replaces the Hans visual;
    otherwise Hans is exact max_hp/50. */
 static unsigned g_card_terminal_policy_card_wins[MULTI_MAX_PLAYERS];
@@ -27,6 +27,18 @@ static void combat_economy_select_ordinary_terminal_reward(const struct hp_sync_
 /* D00D target damage still follows the established target HP/defence policy.
    Score is no longer awarded per hit: exactly one max-HP award is committed on
    the first old_hp>0 -> new_hp==0 transition. */
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+static void managed_bridge_hit_event(SOCKET c,struct hp_sync_context*ctx,unsigned selector,unsigned applied){
+    const struct hp_sync_profile_def*profile=0;
+    const struct hp_sync_target_def*target=hp_sync_global_static_def(ctx,selector,&profile,0,0);
+    char p[4096];
+    if(!applied||!target||!profile)return;
+    mkpkt(p,0xF103,24,1);p[8]=(char)profile->hd_id;p[9]=(char)profile->stage_id;
+    p[10]=(char)profile->dungeon_id;p[11]=(char)profile->stage_index;
+    stable_resource_put16(p,12,profile->slot_index);stable_put32(p,16,selector);stable_put32(p,20,applied);
+    sendbuf(c,p,24);
+}
+#endif
 static unsigned handle_target_hit_report_monster_hp(SOCKET c,int port,
         struct hp_sync_context *monster_hp,struct crate_drop_policy_context *crate_policy,
         struct battle_score_context *score_ctx,struct projectile_activation_context *projectile_ctx,
@@ -49,6 +61,9 @@ static unsigned handle_target_hit_report_monster_hp(SOCKET c,int port,
 #endif
     applied=(d.hit.old_hp>d.hit.new_hp&&d.hit.old_hp>0)?(unsigned)(d.hit.old_hp-d.hit.new_hp):0u;monster_hp_value=combat_economy_monster_max_hp(monster_hp,selector);
     combat_economy_score_ordinary_terminal(score_ctx,monster_hp,selector,d.hit.old_hp,d.hit.new_hp);
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+    managed_bridge_hit_event(c,monster_hp,selector,applied);
+#endif
     {const struct hp_sync_profile_def *gp=0;unsigned seg=0u,local=0u;const struct hp_sync_target_def *gd=hp_sync_global_static_def(monster_hp,selector,&gp,&seg,&local);
      printf("  [GS %d] MONSTER_HP stage=%u room=%u battle=%u selector=%u map=%s seg=%u local=%u total=%u owner=%u source=%u attack=%d effective=%d attack_prov=%u policy=%s action=%u reason=%u hp=%d->%d monster_max_hp=%u score=%u score_policy=kill-max-hp resource=%s\n",port,current_stage,room_epoch,battle_epoch,selector,gd?"static-global":"runtime/fallback",gd?seg:0u,gd?local:selector,hp_sync_stage_global_target_count(monster_hp),owner_key,source_index,atk.value,d.hit.attack_after_modifiers,atk.provenance,projectile_policy_label(&atk,projectile_verified),d.action,d.reason,d.hit.old_hp,d.hit.new_hp,monster_hp_value,score_ctx->total,d.hit.resource_index!=HP_SYNC_NO_ROW?hp_sync_resource_name(d.hit.resource_index):"<runtime-or-unknown>");fflush(0);}
     if(d.action==MONSTER_HP_ACTION_SEND_D00E){
@@ -127,6 +142,9 @@ static void handle_meat_collision_report(SOCKET c,int port,
     stable_monster_hp_apply_report(monster_hp,crate_policy,current_stage,selector,room_epoch,battle_epoch,&atk,tickms(),&d);
     applied=(d.hit.old_hp>d.hit.new_hp&&d.hit.old_hp>0)?(unsigned)(d.hit.old_hp-d.hit.new_hp):0u;
     result->damage_applied=applied;result->old_hp=d.hit.old_hp;result->new_hp=d.hit.new_hp;result->action=d.action;result->reason=d.reason;result->wire_selector=d.wire_selector;
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+    managed_bridge_hit_event(c,monster_hp,selector,applied);
+#endif
     if(applied){g_meat_collision.damage_applied_count++;g_meat_collision.total_damage+=applied;}combat_economy_score_ordinary_terminal(score_ctx,monster_hp,selector,d.hit.old_hp,d.hit.new_hp);
     if(d.reason==MONSTER_HP_REASON_ALREADY_TERMINAL){result->terminal_repeat=1u;g_meat_collision.terminal_repeat_count++;}
     if(d.action==MONSTER_HP_ACTION_SEND_D00E){unsigned subtype=0u,code=0u,maxhp=combat_economy_monster_max_hp(monster_hp,selector);const struct hp_sync_target_def*td=hp_sync_global_static_def(monster_hp,selector,0,0,0);const char*resource=(d.hit.resource_index!=HP_SYNC_NO_ROW)?hp_sync_resource_name(d.hit.resource_index):0;result->response_d00e=1u;combat_economy_select_ordinary_terminal_reward(td,resource,selector,(unsigned)(d.hit.old_hp>0?d.hit.old_hp:0),(unsigned)(d.hit.new_hp>0?d.hit.new_hp:0),maxhp,&subtype,&code);enqueue_d00e_card(0u,0u,0u,d.wire_selector,request_control0,subtype,code,score_ctx->total);}

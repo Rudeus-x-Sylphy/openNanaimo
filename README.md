@@ -1,191 +1,157 @@
 # openNanaimo
 
-针对韩国飞行射击游戏 **Nanaimo** 的客户端行为研究项目，包含 Windows 启动器、本地协议适配器源码及工程知识库。
+面向韩国飞行射击游戏 **Nanaimo** 的客户端行为研究与本地协议适配工程，包含 Windows 图形启动器、完整 adapter 源码、构建脚本、验证脚本和工程知识库。
 
-## 免责声明
+## 使用边界
 
-1. 本仓库是针对韩国飞行射击游戏 **Nanaimo** 的客户端行为分析项目，用于本地运行并研究其行为逻辑，纯属个人研究所用，禁止任何盈利用途和游戏私服开设。
-2. 本仓库不传播原始客户端的可执行文件、动态库与数据包；仅包含由本地资源派生的目录数据（`gui_launcher/data/*.json`）与图标预览图集，供启动器界面与本地研究使用。
-3. 本仓库完全非盈利，谢绝任何打赏和任何形式的经济、利益赠与。
-4. 所有内容完全从官方公开发布的客户端安装脚本内、以及互联网上公开的资源中，通过纯粹的本地测试独立获得，与该游戏任何原始开发者、组织不存在任何交集。
+1. 本仓库仅用于本地研究、兼容性分析和非营利体验，禁止盈利、对外运营或商业化使用。
+2. 本仓库**不提供 Nanaimo 客户端**，不分发原始客户端可执行文件、动态库、安装包或完整资源包。使用者须自行准备合法取得且与基线一致的客户端和配套资源。
+3. 仓库中的资源目录 JSON、预览图和兼容性数据用于本地研究，不代表原始开发方的授权或背书。
+4. 项目与 Nanaimo 的原始开发者、发行方及任何相关组织均无隶属或合作关系。
 
-## 分析范围
+## 当前完整 adapter
 
-- **已分析内容**：基础装备、商城购物、地宫、秘密地宫玩法。
-- **未分析内容**：社交相关，例如竞技场、娱乐室、人际关系等。
-- **需自行patch客户端内容**：5村地宫7入口等。
+当前 GUI 不再区分“基础”和“扩展”adapter。社交、任务、商城、角色资料与原生地宫桥接统一由一套完整 adapter 启动：
 
-已分析内容包含不同深度的静态分析、协议实现和运行观察，不代表所有功能均已完整实现。具体进展见 [知识库](knowledge/知识库索引.md)。
+```text
+start_nanaimo_launcher.bat
+  -> gui_launcher/nanaimo_launcher.ps1
+  -> adapter_runtime/Nanaimo.Adapter.exe
+  -> adapter_runtime/nanaimo_gameplay_bridge.exe
+  -> game.exe
+```
 
-## 环境与准备
+GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色配置、停止旧 adapter、校验文件、启动完整 adapter、注册角色资料并启动客户端。蓝色 **“仅启动适配器”** 只用于调试，不启动客户端。
 
-- Windows、Windows PowerShell 和 .NET WinForms。
-- Python 3.11 或兼容版本；适配器构建使用兼容的 TinyCC 工具链。
-- 本地运行需要自行准备合法取得、与研究基线匹配的客户端及配套资源。启动器读取根目录的 `game.exe`，并校验文件完整性；所需文件与校验方法见 [运行依赖](docs/运行依赖.md)。
-- 受游戏年代限制，本适配器默认仅支持在 **Windows XP** 环境下适配相应的 `game.exe`。若使用 **Windows 10** 等现代操作系统，需自行改动客户端，本仓库不提供这方面的信息。
+## 功能范围
 
-源码构建与本地游戏运行是两个独立步骤。客户端、GUI 数据及资源依赖见 [运行依赖](docs/运行依赖.md)。
+### 已合入完整 adapter
 
-本地运行游戏不需要先执行下文的构建命令：适配器部署完成后，直接双击仓库根目录的 `start_nanaimo_launcher.bat` 启动图形界面即可，见 [GUI 启动方式](#gui-启动方式)。
+- 角色创建、资料、等级、经验、货币、外观、装备和库存。
+- 宠物、宝石、宠物成长、技能、快捷栏、卡片与合成。
+- 商城、Hans 金币商品、NaNa 商品、愿望清单、礼物和整容券。
+- 任务卷轴、任务接取／放弃／完成和任务目标进度。
+- 村庄移动、聊天、表情、好友、师徒、情侣。
+- 玩家组队、玩家交易、卡片交易所。
+- 天空竞技场、娱乐房间和相关大厅流程。
+- 公寓、家具、室内商店和愿望清单。
+- 地宫房间、多人同步、伤害、首领、掉落、结算、复活和关卡进度。
 
-### 自行安装 Python 与 TinyCC
+### 来源说明
 
-Python、TinyCC 及它们的第三方二进制、标准库和头文件不纳入开源仓库；请从项目官方入口自行下载，并保留所下载发行包的许可证材料。
+- `latest.zip` 引入的业务玩法、社交、任务及对应数据层源码，来源作者记为 **蓝陌**。
+- openNanaimo 对这些代码完成了一键启动整合、原生地宫状态桥接、宠物成长修复、Hans 商城修复、整容券修复、构建与验证补全。
+- 普通怪物卡片掉率等数值策略调整属于 openNanaimo 自行修改，不归入蓝陌来源。
 
-- **Python**：[Python 官方 Windows 下载页](https://www.python.org/downloads/windows/)。本项目原工具基线为 Python **3.11.9（64 位）**；安装 Python 3.11 或兼容版本，并确保命令行中的 `python` 指向该解释器。常规源码检查与 GUI 库存后端不需要把 Python 复制进仓库；完整校验脚本的路径要求见下表。
-- **TinyCC（TCC）**：[TinyCC 官方项目页](https://bellard.org/tcc/)，从该页进入 Windows 发行包入口。本项目原工具基线为 **TCC 0.9.27，i386 Windows 默认目标**；不要仅按宿主系统为 64 位就替换为不同的编译目标。保留完整工具链目录（包括 `include`、`lib` 和许可证），可在仓库外安装，再使用下文的 `-TccPath` 指定 `tcc.exe`。
-- 构建脚本默认查找 `tools/tcc/tcc.exe`；若使用该默认位置，请自行放置完整工具链，该目录已加入 Git 忽略规则。部分本地协议测试也固定读取此位置。
+功能存在源码和自动检查，不等于每项都已经完成原客户端可见验收。证据边界见 [知识库](knowledge/知识库索引.md) 和 [完整 adapter 与客户端补丁指引](docs/完整适配器与客户端补丁指引.md)。
 
-以上版本是本地已观察的工具基线，不是“最新版本”推荐。构建脚本校验输出字节与哈希；换用不同编译器版本或目标时，不保证与现有构建基线一致。
+## 快速开始
 
-### 外部工具对各入口的影响
+### 1. 准备客户端
 
-| 入口 | 工具要求 |
+将自行准备的 Nanaimo 客户端和配套资源放在运行根目录。启动器要求：
+
+| 文件 | 大小 | SHA-256 |
+|---|---:|---|
+| `game.exe` | 14,198,272 | `6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90` |
+| `Village_map_image/Village_map_image.pack` | 17,011,373 | `69EF0FA688DBCB4EE2A36151F76F78A5A3D4F051253ABE81EA824F37749FCD56` |
+| `flying/hd0_ep22_dg00_st01.sstg` | 103,124 | `899B1820EC0F49E032589AEAAA582086D5471C4BB1982EFB104E96FEC74D6D27` |
+
+仓库不提供这些客户端文件。完整依赖见 [运行依赖](docs/运行依赖.md)。
+
+### 2. 准备 adapter 运行目录
+
+发布包应包含：
+
+```text
+adapter_runtime/
+  Nanaimo.Adapter.exe
+  nanaimo_gameplay_bridge.exe
+  adapter_manifest.json
+  资源/数据/...
+```
+
+源码构建命令：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_merged.ps1 `
+  -TccPath '<TCC目录>/tcc.exe' `
+  -DotnetPath '<.NET 8 SDK目录>/dotnet.exe' `
+  -ResourceDataRoot '<已准备的adapter数据目录>' `
+  -SelfTest
+```
+
+该命令生成 `adapter_runtime`，并运行隔离状态库、登录、资料注册、任务、商城、地宫桥接、宠物成长和持久化检查。`.NET 8 SDK` 用于构建，发布目标为自包含的 `net6.0/win-x64` 运行包。
+
+### 3. 一键启动
+
+双击：
+
+```text
+start_nanaimo_launcher.bat
+```
+
+在 GUI 中完成角色和资源设置后，点击 **“一键进入 Nanaimo”**。固定连接为本机回环：登录 `11005`、资料注册 `11999`、世界入口 `12050`。GUI 不提供外部地址或模式编辑入口。
+
+## GUI 页面
+
+| 页面 | 用途 |
 |---|---|
-| `python -B scripts/verify_package.py --source-only` | 使用命令行 Python；不需要 TCC、客户端或游戏资源 |
-| GUI 库存后端 | 优先使用本地 `tools/python/python.exe`，不存在时使用 PATH 中的 `python` |
-| `scripts/build_adapter.ps1` | 默认查找 `tools/tcc/tcc.exe`；工具链安装在其他位置时必须传入 `-TccPath` |
-| `scripts/test_native_ui_protocol.py` | 当前固定查找 `tools/tcc/tcc.exe`，不继承构建脚本的 `-TccPath`；未准备该工具链时，运行整个测试集会报错，而不是全部跳过 |
-| `scripts/verify_package.ps1` | 当前固定使用 `tools/python/python.exe`；仅安装 PATH 中的 Python 不满足此脚本的要求，且完整校验还需要客户端、资源和已构建适配器 |
+| 启动配置 | 角色名、等级、称号、宠物、装扮和一键启动 |
+| 本次启动详情 | 文件身份、配置摘要和启动动作 |
+| 数值与道具 | HP/MP、攻击、防御、货币、钥匙、技能和快捷栏 |
+| 宠物／装扮查表 | 资源编号、属性和图标预览 |
+| 衣物／宠物／游戏道具／家具／卡片管理 | 本地库存编辑 |
 
-第三方工具是使用者本地准备的依赖，不随仓库分发。自行下载工具不代表其版本、目标架构或输出哈希已经通过本项目验证。
+运行数据写入 `adapter_data/`；日志位于 `adapter_data/logs/`。GUI 的“打开日志目录”直接打开该目录。
 
-## 构建与校验
+## 已修复的专项问题
 
-在仓库根目录执行源码检查；下一条构建命令仅适用于已自行准备默认位置 TCC 的情况：
+### 宠物成长
+
+原生地宫结算现在把宠物阶段、等级和经验纳入状态交换；正向角色经验结算会在同一事务中推进装备宠物，重复提交不会重复奖励。`CF72`、`CF88`、`C44C` 和 `C379` 使用同一持久状态。
+
+### Hans 商城与整容券
+
+- 补齐 18 个 Hans 定价商品，按商品币种分别扣除 Hans 或 NaNa。
+- 支持客户端使用的 `C431` 付款模式 `0/2/3/4`。
+- 一代／二代整容券按准确库存 identity 消耗，只修改允许的脸型范围，并通过 `C3D2`、`C47F` 即时刷新。
+
+### 复活
+
+复活蛋购买、激活、持久次数、`C355/CF71` 载体、death latch、`CF95 -> CF96/CF84/CF72` 顺序和重复请求幂等已通过 adapter 构造检查。原客户端复活后的可见位置与控制恢复仍需试玩确认，因此不写成端到端验收。
+
+## 客户端补丁与资源准备
+
+本仓库不提供客户端。需要自行处理的两个兼容点在 [完整 adapter 与客户端补丁指引](docs/完整适配器与客户端补丁指引.md) 中给出：
+
+1. 家具选择：`VA 0x0041235F` 从旧目标 `0x005CE700` 改到原生 Index getter `0x005CEFE0`，字节 `E9 9C C3 1B 00 -> E9 7C CC 1B 00`。
+2. 拉米诺斯村地宫7：完整 C355 前置进度、P03 道路 pack、关卡 SSTG 别名、限定资源查找映射和缺失 PON 同家族回退必须配套，不能只改一个显示标志。
+
+## 构建与验证
 
 ```powershell
 python -B scripts/verify_package.py --source-only
-# 需先准备 tools/tcc/tcc.exe 及配套工具链：
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_adapter.ps1 -KeepOutputs
+python -m unittest discover -s scripts -p 'test_*.py' -v
+powershell -NoProfile -ExecutionPolicy Bypass -STA -File gui_launcher/nanaimo_launcher.ps1 -SelfTestLayout
 ```
 
-如将 TinyCC 安装在仓库外，可通过 `-TccPath` 指定编译器；请将下面的示例路径替换为实际下载位置：
+原生 adapter 的确定性构建：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_adapter.ps1 -KeepOutputs -TccPath '..\toolchains\tcc\tcc.exe'
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_adapter.ps1 `
+  -TccPath '<TCC目录>/tcc.exe' -KeepOutputs
 ```
 
-`-KeepOutputs` 保留 `build/nanaimo_adapter.exe` 与 `build/nanaimo_adapter_testports.exe`；不加该参数时只做临时重建校验。构建脚本不会自动部署产物。正式适配器使用 `adapter/nanaimo_adapter.exe`，测试端口版本用于隔离测试。
-
-详细步骤、无需 TCC 的部分测试及完整测试前提见 [构建与验证](docs/构建与验证.md)；目录准备方式见 [运行依赖](docs/运行依赖.md#python-与-tinycc-的准备方式)。
-
-## 启动器
-
-图形界面启动器是运行游戏的标准入口。它按正确顺序完成保存配置、校验客户端、重启本地适配器、注册角色资料和启动客户端；不需要手工启动适配器、手工注册资料或改写连接配置。
-
-### GUI 启动方式
-
-在运行依赖齐备并部署适配器后：
-
-1. 双击仓库根目录的 `start_nanaimo_launcher.bat`；
-2. 在 **启动配置** 页确认用户名、角色、宠物和装扮，需要时在 **数值与道具** 和库存页调整；
-3. 点击 **保存并进入游戏**；
-4. 客户端启动后，按下方弹框表依次选择 **是 → 否 → 是**。
-
-`start_nanaimo_launcher.bat` 会先把工作目录切到仓库根，再用 `-NoProfile -ExecutionPolicy Bypass -STA` 运行 `gui_launcher/nanaimo_launcher.ps1`；请从仓库根目录双击，不要单独拷贝脚本到别处运行。
-
-点击 **保存并进入游戏** 后，启动器会依次执行：
-
-| 顺序 | 动作 |
-|---|---|
-| 1 | 停止已识别的旧本地适配器进程 |
-| 2 | 保存角色资料、数值、技能和五类库存 |
-| 3 | 校验客户端、村庄包、Super-Boss stage 和资源补丁 |
-| 4 | 生成 `StateOption/gamestartoption.ini`，重启本地适配器 |
-| 5 | 通过 TCP 11999 注册角色资料，要求适配器返回 `OK` |
-| 6 | 停止旧的 `game.exe`，用固定参数启动根目录 `game.exe` |
-
-其中任何一步失败都会弹出错误框并中止，不会带着旧配置启动客户端。
-
-进入游戏时会依次出现三个弹框，请按下表选择：
-
-| 顺序 | 弹框内容 | 选择 |
-|---|---|---|
-| 1 | 是否窗口游玩（全屏需要其他图像dll，本仓库不提供） | **是** |
-| 2 | 是否关闭游戏内声音 | **否**（保留声音） |
-| 3 | 是否开启游戏内 log 界面 | **是** |
-
-即依次选择 **是 → 否 → 是**。
-
-### 启动模式
-
-GUI 只使用一个固定模式：**Network (`-q`) + `127.0.0.1`**，连接本机适配器。启动器不显示连接方式、地址和启动参数，也不提供选择，所以不需要手工配置连接；只要启动器在运行，客户端就连到本机适配器。
-
-| 项 | 值 |
-|---|---|
-| 客户端连接模式 | 固定 Network（`-q`） |
-| 适配器地址 | `127.0.0.1`（本机回环） |
-| 适配器端口 | 11005 登录、11999 资料注册、12050 游戏前端 |
-| 启动配置生成源 | `gui_launcher/launch_modes/gamestartoption.network.ini` |
-
-`gui_launcher/launch_modes/gamestartoption.standalone.ini` 和 `Stand_Alone` 构造器用于协议研究，不是 GUI 选项；启动器会拒绝 `standalone` 模式和非 `127.0.0.1` 地址。完整链路见 [启动链与源码索引](docs/启动流程与源码索引.md)。
-
-### 无界面模式
-
-`start_nanaimo_launcher.bat` 会把附加参数透传给 `nanaimo_launcher.ps1`。下表的开关用于校验、预览和自测：不打开 GUI、不启动游戏，也不是运行游戏的方式。
-
-| 开关 | 用途 |
-|---|---|
-| `-ValidateOnly` | 校验目录数据、预览资源、适配器基线和固定启动参数；`scripts/verify_package.ps1` 使用该入口 |
-| `-PreviewOnly` | 输出「本次启动详情」文本后退出 |
-| `-SelfTestProfileIO` | 角色资料与库存写入、读回自测 |
-| `-SelfTestInventoryIO` | 库存管理后端自测 |
-| `-SelfTestLaunchModes` | 固定 `127.0.0.1` 模式与非法模式拒绝自测 |
-| `-SelfTestLayout` | WinForms 布局、默认值和可见文案自测 |
-| `-SelfTestCatalogPreview` | 目录预览页布局自测 |
-| `-SelfTestTitleIO` | 称号选项读写自测 |
-
-```powershell
-start_nanaimo_launcher.bat -ValidateOnly
-```
-
-### 界面说明
-
-| 标签页 | 用途 |
-|---|---|
-| 启动配置 | 用户名、角色、宠物、装扮和启动操作 |
-| 本次启动详情 | 角色、数值、装备、文件校验状态、启动前动作和配置路径（不显示连接参数与客户端命令行） |
-| 数值与道具 | HP/MP、攻击、防御、货币、钥匙及技能树、Z/X 装备槽 |
-| 宠物查表、装扮查表 | 资源编号与预览 |
-| 衣物、宠物、游戏道具、家具、卡片管理 | 库存编辑 |
-
-- **保存配置**：保存当前设置。
-- **启动本地适配器**：单独管理本地适配器，不启动客户端。
-- **保存并进入游戏**：保存配置、重启本地适配器、注册角色资料后启动客户端；会中断已有本地会话。
-- **打开日志目录**：用资源管理器打开仓库根目录，profile、适配器日志和状态文件都在这里。
-
-更新启动器脚本后需关闭旧窗口再重新打开。
-
-### 默认配置
-
-未保存 profile 时使用内置默认值。已有配置会继续加载；点击 **恢复默认** 后保存即可重置启动器设置，不会清空角色存档。
-
-| 字段 | 默认值 |
-|---|---|
-| 用户名 | `Greyrat` |
-| 等级 | `25` |
-| 当前／最大 MP | `500 / 500` |
-| 头发（hair） | `10130337` |
-| 身体（body） | `10100028` |
-| 上衣（top） | `10110337` |
-| 下装（bottom） | `10120352` |
-| 饰品（accessory） | `10150103` |
-| 效果（effect） | `10160017` |
-| 宠物（pet） | `15009205` |
-
-默认 MP 为 500，方便体验耗蓝较高的宠物。已有配置不会被自动覆盖；可在“数值与道具”中将当前 MP 和最大 MP 都设为 500 后保存，无需重置其他设置。
-
-配置保存在根目录的 `nanaimo_launcher_profile.ini` 和 `nanaimo_launcher_profile.json`。持久化数据格式见 [角色资料与背包](knowledge/authority/03-角色资料与背包.md)。
+当前源码清单和 reviewed build hashes 位于 `manifest/source_closure.json`。详细命令见 [构建与验证](docs/构建与验证.md)。
 
 ## 文档导航
 
-| 路径 | 内容 |
+| 文档 | 内容 |
 |---|---|
-| [知识库](knowledge/知识库索引.md) | 协议、静态地址、调用链、实现机制与证据范围 |
-| [启动链与源码索引](docs/启动流程与源码索引.md) | GUI、资料注册、适配器模块和端口 |
-| [构建与验证](docs/构建与验证.md) | 构建方法、自动化测试和验证范围 |
-| [运行依赖](docs/运行依赖.md) | 客户端、资源、数据与工具依赖 |
-| [导出工具](docs/文件清单与导出工具.md) | 文件清单、分层导出和完整性检查 |
-| [第三方与许可说明](docs/第三方与许可说明.md) | 项目使用范围及第三方组件说明 |
-
+| [知识库](knowledge/知识库索引.md) | 协议、状态、静态地址、实现机制和证据边界 |
+| [完整 adapter 与客户端补丁指引](docs/完整适配器与客户端补丁指引.md) | 完整 adapter 架构、家具与拉米诺斯村地宫7准备步骤 |
+| [启动流程与源码索引](docs/启动流程与源码索引.md) | GUI、资料注册、adapter 模块和端口 |
+| [构建与验证](docs/构建与验证.md) | 构建、自测和发布校验 |
+| [运行依赖](docs/运行依赖.md) | 客户端、资源、数据和工具依赖 |
+| [CHANGELOG](CHANGELOG.md) | 本次合入、修复和验证记录 |

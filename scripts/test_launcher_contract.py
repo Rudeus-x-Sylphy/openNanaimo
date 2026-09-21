@@ -8,23 +8,31 @@ ROOT = Path(__file__).resolve().parents[1]
 class LauncherContractTests(unittest.TestCase):
     def test_adapter_artifacts_and_process_contract(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
-        build = (ROOT / 'scripts/build_adapter.ps1').read_text('utf-8-sig')
+        native_build = (ROOT / 'scripts/build_adapter.ps1').read_text('utf-8-sig')
+        full_build = (ROOT / 'scripts/build_merged.ps1').read_text('utf-8-sig')
         cleanup = (ROOT / 'scripts/clean_generated_state.ps1').read_text('utf-8-sig')
-        self.assertIn("$Adapter=Join-Path $Root 'adapter\\nanaimo_adapter.exe'", text)
+        self.assertIn("$AdapterRuntimeRoot=Join-Path $Root 'adapter_runtime'", text)
+        self.assertIn("$Adapter=Join-Path $AdapterRuntimeRoot 'Nanaimo.Adapter.exe'", text)
+        self.assertIn("$AdapterBridge=Join-Path $AdapterRuntimeRoot 'nanaimo_gameplay_bridge.exe'", text)
+        self.assertIn("$AdapterManifest=Join-Path $AdapterRuntimeRoot 'adapter_manifest.json'", text)
         self.assertIn('function Test-AdapterBinary', text)
         self.assertIn('function Get-LocalAdapters', text)
-        self.assertIn('Get-Process -Name nanaimo_adapter ', text)
+        self.assertIn('@($Adapter,$AdapterBridge,$LegacyAdapter)', text)
+        self.assertIn('function Start-LocalAdapter', text)
+        self.assertIn('function Stop-LocalAdapter', text)
         self.assertIn('Start-Process -FilePath $Adapter ', text)
+        self.assertIn("--login-port','11005','--world-port','12050','--profile-port','11999'", text)
         self.assertIn('start_local_adapter=$launchModeInfo.StartLocalAdapter', text)
-        self.assertIn("$Mod=Join-Path $Root 'adapter'", build)
-        self.assertIn("@('nanaimo_adapter.c','nanaimo_adapter.exe')", build)
-        self.assertIn("@('nanaimo_adapter_testports.c','nanaimo_adapter_testports.exe')", build)
-        self.assertIn("$build=Join-Path $Root 'build';", build)
-        self.assertNotIn('$build=$Mod;', build)
+        self.assertIn("$Mod=Join-Path $Root 'adapter'", native_build)
+        self.assertIn("@('nanaimo_adapter.c','nanaimo_adapter.exe')", native_build)
+        self.assertIn("@('nanaimo_adapter_testports.c','nanaimo_adapter_testports.exe')", native_build)
+        self.assertIn("'managed-host\\Nanaimo.Adapter.csproj'", full_build)
+        self.assertIn("'adapter_runtime'", full_build)
+        self.assertIn("'Nanaimo.Adapter.exe'", full_build)
+        self.assertIn("'nanaimo_gameplay_bridge.exe'", full_build)
         self.assertIn("$_.Name -match '^(nanaimo_adapter|nanaimo_client|game_unpack)'", cleanup)
         self.assertIn("$AdapterLog=Join-Path $Root 'adapter_nanaimo_launcher.log'", text)
         self.assertIn("$AdapterErr=Join-Path $Root 'adapter_nanaimo_launcher_stderr.log'", text)
-
     def test_connection_parameter_uses_adapter_name(self):
         text = (ROOT / 'gui_launcher/client_connect.ps1').read_text('utf-8-sig')
         self.assertTrue(text.startswith('param([Parameter(Position=0)][string]$AdapterIP,'))
@@ -116,7 +124,9 @@ class LauncherContractTests(unittest.TestCase):
             'Install-LaunchModeConfig $launchModeInfo',
             'Register-ClientProfile $launchModeInfo.AdapterIP',
             'Start-Process -FilePath $Client -ArgumentList ([string[]]$launchModeInfo.ClientArgs)',
-            "$ExpectedAdapterHash='017B284DABE6FC701A8E70C2F42042C125ACD610CD9D0DC56171ABB2E85C2B25'",
+            "$AdapterManifest=Join-Path $AdapterRuntimeRoot 'adapter_manifest.json'",
+            'Get-Content -LiteralPath $AdapterManifest -Raw -Encoding UTF8|ConvertFrom-Json',
+            'Test-AdapterBinary',
         ):
             self.assertIn(invariant, text)
 
