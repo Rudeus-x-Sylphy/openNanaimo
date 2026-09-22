@@ -45,9 +45,8 @@ __pycache__/
 
 /adapter_cash_bundle_migration_*
 
-# Generated self-contained adapter runtime. The release archive must carry the
-# complete adapter_runtime tree; these build outputs are not source-tracked.
-/adapter_runtime/
+# The complete self-contained adapter runtime ships with the repository and is
+# registered as critical files in manifest/open_release_manifest.json.
 /adapter_data/
 **/bin/
 **/obj/
