@@ -4,7 +4,7 @@
 
 ## 使用边界
 
-1. 本仓库仅用于本地研究、兼容性分析和非营利体验，禁止盈利、对外运营或商业化使用。
+1. 本仓库仅用于本地研究、兼容性分析和非营利体验，禁止盈利、对外运营、商业化使用和游戏私服开设。
 2. 本仓库**不提供 Nanaimo 客户端**，不分发原始客户端可执行文件、动态库、安装包或完整资源包。使用者须自行准备合法取得的客户端和配套资源；不同脱壳实现不会因为大小或哈希不同而被启动器拒绝。
 3. 仓库中的资源目录 JSON、预览图和兼容性数据用于本地研究，不代表原始开发方的授权或背书。
 4. 项目与 Nanaimo 的原始开发者、发行方及任何相关组织均无隶属或合作关系。
@@ -41,9 +41,28 @@ GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色
 
 ## 快速开始
 
-### 1. 准备客户端
+### 0. 需要准备什么
 
-将自行准备的 Nanaimo 客户端和配套资源放在运行根目录。
+| 项目 | 说明 |
+|---|---|
+| Windows | 启动器是 PowerShell + WinForms 脚本，系统自带的 Windows PowerShell 即可 |
+| Python 3 | 一键启动会调用 `scripts/prepare_client_compatibility.py` 现场派生客户端兼容覆盖；仓库优先使用 `tools/python/python.exe`，否则使用 PATH 中的 `py.exe` / `python.exe`，都没有时会直接报错 |
+| Nanaimo 客户端 | 自行合法取得；启动器读取**与仓库内容同一个根目录**下的 `game.exe`，缺失即拒绝启动，并需要 `flying/`、`Village_map_image/` 等原始资源 |
+| `adapter_runtime/` | **已随本仓库提供**，无需自行构建 |
+
+### 1. 准备客户端与目录
+
+把本仓库内容放进客户端根目录（或把客户端的 `game.exe` 和资源目录放进仓库根），使两者同根：
+
+```text
+<客户端根目录>/
+  game.exe
+  flying/                 原始资源
+  Village_map_image/      原始资源
+  start_nanaimo_launcher.bat
+  gui_launcher/           启动器
+  adapter_runtime/        完整 adapter（随仓库提供）
+```
 
 启动器会自动完成所需的客户端兼容准备；也可先手工执行只读预检：
 
@@ -54,9 +73,10 @@ python -B scripts/prepare_client_compatibility.py `
 ```
 
 该工具按 PE 节表验证 emotion 空指针边界，按 `NANA_PACK` 结构改写地宫7道路，并从已有 SSTG/PON 复制兼容别名；它不以输入或输出哈希作为授权条件。家具客户端补丁仍可作为显式手工工具使用；一键启动使用适配器端 C393 快照，不应用 Index-getter 客户端重定向。仓库不提供这些客户端文件。完整依赖见 [运行依赖](docs/运行依赖.md)。
-### 2. 准备 adapter 运行目录
 
-发布包应包含：
+### 2. adapter 运行目录（已随仓库提供）
+
+本仓库已包含完整的 `adapter_runtime/`：
 
 ```text
 adapter_runtime/
@@ -66,7 +86,9 @@ adapter_runtime/
   资源/数据/...
 ```
 
-源码构建命令：
+启动器启动前会逐文件校验 `adapter_manifest.json` 记录的大小与 SHA-256 闭包，并要求 `Nanaimo.Adapter.exe`、`nanaimo_gameplay_bridge.exe`、`Nanaimo.Adapter.dll`、`Nanaimo.Gameplay.dll` 均在闭包内；这些文件同时登记在 `manifest/open_release_manifest.json` 的 critical files 中，因此不要只复制其中几个文件。
+
+开发者如需自行重建（可选）：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_complete_adapter.ps1 `
@@ -76,7 +98,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_complete_adapt
   -SelfTest
 ```
 
-该命令生成 `adapter_runtime`，并运行隔离状态库、登录、资料注册、任务、商城、地宫桥接、宠物成长和持久化检查。`.NET 8 SDK` 用于构建，发布目标为自包含的 `net6.0/win-x64` 运行包。
+该命令生成 `adapter_runtime`，并运行隔离状态库、登录、资料注册、任务、商城、地宫桥接、宠物成长和持久化检查。`.NET 8 SDK` 用于构建，发布目标为自包含的 `net6.0/win-x64` 运行包，所以最终用户不需要安装 .NET 或 TinyCC。重建还要自备 `-ResourceDataRoot`（`资源/数据`：客户端同名数据文件加派生的 `dungeon_combat_catalog.bin`）；该数据不随仓库分发，普通用户不必重建。
 
 ### 3. 一键启动
 
@@ -88,11 +110,6 @@ start_nanaimo_launcher.bat
 
 在 GUI 中完成角色和资源设置后，点击 **“一键进入 Nanaimo”**。固定连接为本机回环：登录 `11005`、资料注册 `11999`、世界入口 `12050`。GUI 不提供外部地址或模式编辑入口。
 
-## 登录出生点与位置持久化
-
-- 新角色首次进入仍走游戏原始的角色创建与新手引导流程，不预置到村庄页面。
-- 完成引导后，角色的地图、村庄页面和坐标写入现有人物档案；下次登录按档案恢复到上次保存的位置。
-- 正常离开或断开连接时保存当前 HP/MP、地图、页面和坐标，不把新角色的首次出生点逻辑与已有角色的续登逻辑混用。
 ## GUI 页面
 
 | 页面 | 用途 |
@@ -106,6 +123,12 @@ start_nanaimo_launcher.bat
 运行数据写入 `adapter_data/`；日志位于 `adapter_data/logs/`。GUI 的“打开日志目录”直接打开该目录。
 
 “一键进入 Nanaimo”会应用界面中的最新配置。等级只用于新角色的初始种子；已有档案保留游戏中累计的等级和经验。HP/MP、攻击、防御、货币、外观、装备宠物、技能和库存管理数据会在启动前同步，同时保留上次下线位置。
+
+## 登录出生点与位置持久化
+
+- 新角色首次进入仍走游戏原始的角色创建与新手引导流程，不预置到村庄页面。
+- 完成引导后，角色的地图、村庄页面和坐标写入现有人物档案；下次登录按档案恢复到上次保存的位置。
+- 正常离开或断开连接时保存当前 HP/MP、地图、页面和坐标，不把新角色的首次出生点逻辑与已有角色的续登逻辑混用。
 
 ## 构建与验证
 
@@ -133,3 +156,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_adapter.ps1 `
 | [启动流程与源码索引](docs/启动流程与源码索引.md) | GUI、资料注册、adapter 模块和端口 |
 | [构建与验证](docs/构建与验证.md) | 构建、自测和发布校验 |
 | [运行依赖](docs/运行依赖.md) | 客户端、资源、数据和工具依赖 |
+| [文件清单与导出工具](docs/文件清单与导出工具.md) | 导出器分层、候选清单与逐文件审核要求 |
+| [第三方与许可说明](docs/第三方与许可说明.md) | 第三方组件与许可边界 |
