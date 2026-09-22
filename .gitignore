@@ -25,6 +25,7 @@ __pycache__/
 /exports/
 /.private/
 /adapter/*.rebuilt.exe
+/adapter/*.exe
 # Official installers are supplied separately, never as patch payload
 /installer/
 
@@ -43,3 +44,23 @@ __pycache__/
 /adapter_pet_items_*
 
 /adapter_cash_bundle_migration_*
+
+# The complete self-contained adapter runtime ships with the repository and is
+# registered as critical files in manifest/open_release_manifest.json.
+/adapter_data/
+**/bin/
+**/obj/
+
+# Local SDK/tooling caches and generated review output
+/.dotnet/
+/.opencodereview/
+/ocr_report/
+
+# Transient build, parity, and source-comparison artifacts
+/.build-*.log
+/.parity_backup
+/.parity_stage
+/.tmp.*
+
+# Locally generated deployment/audit contract (contains runtime hashes)
+/manifest/current_adapter_contract.json

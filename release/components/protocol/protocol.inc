@@ -305,7 +305,7 @@ static void send_ack_10013(SOCKET c){
 /* ---- 0xEB8D ANS_GAME_CONNECTION 4108B result=0 ----
    VAL 2026-08-07: handler sub_A6AD80 does `push 0x100c; memcpy(dst,src,0x100c)`
    (0xA6ADC3) = copies 4108B.  Archive 浜ゆ帴-2026-08-02: "0xeb8d 蹇呴』 4108 瀛楄妭
-   (sub_A6AD80 澶嶅埗 0x100C), 12 瀛楄妭鍝嶅簲瓒婄晫"; 淇鏍煎紡 ans_eb8d_4108.bin =
+   (sub_A6AD80 复制 0x100C), 12 字节响应越界"; 修正格式 ans_eb8d_4108.bin =
    `00 01 88 99 0C 10 8D EB E8 03 00 00 [pad to 4108]`.  So len@4 = 0x100C,
    type@6 = 0xEB8D, dword@8 = result 0, zero-padded to 4108 total.
    Handler 0x4DA290 takes the error path when dword@+8 is nonzero.
@@ -347,7 +347,7 @@ static void send_c352(SOCKET c){
 /* ---- 澶栬纭鍖?(0xC3D2, CONFIRMED from command dispatcher 0x63BD84) ----
    Dispatcher 0x63BD84: cmp type,0xc3d2; je 0x63bf10.
    0x63BF10: word[pkt+8]==0x3E8(1000) -> rep movsd ecx=9 from pkt+0x10
-     -> 0x40545C->0xA74A60 璁剧疆 Character[0xD869D4] 9涓瑙侷D.
+     -> 0x40545C->0xA74A60 设置 Character[0xD869D4] 9个外观ID.
    Format:
      +0x08 u16 status = 0x3E8 (1000)   (0x63BF1D cmp)
      +0x10 9xdword appearance IDs       (0x63BF35 rep movsd ecx=9)
@@ -367,12 +367,12 @@ static void send_appearance(SOCKET c, const unsigned char*magic){
      鈫?鍐欏叆 AVM+0x3418[0..8] 鈫?鏈夊ご!
    0xCF6F 鍙湪 pump2, 鑰?pump2 琚?state==4 闂ㄦ帶 (0x63A514: cmp eax,4). 褰撳墠state 9
    鈫?鏈猵atch鏃跺寘浼氳繘 GarbagePacket Delete (鏃ュ織 53103). 闇€ patch gate 鎴栫‘璁?
-   Format (0x644C20 纭瘉):
-     +8  "x\0" 鐭瓧绗︿覆 (涓庤鑹插悕姣旇緝)
+   Format (0x644C20 确证):
+     +8  "x\0" 短字符串 (与角色名比较)
      +24 u16 channelID_a  +26 u16 channelID_b  +31 byte 0
      +32 u16 0  +34 u16 0
      +36 24B 瀛楃涓?(鎷峰叆 AVM+0x28)
-     +52 9脳dword 澶栬ID (0x9A9251,0x9A1D21,0x9A4431,0x9A6B41,0,0,0,0,0)
+     +52 9×dword 外观ID (0x9A9251,0x9A1D21,0x9A4431,0x9A6B41,0,0,0,0,0)
    Total frame: 8 + 52 + 36 = 96B (0x60). */
 static void send_cf6f(SOCKET c, const unsigned char*magic){
     char p[4096]; mkpkt(p,0xCF6F,0x60,1);
@@ -1107,7 +1107,7 @@ static void send_c377_profile_state(SOCKET c){
            and +0x1A = pet byte (MakePet arg, nonzero = create) */
         unsigned petk=STABLE_PET;
         p[0x38]=petk&0xFF; p[0x39]=(petk>>8)&0xFF; p[0x3A]=(petk>>16)&0xFF; p[0x3B]=(petk>>24)&0xFF;
-        p[0x1A]=1?86:80; /* pet ball index: 86 = 鏂姮鍏嬫柉 icon family */
+        p[0x1A]=1?86:80; /* pet ball index: 86 = 斯芬克斯 icon family */
     }
     sendbuf(c,p,0x88);
     printf("  S0xC377 profile-state baseline (136B, reads through +0x87) t=%lds\n",sec()); fflush(0);
@@ -1243,7 +1243,7 @@ static void wide_thread(void* unused){
    selects the branch: 1 = existing account (original game reference traffic
    ref_* payloads, char "123"), 0 = new account (4_login create-char flow).
    Persisted to accounts.dat in the working directory so a created character
-   survives a restart (the "宸叉湁璐﹀彿" re-login path). */
+   survives a restart (the "已有账号" re-login path). */
 static void standalone_account_load(void){
     void* f = fopen("accounts.dat", "r");
     if(!f){ g_account_has_char = 1; return; }  /* default: existing account */

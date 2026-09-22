@@ -239,7 +239,7 @@ static void gs_thread(void* arg){
         struct crate_drop_policy_context local_crate_policy; struct crate_drop_policy_context *crate_policy=&local_crate_policy; crate_drop_policy_init(crate_policy,CRATE_DROP_MODE_SINGLE_VISUAL);
         struct hp_sync_context local_monster_hp_ctx; struct hp_sync_context *monster_hp_ctx=&local_monster_hp_ctx; hp_sync_init(monster_hp_ctx); stable_monster_hp_configure_strict(monster_hp_ctx);
 #endif
-        
+
         for(;;){
             if(multiplayer_is_primary_port(port)){ multiplayer_lock_load(multiplayer_idx);flush_pending_d00e(c);flush_pending_c47f(c);multiplayer_save_unlock(multiplayer_idx); }
             char tmp[65536]; int n=pR(c,tmp,sizeof(tmp),0);
@@ -272,6 +272,11 @@ static void gs_thread(void* arg){
                     if(lifecycle_cleanup_sent&&skill_effect_cleanup_code_is_meat(&skill_cleanup_ctx)){unsigned authored_until=g_meat_collision.until_tick;meat_collision_reset(dungeon_room_epoch,boss_ctx.battle_epoch);meat_activated_room_epoch=dungeon_room_epoch;meat_activated_battle_epoch=boss_ctx.battle_epoch;meat_residual_until_tick=authored_until;printf("  [MEAT_RESIDUAL] completion reset room=%u battle=%u trigger=0x%04X residual_until=%u residual_remaining_ms=%u policy=activation-authored-until-tick\n",dungeon_room_epoch,boss_ctx.battle_epoch,(unsigned)type,meat_residual_until_tick,(meat_residual_until_tick&&(int)(meat_residual_until_tick-lifecycle_now)>=0)?(unsigned)(meat_residual_until_tick-lifecycle_now):0u);fflush(0);}
 #endif
                     }
+#endif
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+                    if(managed_bridge_handle(c,type,len,(const unsigned char*)&buf[off])) {
+                        /* Internal state exchange; never routed from a game client. */
+                    } else
 #endif
                     if(standalone && type==0xC351){
                         printf("  [GS %d] standalone C351 -> C352 (has_char=%d)\n",port,g_account_has_char); fflush(0);
@@ -345,7 +350,7 @@ static void gs_thread(void* arg){
                             printf("  [GS %d] GOT C353 tutorial-complete (28B), client should enter state1\n",port); fflush(0);
                         }
                         { /* re-apply LV80 profile after the select/tutorial stage */
-                            sleep(0); send_10010_single_profile(c, 1?1:0); 
+                            sleep(0); send_10010_single_profile(c, 1?1:0);
                         }
                     } else if(type==0xC354){
                         printf("  [GS %d] GOT C354 channel-profile request -> C355\n",port); fflush(0);
@@ -353,7 +358,7 @@ static void gs_thread(void* arg){
                         { /* post-tutorial profile: gate byte 1 opens the pet-action senders (C44F) */
                             sleep(0); send_10010_single_profile(c, 1);
                         }
-                        
+
 #if TEAMPLAY_FEATURE_SKIP_TUTORIAL
                         if(c353_seen || g_skip_tutorial){
                             sleep(0);
@@ -385,7 +390,7 @@ static void gs_thread(void* arg){
                         multiplayer_village_prepare(current_village_selector,(unsigned char)buf[off+8],g_last_x,g_last_y);
                         printf("  [GS %d] GOT C367 TownPage/portal entry -> C368 args=%u,%u\n",port,
                                g_last_x, g_last_y); fflush(0);
-                            
+
                         sleep(0); send_c368_profile_ready(c, (const unsigned char*)&buf[off]);
                         village_scene_sync_pending=1;
                         /* Village selector4 does not emit C36C on this return/page path.  Arm
@@ -407,7 +412,7 @@ static void gs_thread(void* arg){
                             printf("  [GS %d] GOT C376 profile-state request -> legacy C377 maintenance\n",port); fflush(0);
                             sleep(0);send_c377_profile_state(c);
                             send_appearance_refresh(c);
-                        } 
+                        }
                     } else if(type==0xC378 && len==8){
                         printf("  [GS %d] GOT C378 profile-state request -> C379 + C44C pet list\n",port); fflush(0);
                         sleep(0); send_c379_profile_profile_snapshot(c);
@@ -424,7 +429,7 @@ static void gs_thread(void* arg){
                     } else if(type==0xC44F && len==24){
                         shop_purchase_pet_handle_c44f(c,(const unsigned char*)&buf[off],len);
                     } else if(type==0xC46F && len==16){
-                        unsigned mode=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8),slot=(unsigned char)buf[off+0x0A]|((unsigned char)buf[off+0x0B]<<8),code=(unsigned char)buf[off+0x0C]|((unsigned char)buf[off+0x0D]<<8)|((unsigned char)buf[off+0x0E]<<16)|((unsigned char)buf[off+0x0F]<<24);const struct shop_purchase_shop_item_row*shoprow=shop_purchase_shop_item_find(code);unsigned price=shoprow?shoprow->price:0u;int ok=shopping_purchase_misc(code);printf("  [GS %d] GOT C46F SHOP_PURCHASE mode=%u slot=%u code=%u price=%u success=%d -> C470\n",port,mode,slot,code,price,ok);fflush(0);sleep(0);send_c470_misc_purchase(c,(const unsigned char*)&buf[off],ok);
+                        unsigned mode=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8),qty=(unsigned char)buf[off+0x0A]|((unsigned char)buf[off+0x0B]<<8),code=(unsigned char)buf[off+0x0C]|((unsigned char)buf[off+0x0D]<<8)|((unsigned char)buf[off+0x0E]<<16)|((unsigned char)buf[off+0x0F]<<24);const struct shop_purchase_shop_item_row*shoprow=shop_purchase_shop_item_find(code);unsigned price=shoprow?shoprow->price:0u;int ok=(mode==4u&&qty==1u&&shoprow&&shoprow->carrier==2u)?shopping_purchase_misc(code):0;printf("  [GS %d] GOT C46F SHOP_PURCHASE mode=%u qty=%u code=%u currency=%s price=%u success=%d -> C470\n",port,mode,qty,code,shop_purchase_currency_label(shoprow),price,ok);fflush(0);sleep(0);send_c470_misc_purchase(c,(const unsigned char*)&buf[off],ok);
                     } else if(type==0xC480 && len==12){
                         unsigned action=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8),row=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8),code=quickbar_ticket_first_owned(),expiry=0u;int ok=(action==4u&&code&&!quickbar_entitlement_active()&&quickbar_ticket_activate(code,&expiry));if(!expiry)expiry=g_quickbar_entitlement_expiry;printf("  [GS %d] GOT C480 domain44 use action=%u row=%u code=%u active=%u success=%d -> C481\n",port,action,row,code,quickbar_entitlement_active()?1:0,ok);fflush(0);sleep(0);send_c481_quickbar_expansion(c,ok,row,code,expiry);
                     } else if(type==0xC480 && len==8){
@@ -439,12 +444,14 @@ static void gs_thread(void* arg){
                     } else if(type==0xC469 && len==8){
                         printf("  [GS %d] GOT C469 token-list request -> C46A ready=1
 ",port);fflush(0);sleep(0);send_c46a_token_list(c);
+                    } else if(type==0xC3D1 && len==0x4C){
+                        unsigned requested[9],i,slot=(unsigned char)buf[off+0x4A]|((unsigned char)buf[off+0x4B]<<8),coupon=0u,identity=0u,remaining=0u;int layout_ok=(((unsigned char)buf[off+0x44]|((unsigned char)buf[off+0x45]<<8))==0u)&&(((unsigned char)buf[off+0x46]|((unsigned char)buf[off+0x47]<<8))==0u)&&(((unsigned char)buf[off+0x48]|((unsigned char)buf[off+0x49]<<8))==1u),ok=0;for(i=0u;i<9u;i++)requested[i]=shopping_read32((const unsigned char*)&buf[off],8u+i*4u);if(layout_ok)ok=shop_purchase_use_face_coupon(requested,slot,&coupon,&identity,&remaining);printf("  [GS %d] GOT C3D1 FACE_COUPON slot=%u coupon=%u identity=%u face=%u remaining=%u layout=%d success=%d -> C3D2%s\n",port,slot,coupon,identity,requested[1],remaining,layout_ok,ok,ok?" + C47F":"");fflush(0);sleep(0);send_c3d2_face_coupon_result(c,ok,requested);if(ok){sleep(0);send_c47f_playable(c);}
                     } else if(type==0xC3CD && len==0x44){
                         unsigned added=0;int ok=shopping_purchase_avatar((const unsigned char*)&buf[off],len,&added);unsigned count=(unsigned char)buf[off+0x0E],code=count?((unsigned char)buf[off+0x1C]|((unsigned char)buf[off+0x1D]<<8)|((unsigned char)buf[off+0x1E]<<16)|((unsigned char)buf[off+0x1F]<<24)):0u;printf("  [GS %d] GOT C3CD avatar purchase count=%u first_code=%u success=%d added=%u -> C3CE
 ",port,count,code,ok,added);fflush(0);sleep(0);send_c3ce_avatar_purchase(c,(const unsigned char*)&buf[off],ok,added);
                     } else if(type==0xC431 && len==16){
-                        unsigned shop_kind=(unsigned char)buf[off+8],category=(unsigned char)buf[off+9],qty=(unsigned char)buf[off+0x0A]|((unsigned char)buf[off+0x0B]<<8),code=(unsigned char)buf[off+0x0C]|((unsigned char)buf[off+0x0D]<<8)|((unsigned char)buf[off+0x0E]<<16)|((unsigned char)buf[off+0x0F]<<24),price=0;int rc=0;
-                        if(shop_kind==4u&&category==code/1000000u){if(category==15u&&qty==1u)rc=shopping_purchase_pet(code,&price);else rc=shop_purchase_purchase_stackable(code,qty,&price)?1:0;}printf("  [GS %d] GOT C431 SHOP_PURCHASE kind=%u category=%u qty=%u code=%u unit_price=%u rc=%d -> C432\n",port,shop_kind,category,qty,code,price,rc);fflush(0);sleep(0);send_c432_pet_purchase(c,(const unsigned char*)&buf[off],rc==1);
+                        unsigned shop_kind=(unsigned char)buf[off+8],category=(unsigned char)buf[off+9],qty=(unsigned char)buf[off+0x0A]|((unsigned char)buf[off+0x0B]<<8),code=(unsigned char)buf[off+0x0C]|((unsigned char)buf[off+0x0D]<<8)|((unsigned char)buf[off+0x0E]<<16)|((unsigned char)buf[off+0x0F]<<24),price=0;const struct shop_purchase_shop_item_row*shoprow=shop_purchase_shop_item_find(code);int native_mode=(shop_kind==0u||shop_kind==2u||shop_kind==3u||shop_kind==4u),rc=0;
+                        if(native_mode&&category==code/1000000u){if(category==15u&&qty==1u)rc=shopping_purchase_pet(code,&price);else if(shoprow&&shoprow->carrier==1u)rc=shop_purchase_purchase_stackable(code,qty,&price)?1:0;}printf("  [GS %d] GOT C431 SHOP_PURCHASE kind=%u category=%u qty=%u code=%u currency=%s unit_price=%u rc=%d -> C432\n",port,shop_kind,category,qty,code,shop_purchase_currency_label(shoprow),price,rc);fflush(0);sleep(0);send_c432_pet_purchase(c,(const unsigned char*)&buf[off],rc==1);
                     } else if(type==0xC475 && len==20){
                         unsigned claim_mode=(unsigned char)buf[off+8],claim_op=(unsigned char)buf[off+9],claim_qty=(unsigned char)buf[off+0x0A]|((unsigned char)buf[off+0x0B]<<8),claim_token=(unsigned char)buf[off+0x0C]|((unsigned char)buf[off+0x0D]<<8)|((unsigned char)buf[off+0x0E]<<16)|((unsigned char)buf[off+0x0F]<<24),code=(unsigned char)buf[off+0x10]|((unsigned char)buf[off+0x11]<<8)|((unsigned char)buf[off+0x12]<<16)|((unsigned char)buf[off+0x13]<<24),units=0u;int ok=(code/1000000u==15u)?shopping_claim_pet(code):shop_catalogs_claim_cash_to_gameitem(code,&units);printf("  [GS %d] GOT C475 claim mode=%u op=%u qty=%u token=%u code=%u domain=%u units=%u success=%d -> C476\n",port,claim_mode,claim_op,claim_qty,claim_token,code,code/1000000u,units,ok);fflush(0);sleep(0);send_c476_claim_result(c,ok,code);
                     } else if(type==0xC42F && len==8){
@@ -465,7 +472,7 @@ static void gs_thread(void* arg){
                         unsigned req_page=(unsigned char)buf[off+0x0A]|((unsigned char)buf[off+0x0B]<<8);
                         printf("  [GS %d] GOT C473 backpack-page request mode=%u page=%u -> C474\n",port,req_mode,req_page); fflush(0);
                         sleep(0); send_c474_free_magic_keys(c,req_mode,req_page);
-                         
+
                     } else if(type==0xC47D && len==0x90){
                         int quickbar_ok=quickbar_apply_c47d((const unsigned char*)&buf[off],len),equip_ok=0;
                         int c47d_room_active=(g_multi_current>=0 && g_multi_conn[g_multi_current].room_active);
@@ -537,7 +544,7 @@ static void gs_thread(void* arg){
                     } else if(type==0xCF75){
                         printf("  [GS %d] GOT CF75 entry request -> CF76\n",port); fflush(0);
                         send_cf76_room_click(c);
-                        
+
                     } else if(type==0xCF6E){
                         printf("  [GS %d] GOT CF6E state4 actor-list request -> CF6F\n",port); fflush(0);
                         if(!local_actor_snapshot_sent){ sleep(0); send_cf6f(c, (const unsigned char*)&buf[off]); local_actor_snapshot_sent=1; }
@@ -568,7 +575,7 @@ static void gs_thread(void* arg){
                         printf("  [GS %d] GOT CFD9 room-actor request -> CFDA actor vector\n",port); fflush(0);
                         sleep(0); teamplay_send_cfda_room_actor_vector_current(c);
 #else
-                        
+
                         printf("  [GS %d] GOT CFD9 room-id request -> CFDA room-id=1\n",port); fflush(0);
                         sleep(0); send_cfda_room_id(c,multiplayer_current_uid());
 #endif
@@ -937,7 +944,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                                            ((unsigned char)buf[off+0x0B]<<8);
                         unsigned transfer_mode=(unsigned char)buf[off+0x0C];
                         unsigned response_selector=selector;multiplayer_village_leave_current("C365-transition");current_village_selector=response_selector;
-                        
+
                         printf("  [GS %d] GOT C365 village transition selector=%u town_page=%u mode=%u -> C366 selector=%u page=%u\n",
                                port,selector,town_page,transfer_mode,response_selector,
                                ((transfer_mode==0) ||
@@ -1045,7 +1052,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                        0xC480 REQ_MY_GAMEITEM_LIST -> 0xC46E count=0
                        0xC475 REQ_CHANGE_PETITEM -> 0xC476 empty
                        other C4 -> type+1 empty (12B) */
-                    
+
                     if(injury_dead&&!death_latched&&injury_battle_epoch==boss_ctx.battle_epoch){death_latched=1;retry_acknowledged=0;death_battle_epoch=boss_ctx.battle_epoch;printf("  [DEATH_INVENTORY] latch local death uid=%u room=%u battle=%u score=%u\n",multiplayer_current_uid(),dungeon_room_epoch,death_battle_epoch,score_ctx.total);fflush(0);}
                     multiplayer_save_unlock(multiplayer_idx);
                     off+=len; }
@@ -1073,7 +1080,6 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
 
 #undef boss_ctx
 #undef score_ctx
-
 
 
 

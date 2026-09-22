@@ -95,6 +95,18 @@ static void send_d035_playable(SOCKET c,const unsigned char*req,unsigned local_u
 #endif
 
 #if TEAMPLAY_FEATURE_CF88_RECORDS
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+/* Logical low/middle/high masks, independent of the highest grade frontier. */
+static unsigned char g_managed_clear_masks[MULTI_MAX_PLAYERS][60];
+static void managed_record_clear(unsigned allow){
+    struct boss_hp_sync_context*b=multiplayer_shared_boss_context();
+    unsigned difficulty,slot;
+    if(!allow||!b||g_multi_current<0||g_multi_current>=MULTI_MAX_PLAYERS||b->hd!=0u||b->stage>=20u||b->dungeon>=3u||b->difficulty>=3u)return;
+    slot=(b->dungeon==2u&&b->stage_index==1u)?3u:b->dungeon;
+    difficulty=slot==3u?b->difficulty:(b->difficulty+1u)%3u;
+    g_managed_clear_masks[g_multi_current][b->stage*3u+difficulty]|=(unsigned char)(1u<<slot);
+}
+#endif
 static unsigned g_progression_settlement_epoch[MULTI_MAX_PLAYERS];static unsigned char g_progression_settlement_epoch_valid[MULTI_MAX_PLAYERS];
 static unsigned progression_current_battle_epoch(void){struct boss_hp_sync_context*b=multiplayer_shared_boss_context();return b?b->battle_epoch:0u;}
 static void progression_current_dungeon_tuple(struct progression_dungeon_tuple*out){struct boss_hp_sync_context*b=multiplayer_shared_boss_context();memset(out,0,sizeof(*out));if(!b)return;out->hd=b->hd;out->episode=b->stage;out->dungeon=b->dungeon;out->difficulty=b->difficulty;out->stage_index=b->stage_index;}
@@ -102,6 +114,9 @@ static void progression_progression_fill_record(char*p,unsigned off,const struct
 static void progression_progression_snapshot_current(struct progression_progression_result*pr,struct progression_dungeon_grade_result*dr){struct progression_progression_state ps;struct progression_dungeon_grade_state ds;int idx=g_multi_current;const unsigned char*name=g_stable_name;unsigned name_len=g_stable_name_len,seed=STABLE_LEVEL;memset(pr,0,sizeof(*pr));memset(dr,0,sizeof(*dr));if(idx>=0&&idx<MULTI_MAX_PLAYERS){name=g_multi_conn[idx].profile.name;name_len=g_multi_conn[idx].profile.name_len;seed=g_multi_conn[idx].profile.level;}progression_progression_snapshot_name(name,name_len,seed,&ps);progression_dungeon_grade_snapshot_name(name,name_len,&ds);pr->old_level=pr->new_level=ps.level;pr->old_exp=pr->new_exp=ps.exp_total;pr->lower=ps.lower;pr->next=ps.next;dr->old_grade=dr->new_grade=ds.grade;dr->old_frontier=dr->new_frontier=ds.frontier;}
 static void progression_progression_commit_for_current(unsigned allow,struct progression_progression_result*pr,struct progression_dungeon_grade_result*dr){unsigned epoch=progression_current_battle_epoch();int idx=g_multi_current;struct progression_dungeon_tuple tuple;progression_current_dungeon_tuple(&tuple);if(idx>=0&&idx<MULTI_MAX_PLAYERS&&g_progression_settlement_epoch_valid[idx]&&g_progression_settlement_epoch[idx]==epoch){progression_progression_snapshot_current(pr,dr);return;}if(idx>=0&&idx<MULTI_MAX_PLAYERS){g_progression_settlement_epoch_valid[idx]=1u;g_progression_settlement_epoch[idx]=epoch;}progression_progression_award_current(allow,allow?PROGRESSION_CLEAR_EXP:0u,pr);progression_dungeon_grade_award_current(allow,&tuple,dr);if(idx>=0&&idx<MULTI_MAX_PLAYERS)g_multi_conn[idx].profile.level=pr->new_level;}
 static void progression_send_cf88_playable_impl(SOCKET c,unsigned total_score,unsigned allow_progress){
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+    managed_record_clear(allow_progress);
+#endif
     static const unsigned char record_template[52]={0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x64,0x00,0x00,0x00,0xE1,0x00,0x00,0x00,0xA0,0x0F,0x00,0x00,0x00,0x00,0x00,0x00,0xA0,0x0F,0x00,0x00,0x00,0x00,0x00,0x00,0xA0,0x0F,0x00,0x00,0x00,0x00,0x00,0x00};
     char p[4096];unsigned scores[3],count=0u,slot,owner=multiplayer_owner_uid(),len;int i,idx;struct progression_progression_result gain;struct progression_dungeon_grade_result grade;progression_progression_commit_for_current(allow_progress,&gain,&grade);teamplay_score_snapshot(scores);for(slot=0;slot<3u;slot++)for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active&&multiplayer_room_slot_idx(i)==slot){count++;break;}if(!count)count=1u;len=12u+52u*count;mkpkt(p,0xCF88,(int)len,1);stable_resource_put16(p,0x08,count);stable_resource_put16(p,0x0A,owner);
     for(slot=0;slot<count;slot++){idx=-1;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active&&multiplayer_room_slot_idx(i)==slot){idx=i;break;}{unsigned off=0x0Cu+slot*0x34u,uid=idx>=0?g_multi_conn[idx].uid:multiplayer_current_uid(),score=slot<3u?scores[slot]:0u;struct multiplayer_profile fallback,*profile;memcpy(p+off,record_template,52);stable_resource_put16(p,(int)off,uid);if(idx>=0)profile=&g_multi_conn[idx].profile;else{multi_capture_profile(&fallback);profile=&fallback;}progression_progression_fill_record(p,off,profile,(idx==g_multi_current)?gain.added:0u,(idx==g_multi_current)?gain.level_up:0u);p[off+0x0B]=5;stable_put32(p,(int)(off+0x1C),score);stable_put32(p,(int)(off+0x24),score);stable_put32(p,(int)(off+0x28),0u);stable_put32(p,(int)(off+0x2C),score);}}

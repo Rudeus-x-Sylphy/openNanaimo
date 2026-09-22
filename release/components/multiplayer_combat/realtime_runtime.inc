@@ -40,7 +40,11 @@ struct multi_pending_profile {int state;unsigned ip,serial,reservation;struct mu
 static struct multi_pending_profile g_multi_pending[MULTI_PENDING_PROFILES];static unsigned g_multi_profile_serial=0,g_multi_reservation_serial=0;
 static void multiplayer_global_lock(void){while(InterlockedCompareExchange(&g_multi_lock_word,1,0)!=0)sleep(0);}
 static void multiplayer_global_unlock(void){InterlockedExchange(&g_multi_lock_word,0);}
-#ifdef MULTIPLAYER_TESTPORTS
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+static int g_managed_front_port=52050,g_managed_back_port=62050,g_managed_profile_port=51999;
+#define MULTI_FRONT_PORT g_managed_front_port
+#define MULTI_BACK_BASE g_managed_back_port
+#elif defined(MULTIPLAYER_TESTPORTS)
 #define MULTI_FRONT_PORT 52050
 #define MULTI_BACK_BASE 62050
 #else
@@ -58,7 +62,11 @@ p->hp_max=g_profile_hp_max;p->hp_current=g_profile_hp_current;p->mp_max=g_profil
 p->attack_modifier=g_profile_attack_modifier;p->defense_flat=g_profile_defense_flat;
 #endif
 p->coin=g_profile_coin_hans;p->nana=g_profile_nana_cash;}
-static void multi_apply_profile(const struct multiplayer_profile*p){unsigned i;for(i=0;i<16u;i++)g_stable_name[i]=p->name[i];g_stable_name_len=p->name_len;g_stable_level=p->level;g_stable_gender=p->gender;g_stable_pet=p->pet;g_stable_pet_age_a=p->pet_age_a;g_stable_pet_age_b=p->pet_age_b;g_initial_attack_mode=p->attack_mode;for(i=0;i<5u;i++)g_stable_equip[i]=p->equip[i];g_stable_effect=p->effect;
+static void multi_apply_profile(const struct multiplayer_profile*p){unsigned i;for(i=0;i<16u;i++)g_stable_name[i]=p->name[i];g_stable_name_len=p->name_len;g_stable_level=p->level;g_stable_gender=p->gender;g_stable_pet=p->pet;g_stable_pet_age_a=p->pet_age_a;g_stable_pet_age_b=p->pet_age_b;g_initial_attack_mode=p->attack_mode;
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+g_managed_pet_combat_level=p->attack_mode+1u;if(g_managed_pet_combat_level<1u)g_managed_pet_combat_level=1u;if(g_managed_pet_combat_level>3u)g_managed_pet_combat_level=3u;
+#endif
+for(i=0;i<5u;i++)g_stable_equip[i]=p->equip[i];g_stable_effect=p->effect;
 #if TEAMPLAY_FEATURE_SKIP_TUTORIAL
 g_skip_tutorial=p->skip_tutorial;
 #endif
@@ -168,7 +176,11 @@ static int multi_take_pending_profile(unsigned ip,struct multiplayer_profile*out
     if(best<0)return 0;*out=g_multi_pending[best].profile;printf("  [MULTI_PROFILE] gs-consume ip=0x%08X serial=%u reservation=%u mode=%s\n",ip,g_multi_pending[best].serial,g_multi_pending[best].reservation,g_multi_pending[best].state==MULTI_PROFILE_RESERVED?"reserved":"latest-direct");fflush(0);g_multi_pending[best].state=0;return 1;
 }
 #ifdef MULTIPLAYER_TESTPORTS
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+#define MULTI_PROFILE_PORT g_managed_profile_port
+#else
 #define MULTI_PROFILE_PORT 51999
+#endif
 #else
 #define MULTI_PROFILE_PORT 11999
 #endif

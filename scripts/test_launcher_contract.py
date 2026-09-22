@@ -8,28 +8,52 @@ ROOT = Path(__file__).resolve().parents[1]
 class LauncherContractTests(unittest.TestCase):
     def test_adapter_artifacts_and_process_contract(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
-        build = (ROOT / 'scripts/build_adapter.ps1').read_text('utf-8-sig')
+        native_build = (ROOT / 'scripts/build_adapter.ps1').read_text('utf-8-sig')
+        full_build = (ROOT / 'scripts/build_complete_adapter.ps1').read_text('utf-8-sig')
         cleanup = (ROOT / 'scripts/clean_generated_state.ps1').read_text('utf-8-sig')
-        self.assertIn("$Adapter=Join-Path $Root 'adapter\\nanaimo_adapter.exe'", text)
+        self.assertIn("$AdapterRuntimeRoot=Join-Path $Root 'adapter_runtime'", text)
+        self.assertIn("$Adapter=Join-Path $AdapterRuntimeRoot 'Nanaimo.Adapter.exe'", text)
+        self.assertIn("$AdapterBridge=Join-Path $AdapterRuntimeRoot 'nanaimo_gameplay_bridge.exe'", text)
+        self.assertIn("$AdapterManifest=Join-Path $AdapterRuntimeRoot 'adapter_manifest.json'", text)
         self.assertIn('function Test-AdapterBinary', text)
+        self.assertIn('$SelfTestAdapterManifest', text)
+        self.assertIn('foreach($row in @($contract.files))', text)
+        self.assertIn("'Nanaimo.Adapter.dll','Nanaimo.Gameplay.dll'", text)
+        self.assertIn("Get-ChildItem -LiteralPath $output -Recurse -File", full_build)
         self.assertIn('function Get-LocalAdapters', text)
-        self.assertIn('Get-Process -Name nanaimo_adapter ', text)
+        self.assertIn('@($Adapter,$AdapterBridge,$LegacyAdapter)', text)
+        self.assertIn('function Start-LocalAdapter', text)
+        self.assertIn('function Stop-LocalAdapter', text)
         self.assertIn('Start-Process -FilePath $Adapter ', text)
+        self.assertIn("--login-port','11005','--world-port','12050','--profile-port','11999'", text)
         self.assertIn('start_local_adapter=$launchModeInfo.StartLocalAdapter', text)
-        self.assertIn("$Mod=Join-Path $Root 'adapter'", build)
-        self.assertIn("@('nanaimo_adapter.c','nanaimo_adapter.exe')", build)
-        self.assertIn("@('nanaimo_adapter_testports.c','nanaimo_adapter_testports.exe')", build)
-        self.assertIn("$build=Join-Path $Root 'build';", build)
-        self.assertNotIn('$build=$Mod;', build)
+        self.assertIn("$Mod=Join-Path $Root 'adapter'", native_build)
+        self.assertIn("@('nanaimo_adapter.c','nanaimo_adapter.exe')", native_build)
+        self.assertIn("@('nanaimo_adapter_testports.c','nanaimo_adapter_testports.exe')", native_build)
+        self.assertIn("'managed-host\\Nanaimo.Adapter.csproj'", full_build)
+        self.assertIn("'adapter_runtime'", full_build)
+        self.assertIn("'Nanaimo.Adapter.exe'", full_build)
+        self.assertIn("'nanaimo_gameplay_bridge.exe'", full_build)
         self.assertIn("$_.Name -match '^(nanaimo_adapter|nanaimo_client|game_unpack)'", cleanup)
         self.assertIn("$AdapterLog=Join-Path $Root 'adapter_nanaimo_launcher.log'", text)
         self.assertIn("$AdapterErr=Join-Path $Root 'adapter_nanaimo_launcher_stderr.log'", text)
-
     def test_connection_parameter_uses_adapter_name(self):
         text = (ROOT / 'gui_launcher/client_connect.ps1').read_text('utf-8-sig')
         self.assertTrue(text.startswith('param([Parameter(Position=0)][string]$AdapterIP,'))
         self.assertNotIn('[Alias(', text)
 
+    def test_launcher_applies_and_verifies_user_owned_compatibility_overlay(self):
+        text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
+        self.assertIn("$ClientCompatibilityTool=Join-Path $Root 'scripts\\prepare_client_compatibility.py'", text)
+        self.assertIn("$ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay'", text)
+        self.assertIn('function Ensure-ClientCompatibility', text)
+        self.assertIn("'--emotion','--dungeon7','--overwrite','--apply'", text)
+        self.assertNotIn("'--all','--overwrite','--apply'", text)
+        self.assertIn('$report.verification.all_pass', text)
+        click = text.split('$clientBtn.add_Click({', 1)[1].split('# Pet lookup tab', 1)[0]
+        self.assertLess(click.index('Stop-Process -Force'), click.index('Ensure-ClientCompatibility'))
+        self.assertLess(click.index('Ensure-ClientCompatibility'), click.index('Start-LocalAdapter'))
+        self.assertLess(click.index('Ensure-ClientCompatibility'), click.index('Start-Process -FilePath $Client'))
     def test_game_entry_and_scoped_stop(self):
         for filename in ('nanaimo_launcher.ps1', 'client_connect.ps1'):
             text = (ROOT / 'gui_launcher' / filename).read_text('utf-8-sig')
@@ -69,7 +93,7 @@ class LauncherContractTests(unittest.TestCase):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         # Check presentation sinks only, not internal mode objects or saved config.
         forbidden = re.compile(
-            r"连接方式|连接模式|启动模式|适配器地址|固定使用|\bNetwork\b|127\.0\.0\.1|"
+            r"杩炴帴鏂瑰紡|杩炴帴妯″紡|鍚姩妯″紡|閫傞厤鍣ㄥ湴鍧€|鍥哄畾浣跨敤|\bNetwork\b|127\.0\.0\.1|"
             r"ServerIP|network_ip|launch_mode|\bMode=|\bLogin=|Stand_?alone|(?<!\w)-q(?!\w)",
             re.IGNORECASE)
         for line in text.splitlines():
@@ -84,8 +108,7 @@ class LauncherContractTests(unittest.TestCase):
             self.assertNotIn(internal, preview)
         for diagnostic in ('Character and profile', 'Resources:', 'Skills:',
                            'Profile INI', 'Profile JSON', 'Binary validation',
-                           "File-State-Line 'Client'", "File-State-Line 'Village pack'",
-                           '$ExpectedAdapterHash', 'Working directory:'):
+                           "Client-State-Line", "Client compatibility is prepared", '$ExpectedAdapterHash', 'Working directory:'):
             self.assertIn(diagnostic, preview)
 
     def test_visible_text_and_startup_compaction_have_runtime_guards(self):
@@ -116,9 +139,25 @@ class LauncherContractTests(unittest.TestCase):
             'Install-LaunchModeConfig $launchModeInfo',
             'Register-ClientProfile $launchModeInfo.AdapterIP',
             'Start-Process -FilePath $Client -ArgumentList ([string[]]$launchModeInfo.ClientArgs)',
-            "$ExpectedAdapterHash='017B284DABE6FC701A8E70C2F42042C125ACD610CD9D0DC56171ABB2E85C2B25'",
+            "$AdapterManifest=Join-Path $AdapterRuntimeRoot 'adapter_manifest.json'",
+            'Get-Content -LiteralPath $AdapterManifest -Raw -Encoding UTF8|ConvertFrom-Json',
+            'Test-AdapterBinary',
         ):
             self.assertIn(invariant, text)
+
+    def test_profile_values_have_managed_and_native_carriers(self):
+        profile = (ROOT / 'managed/Services/DatabaseService.NativeDungeon.cs').read_text('utf-8-sig')
+        state = (ROOT / 'managed/Services/NativeDungeonState.cs').read_text('utf-8-sig')
+        bridge = (ROOT / 'release/components/game_session/managed_bridge.inc').read_text('utf-8-sig')
+        protocol = (ROOT / 'release/components/protocol/protocol_state_sync_base.inc').read_text('utf-8-sig')
+        for field in ('AttackModifier=$attack', 'DefenseFlat=$defense', 'InitialAttackMode=$attackMode',
+                      'Level=$level, Experience=$exp'):
+            self.assertIn(field, profile)
+        for carrier in ('AttackModifierOffset', 'DefenseFlatOffset', 'PetCombatLevelOffset'):
+            self.assertIn(carrier, state)
+        self.assertIn('MANAGED_PET_COMBAT_LEVEL_OFFSET 5116u', bridge)
+        self.assertIn('g_managed_pet_combat_level=managed_get', bridge)
+        self.assertIn('unsigned pet_level=g_managed_pet_combat_level;', protocol)
 
     def test_client_and_installer_export_denied(self):
         from export_patch import payload_policy, ExportError

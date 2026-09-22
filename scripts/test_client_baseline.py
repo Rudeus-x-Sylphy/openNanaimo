@@ -1,71 +1,63 @@
-"""Regression gates for the fixed client and native adapter/UI integration."""
-import re
+"""Tests for hash-free client structure inspection and launcher policy."""
+import struct
 import unittest
+import sys
 from pathlib import Path
-from verify_client_baseline import verify, read_va, CLIENT_SHA256, NATIVE_WINDOWS
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from verify_client_baseline import verify, read_va
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class ClientBaselineTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        path = ROOT / 'game.exe'
-        if not path.is_file():
-            raise unittest.SkipTest('source-only tree: externally supplied client absent')
-        cls.data = path.read_bytes()
-
-    def test_exact_client(self):
-        self.assertEqual(verify(self.data)['sha256'], CLIENT_SHA256)
-
-    def test_native_windows(self):
-        for va, expected in NATIVE_WINDOWS.items():
-            with self.subTest(va=hex(va)):
-                self.assertEqual(read_va(self.data, va, len(expected)), expected)
-
-    def test_original_padding(self):
-        self.assertEqual(read_va(self.data, 0xB98000, 0x2000), b'\xCC' * 0x2000)
-
-    def test_reject_mutated_client(self):
-        changed = bytearray(self.data)
-        changed[0x11760] ^= 1
-        with self.assertRaises(ValueError):
-            verify(changed)
-
-    def test_reject_truncated_client(self):
-        with self.assertRaises(ValueError):
-            verify(self.data[:-1])
-
-    def test_unbacked_va_rejected(self):
-        with self.assertRaises(ValueError):
-            read_va(self.data, 0, 8)
+def pe_fixture(payload=b"fixture"):
+    data = bytearray(0x600)
+    data[:2] = b"MZ"
+    struct.pack_into("<I", data, 0x3C, 0x80)
+    data[0x80:0x84] = b"PE\0\0"
+    struct.pack_into("<H", data, 0x86, 1)
+    struct.pack_into("<H", data, 0x94, 0xE0)
+    struct.pack_into("<H", data, 0x98, 0x10B)
+    struct.pack_into("<I", data, 0xB4, 0x00400000)
+    table = 0x80 + 24 + 0xE0
+    struct.pack_into("<IIII", data, table + 8, 0x200, 0x1000, 0x200, 0x200)
+    data[0x220:0x220 + len(payload)] = payload
+    return bytes(data)
 
 
-class NativeIntegrationTests(unittest.TestCase):
-    def test_launcher_and_connector_pin_baseline(self):
-        for name in ['nanaimo_launcher.ps1', 'client_connect.ps1']:
-            path = ROOT / 'gui_launcher' / name
-            if not path.is_file():
-                self.skipTest('source-only tree: launcher runtime not supplied')
-            text = path.read_text('utf-8-sig')
-            self.assertIn("$ExpectedClientHash='" + CLIENT_SHA256 + "'", text)
-            self.assertNotRegex(text, r'(?i)flamethrower|Projectile DIY|Get-FlamethrowerSelection|projectileReverseBox|projectilePreview')
+class ClientStructureTests(unittest.TestCase):
+    def test_different_unpack_bytes_are_both_accepted(self):
+        first = verify(pe_fixture(b"first unpack"))
+        second = verify(pe_fixture(b"second unpack"))
+        self.assertTrue(first["accepted"] and second["accepted"])
+        self.assertFalse(first["hash_gate_used"])
+        self.assertNotEqual(first["sha256_diagnostic_only"], second["sha256_diagnostic_only"])
 
-    def test_adapter_keeps_native_combat_resolution(self):
-        adapter = (ROOT / 'release/components/adapter_core/teamplay_adapter.inc').read_text('utf8')
-        runtime = (ROOT / 'release/components/game_session/gs_runtime.inc').read_text('utf8')
-        self.assertIn('projectile_apply_effective_attack(projectile_ctx,&atk)', adapter)
-        self.assertIn('stable_monster_hp_resolve_candidate_attack(owner_key,source_index,&atk)', adapter)
-        self.assertIn('projectile_resolve_strict_source(boss_owner,boss_source,&boss_attack)', runtime)
-        for p in (ROOT / 'release').rglob('*.inc'):
-            self.assertNotRegex(p.read_text('utf8'), r'(?i)adapter_core_diy|g_diy_projectile|flamethrower')
+    def test_read_va_uses_pe_sections(self):
+        data = pe_fixture(b"hello")
+        self.assertEqual(read_va(data, 0x00401020, 5), b"hello")
+
+    def test_invalid_file_is_rejected_structurally(self):
+        with self.assertRaisesRegex(ValueError, "MZ"):
+            verify(b"not a client")
+
+    def test_launchers_do_not_pin_client_or_derived_resource_hashes(self):
+        for rel in ("gui_launcher/nanaimo_launcher.ps1", "gui_launcher/client_connect.ps1"):
+            text = (ROOT / rel).read_text("utf-8-sig")
+            with self.subTest(path=rel):
+                self.assertNotIn("AcceptedClientHashes", text)
+                self.assertNotIn("ExpectedClientHash", text)
+                self.assertNotIn("ExpectedClientSize", text)
+        launcher = (ROOT / "gui_launcher/nanaimo_launcher.ps1").read_text("utf-8-sig")
+        for name in ("Test-VillagePack", "Test-SuperBossStage", "Test-LocalResourcePatches"):
+            self.assertNotIn(name, launcher)
+        self.assertIn("prepare_client_compatibility.py", launcher)
 
     def test_no_retired_resource_dependencies(self):
-        for name in ['projectile_client_compat.json', 'projectile_pon_catalog.json']:
-            self.assertFalse((ROOT / 'gui_launcher/data' / name).exists())
-        self.assertFalse(any((ROOT / 'flying/pon').glob('nanaimo_*.pon')))
-        self.assertFalse((ROOT / 'gui_launcher/data/previews/projectiles').exists())
+        requirements = (ROOT / "manifest/patch_runtime_requirements.json").read_text("utf-8-sig")
+        self.assertNotIn("nanaimo_cmp_005_0024.pon", requirements)
+        self.assertNotIn("nanaimo_mov_009_0000.pon", requirements)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

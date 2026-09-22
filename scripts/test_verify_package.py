@@ -37,6 +37,24 @@ class VerifyPackageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verifier.safe_file(self.root, 'missing.c')
 
+    def test_user_client_is_presence_only_and_derived_assets_use_local_verification(self):
+        (self.root / 'game.exe').write_bytes(b'arbitrary unpack implementation')
+        manifest = {
+            'client_policy': {'path': 'game.exe', 'validation': 'presence-only', 'size_or_hash_gate': False},
+            'derived_client_assets': {'validation': 'local-derivation-and-post-apply-verification', 'size_or_hash_gate': False},
+        }
+        self.assertEqual(verifier.verify_client_presence(self.root, manifest), 'presence-only-no-hash-local-derived-verification')
+        # No village/SSTG/PON output is created in the fixture; validation still succeeds.
+
+    def test_client_policy_rejects_reintroduced_hash_gate(self):
+        (self.root / 'game.exe').write_bytes(b'arbitrary unpack implementation')
+        manifest = {
+            'client_policy': {'path': 'game.exe', 'validation': 'exact-sha256', 'size_or_hash_gate': True},
+            'derived_client_assets': {'validation': 'local-derivation-and-post-apply-verification', 'size_or_hash_gate': False},
+        }
+        with self.assertRaisesRegex(ValueError, 'must not hash-gate'):
+            verifier.verify_client_presence(self.root, manifest)
+
     def test_absolute_host_path(self):
         (self.root / 'README.md').write_text(chr(67) + ':' + chr(92) + 'Users' + chr(92) + 'test-user', 'utf-8')
         with self.assertRaises(ValueError):
@@ -50,6 +68,31 @@ class VerifyPackageTests(unittest.TestCase):
     def test_protocol_network_examples(self):
         (self.root / 'README.md').write_text('127.0.0.1 0.0.0.0 255.255.255.255 203.0.113.10', 'utf-8')
         verifier.scan_public_text(self.root)
+
+    def test_adapter_and_brand_terminology_is_enforced(self):
+        forbidden = (
+            chr(0x670d) + chr(0x52a1) + chr(0x7aef),
+            chr(0x670d) + chr(0x52a1) + chr(0x5668),
+            chr(0x79c1) + chr(0x670d),
+            chr(0x817e) + chr(0x8baf),
+            chr(0x56fd) + chr(0x670d),
+            chr(0x98de) + chr(0x884c) + chr(0x5c9b),
+            'Q' + 'Q',
+            'Fly' + ' Island',
+        )
+        for value in forbidden:
+            with self.subTest(value=value):
+                (self.root / 'README.md').write_text(value, 'utf-8')
+                with self.assertRaises(ValueError):
+                    verifier.scan_public_text(self.root)
+        (self.root / 'README.md').write_text('Korean flying shooter Nanaimo adapter', 'utf-8')
+        verifier.scan_public_text(self.root)
+
+    def test_process_narrative_is_restricted_to_changelog(self):
+        phrase = chr(0x6765) + chr(0x6e90) + chr(0x8bf4) + chr(0x660e)
+        (self.root / 'README.md').write_text(phrase, 'utf-8')
+        with self.assertRaisesRegex(ValueError, 'development-process narrative'):
+            verifier.scan_public_text(self.root)
 
     def test_active_versioned_source_name(self):
         (self.root / 'release').mkdir()
