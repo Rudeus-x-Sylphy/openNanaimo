@@ -1,4 +1,4 @@
-﻿param([switch]$ValidateOnly,[switch]$PreviewOnly,[switch]$SelfTestProfileIO,[switch]$SelfTestInventoryIO,[switch]$SelfTestLaunchModes,[switch]$SelfTestLayout,[switch]$SelfTestCatalogPreview,[switch]$SelfTestTitleIO,[string]$ProfileIniOverride,[string]$ProfileJsonOverride)
+﻿param([switch]$ValidateOnly,[switch]$PreviewOnly,[switch]$SelfTestProfileIO,[switch]$SelfTestInventoryIO,[switch]$SelfTestLaunchModes,[switch]$SelfTestAdapterManifest,[switch]$SelfTestLayout,[switch]$SelfTestCatalogPreview,[switch]$SelfTestTitleIO,[string]$ProfileIniOverride,[string]$ProfileJsonOverride)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -12,6 +12,9 @@ $AdapterBridge=Join-Path $AdapterRuntimeRoot 'nanaimo_gameplay_bridge.exe'
 $AdapterManifest=Join-Path $AdapterRuntimeRoot 'adapter_manifest.json'
 $LegacyAdapter=Join-Path $Root 'adapter\nanaimo_adapter.exe'
 $AdapterData=Join-Path $Root 'adapter_data'
+$ClientCompatibilityTool=Join-Path $Root 'scripts\prepare_client_compatibility.py'
+$ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay'
+$ClientCompatibilityReport=Join-Path $ClientCompatibilityOverlay 'nanaimo_compatibility_report.json'
 $AdapterLogs=Join-Path $AdapterData 'logs'
 $AdapterStop=Join-Path $AdapterData 'stop.request'
 $ProfileIni=if($ProfileIniOverride){[IO.Path]::GetFullPath($ProfileIniOverride)}else{Join-Path $Root 'nanaimo_launcher_profile.ini'}
@@ -474,7 +477,7 @@ function Update-LaunchPreview([switch]$ComputeHashes){
         "Profile INI : $ProfileIni","Profile JSON: $ProfileJson",'',
         '=== Binary validation ===',$adapterState,$bridgeState,
         (Client-State-Line),
-        'Derived client compatibility assets are not validated at launch; create them from your own game files with scripts/prepare_client_compatibility.py.',
+        'Client compatibility is prepared from the local user-owned tree at launch: emotion guard, P03 roads, SSTG alias, and PON fallback. Furniture uses the adapter-side fixed C393 snapshot contract without the Index redirect.',
         '=== Pre-launch actions ===',
         ('Processes to stop: '+($running-join ', ')),
         'Adapter button: save profile; start/stop the complete local adapter; never launch the game.',
@@ -514,18 +517,49 @@ Update-PetAgeOptions $defaultPetAge;Update-AttackModes;Update-PetDetail;Update-L
 if($PreviewOnly){Update-LaunchPreview -ComputeHashes;Write-Output $launchInfoBox.Text;exit 0}
 
 function Test-AdapterBinary {
-    foreach($path in @($AdapterManifest,$Adapter,$AdapterBridge)){if(-not(Test-Path -LiteralPath $path)){throw "完整适配器文件缺失: $path"}}
+    if(-not(Test-Path -LiteralPath $AdapterManifest -PathType Leaf)){throw "Adapter runtime manifest missing: $AdapterManifest"}
     $contract=Get-Content -LiteralPath $AdapterManifest -Raw -Encoding UTF8|ConvertFrom-Json
-    foreach($spec in @(@('Nanaimo.Adapter.exe',$Adapter),@('nanaimo_gameplay_bridge.exe',$AdapterBridge))){
-        $row=@($contract.files|Where-Object name -eq $spec[0])[0]
-        if(-not$row){throw "适配器清单缺少: $($spec[0])"}
-        $item=Get-Item -LiteralPath $spec[1]
-        if($item.Length-ne[long]$row.size){throw "适配器文件大小不匹配: $($spec[0])"}
-        if((Get-FileHash -Algorithm SHA256 -LiteralPath $spec[1]).Hash-ne[string]$row.sha256){throw "适配器文件 SHA-256 不匹配: $($spec[0])"}
+    if(-not$contract.files-or@($contract.files).Count-lt2){throw 'Adapter runtime manifest has no file closure.'}
+    $runtimePrefix=[IO.Path]::GetFullPath($AdapterRuntimeRoot).TrimEnd('\')+'\'
+    foreach($row in @($contract.files)){
+        $relative=[string]$row.name
+        if([string]::IsNullOrWhiteSpace($relative)-or[IO.Path]::IsPathRooted($relative)-or@($relative -split '[\\/]')-contains'..'){throw "Invalid adapter manifest path: $relative"}
+        $path=[IO.Path]::GetFullPath((Join-Path $AdapterRuntimeRoot $relative))
+        if(-not$path.StartsWith($runtimePrefix,[StringComparison]::OrdinalIgnoreCase)){throw "Adapter manifest path escapes runtime root: $relative"}
+        if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw "Adapter runtime file missing: $relative"}
+        $item=Get-Item -LiteralPath $path
+        if($item.Length-ne[long]$row.size){throw "Adapter runtime size mismatch: $relative"}
+        if((Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash-ne[string]$row.sha256){throw "Adapter runtime SHA-256 mismatch: $relative"}
+    }
+    foreach($required in @('Nanaimo.Adapter.exe','nanaimo_gameplay_bridge.exe','Nanaimo.Adapter.dll','Nanaimo.Gameplay.dll')){
+        if(-not(@($contract.files|Where-Object name -eq $required)[0])){throw "Adapter manifest missing required file: $required"}
     }
 }
+if($SelfTestAdapterManifest){Test-AdapterBinary;Write-Output 'ADAPTER_RUNTIME_MANIFEST_SELFTEST_PASS';exit 0}
 function Test-ClientBinary {
     if(-not(Test-Path -LiteralPath $Client -PathType Leaf)){throw "Client missing: $Client"}
+}
+function Get-ClientCompatibilityPython {
+    $bundled=Join-Path $Root 'tools\python\python.exe'
+    if(Test-Path -LiteralPath $bundled -PathType Leaf){return [pscustomobject]@{Path=$bundled;Prefix=@('-B')}}
+    $py=Get-Command py.exe -ErrorAction SilentlyContinue
+    if($py){return [pscustomobject]@{Path=$py.Source;Prefix=@('-3','-B')}}
+    $python=Get-Command python.exe -ErrorAction SilentlyContinue
+    if($python){return [pscustomobject]@{Path=$python.Source;Prefix=@('-B')}}
+    throw 'Client compatibility preparation requires Python 3 (py.exe or python.exe).'
+}
+function Ensure-ClientCompatibility {
+    Test-ClientBinary
+    if(-not(Test-Path -LiteralPath $ClientCompatibilityTool -PathType Leaf)){throw "Client compatibility tool missing: $ClientCompatibilityTool"}
+    if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
+    $runtime=Get-ClientCompatibilityPython
+    $arguments=@($runtime.Prefix)+@($ClientCompatibilityTool,'--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--emotion','--dungeon7','--overwrite','--apply')
+    $output=@(& $runtime.Path @arguments 2>&1)
+    if($LASTEXITCODE-ne0){throw ("Client compatibility preparation refused:`r`n"+($output-join"`r`n"))}
+    if(-not(Test-Path -LiteralPath $ClientCompatibilityReport -PathType Leaf)){throw 'Client compatibility report was not generated.'}
+    $report=Get-Content -LiteralPath $ClientCompatibilityReport -Raw -Encoding UTF8|ConvertFrom-Json
+    if(-not$report.verification.all_pass){throw 'Client compatibility post-apply verification failed.'}
+    return $report
 }
 function Register-ClientProfile([string]$ip){
     $tcp=New-Object Net.Sockets.TcpClient
@@ -614,12 +648,14 @@ $clientBtn.add_Click({
         $launchModeInfo=Get-SelectedLaunchModeInfo
         Stop-LocalAdapter
         Save-Profile;Test-ClientBinary;Install-LaunchModeConfig $launchModeInfo
+        Get-Process -Name game -ErrorAction SilentlyContinue|Where-Object{$_.Path-eq$Client}|Stop-Process -Force;Start-Sleep -Milliseconds 250
+        $compatibility=Ensure-ClientCompatibility
         $proc=Start-LocalAdapter
         $adapterBtn.Text='停止适配器'
         if($launchModeInfo.Key-eq'network'){Register-ClientProfile $launchModeInfo.AdapterIP}
-        Get-Process -Name game -ErrorAction SilentlyContinue|Where-Object{$_.Path-eq$Client}|Stop-Process -Force;Start-Sleep -Milliseconds 250
         if($launchModeInfo.ClientArgs.Count){Start-Process -FilePath $Client -ArgumentList ([string[]]$launchModeInfo.ClientArgs) -WorkingDirectory $Root|Out-Null}else{Start-Process -FilePath $Client -WorkingDirectory $Root|Out-Null}
-        $status.Text='角色配置已保存；完整适配器已重启并完成注册，Nanaimo 客户端已启动。'
+        $changed=@($compatibility.apply_results|Where-Object{$_.status-eq'applied'}).Count
+        $status.Text="角色配置已保存；客户端兼容覆盖已验证（本次应用 $changed 个文件）；完整适配器已重启并完成注册，Nanaimo 客户端已启动。"
     }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'启动 Nanaimo 失败')|Out-Null}
 })
 # Pet lookup tab
@@ -723,4 +759,3 @@ if($SelfTestCatalogPreview){
 
 
 [void]$form.ShowDialog()
-

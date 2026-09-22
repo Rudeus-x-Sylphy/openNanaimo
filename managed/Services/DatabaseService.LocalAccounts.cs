@@ -10,7 +10,7 @@ public sealed partial class DatabaseService
         await using var connection = await OpenConnectionAsync(token);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT OR IGNORE INTO ServerSettings(Key,Value,UpdatedAt) VALUES
+            INSERT OR IGNORE INTO AdapterSettings(Key,Value,UpdatedAt) VALUES
               ('InitialGrantHans','9999999',$now),
               ('InitialGrantCash','9999999',$now),
               ('InitialGrantSkillPoints','5000',$now);

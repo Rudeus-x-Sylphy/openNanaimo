@@ -102,6 +102,21 @@ public sealed partial class NetworkAdapterService
             return true;
         }
         if (session.NativeDungeon is null) return false;
+        // The original client uses CF83 mode 1 (not CF95) when the player
+        // clicks the activated revival-item option on the dungeon death UI.
+        // Do not forward that request to the retained worker: its CF83 path
+        // has no managed database transaction and produces no CF84 response.
+        if (opcode == 0xCF83
+            && TryParseNativeRevivalContinueRequest(frame.AsSpan(8), out var requestedContinueCost))
+        {
+            await HandleNativeDungeonRevivalContinueAsync(
+                frame,
+                channel,
+                session,
+                requestedContinueCost,
+                token);
+            return true;
+        }
         if (opcode == 0xC378 && frame.Length == 8 && session.OnlineTracked)
             await CommitNativeCheckpointAsync(session, null, token);
         bool enteringShop = session.OnlineTracked &&
@@ -125,6 +140,82 @@ public sealed partial class NetworkAdapterService
             await RefreshSessionCharacterAsync(session, token);
         }
         return false;
+    }
+
+    internal static bool TryParseNativeRevivalContinueRequest(
+        ReadOnlySpan<byte> payload,
+        out ushort requestedContinueCost)
+    {
+        requestedContinueCost = 0;
+        if (payload.Length != DungeonContinueRequestPayloadLength
+            || BinaryPrimitives.ReadUInt16LittleEndian(payload) != 1)
+            return false;
+        requestedContinueCost = BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(2, 2));
+        return true;
+    }
+
+    private async Task HandleNativeDungeonRevivalContinueAsync(
+        byte[] frame,
+        string channel,
+        ConnectionSession session,
+        ushort requestedContinueCost,
+        CancellationToken token)
+    {
+        if (!session.OnlineTracked
+            || session.Character is null
+            || session.NativeDungeon is null
+            || session.NativeCheckpoint is null)
+            return;
+
+        // Snapshot first so CurrentHp=0 and the worker's revival counter are
+        // committed to the same database ledger consumed below. CF83 itself
+        // must not be sent to the worker; the managed response is authoritative.
+        await CommitNativeCheckpointAsync(session, null, token);
+        var checkpoint = session.NativeCheckpoint;
+        var character = session.Character;
+        if (checkpoint is null || character is null)
+            return;
+
+        var hdIndex = checked((byte)checkpoint.Get(5032));
+        var episode = checked((byte)checkpoint.Get(5036));
+        var hasExpectedCost = TryGetDungeonContinueCost(hdIndex, episode, out var expectedContinueCost);
+        if (checkpoint.Get(20) != 0
+            || checkpoint.Get(60) == 0
+            || (hasExpectedCost && requestedContinueCost != expectedContinueCost))
+        {
+            _log($"{channel}: native dungeon revival continue rejected: character={character.Id} hp={checkpoint.Get(20)} uses={checkpoint.Get(60)} requestedCost={requestedContinueCost} expectedCost={(hasExpectedCost ? expectedContinueCost : 0)}");
+            return;
+        }
+
+        var result = await _database.ConsumeRevivalRetryAsync(
+            session.AccountId,
+            character.Id,
+            session.SessionId,
+            token);
+        if (!result.Success)
+        {
+            _log($"{channel}: native dungeon revival continue database rejection: character={character.Id} error={result.Error}");
+            return;
+        }
+
+        character.RevivalUseCount = result.RevivalUseCount;
+        character.CurrentHp = result.CurrentHp;
+        character.CurrentMp = result.CurrentMp;
+        BinaryPrimitives.WriteUInt32LittleEndian(checkpoint.Bytes.AsSpan(20, 4), checked((uint)result.CurrentHp));
+        BinaryPrimitives.WriteUInt32LittleEndian(checkpoint.Bytes.AsSpan(28, 4), checked((uint)result.CurrentMp));
+        BinaryPrimitives.WriteUInt32LittleEndian(checkpoint.Bytes.AsSpan(60, 4), result.RevivalUseCount);
+        session.NativeCheckpoint = await session.NativeDungeon.ExchangeAsync(null, checkpoint, token);
+        AccountStateChanged?.Invoke();
+
+        var revive = BuildNativeFrame(frame, 0xCF84, BuildRevivalApplyPayload(character), session);
+        var refresh = BuildNativeFrame(frame, 0xCF72, BuildDungeonActorRefreshPayload(character), session);
+        await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
+            revive, "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
+            true, false, "native revival continue result"), token);
+        await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
+            refresh, "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
+            true, false, "native revival actor refresh"), token);
+        _log($"{channel}: native dungeon revival continue completed: character={character.Id} hp={result.CurrentHp} mp={result.CurrentMp} uses={result.RevivalUseCount}");
     }
 
     private async Task CommitNativeCheckpointAsync(ConnectionSession session, byte[]? frame, CancellationToken token)
@@ -177,13 +268,10 @@ public sealed partial class NetworkAdapterService
                 != checked((ushort)Math.Clamp(character.Id, 1L, (long)ushort.MaxValue)))
             return false;
 
-        var petItemCode = character.EquippedPetItemCode != 0
-            ? character.EquippedPetItemCode
-            : character.PetVariant is >= 1 and <= 3
-                ? 15_000_000u + (uint)character.PetVariant
-                : 0u;
-        var petState = PetProgression.GetState(character, petItemCode);
-        frame[0x66] = (byte)Math.Min(petState.Level, byte.MaxValue);
+        // CF72 +0x66/+0x67 is the independent PET combat/attack-mode level
+        // used by automatic and homing launchers.  Growth level remains in
+        // C44C/C379 and CF88; do not overwrite this gate with PetState.Level.
+        frame[0x66] = checked((byte)Math.Clamp(character.InitialAttackMode + 1, 1, 3));
         frame[0x67] = frame[0x66];
         RewriteNativeChecksum(frame);
         return true;

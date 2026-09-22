@@ -68,8 +68,12 @@ internal static class DungeonSaveChecks
             await Request(0xCF70, [], 0xCF71);
             Check(replies.Single(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF71)[0x49] == 1,
                 "restored dungeon grade is reflected in room character data");
-            Check(replies.Single(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF72)[0x66] == 7,
-                "CF72 actor profile carries the persisted pet level");
+            var restoredCombatLevel = checked((byte)imported.Get(NativeDungeonState.PetCombatLevelOffset));
+            var restoredCf72 = replies.Single(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF72);
+            Check(imported.Get(NativeDungeonState.PetLevelOffset) == 7
+                && restoredCf72[0x66] == restoredCombatLevel
+                && restoredCf72[0x67] == restoredCombatLevel,
+                "CF72 actor profile preserves the independent pet combat level");
             await Request(0xCFEB, new byte[4], 0xCFEC);
             await Request(0xCFD3, [], 0xCFD4);
             await Request(0xCFD5, BitConverter.GetBytes(1), 0xCFD6);
@@ -136,11 +140,13 @@ internal static class DungeonSaveChecks
             BinaryPrimitives.WriteUInt16LittleEndian(
                 cf72Payload.AsSpan(0, 2), checked((ushort)character.Id));
             var cf72 = NativeDungeonClient.Frame(0xCF72, cf72Payload);
+            var expectedCombatLevel = checked((byte)Math.Clamp(
+                progressedCharacter.InitialAttackMode + 1, 1, 3));
             Check(NetworkAdapterService.PatchNativePetActorFrame(cf72, progressedCharacter)
-                && cf72[0x66] == progressedPet.Level
-                && cf72[0x67] == progressedPet.Level
+                && cf72[0x66] == expectedCombatLevel
+                && cf72[0x67] == expectedCombatLevel
                 && HasValidChecksum(cf72),
-                "CF72 forwarding refreshes the actor pet level after settlement");
+                "CF72 forwarding preserves the independent pet combat/attack-mode level");
 
             var cf88Payload = new byte[56];
             BinaryPrimitives.WriteUInt16LittleEndian(cf88Payload.AsSpan(0, 2), 1);

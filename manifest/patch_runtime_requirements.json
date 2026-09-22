@@ -17,12 +17,19 @@
       "game.exe",
       "Village_map_image/Village_map_image.pack",
       "flying/hd0_ep22_dg01_st01.sstg",
-      "flying/pon/mis_ep22_dg01_m_196.pon"
+      "flying/pon/mis_ep22_dg01_m_196.pon",
+      "flying/pon/mis_ep02_hd_bbm_08_00.pon",
+      "flying/pon/mis_ep02_hd_bbm_08_01.pon",
+      "flying/pon/mis_ep02_hd_bbm_08_02.pon",
+      "flying/pon/mis_ep02_hd_bbm_08_03.pon",
+      "flying/pon/mis_ep02_hd_bbm_08_04.pon",
+      "flying/pon/mis_ep02_hd_bbm_08_05.pon",
+      "flying/pon/mis_ep09_bbm_02.pon"
     ],
     "derived_outputs": [
       {
         "path": "game.exe",
-        "operation": "optional furniture Index-getter VA patch"
+        "operation": "emotion null guard; furniture Index-getter patch is manual and is not selected by the launcher"
       },
       {
         "path": "Village_map_image/Village_map_image.pack",
@@ -35,91 +42,126 @@
       {
         "path": "flying/pon/mis_ep22_dg01_m_196_02.pon",
         "operation": "same-family copy fallback from the base 196 PON"
+      },
+      {
+        "operation": "byte-exact projectile alias copied from flying/pon/mis_ep02_hd_bbm_08_00.pon",
+        "path_encoding": "ascii_hex",
+        "path_ascii_hex": "666c79696e672f706f6e2f71716678645f636d705f3030355f303032342e706f6e"
+      },
+      {
+        "operation": "byte-exact projectile alias copied from flying/pon/mis_ep02_hd_bbm_08_01.pon",
+        "path_encoding": "ascii_hex",
+        "path_ascii_hex": "666c79696e672f706f6e2f71716678645f636d705f3030355f303032352e706f6e"
+      },
+      {
+        "operation": "byte-exact projectile alias copied from flying/pon/mis_ep02_hd_bbm_08_02.pon",
+        "path_encoding": "ascii_hex",
+        "path_ascii_hex": "666c79696e672f706f6e2f71716678645f636d705f3030355f303032362e706f6e"
+      },
+      {
+        "operation": "byte-exact projectile alias copied from flying/pon/mis_ep02_hd_bbm_08_03.pon",
+        "path_encoding": "ascii_hex",
+        "path_ascii_hex": "666c79696e672f706f6e2f71716678645f636d705f3030355f303032372e706f6e"
+      },
+      {
+        "operation": "byte-exact projectile alias copied from flying/pon/mis_ep02_hd_bbm_08_04.pon",
+        "path_encoding": "ascii_hex",
+        "path_ascii_hex": "666c79696e672f706f6e2f71716678645f636d705f3030355f303032382e706f6e"
+      },
+      {
+        "operation": "byte-exact projectile alias copied from flying/pon/mis_ep02_hd_bbm_08_05.pon",
+        "path_encoding": "ascii_hex",
+        "path_ascii_hex": "666c79696e672f706f6e2f71716678645f636d705f3030355f303032392e706f6e"
+      },
+      {
+        "operation": "byte-exact projectile alias copied from flying/pon/mis_ep09_bbm_02.pon",
+        "path_encoding": "ascii_hex",
+        "path_ascii_hex": "666c79696e672f706f6e2f71716678645f6d6f765f3030395f303030302e706f6e"
       }
     ],
-    "output_validation_policy": "not checked by launcher, package verifier, or release manifest; runtime errors remain diagnostic",
+    "output_validation_policy": "structural derivation plus byte-exact post-apply verification; no fixed input hash gate",
     "output_distribution": "never exported by this repository"
   },
   "provided_in_repository": [
     {
       "path": "gui_launcher/data/equipment.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/inventory_cards.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/inventory_catalog_summary.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/inventory_clothing.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/inventory_furniture.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/inventory_game_items.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/inventory_pet_gems.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/inventory_pets.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/pet_attack_modes.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/pets.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/resource_patches/superboss_projectile_alias.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/previews/equipment_icons.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/previews/equipment_icons.png",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/previews/pet_icons.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/previews/pet_icons.png",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     },
     {
       "path": "gui_launcher/data/previews/preview_summary.json",
       "bundled_in_repository": true,
-      "reason": "Bundled in the repository at the rights holder's direction; previously declared as separately supplied."
+      "reason": "Bundled repository metadata for local Nanaimo compatibility and inventory presentation."
     }
   ],
   "never_export": [

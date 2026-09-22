@@ -35,8 +35,12 @@ $resourceTarget = Join-Path $output '资源\数据'
 Copy-Item -Path (Join-Path $resourceSource '*') -Destination $resourceTarget -Force
 $adapter = Join-Path $output 'Nanaimo.Adapter.exe'
 foreach ($path in @($adapter,$bridge)) { if (-not (Test-Path -LiteralPath $path)) { throw "Build output missing: $path" } }
-$files = @($adapter,$bridge) | ForEach-Object {
-    [ordered]@{ name = [IO.Path]::GetFileName($_); size = (Get-Item -LiteralPath $_).Length; sha256 = (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }
+$manifestPath = Join-Path $output 'adapter_manifest.json'
+$files = Get-ChildItem -LiteralPath $output -Recurse -File | Where-Object {
+    -not [IO.Path]::GetFullPath($_.FullName).Equals([IO.Path]::GetFullPath($manifestPath),[StringComparison]::OrdinalIgnoreCase)
+} | Sort-Object FullName | ForEach-Object {
+    $relative = [IO.Path]::GetFullPath($_.FullName).Substring($output.Length).TrimStart('\','/').Replace('\','/')
+    [ordered]@{ name = $relative; size = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
 }
 $manifest = [ordered]@{
     version = 1
@@ -46,7 +50,7 @@ $manifest = [ordered]@{
     sdk = $sdk
     files = $files
 }
-[IO.File]::WriteAllText((Join-Path $output 'adapter_manifest.json'),($manifest | ConvertTo-Json -Depth 5),[Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText($manifestPath,($manifest | ConvertTo-Json -Depth 5),[Text.UTF8Encoding]::new($false))
 if ($SelfTest) {
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
     $testRoot = [IO.Path]::GetFullPath((Join-Path $tempRoot ('open-nanaimo-full-adapter-' + [guid]::NewGuid().ToString('N'))))
@@ -68,4 +72,6 @@ if ($SelfTest) {
         if ([IO.Directory]::Exists($testRoot)) { [IO.Directory]::Delete($testRoot,$true) }
     }
 }
-Write-Output ("FULL_ADAPTER_BUILD_PASS adapter={0} bridge={1} output={2}" -f $files[0].sha256,$files[1].sha256,$output)
+$adapterRow=@($files|Where-Object name -eq 'Nanaimo.Adapter.exe')[0]
+$bridgeRow=@($files|Where-Object name -eq 'nanaimo_gameplay_bridge.exe')[0]
+Write-Output ("FULL_ADAPTER_BUILD_PASS adapter={0} bridge={1} files={2} output={3}" -f $adapterRow.sha256,$bridgeRow.sha256,$files.Count,$output)

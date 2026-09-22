@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Text;
 using OpenNanaimo.Adapter.Models;
 
@@ -29,6 +29,8 @@ public sealed class NativeDungeonState
     public static NativeDungeonState Create(CharacterRecord c, IReadOnlyList<CharacterCardRecord> cards,
         IReadOnlyList<CharacterSkillRecord> skills)
     {
+        if (c.Id > ushort.MaxValue)
+            throw new InvalidDataException($"Native dungeon character identity must not exceed uint16: {c.Id}.");
         var data = new byte[Size]; data[0] = 1;
         var s = new NativeDungeonState(data);
         var name = Encoding.GetEncoding(936).GetBytes(c.Name);
@@ -54,7 +56,10 @@ public sealed class NativeDungeonState
         s.Put(PetExperienceOffset, petState.Experience);
         // Keep the original adapter's zero additive damage and defense policy.
         s.Put(88, name.Length); s.Put(92, c.Gender); name.CopyTo(data, 96);
-        for (int i = 0; i < 5; i++) s.Put(112 + i * 4, BinaryPrimitives.ReadUInt32LittleEndian(c.Appearance.AsSpan(i * 4, 4)));
+        ReadOnlySpan<int> equipmentAppearanceOffsets = [0, 4, 8, 12, 20];
+        for (int i = 0; i < equipmentAppearanceOffsets.Length; i++)
+            s.Put(112 + i * 4, BinaryPrimitives.ReadUInt32LittleEndian(
+                c.Appearance.AsSpan(equipmentAppearanceOffsets[i], sizeof(uint))));
         s.Put(132, BinaryPrimitives.ReadUInt32LittleEndian(c.Appearance.AsSpan(24, 4)));
         s.Put(136, long.Parse(DateTime.Now.ToString("yyyyMMddHH")));
         s.Put(140, pet?.PetAccessory0 ?? 0); s.Put(144, pet?.PetAccessory1 ?? 0); s.Put(148, pet?.PetAccessory2 ?? 0);
@@ -66,13 +71,49 @@ public sealed class NativeDungeonState
         if (items.Length > 255 || items.Sum(i => (int)i.Quantity) > 255)
             throw new InvalidDataException("Native dungeon inventory exceeds its 255 instance handles.");
         s.Put(1952, items.Length);
-        int handle = 1;
         for (int i = 0; i < items.Length; i++)
         {
-            var item = items[i]; s.Put(1956 + i * 8, item.ItemCode); s.Put(1960 + i * 8, item.Quantity);
-            foreach (var slot in c.QuickSlots.Where(q => q.ItemCode == item.ItemCode))
-            { s.Put(224 + slot.Slot * 8, item.ItemCode); s.Put(228 + slot.Slot * 8, handle); }
-            for (int j = 0; j < item.Quantity; j++) s.Put(4000 + handle++ * 4, item.ItemCode);
+            var item = items[i];
+            s.Put(1956 + i * 8, item.ItemCode);
+            s.Put(1960 + i * 8, item.Quantity);
+        }
+
+        // C430/C47D identities index the complete ordinary game-item list, while
+        // the native worker only imports domains 14/17/19/21. Preserve an explicit
+        // managed-identity -> native-handle map so skipped cash/special domains do
+        // not shift quick-slot ownership and repeated codes retain distinct handles.
+        var inventoryInstances = c.Items
+            .Where(item => item.Quantity > 0
+                && ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
+                && catalogItem.Section == InventorySection.GameItem
+                && catalogItem.Category is not (42 or 47))
+            .OrderBy(item => item.ItemCode)
+            .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
+            .ToArray();
+        var nativeHandlesByInventoryIdentity = new Dictionary<int, int>();
+        var nextNativeHandle = 1;
+        for (var inventoryIdentity = 0; inventoryIdentity < inventoryInstances.Length; inventoryIdentity++)
+        {
+            var code = inventoryInstances[inventoryIdentity];
+            if (!IsNativeItem(code))
+                continue;
+            nativeHandlesByInventoryIdentity[inventoryIdentity] = nextNativeHandle;
+            s.Put(4000 + nextNativeHandle * 4, code);
+            nextNativeHandle++;
+        }
+
+        var selectedHandles = new HashSet<int>();
+        foreach (var slot in c.QuickSlots)
+        {
+            if (slot.Slot > 5
+                || slot.InventoryIndex >= inventoryInstances.Length
+                || inventoryInstances[slot.InventoryIndex] != slot.ItemCode
+                || !nativeHandlesByInventoryIdentity.TryGetValue(slot.InventoryIndex, out var nativeHandle))
+                throw new InvalidDataException("Quick-slot identity does not match the native dungeon inventory.");
+            if (!selectedHandles.Add(nativeHandle))
+                throw new InvalidDataException("Multiple quick slots cannot reference the same native item identity.");
+            s.Put(224 + slot.Slot * 8, slot.ItemCode);
+            s.Put(228 + slot.Slot * 8, nativeHandle);
         }
         return s;
     }

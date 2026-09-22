@@ -30,6 +30,40 @@ public static class CardCatalog
     public static bool TryGet(uint cardCode, out CardCatalogEntry entry)
         => EntriesByCode.Value.TryGetValue(cardCode, out entry!);
 
+    public static bool TryGetAlbumCoordinate(uint cardCode, out byte category, out byte page, out byte slot)
+    {
+        if (TryGet(cardCode, out var entry))
+        {
+            category = entry.Category;
+            page = entry.Page;
+            slot = entry.Slot;
+            return true;
+        }
+
+        var ordinal = cardCode >= 13_000_001u && cardCode <= 13_000_420u
+            ? cardCode - 13_000_000u
+            : 0u;
+        if (ordinal == 0)
+        {
+            category = page = slot = 0;
+            return false;
+        }
+
+        if (ordinal <= 210u)
+        {
+            category = 1;
+            ordinal--;
+        }
+        else
+        {
+            category = 2;
+            ordinal -= 211u;
+        }
+        page = checked((byte)(ordinal / 20u + 1u));
+        slot = checked((byte)(ordinal % 20u));
+        return page <= 11;
+    }
+
     public static IReadOnlyList<CardCatalogEntry> GetNormalDropsByMonsterTargetCode(uint monsterTargetCode)
         => NormalDropsByMonster.Value.GetValueOrDefault(monsterTargetCode) ?? [];
 
@@ -58,7 +92,7 @@ public static class CardCatalog
         }
 
         // The client resource identifies all valid cards for this exact MMO
-        // monster code but contains no server drop-rate weights. Select only
+        // Monster-code entries carry no adapter drop-rate weights. Select only
         // within that authoritative set; never derive a card from scene UID,
         // dungeon number, or stage number.
         entry = candidates[RandomNumberGenerator.GetInt32(candidates.Count)];

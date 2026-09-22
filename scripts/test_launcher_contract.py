@@ -9,13 +9,17 @@ class LauncherContractTests(unittest.TestCase):
     def test_adapter_artifacts_and_process_contract(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         native_build = (ROOT / 'scripts/build_adapter.ps1').read_text('utf-8-sig')
-        full_build = (ROOT / 'scripts/build_merged.ps1').read_text('utf-8-sig')
+        full_build = (ROOT / 'scripts/build_complete_adapter.ps1').read_text('utf-8-sig')
         cleanup = (ROOT / 'scripts/clean_generated_state.ps1').read_text('utf-8-sig')
         self.assertIn("$AdapterRuntimeRoot=Join-Path $Root 'adapter_runtime'", text)
         self.assertIn("$Adapter=Join-Path $AdapterRuntimeRoot 'Nanaimo.Adapter.exe'", text)
         self.assertIn("$AdapterBridge=Join-Path $AdapterRuntimeRoot 'nanaimo_gameplay_bridge.exe'", text)
         self.assertIn("$AdapterManifest=Join-Path $AdapterRuntimeRoot 'adapter_manifest.json'", text)
         self.assertIn('function Test-AdapterBinary', text)
+        self.assertIn('$SelfTestAdapterManifest', text)
+        self.assertIn('foreach($row in @($contract.files))', text)
+        self.assertIn("'Nanaimo.Adapter.dll','Nanaimo.Gameplay.dll'", text)
+        self.assertIn("Get-ChildItem -LiteralPath $output -Recurse -File", full_build)
         self.assertIn('function Get-LocalAdapters', text)
         self.assertIn('@($Adapter,$AdapterBridge,$LegacyAdapter)', text)
         self.assertIn('function Start-LocalAdapter', text)
@@ -38,6 +42,18 @@ class LauncherContractTests(unittest.TestCase):
         self.assertTrue(text.startswith('param([Parameter(Position=0)][string]$AdapterIP,'))
         self.assertNotIn('[Alias(', text)
 
+    def test_launcher_applies_and_verifies_user_owned_compatibility_overlay(self):
+        text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
+        self.assertIn("$ClientCompatibilityTool=Join-Path $Root 'scripts\\prepare_client_compatibility.py'", text)
+        self.assertIn("$ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay'", text)
+        self.assertIn('function Ensure-ClientCompatibility', text)
+        self.assertIn("'--emotion','--dungeon7','--overwrite','--apply'", text)
+        self.assertNotIn("'--all','--overwrite','--apply'", text)
+        self.assertIn('$report.verification.all_pass', text)
+        click = text.split('$clientBtn.add_Click({', 1)[1].split('# Pet lookup tab', 1)[0]
+        self.assertLess(click.index('Stop-Process -Force'), click.index('Ensure-ClientCompatibility'))
+        self.assertLess(click.index('Ensure-ClientCompatibility'), click.index('Start-LocalAdapter'))
+        self.assertLess(click.index('Ensure-ClientCompatibility'), click.index('Start-Process -FilePath $Client'))
     def test_game_entry_and_scoped_stop(self):
         for filename in ('nanaimo_launcher.ps1', 'client_connect.ps1'):
             text = (ROOT / 'gui_launcher' / filename).read_text('utf-8-sig')
@@ -92,7 +108,7 @@ class LauncherContractTests(unittest.TestCase):
             self.assertNotIn(internal, preview)
         for diagnostic in ('Character and profile', 'Resources:', 'Skills:',
                            'Profile INI', 'Profile JSON', 'Binary validation',
-                           "Client-State-Line", "Derived client compatibility assets", '$ExpectedAdapterHash', 'Working directory:'):
+                           "Client-State-Line", "Client compatibility is prepared", '$ExpectedAdapterHash', 'Working directory:'):
             self.assertIn(diagnostic, preview)
 
     def test_visible_text_and_startup_compaction_have_runtime_guards(self):

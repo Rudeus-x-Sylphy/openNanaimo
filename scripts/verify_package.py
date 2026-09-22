@@ -2,7 +2,7 @@
 
 The complete mode validates the exact project/runtime files, the full
 self-contained adapter_runtime tree, and only the presence of the user-supplied
-client. Locally derived client compatibility outputs are never checked.
+client. Locally derived client compatibility outputs are verified structurally without a fixed hash gate.
 
 This is not a license audit and does not claim original-client gameplay
 acceptance. Use export_patch.py for a deny-by-default source distribution.
@@ -16,12 +16,26 @@ import json
 import re
 from pathlib import Path
 
-TEXT_EXT = {'.ps1', '.py', '.md', '.json', '.ini', '.yaml', '.yml', '.bat', '.c', '.h', '.inc', '.txt', '.csv', '.tsv'}
-PUBLIC_DIRS = ('release', 'adapter', 'gui_launcher', 'knowledge', 'docs', 'scripts', 'manifest')
+TEXT_EXT = {'.ps1', '.py', '.md', '.json', '.ini', '.yaml', '.yml', '.bat', '.c', '.h', '.inc', '.txt', '.csv', '.tsv', '.cs', '.csproj'}
+PUBLIC_DIRS = ('release', 'adapter', 'gui_launcher', 'knowledge', 'docs', 'scripts', 'manifest', 'managed', 'managed-host')
 ABSOLUTE_HOST_PATH = re.compile(r'(?i)(?<![a-z0-9])[a-z]:[\\/]')
 HOME_PATH = re.compile(r'(?i)/(?:home|Users)/[^/\s<>]+')
 IPV4 = re.compile(r'(?<![\w.])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![\w.])')
 LEGACY_LABEL = re.compile(r'GUI[ _-]*\d+', re.IGNORECASE)
+LEGACY_PROJECT_LABEL = re.compile(r'(?:\u56fd\u670d|\u817e\u8baf|\u98de\u884c\u5c9b|\x46\x6c\x79\s+\x49\x73\x6c\x61\x6e\x64)', re.IGNORECASE)
+FORBIDDEN_ADAPTER_LABEL = re.compile(r'(?:\u79c1\u670d|\u670d\u52a1\u7aef|\u670d\u52a1\u5668)')
+FORBIDDEN_BRAND_LABEL = re.compile(r'(?:Q{2}|\u817e\u8baf|\u56fd\u670d|\u98de\u884c\u5c9b|Fly\s+Island)', re.IGNORECASE)
+FORBIDDEN_PROCESS_NARRATIVE = re.compile(
+    '(?:' + '|'.join((
+        r'\u6765\u6e90\u8bf4\u660e',
+        r'\u672c\u6b21\u7248\u672c',
+        r'\u672c\u7248\u672c.{0,24}(?:\u65b0\u589e|\u4fee\u6539|\u8c03\u6574)',
+        'build_' + 'merged',
+        r'donor\s+' + 'serv' + 'er',
+        'serv' + 'er-csharp',
+        r'ported\s+from',
+    )) + ')',
+    re.IGNORECASE)
 LEGACY_RUNTIME_PATHS = {
     'adapter/nanaimo_adapter.exe',
     'adapter/nanaimo_adapter_testports.exe',
@@ -169,9 +183,11 @@ def verify_client_presence(root: Path, manifest: dict) -> str:
     if path.stat().st_size <= 0:
         raise ValueError('user-supplied game.exe is empty')
     derived = manifest.get('derived_client_assets')
-    if not isinstance(derived, dict) or derived.get('validation') != 'not-checked':
-        raise ValueError('release manifest must exclude derived client assets from validation')
-    return 'presence-only-no-hash'
+    if (not isinstance(derived, dict)
+            or derived.get('validation') != 'local-derivation-and-post-apply-verification'
+            or derived.get('size_or_hash_gate') is not False):
+        raise ValueError('release manifest must locally verify derived assets without a fixed hash gate')
+    return 'presence-only-no-hash-local-derived-verification'
 
 
 def scan_public_text(root: Path) -> None:
@@ -183,7 +199,7 @@ def scan_public_text(root: Path) -> None:
     for p in paths:
         if not p.is_file() or p.suffix.lower() not in TEXT_EXT:
             continue
-        if '__pycache__' in p.parts:
+        if '__pycache__' in p.parts or any(part in {'bin', 'obj'} for part in p.parts):
             continue
         rel = p.relative_to(root).as_posix()
         # The inventory describes private local assets, not distributable text.
@@ -205,9 +221,12 @@ def scan_public_text(root: Path) -> None:
                                    ip in ipaddress.ip_network((2886729728, 12)))
                 if private_network:
                     hits.append((rel, 'private network address'))
-        if rel.startswith('knowledge/'):
-            if any(word in text for word in ('国服', 'Fly Island', '腾讯', '飞行岛')):
-                hits.append((rel, 'obsolete regional project description'))
+        if FORBIDDEN_ADAPTER_LABEL.search(text):
+            hits.append((rel, 'non-adapter endpoint terminology'))
+        if FORBIDDEN_BRAND_LABEL.search(text) or LEGACY_PROJECT_LABEL.search(text):
+            hits.append((rel, 'obsolete regional or brand terminology'))
+        if p.suffix.lower() == '.md' and FORBIDDEN_PROCESS_NARRATIVE.search(text):
+            hits.append((rel, 'development-process narrative outside changelog'))
         if (rel.startswith(('release/', 'gui_launcher/')) or
                 rel.startswith('adapter/') and p.suffix == '.c'):
             if LEGACY_LABEL.search(p.name):

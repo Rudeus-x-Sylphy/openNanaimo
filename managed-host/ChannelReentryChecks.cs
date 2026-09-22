@@ -35,6 +35,7 @@ internal static class ChannelReentryChecks
             var presenceType = typeof(NetworkAdapterService).GetNestedType("WorldPresence", BindingFlags.NonPublic)!;
             var dispatch = typeof(NetworkAdapterService).GetMethod("HandleNativeFrameAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
             var disconnect = typeof(NetworkAdapterService).GetMethod("TrackDisconnectedAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var cacheTicket = typeof(NetworkAdapterService).GetMethod("CacheLoginTicket", BindingFlags.Instance | BindingFlags.NonPublic)!;
             var presenceField = typeof(NetworkAdapterService).GetField("_activeWorldSessions", BindingFlags.Instance | BindingFlags.NonPublic)!;
             object presences = presenceField.GetValue(service)!;
             MethodInfo addPresence = presences.GetType().GetMethod("TryAdd")!;
@@ -101,6 +102,22 @@ internal static class ChannelReentryChecks
             await (Task)disconnect.Invoke(service, [reentered])!;
 
             clearPresences.Invoke(presences, null);
+            object disconnectFirst = NewSession(secondAccount, "channel-reentry-b", secondCharacter, true);
+            AddPresence(disconnectFirst, secondAccount, secondCharacter.Id, "channel-reentry-b", secondCharacter.Name);
+            cacheTicket.Invoke(service, [disconnectFirst, true]);
+            Set(disconnectFirst, "OnlineTracked", false);
+            clearPresences.Invoke(presences, null);
+            object disconnectFirstWorld = Activator.CreateInstance(sessionType, nonPublic: true)!;
+            Set(disconnectFirstWorld, "ChannelId", 1);
+            Set(disconnectFirstWorld, "ListenerPort", 12050);
+            byte[] secondIdentity = new byte[16];
+            Encoding.GetEncoding(936).GetBytes(secondCharacter.Name).CopyTo(secondIdentity, 0);
+            byte[] disconnectFirstConnect = (await Dispatch(disconnectFirstWorld, 0xC351, secondIdentity, "WorldAdapter"))!;
+            Check(ReadOpcode(disconnectFirstConnect) == 0xC352 && disconnectFirstConnect[8] == 100,
+                "disconnect-first channel selection consumes the short handoff ticket");
+            await (Task)disconnect.Invoke(service, [disconnectFirstWorld])!;
+
+            clearPresences.Invoke(presences, null);
             object ambiguousA = NewSession(firstAccount, "channel-reentry-a", firstCharacter, true);
             object ambiguousB = NewSession(secondAccount, "channel-reentry-b", secondCharacter, true);
             AddPresence(ambiguousA, firstAccount, firstCharacter.Id, "channel-reentry-a", firstCharacter.Name);
@@ -113,10 +130,10 @@ internal static class ChannelReentryChecks
             Set(ambiguousWorld, "ChannelId", 1);
             Set(ambiguousWorld, "ListenerPort", 12050);
             byte[] ambiguousConnect = (await Dispatch(ambiguousWorld, 0xC351, identity, "WorldAdapter"))!;
-            Check(ReadOpcode(ambiguousConnect) == 0xC352 && ambiguousConnect[8] == 0, "same-IP ambiguity does not merge world identities");
+            Check(ReadOpcode(ambiguousConnect) == 0xC352 && ambiguousConnect[8] == 0, "same-IP ambiguity keeps world identities separate");
             clearPresences.Invoke(presences, null);
 
-            Console.WriteLine("CHANNEL_REENTRY_CHECKS_PASS fresh-271B ticket teardown-wait c351-c355 ambiguity");
+            Console.WriteLine("CHANNEL_REENTRY_CHECKS_PASS fresh-271B disconnect-first ticket teardown-wait c351-c355 ambiguity");
         }
         finally
         {

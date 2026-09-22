@@ -124,7 +124,8 @@ public sealed partial class DatabaseService
     {
         var result = ParseCountSidecar(path, "card");
         foreach (var (code, quantity) in result)
-            if (code is < 13000001 or > 13000420 || quantity > byte.MaxValue || !CardCatalog.TryGet(code, out _))
+            if (code is < 13000001 or > 13000420 || quantity > byte.MaxValue
+                || !CardCatalog.TryGetAlbumCoordinate(code, out _, out _, out _))
                 throw new InvalidDataException($"Card sidecar contains an invalid card {code}.");
         return result;
     }
@@ -221,8 +222,11 @@ public sealed partial class DatabaseService
         long selectedCoin = sidecars?.Shopping?.Coin ?? ReadInt64("coin");
         long selectedNana = sidecars?.Shopping?.Nana ?? ReadInt64("nana_point");
         var appearance = new byte[36];
+        int[] equipmentAppearanceOffsets = [0, 4, 8, 12, 20];
         for (int i = 0; i < equipment.Length; i++)
-            BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(i * 4), ReadAppearanceEquipment(i));
+            BinaryPrimitives.WriteUInt32LittleEndian(
+                appearance.AsSpan(equipmentAppearanceOffsets[i]),
+                ReadAppearanceEquipment(i));
         BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(24), selectedEffect);
         BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(28), selectedPet);
         BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(32), Read("gender"));
@@ -248,6 +252,11 @@ public sealed partial class DatabaseService
             await cmd.ExecuteNonQueryAsync(token);
         }
         int level = (int)Math.Clamp(Read("level", 1), 1, 99);
+        var selectedSkill0 = Read("skill_slot_z");
+        var selectedSkill1 = Read("skill_slot_x");
+        var skillSlotExpiration = Read(
+            "skill_slot_expiry",
+            selectedSkill1 != 0 ? 2_099_123_123u : 0u);
         await Execute("""
             UPDATE Characters SET TutorialCompleted=0, Appearance=$appearance, Gender=$gender,
               Level=$level, Experience=$exp, MaxHp=$hpmax, CurrentHp=$hp, MaxMp=$mpmax, CurrentMp=$mp,
@@ -255,6 +264,7 @@ public sealed partial class DatabaseService
               AttackModifier=$attack, DefenseFlat=$defense, InitialAttackMode=$attackMode,
               EquippedPetItemCode=$pet, PetVariant=$pet_variant, QuickSlotExpansionExpires=$quickbar,
               FreeMagicExpansionExpires=$free_magic, SelectedSkill0=$skill0, SelectedSkill1=$skill1,
+              SkillSlotExpansionExpires=$skill_expiry,
               CurrentMapId=0, CurrentTownPage=0, PositionX=320, PositionY=240,
               SkillPoints=65535 WHERE Id=$id
             """, ("$appearance", appearance), ("$gender", Read("gender")), ("$level", level),
@@ -265,10 +275,11 @@ public sealed partial class DatabaseService
             ("$mystery", Read("card_key_mystery", 99)), ("$gold", Read("card_key_gold", 99)),
             ("$attack", Read("attack")), ("$defense", Read("defense")),
             ("$attackMode", Math.Min(Read("initial_attack_mode"), 3u)),
-            ("$pet", selectedPet), ("$pet_variant", selectedPet > 0 ? 1 : 0),
+            ("$pet", selectedPet), ("$pet_variant", selectedPet is >= 15_000_001u and <= 15_000_003u ? selectedPet - 15_000_000u : 0u),
             ("$quickbar", Read("quickbar_expiry")),
             ("$free_magic", Read("free_magic_key_expiry")),
-            ("$skill0", Read("skill_slot_z")), ("$skill1", Read("skill_slot_x")));
+            ("$skill0", selectedSkill0), ("$skill1", selectedSkill1),
+            ("$skill_expiry", skillSlotExpiration));
         await UpsertLocalProfileItemsAsync(connection, transaction, result.CharacterId, values, equipment, Read, token);
         await ApplyLocalSidecarsAsync(connection, transaction, result.CharacterId, sidecars, token);
         await ReplaceLocalProfileSkillsAsync(connection, transaction, result.CharacterId, values, token);
@@ -298,18 +309,25 @@ public sealed partial class DatabaseService
             await cmd.ExecuteNonQueryAsync(token);
         }
 
+        var selectedSkill0 = read("skill_slot_z", existing.SelectedSkill0);
+        var selectedSkill1 = read("skill_slot_x", existing.SelectedSkill1);
+        var skillSlotExpiration = read(
+            "skill_slot_expiry",
+            existing.SkillSlotExpansionExpires != 0
+                ? existing.SkillSlotExpansionExpires
+                : selectedSkill1 != 0
+                    ? 2_099_123_123u
+                    : 0u);
         await Execute("""
             UPDATE Characters SET Appearance=$appearance, Gender=$gender,
-              Level=$level, Experience=$exp,
               MaxHp=$hpmax, CurrentHp=$hp, MaxMp=$mpmax, CurrentMp=$mp,
               Hans=$coin, Cash=$cash, CardMysteryKeyCount=$mystery, CardGoldenKeyCount=$gold,
               AttackModifier=$attack, DefenseFlat=$defense, InitialAttackMode=$attackMode,
               EquippedPetItemCode=$pet, PetVariant=$pet_variant, QuickSlotExpansionExpires=$quickbar,
               FreeMagicExpansionExpires=$free_magic, SelectedSkill0=$skill0, SelectedSkill1=$skill1,
+              SkillSlotExpansionExpires=$skill_expiry,
               LastSavedAt=$now WHERE Id=$id
             """, ("$appearance", appearance), ("$gender", read("gender", (uint)existing.Gender)),
-            ("$level", Math.Clamp((int)read("level", (uint)existing.Level), 1, 99)),
-            ("$exp", CharacterProgression.ExperienceRequiredForLevel(Math.Clamp((int)read("level", (uint)existing.Level), 1, 99))),
             ("$hpmax", read("hp_max", (uint)existing.MaxHp)), ("$hp", read("hp_current", (uint)existing.CurrentHp)),
             ("$mpmax", read("mp_max", (uint)existing.MaxMp)), ("$mp", read("mp_current", (uint)existing.CurrentMp)),
             ("$coin", selectedCoin), ("$cash", selectedNana),
@@ -319,11 +337,12 @@ public sealed partial class DatabaseService
             ("$defense", read("defense", existing.DefenseFlat)),
             ("$attackMode", Math.Min(read("initial_attack_mode", existing.InitialAttackMode), 3u)),
             ("$pet", selectedPet),
-            ("$pet_variant", selectedPet > 0 ? 1 : 0),
+            ("$pet_variant", selectedPet is >= 15_000_001u and <= 15_000_003u ? selectedPet - 15_000_000u : 0u),
             ("$quickbar", read("quickbar_expiry", existing.QuickSlotExpansionExpires)),
             ("$free_magic", read("free_magic_key_expiry", existing.FreeMagicExpansionExpires)),
-            ("$skill0", read("skill_slot_z", existing.SelectedSkill0)),
-            ("$skill1", read("skill_slot_x", existing.SelectedSkill1)),
+            ("$skill0", selectedSkill0),
+            ("$skill1", selectedSkill1),
+            ("$skill_expiry", skillSlotExpiration),
             ("$now", DateTime.UtcNow.ToString("O")));
         await UpsertLocalProfileItemsAsync(connection, transaction, existing.Id, values, equipment, read, token);
         await ApplyLocalSidecarsAsync(connection, transaction, existing.Id, sidecars, token);
@@ -385,7 +404,7 @@ public sealed partial class DatabaseService
         if (sidecars.GameItems is { } gameItems)
         {
             // The GUI writes cash-carried game items as repeated owned_misc rows.
-            // Merge them into CharacterItems because NativeDungeonState consumes
+            // Store them in CharacterItems because NativeDungeonState consumes
             // CharacterItems, not CharacterCashInboxItems.
             var desired = gameItems.ToDictionary(pair => pair.Key, pair => (uint)pair.Value);
             if (sidecars.Shopping is { } miscShopping)
@@ -684,10 +703,12 @@ public sealed partial class DatabaseService
                 await Execute("DELETE FROM CharacterItems WHERE CharacterId=$id AND ItemCode=$code AND Quantity=0", ("$code", code));
             }
         }
-        for (int slot = 0; slot < 6; slot++)
-            if (before.Get(224 + slot * 8) != 0 && after.Get(224 + slot * 8) == 0)
-                await Execute("DELETE FROM CharacterQuickSlots WHERE CharacterId=$id AND Slot=$slot AND ItemCode=$code",
-                    ("$slot", slot), ("$code", before.Get(224 + slot * 8)));
+        // CharacterItems stores aggregate quantities, while C430/C47D and the
+        // native dungeon quickbar address expanded inventory identities. Rebuild
+        // every surviving quick-slot identity after applying the aggregate delta;
+        // otherwise deleting an earlier item shifts later rows left and leaves a
+        // stale InventoryIndex that fails the next NativeDungeonState import.
+        await ReindexCharacterQuickSlotsAsync(connection, transaction, characterId, token);
         var clearMasks = NativeClearMasks(after);
         for (int index = 0; index < clearMasks.Length; index++)
         {
@@ -722,6 +743,97 @@ public sealed partial class DatabaseService
         }
         masks.CopyTo(state.Bytes, 5052);
         BinaryPrimitives.WriteUInt32LittleEndian(state.Bytes.AsSpan(5112), 1);
+    }
+
+    internal static IReadOnlyList<CharacterQuickSlotRecord> ReindexQuickSlotIdentities(
+        IReadOnlyList<uint> itemCodes,
+        IReadOnlyList<CharacterQuickSlotRecord> quickSlots)
+    {
+        var result = new List<CharacterQuickSlotRecord>(quickSlots.Count);
+        var usedIndexes = new HashSet<int>();
+        foreach (var quickSlot in quickSlots.OrderBy(slot => slot.Slot))
+        {
+            var candidate = Enumerable.Range(0, itemCodes.Count)
+                .Where(index => !usedIndexes.Contains(index) && itemCodes[index] == quickSlot.ItemCode)
+                .OrderBy(index => Math.Abs(index - quickSlot.InventoryIndex))
+                .ThenBy(index => index)
+                .FirstOrDefault(-1);
+            if (candidate < 0)
+                continue;
+            usedIndexes.Add(candidate);
+            result.Add(new CharacterQuickSlotRecord
+            {
+                Slot = quickSlot.Slot,
+                ItemCode = itemCodes[candidate],
+                InventoryIndex = checked((byte)candidate)
+            });
+        }
+        return result;
+    }
+
+    private static async Task ReindexCharacterQuickSlotsAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        long characterId,
+        CancellationToken token)
+    {
+        var itemCodes = new List<uint>();
+        await using (var items = connection.CreateCommand())
+        {
+            items.Transaction = transaction;
+            items.CommandText = "SELECT ItemCode, Quantity FROM CharacterItems WHERE CharacterId=$id AND Quantity>0 ORDER BY ItemCode";
+            items.Parameters.AddWithValue("$id", characterId);
+            await using var reader = await items.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token))
+            {
+                var itemCode = checked((uint)reader.GetInt64(0));
+                var quantity = reader.GetInt32(1);
+                if (!ShopCatalog.TryGet(itemCode, out var catalogItem)
+                    || catalogItem.Section != InventorySection.GameItem
+                    || catalogItem.Category is 42 or 47)
+                    continue;
+                for (var i = 0; i < quantity && itemCodes.Count < 84; i++)
+                    itemCodes.Add(itemCode);
+            }
+        }
+
+        var quickSlots = new List<CharacterQuickSlotRecord>();
+        await using (var slots = connection.CreateCommand())
+        {
+            slots.Transaction = transaction;
+            slots.CommandText = "SELECT Slot, ItemCode, InventoryIndex FROM CharacterQuickSlots WHERE CharacterId=$id ORDER BY Slot";
+            slots.Parameters.AddWithValue("$id", characterId);
+            await using var reader = await slots.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token))
+                quickSlots.Add(new CharacterQuickSlotRecord
+                {
+                    Slot = checked((byte)reader.GetInt32(0)),
+                    ItemCode = checked((uint)reader.GetInt64(1)),
+                    InventoryIndex = checked((byte)reader.GetInt32(2))
+                });
+        }
+
+        var reindexed = ReindexQuickSlotIdentities(itemCodes, quickSlots)
+            .ToDictionary(slot => slot.Slot);
+        foreach (var quickSlot in quickSlots)
+        {
+            await using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.Parameters.AddWithValue("$id", characterId);
+            update.Parameters.AddWithValue("$slot", quickSlot.Slot);
+            if (!reindexed.TryGetValue(quickSlot.Slot, out var replacement))
+            {
+                update.CommandText = "DELETE FROM CharacterQuickSlots WHERE CharacterId=$id AND Slot=$slot";
+            }
+            else
+            {
+                update.CommandText = "UPDATE CharacterQuickSlots SET ItemCode=$code, InventoryIndex=$index, UpdatedAt=$now WHERE CharacterId=$id AND Slot=$slot";
+                update.Parameters.AddWithValue("$code", replacement.ItemCode);
+                update.Parameters.AddWithValue("$index", replacement.InventoryIndex);
+                update.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            }
+            await update.ExecuteNonQueryAsync(token);
+        }
     }
 
     private static byte[] NativeClearMasks(NativeDungeonState state)

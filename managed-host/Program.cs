@@ -17,6 +17,26 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--pet-revival-village-self-test"))
+{
+    await PetRevivalVillageChecks.RunAsync();
+    return;
+}
+if (args.Contains("--card-synthesis-self-test"))
+{
+    await CardSynthesisChecks.RunAsync();
+    return;
+}
+if (args.Contains("--inventory-quickbar-self-test"))
+{
+    InventoryQuickbarChecks.Run();
+    return;
+}
+if (args.Contains("--apartment-protocol-self-test"))
+{
+    ApartmentProtocolChecks.Run();
+    return;
+}
 if (args.Contains("--channel-reentry-self-test"))
 {
     await ChannelReentryChecks.RunAsync();

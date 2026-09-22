@@ -278,7 +278,7 @@ def validated_closure(closure: dict) -> list[dict]:
         p = PurePosixPath(rel)
         native = p.parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"}
         managed = p.parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"}
-        build_script = rel == "scripts/build_merged.ps1"
+        build_script = rel == "scripts/build_complete_adapter.ps1"
         if not (native or managed or build_script):
             raise ExportError("source closure contains an ineligible project source")
         payload_policy(rel, "source")
@@ -402,7 +402,7 @@ def export_tree(root: Path, destination: Path, plan: dict, reviews: dict) -> Non
     if destination.is_relative_to(root) or root.is_relative_to(destination):
         raise ExportError("destination must be disjoint from the workspace")
     if destination.exists():
-        raise ExportError("destination must not exist; no merge/overwrite is allowed")
+        raise ExportError("destination must not exist; combining or overwriting is not allowed")
     if not destination.parent.is_dir():
         raise ExportError("destination parent must already exist")
     # Review/hash/preflight again before creating anything. Sources changing during

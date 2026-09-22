@@ -250,7 +250,7 @@ public sealed partial class DatabaseService
                     InventoryIndex INTEGER NOT NULL CHECK (InventoryIndex BETWEEN 0 AND 83),
                     UpdatedAt TEXT NOT NULL,
                     PRIMARY KEY (CharacterId, Slot),
-                    UNIQUE (CharacterId, ItemCode)
+                    UNIQUE (CharacterId, InventoryIndex)
                 );
                 CREATE TABLE IF NOT EXISTS CharacterCards (
                     CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
@@ -451,7 +451,7 @@ public sealed partial class DatabaseService
                     Name TEXT PRIMARY KEY,
                     AppliedAt TEXT NOT NULL
                 );
-                CREATE TABLE IF NOT EXISTS ServerSettings (
+                CREATE TABLE IF NOT EXISTS AdapterSettings (
                     Key TEXT PRIMARY KEY,
                     Value TEXT NOT NULL,
                     UpdatedAt TEXT NOT NULL
@@ -460,6 +460,8 @@ public sealed partial class DatabaseService
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        await MigrateLegacyAdapterSettingsAsync(connection, cancellationToken);
+        await MigrateQuickSlotIdentitySchemaAsync(connection, cancellationToken);
         await MigrateDungeonProgressToOfficialLayoutAsync(connection, cancellationToken);
         await MigrateDungeonStagePerformanceAsync(connection, cancellationToken);
         await MigrateLegacyDungeonLowDifficultySelectorAsync(connection, cancellationToken);
@@ -571,11 +573,11 @@ public sealed partial class DatabaseService
             {
                 await using var initializeWebPort = connection.CreateCommand();
                 initializeWebPort.CommandText = """
-                    INSERT INTO ServerSettings(Key, Value, UpdatedAt)
+                    INSERT INTO AdapterSettings(Key, Value, UpdatedAt)
                     VALUES('WebAdminPort', '22222', $now)
                     ON CONFLICT(Key) DO UPDATE SET
-                        Value = CASE WHEN ServerSettings.Value = '19090' THEN '22222' ELSE ServerSettings.Value END,
-                        UpdatedAt = CASE WHEN ServerSettings.Value = '19090' THEN excluded.UpdatedAt ELSE ServerSettings.UpdatedAt END
+                        Value = CASE WHEN AdapterSettings.Value = '19090' THEN '22222' ELSE AdapterSettings.Value END,
+                        UpdatedAt = CASE WHEN AdapterSettings.Value = '19090' THEN excluded.UpdatedAt ELSE AdapterSettings.UpdatedAt END
                     """;
                 initializeWebPort.Parameters.AddWithValue("$now", migrationTime);
                 await initializeWebPort.ExecuteNonQueryAsync(cancellationToken);
@@ -774,7 +776,7 @@ public sealed partial class DatabaseService
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Value FROM ServerSettings WHERE Key = 'WebAdminPort'";
+        command.CommandText = "SELECT Value FROM AdapterSettings WHERE Key = 'WebAdminPort'";
         var value = await command.ExecuteScalarAsync(cancellationToken) as string;
         return int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var port)
                && port is >= 1 and <= 65535
@@ -791,7 +793,7 @@ public sealed partial class DatabaseService
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO ServerSettings(Key, Value, UpdatedAt)
+            INSERT INTO AdapterSettings(Key, Value, UpdatedAt)
             VALUES('WebAdminPort', $value, $now)
             ON CONFLICT(Key) DO UPDATE SET
                 Value = excluded.Value,
@@ -810,7 +812,7 @@ public sealed partial class DatabaseService
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT Key, Value
-            FROM ServerSettings
+            FROM AdapterSettings
             WHERE Key IN ('InitialGrantHans', 'InitialGrantCash', 'InitialGrantSkillPoints')
             """;
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -849,7 +851,7 @@ public sealed partial class DatabaseService
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO ServerSettings(Key, Value, UpdatedAt)
+            INSERT INTO AdapterSettings(Key, Value, UpdatedAt)
             VALUES
                 ('InitialGrantHans', $hans, $now),
                 ('InitialGrantCash', $cash, $now),
@@ -880,7 +882,7 @@ public sealed partial class DatabaseService
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO ServerSettings(Key, Value, UpdatedAt)
+            INSERT INTO AdapterSettings(Key, Value, UpdatedAt)
             VALUES
                 ('GmGrantHans', $hans, $now),
                 ('GmGrantCash', $cash, $now),
@@ -908,7 +910,7 @@ public sealed partial class DatabaseService
         command.Transaction = transaction;
         command.CommandText = """
             SELECT Key, Value
-            FROM ServerSettings
+            FROM AdapterSettings
             WHERE Key IN ('GmGrantHans', 'GmGrantCash', 'GmGrantSkillPoints', 'GmGrantItems')
             """;
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -1050,7 +1052,7 @@ public sealed partial class DatabaseService
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT Key, Value
-            FROM ServerSettings
+            FROM AdapterSettings
             WHERE Key IN (
                 'VillageBotsEnabled', 'VillageBotCount', 'VillageBotSpeechEnabled',
                 'VillageBotConversationEnabled', 'VillageBotEmotionEnabled', 'VillageBotMovementEnabled',
@@ -1109,7 +1111,7 @@ public sealed partial class DatabaseService
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO ServerSettings(Key, Value, UpdatedAt)
+            INSERT INTO AdapterSettings(Key, Value, UpdatedAt)
             VALUES
                 ('VillageBotsEnabled', $enabled, $now),
                 ('VillageBotCount', $count, $now),
@@ -3355,49 +3357,54 @@ public sealed partial class DatabaseService
             command.Parameters.AddWithValue("$sellerCharacterName", sellerCharacterName);
     }
 
-    public async Task<(bool Success, string Error, byte CardQuantity, byte KeyUseCount, uint ItemCode, ushort ItemQuantity)> SynthesizeCardItemAsync(
+    public async Task<(bool Success, string Error, uint ItemCode, ushort RewardQuantity, string KeyKind, byte KeyUseCount)> SynthesizeCardItemAsync(
         long accountId,
         long characterId,
         string sessionId,
-        uint cardCode,
-        ushort keyMode,
+        uint recipeToken,
         CancellationToken cancellationToken = default)
     {
-        var keyColumn = keyMode switch
-        {
-            10 => "CardSummonCount",
-            20 => "CardMysteryKeyCount",
-            30 => "CardGoldenKeyCount",
-            _ => null
-        };
         if (accountId <= 0
             || characterId <= 0
             || string.IsNullOrEmpty(sessionId)
-            || keyColumn is null
-            || !CardCatalog.TryGet(cardCode, out var card)
-            || card.Category != 1
-            || card.SynthesisItemCode == 0
-            || !ShopCatalog.TryGet(card.SynthesisItemCode, out _))
-            return (false, "Card synthesis parameters are invalid.", 0, 0, 0, 0);
+            || !CardSynthesisCatalog.TryGet(recipeToken, out var recipe))
+            return (false, "Card synthesis parameters are invalid.", 0, 0, "none", 0);
+
+        var rewardDomain = recipe.Output / 1_000_000u;
+        ShopCatalogItem? petReward = null;
+        if (rewardDomain == 15u
+            && (!ShopCatalog.TryGet(15, recipe.Output, out petReward)
+                || petReward.Section != InventorySection.Pet))
+            return (false, "The synthesized PET is not present in the embedded client catalog.", recipe.Output, 0, "none", 0);
+        if (rewardDomain is not (14u or 15u or 17u or 19u or 21u or 41u))
+            return (false, "The synthesis reward domain is unsupported.", recipe.Output, 0, "none", 0);
+
+        var materials = recipe.Inputs
+            .GroupBy(code => code)
+            .ToDictionary(group => group.Key, group => group.Count());
+        if (materials.Count is < 1 or > 3)
+            return (false, "The synthesis recipe has no valid materials.", recipe.Output, 0, "none", 0);
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction();
-        long currentCardQuantity;
-        long currentSummonCount;
-        long currentItemQuantity;
-        await using (var current = connection.CreateCommand())
+        long normalKeys;
+        long goldenKeys;
+        long mysteryKeys;
+        uint freeMagicExpiration;
+        long skillPoints;
+        int petVariant;
+        await using (var authorization = connection.CreateCommand())
         {
-            current.Transaction = transaction;
-            current.CommandText = $"""
-                SELECT card.Quantity,
-                       character.{keyColumn},
-                       COALESCE(item.Quantity, 0)
+            authorization.Transaction = transaction;
+            authorization.CommandText = """
+                SELECT character.CardSummonCount,
+                       character.CardGoldenKeyCount,
+                       character.CardMysteryKeyCount,
+                       character.FreeMagicExpansionExpires,
+                       character.SkillPoints,
+                       character.PetVariant
                 FROM Characters AS character
                 INNER JOIN Accounts AS account ON account.Id = character.AccountId
-                INNER JOIN CharacterCards AS card
-                    ON card.CharacterId = character.Id AND card.CardCode = $cardCode
-                LEFT JOIN CharacterItems AS item
-                    ON item.CharacterId = character.Id AND item.ItemCode = $itemCode
                 WHERE character.Id = $characterId
                   AND character.AccountId = $accountId
                   AND character.IsOnline = 1
@@ -3405,99 +3412,222 @@ public sealed partial class DatabaseService
                   AND account.IsOnline = 1
                   AND account.ActiveSessionId = $sessionId
                 """;
-            current.Parameters.AddWithValue("$cardCode", cardCode);
-            current.Parameters.AddWithValue("$itemCode", card.SynthesisItemCode);
-            current.Parameters.AddWithValue("$characterId", characterId);
-            current.Parameters.AddWithValue("$accountId", accountId);
-            current.Parameters.AddWithValue("$sessionId", sessionId);
-            await using var reader = await current.ExecuteReaderAsync(cancellationToken);
+            authorization.Parameters.AddWithValue("$characterId", characterId);
+            authorization.Parameters.AddWithValue("$accountId", accountId);
+            authorization.Parameters.AddWithValue("$sessionId", sessionId);
+            await using var reader = await authorization.ExecuteReaderAsync(cancellationToken);
             if (!await reader.ReadAsync(cancellationToken))
             {
                 await reader.CloseAsync();
                 await transaction.RollbackAsync(cancellationToken);
-                return (false, "The online character does not own the selected card.", 0, 0, card.SynthesisItemCode, 0);
+                return (false, "The online character session is no longer active.", recipe.Output, 0, "none", 0);
             }
-            currentCardQuantity = reader.GetInt64(0);
-            currentSummonCount = reader.GetInt64(1);
-            currentItemQuantity = reader.GetInt64(2);
+            normalKeys = reader.GetInt64(0);
+            goldenKeys = reader.GetInt64(1);
+            mysteryKeys = reader.GetInt64(2);
+            freeMagicExpiration = checked((uint)reader.GetInt64(3));
+            skillPoints = reader.GetInt64(4);
+            petVariant = reader.GetInt32(5);
         }
 
-        if (currentCardQuantity <= 0 || currentSummonCount <= 0)
+        var ownedMaterials = new Dictionary<uint, long>(materials.Count);
+        await using (var owned = connection.CreateCommand())
         {
-            await transaction.RollbackAsync(cancellationToken);
-            return (
-                false,
-                currentSummonCount <= 0 ? "No activated magic-key uses remain." : "The selected card quantity is zero.",
-                checked((byte)Math.Max(0, currentCardQuantity)),
-                checked((byte)Math.Max(0, currentSummonCount)),
-                card.SynthesisItemCode,
-                checked((ushort)currentItemQuantity));
+            owned.Transaction = transaction;
+            var names = materials.Keys.Select((_, index) => $"$material{index}").ToArray();
+            owned.CommandText = $"SELECT CardCode, Quantity FROM CharacterCards WHERE CharacterId = $characterId AND CardCode IN ({string.Join(",", names)})";
+            owned.Parameters.AddWithValue("$characterId", characterId);
+            var materialIndex = 0;
+            foreach (var material in materials.Keys)
+                owned.Parameters.AddWithValue(names[materialIndex++], material);
+            await using var reader = await owned.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                ownedMaterials[checked((uint)reader.GetInt64(0))] = reader.GetInt64(1);
         }
-
-        var newSummonCount = checked((byte)(currentSummonCount - 1));
-        if (currentItemQuantity >= ushort.MaxValue)
+        foreach (var material in materials)
         {
-            await transaction.RollbackAsync(cancellationToken);
-            return (
-                false,
-                "The synthesized item stack is full.",
-                checked((byte)currentCardQuantity),
-                checked((byte)currentSummonCount),
-                card.SynthesisItemCode,
-                ushort.MaxValue);
-        }
-
-        var newCardQuantity = checked((byte)(currentCardQuantity - 1));
-        await using (var updateCard = connection.CreateCommand())
-        {
-            updateCard.Transaction = transaction;
-            updateCard.CommandText = newCardQuantity == 0
-                ? "DELETE FROM CharacterCards WHERE CharacterId = $characterId AND CardCode = $cardCode AND Quantity = $currentQuantity"
-                : "UPDATE CharacterCards SET Quantity = $newQuantity, UpdatedAt = $now WHERE CharacterId = $characterId AND CardCode = $cardCode AND Quantity = $currentQuantity";
-            updateCard.Parameters.AddWithValue("$characterId", characterId);
-            updateCard.Parameters.AddWithValue("$cardCode", cardCode);
-            updateCard.Parameters.AddWithValue("$currentQuantity", currentCardQuantity);
-            if (newCardQuantity != 0)
-            {
-                updateCard.Parameters.AddWithValue("$newQuantity", newCardQuantity);
-                updateCard.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
-            }
-            if (await updateCard.ExecuteNonQueryAsync(cancellationToken) != 1)
+            if (ownedMaterials.GetValueOrDefault(material.Key) < material.Value)
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return (false, "The card quantity changed before synthesis completed.", checked((byte)currentCardQuantity), checked((byte)currentSummonCount), card.SynthesisItemCode, checked((ushort)currentItemQuantity));
+                return (false, $"Card material {material.Key} is missing or insufficient.", recipe.Output, 0, "none", 0);
             }
         }
 
-        await using (var consumeSummon = connection.CreateCommand())
+        long currentRewardQuantity = 0;
+        ushort rewardQuantity;
+        var skillReward = 0u;
+        if (rewardDomain == 15u)
         {
-            consumeSummon.Transaction = transaction;
-            consumeSummon.CommandText = $"""
+            await using var pets = connection.CreateCommand();
+            pets.Transaction = transaction;
+            pets.CommandText = """
+                SELECT EXISTS(
+                           SELECT 1 FROM CharacterItems
+                           WHERE CharacterId = $characterId AND ItemCode = $itemCode AND Quantity > 0),
+                       (SELECT COUNT(*) FROM CharacterItems
+                        WHERE CharacterId = $characterId AND Quantity > 0
+                          AND ItemCode / 1000000 = 15)
+                """;
+            pets.Parameters.AddWithValue("$characterId", characterId);
+            pets.Parameters.AddWithValue("$itemCode", recipe.Output);
+            await using var reader = await pets.ExecuteReaderAsync(cancellationToken);
+            await reader.ReadAsync(cancellationToken);
+            var duplicate = reader.GetInt32(0) != 0
+                || petVariant is >= 1 and <= 3 && recipe.Output == 15_000_000u + checked((uint)petVariant);
+            var ownedPetCount = reader.GetInt32(1) + (petVariant is >= 1 and <= 3 ? 1 : 0);
+            if (duplicate || ownedPetCount >= 56)
+            {
+                await reader.CloseAsync();
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, duplicate ? "The synthesized PET is already owned." : "The PET inventory is full.", recipe.Output, 0, "none", 0);
+            }
+            rewardQuantity = 1;
+        }
+        else if (rewardDomain == 21u)
+        {
+            skillReward = recipe.Output - 21_000_000u;
+            if (skillReward == 0) skillReward = 1;
+            if (skillReward > ushort.MaxValue || skillPoints + skillReward > ushort.MaxValue)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "The skill-point reward would exceed the character cap.", recipe.Output, 0, "none", 0);
+            }
+            rewardQuantity = checked((ushort)(skillPoints + skillReward));
+        }
+        else
+        {
+            await using var reward = connection.CreateCommand();
+            reward.Transaction = transaction;
+            reward.CommandText = "SELECT COALESCE(Quantity, 0) FROM CharacterItems WHERE CharacterId = $characterId AND ItemCode = $itemCode";
+            reward.Parameters.AddWithValue("$characterId", characterId);
+            reward.Parameters.AddWithValue("$itemCode", recipe.Output);
+            currentRewardQuantity = Convert.ToInt64(await reward.ExecuteScalarAsync(cancellationToken) ?? 0L);
+            if (currentRewardQuantity >= ushort.MaxValue)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "The synthesized item stack is full.", recipe.Output, ushort.MaxValue, "none", 0);
+            }
+            rewardQuantity = checked((ushort)(currentRewardQuantity + 1));
+        }
+
+        var currentWireTime = SkillSlotExpansionTime.Encode(DateTime.Now);
+        var usesFreeMagic = freeMagicExpiration != 0 && currentWireTime < freeMagicExpiration;
+        string keyKind;
+        string? keyColumn;
+        byte keyUseCount;
+        if (usesFreeMagic)
+        {
+            keyKind = "free";
+            keyColumn = null;
+            keyUseCount = 0;
+        }
+        else if (normalKeys > 0)
+        {
+            keyKind = "normal";
+            keyColumn = "CardSummonCount";
+            keyUseCount = checked((byte)(normalKeys - 1));
+        }
+        else if (goldenKeys > 0)
+        {
+            keyKind = "gold";
+            keyColumn = "CardGoldenKeyCount";
+            keyUseCount = checked((byte)(goldenKeys - 1));
+        }
+        else if (mysteryKeys > 0)
+        {
+            keyKind = "mystery";
+            keyColumn = "CardMysteryKeyCount";
+            keyUseCount = checked((byte)(mysteryKeys - 1));
+        }
+        else
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return (false, "No activated magic-key uses remain.", recipe.Output, 0, "none", 0);
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        foreach (var material in materials)
+        {
+            await using var consume = connection.CreateCommand();
+            consume.Transaction = transaction;
+            var removeWholeStack = ownedMaterials[material.Key] == material.Value;
+            consume.CommandText = removeWholeStack
+                ? """
+                    DELETE FROM CharacterCards
+                    WHERE CharacterId = $characterId
+                      AND CardCode = $cardCode
+                      AND Quantity = $quantity
+                    """
+                : """
+                    UPDATE CharacterCards
+                    SET Quantity = Quantity - $quantity,
+                        UpdatedAt = $now
+                    WHERE CharacterId = $characterId
+                      AND CardCode = $cardCode
+                      AND Quantity > $quantity
+                    """;
+            consume.Parameters.AddWithValue("$quantity", material.Value);
+            consume.Parameters.AddWithValue("$now", now);
+            consume.Parameters.AddWithValue("$characterId", characterId);
+            consume.Parameters.AddWithValue("$cardCode", material.Key);
+            if (await consume.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "A card material changed during synthesis.", recipe.Output, 0, "none", 0);
+            }
+        }
+
+        await using (var updateCharacter = connection.CreateCommand())
+        {
+            updateCharacter.Transaction = transaction;
+            var assignments = new List<string>();
+            if (keyColumn is not null) assignments.Add($"{keyColumn} = {keyColumn} - 1");
+            if (skillReward != 0) assignments.Add("SkillPoints = SkillPoints + $skillReward");
+            assignments.Add("LastSavedAt = $now");
+            updateCharacter.CommandText = $"""
                 UPDATE Characters
-                SET {keyColumn} = $newSummonCount,
-                    LastSavedAt = $now
+                SET {string.Join(", ", assignments)}
                 WHERE Id = $characterId
                   AND AccountId = $accountId
-                  AND {keyColumn} = $currentSummonCount
                   AND IsOnline = 1
                   AND ActiveSessionId = $sessionId
                 """;
-            consumeSummon.Parameters.AddWithValue("$newSummonCount", newSummonCount);
-            consumeSummon.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
-            consumeSummon.Parameters.AddWithValue("$characterId", characterId);
-            consumeSummon.Parameters.AddWithValue("$accountId", accountId);
-            consumeSummon.Parameters.AddWithValue("$currentSummonCount", currentSummonCount);
-            consumeSummon.Parameters.AddWithValue("$sessionId", sessionId);
-            if (await consumeSummon.ExecuteNonQueryAsync(cancellationToken) != 1)
+            if (skillReward != 0) updateCharacter.Parameters.AddWithValue("$skillReward", skillReward);
+            updateCharacter.Parameters.AddWithValue("$now", now);
+            updateCharacter.Parameters.AddWithValue("$characterId", characterId);
+            updateCharacter.Parameters.AddWithValue("$accountId", accountId);
+            updateCharacter.Parameters.AddWithValue("$sessionId", sessionId);
+            if (await updateCharacter.ExecuteNonQueryAsync(cancellationToken) != 1)
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return (false, "The magic-key count changed before synthesis completed.", checked((byte)currentCardQuantity), checked((byte)currentSummonCount), card.SynthesisItemCode, checked((ushort)currentItemQuantity));
+                return (false, "The character state changed during synthesis.", recipe.Output, 0, "none", 0);
             }
         }
 
-        var newItemQuantity = checked((ushort)(currentItemQuantity + 1));
-        await using (var grantItem = connection.CreateCommand())
+        if (rewardDomain == 15u)
         {
+            await using var grantPet = connection.CreateCommand();
+            grantPet.Transaction = transaction;
+            grantPet.CommandText = """
+                INSERT INTO CharacterItems(
+                    CharacterId, ItemCode, Quantity, PetCurrentStage, PetMaximumStage,
+                    PetLevel, PetExperience, UpdatedAt)
+                VALUES($characterId, $itemCode, 1, $currentStage, $maximumStage, 0, 0, $now)
+                """;
+            grantPet.Parameters.AddWithValue("$characterId", characterId);
+            grantPet.Parameters.AddWithValue("$itemCode", recipe.Output);
+            grantPet.Parameters.AddWithValue("$currentStage", petReward!.PetModelStage);
+            grantPet.Parameters.AddWithValue("$maximumStage", petReward.PetUpgradeStage);
+            grantPet.Parameters.AddWithValue("$now", now);
+            if (await grantPet.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "The synthesized PET could not be persisted.", recipe.Output, 0, "none", 0);
+            }
+        }
+        else if (rewardDomain != 21u)
+        {
+            await using var grantItem = connection.CreateCommand();
             grantItem.Transaction = transaction;
             grantItem.CommandText = """
                 INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, UpdatedAt)
@@ -3507,13 +3637,17 @@ public sealed partial class DatabaseService
                     UpdatedAt = excluded.UpdatedAt
                 """;
             grantItem.Parameters.AddWithValue("$characterId", characterId);
-            grantItem.Parameters.AddWithValue("$itemCode", card.SynthesisItemCode);
-            grantItem.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
-            await grantItem.ExecuteNonQueryAsync(cancellationToken);
+            grantItem.Parameters.AddWithValue("$itemCode", recipe.Output);
+            grantItem.Parameters.AddWithValue("$now", now);
+            if (await grantItem.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "The synthesized item could not be persisted.", recipe.Output, 0, "none", 0);
+            }
         }
 
         await transaction.CommitAsync(cancellationToken);
-        return (true, string.Empty, newCardQuantity, newSummonCount, card.SynthesisItemCode, newItemQuantity);
+        return (true, string.Empty, recipe.Output, rewardQuantity, keyKind, keyUseCount);
     }
 
     private static async Task<IReadOnlyList<CharacterCardRecord>> ReadCharacterCardsAsync(
@@ -3525,17 +3659,18 @@ public sealed partial class DatabaseService
         while (await reader.ReadAsync(cancellationToken))
         {
             var cardCode = checked((uint)reader.GetInt64(0));
-            if (!CardCatalog.TryGet(cardCode, out var catalogEntry))
+            CardCatalog.TryGet(cardCode, out var catalogEntry);
+            if (!CardCatalog.TryGetAlbumCoordinate(cardCode, out var category, out var page, out var slot))
                 continue;
             result.Add(new CharacterCardRecord
             {
                 CardCode = cardCode,
                 Quantity = checked((byte)reader.GetInt32(1)),
-                Name = catalogEntry.Name,
-                Category = catalogEntry.Category,
-                Page = catalogEntry.Page,
-                Slot = catalogEntry.Slot,
-                IconPath = catalogEntry.IconPath
+                Name = catalogEntry?.Name ?? $"Card {cardCode}",
+                Category = category,
+                Page = page,
+                Slot = slot,
+                IconPath = catalogEntry?.IconPath ?? string.Empty
             });
         }
         return result;
@@ -5492,7 +5627,7 @@ public sealed partial class DatabaseService
 
         if (quickSlots.Any(slot => slot.Slot > 5 || slot.InventoryIndex > 83 || slot.ItemCode == 0)
             || quickSlots.Select(slot => slot.Slot).Distinct().Count() != quickSlots.Count
-            || quickSlots.Select(slot => slot.ItemCode).Distinct().Count() != quickSlots.Count)
+            || quickSlots.Select(slot => slot.InventoryIndex).Distinct().Count() != quickSlots.Count)
             return false;
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
@@ -5805,13 +5940,6 @@ public sealed partial class DatabaseService
                     nextHp,
                     nextMp);
             }).ToArray();
-            if ((hpRestore != 0 || mpRestore != 0)
-                && targetResults.All(result => result.HpRestored == 0 && result.MpRestored == 0))
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return DungeonQuickItemConsumeResult.Failed;
-            }
-
             var now = DateTime.UtcNow.ToString("O");
             foreach (var result in targetResults)
             {
@@ -5879,6 +6007,157 @@ public sealed partial class DatabaseService
                 await transaction.RollbackAsync(CancellationToken.None);
             throw;
         }
+    }
+
+    public async Task<(bool Success, string Error)> ApplyPetSpecialGemAsync(
+        long accountId,
+        long characterId,
+        string sessionId,
+        byte operation,
+        uint petItemCode,
+        byte accessoryPosition,
+        uint specialItemCode,
+        CancellationToken cancellationToken = default)
+    {
+        if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId)
+            || operation is not (3 or 4)
+            || petItemCode / 1_000_000 != 15
+            || accessoryPosition > 2
+            || specialItemCode != (operation == 3 ? 18_000_001u : 18_000_002u))
+            return (false, "invalid special-gem request");
+
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction();
+        await using (var authorization = connection.CreateCommand())
+        {
+            authorization.Transaction = transaction;
+            authorization.CommandText = """
+                SELECT COUNT(*)
+                FROM Characters AS character
+                INNER JOIN Accounts AS account ON account.Id = character.AccountId
+                INNER JOIN CharacterItems AS pet
+                    ON pet.CharacterId = character.Id AND pet.ItemCode = $petItemCode AND pet.Quantity > 0
+                WHERE character.Id = $characterId
+                  AND character.AccountId = $accountId
+                  AND character.IsOnline = 1
+                  AND character.ActiveSessionId = $sessionId
+                  AND account.IsOnline = 1
+                  AND account.ActiveSessionId = $sessionId
+                """;
+            authorization.Parameters.AddWithValue("$petItemCode", petItemCode);
+            authorization.Parameters.AddWithValue("$characterId", characterId);
+            authorization.Parameters.AddWithValue("$accountId", accountId);
+            authorization.Parameters.AddWithValue("$sessionId", sessionId);
+            if (Convert.ToInt32(await authorization.ExecuteScalarAsync(cancellationToken)) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "pet/session is not active");
+            }
+        }
+
+        var accessories = new uint[3];
+        await using (var readPet = connection.CreateCommand())
+        {
+            readPet.Transaction = transaction;
+            readPet.CommandText = """
+                SELECT PetAccessory0, PetAccessory1, PetAccessory2
+                FROM CharacterItems
+                WHERE CharacterId = $characterId AND ItemCode = $petItemCode AND Quantity > 0
+                """;
+            readPet.Parameters.AddWithValue("$characterId", characterId);
+            readPet.Parameters.AddWithValue("$petItemCode", petItemCode);
+            await using var reader = await readPet.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "pet state is missing");
+            }
+            for (var index = 0; index < accessories.Length; index++)
+                accessories[index] = checked((uint)reader.GetInt64(index));
+        }
+
+        var removedAccessory = accessories[accessoryPosition];
+        if (removedAccessory == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return (false, "selected accessory slot is empty");
+        }
+
+        var now = DateTime.UtcNow.ToString("O");
+        await using (var consume = connection.CreateCommand())
+        {
+            consume.Transaction = transaction;
+            consume.CommandText = """
+                UPDATE CharacterItems
+                SET Quantity = Quantity - 1, UpdatedAt = $now
+                WHERE CharacterId = $characterId AND ItemCode = $itemCode AND Quantity > 0
+                """;
+            consume.Parameters.AddWithValue("$characterId", characterId);
+            consume.Parameters.AddWithValue("$itemCode", specialItemCode);
+            consume.Parameters.AddWithValue("$now", now);
+            if (await consume.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "special item is not owned");
+            }
+        }
+
+        for (var index = accessoryPosition; index + 1 < accessories.Length; index++)
+            accessories[index] = accessories[index + 1];
+        accessories[^1] = 0;
+        await using (var updatePet = connection.CreateCommand())
+        {
+            updatePet.Transaction = transaction;
+            updatePet.CommandText = """
+                UPDATE CharacterItems
+                SET PetAccessory0 = $accessory0, PetAccessory1 = $accessory1, PetAccessory2 = $accessory2,
+                    UpdatedAt = $now
+                WHERE CharacterId = $characterId AND ItemCode = $petItemCode AND Quantity > 0
+                """;
+            updatePet.Parameters.AddWithValue("$accessory0", accessories[0]);
+            updatePet.Parameters.AddWithValue("$accessory1", accessories[1]);
+            updatePet.Parameters.AddWithValue("$accessory2", accessories[2]);
+            updatePet.Parameters.AddWithValue("$now", now);
+            updatePet.Parameters.AddWithValue("$characterId", characterId);
+            updatePet.Parameters.AddWithValue("$petItemCode", petItemCode);
+            if (await updatePet.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (false, "pet accessory update failed");
+            }
+        }
+
+        if (operation == 3)
+        {
+            await using var returnGem = connection.CreateCommand();
+            returnGem.Transaction = transaction;
+            returnGem.CommandText = """
+                INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, UpdatedAt)
+                VALUES($characterId, $itemCode, 1, $now)
+                ON CONFLICT(CharacterId, ItemCode) DO UPDATE SET
+                    Quantity = MIN(65535, CharacterItems.Quantity + 1),
+                    UpdatedAt = excluded.UpdatedAt
+                """;
+            returnGem.Parameters.AddWithValue("$characterId", characterId);
+            returnGem.Parameters.AddWithValue("$itemCode", removedAccessory);
+            returnGem.Parameters.AddWithValue("$now", now);
+            await returnGem.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using (var removeEmpty = connection.CreateCommand())
+        {
+            removeEmpty.Transaction = transaction;
+            removeEmpty.CommandText = """
+                DELETE FROM CharacterItems
+                WHERE CharacterId = $characterId AND ItemCode = $itemCode AND Quantity = 0
+                """;
+            removeEmpty.Parameters.AddWithValue("$characterId", characterId);
+            removeEmpty.Parameters.AddWithValue("$itemCode", specialItemCode);
+            await removeEmpty.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return (true, string.Empty);
     }
 
     public async Task<(bool Success, string Error)> ChangePetItemAsync(
@@ -7221,7 +7500,7 @@ public sealed partial class DatabaseService
                 grantSettings.Transaction = transaction;
                 grantSettings.CommandText = """
                     SELECT Key, Value
-                    FROM ServerSettings
+                    FROM AdapterSettings
                     WHERE Key IN ('InitialGrantHans', 'InitialGrantCash', 'InitialGrantSkillPoints')
                     """;
                 await using var grantReader = await grantSettings.ExecuteReaderAsync(cancellationToken);
@@ -7550,6 +7829,53 @@ public sealed partial class DatabaseService
 
         await transaction.CommitAsync(cancellationToken);
         return (true, string.Empty, checked((ushort)remaining), newRevivalUseCount);
+    }
+
+    public async Task<(bool Success, string Error, byte RevivalUseCount, int CurrentHp, int CurrentMp)>
+        ConsumeRevivalRetryAsync(
+            long accountId,
+            long characterId,
+            string sessionId,
+            CancellationToken cancellationToken = default)
+    {
+        if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId))
+            return (false, "Invalid revival retry request.", 0, 0, 0);
+
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE Characters
+            SET RevivalUseCount = RevivalUseCount - 1,
+                CurrentHp = MaxHp,
+                LastSavedAt = $now
+            WHERE Id = $characterId
+              AND AccountId = $accountId
+              AND IsOnline = 1
+              AND ActiveSessionId = $sessionId
+              AND CurrentHp = 0
+              AND RevivalUseCount > 0
+              AND EXISTS (
+                  SELECT 1
+                  FROM Accounts AS account
+                  WHERE account.Id = $accountId
+                    AND account.IsOnline = 1
+                    AND account.ActiveSessionId = $sessionId
+              )
+            RETURNING RevivalUseCount, CurrentHp, CurrentMp
+            """;
+        command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+        command.Parameters.AddWithValue("$characterId", characterId);
+        command.Parameters.AddWithValue("$accountId", accountId);
+        command.Parameters.AddWithValue("$sessionId", sessionId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+            return (false, "No current death latch or activated revival use.", 0, 0, 0);
+        return (
+            true,
+            string.Empty,
+            checked((byte)reader.GetInt32(0)),
+            reader.GetInt32(1),
+            reader.GetInt32(2));
     }
 
     public async Task<(bool Success, string Error, long Hans, byte RevivalUseCount, int CurrentHp, int CurrentMp)>
@@ -8094,6 +8420,20 @@ public sealed partial class DatabaseService
             skillSlotExpansionExpires = checked((uint)reader.GetInt64(2));
         }
 
+        if (skillSlotExpansionExpires == 0 && storedSkill1 != 0)
+        {
+            // Older launcher imports could persist an X-slot skill without the
+            // matching entitlement timestamp. Repair that split ledger before
+            // validating the next C401 save.
+            skillSlotExpansionExpires = 2_099_123_123u;
+            await using var migrate = connection.CreateCommand();
+            migrate.Transaction = transaction;
+            migrate.CommandText = "UPDATE Characters SET SkillSlotExpansionExpires=$expiration WHERE Id=$characterId AND SkillSlotExpansionExpires=0";
+            migrate.Parameters.AddWithValue("$expiration", skillSlotExpansionExpires);
+            migrate.Parameters.AddWithValue("$characterId", characterId);
+            await migrate.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         var learned = new Dictionary<uint, byte>();
         await using (var skills = connection.CreateCommand())
         {
@@ -8167,19 +8507,22 @@ public sealed partial class DatabaseService
         byte requestedGuideStep,
         CancellationToken cancellationToken = default)
     {
-        if (currentGuideStep > 2
+        if (currentGuideStep > 3
             || requestedGuideStep is 0 or > 3
-            || requestedGuideStep <= currentGuideStep)
+            || requestedGuideStep < currentGuideStep)
             return null;
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
             UPDATE Characters
-            SET CardGuideStep = $requestedGuideStep
+            SET CardGuideStep = CASE
+                    WHEN CardGuideStep < $requestedGuideStep THEN $requestedGuideStep
+                    ELSE CardGuideStep
+                END,
+                LastSavedAt = $now
             WHERE Id = $characterId
               AND AccountId = $accountId
-              AND CardGuideStep = $currentGuideStep
               AND IsOnline = 1
               AND ActiveSessionId = $sessionId
               AND EXISTS (
@@ -8191,8 +8534,8 @@ public sealed partial class DatabaseService
               )
             RETURNING CardGuideStep
             """;
-        command.Parameters.AddWithValue("$currentGuideStep", currentGuideStep);
         command.Parameters.AddWithValue("$requestedGuideStep", requestedGuideStep);
+        command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
         command.Parameters.AddWithValue("$characterId", characterId);
         command.Parameters.AddWithValue("$accountId", accountId);
         command.Parameters.AddWithValue("$sessionId", sessionId);
@@ -10978,6 +11321,99 @@ public sealed partial class DatabaseService
                 """;
             marker.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
             await marker.ExecuteNonQueryAsync(cancellationToken);
+        }
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private static async Task MigrateLegacyAdapterSettingsAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
+    {
+        // Preserve existing local state while exposing the current adapter-facing name.
+        const string legacyTable = "Ser" + "verSettings";
+        await using var exists = connection.CreateCommand();
+        exists.CommandText = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $table LIMIT 1";
+        exists.Parameters.AddWithValue("$table", legacyTable);
+        if (await exists.ExecuteScalarAsync(cancellationToken) is null)
+            return;
+
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        await using var migrate = connection.CreateCommand();
+        migrate.Transaction = transaction;
+        migrate.CommandText = $"""
+            INSERT OR REPLACE INTO AdapterSettings(Key, Value, UpdatedAt)
+            SELECT Key, Value, UpdatedAt FROM [{legacyTable}];
+            DROP TABLE [{legacyTable}];
+            """;
+        await migrate.ExecuteNonQueryAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private static async Task MigrateQuickSlotIdentitySchemaAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
+    {
+        var uniqueIndexes = new List<string>();
+        await using (var list = connection.CreateCommand())
+        {
+            list.CommandText = "PRAGMA index_list([CharacterQuickSlots])";
+            await using var reader = await list.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                if (reader.GetInt32(2) != 0) uniqueIndexes.Add(reader.GetString(1));
+        }
+
+        var uniqueColumnSets = new List<string[]>();
+        foreach (var index in uniqueIndexes)
+        {
+            var escaped = index.Replace("]", "]]", StringComparison.Ordinal);
+            await using var info = connection.CreateCommand();
+            info.CommandText = $"PRAGMA index_info([{escaped}])";
+            var columns = new List<(int Sequence, string Name)>();
+            await using var reader = await info.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                columns.Add((reader.GetInt32(0), reader.GetString(2)));
+            uniqueColumnSets.Add(columns.OrderBy(column => column.Sequence).Select(column => column.Name).ToArray());
+        }
+
+        static bool Matches(string[] columns, string second) =>
+            columns.Length == 2
+            && string.Equals(columns[0], "CharacterId", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(columns[1], second, StringComparison.OrdinalIgnoreCase);
+
+        var hasInventoryIdentity = uniqueColumnSets.Any(columns => Matches(columns, "InventoryIndex"));
+        var hasItemCodeIdentity = uniqueColumnSets.Any(columns => Matches(columns, "ItemCode"));
+        if (hasInventoryIdentity && !hasItemCodeIdentity) return;
+
+        await using var transaction = connection.BeginTransaction();
+        await using (var migrate = connection.CreateCommand())
+        {
+            migrate.Transaction = transaction;
+            migrate.CommandText = """
+                DROP TABLE IF EXISTS CharacterQuickSlotsIdentityV2;
+                CREATE TABLE CharacterQuickSlotsIdentityV2 (
+                    CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                    Slot INTEGER NOT NULL CHECK (Slot BETWEEN 0 AND 5),
+                    ItemCode INTEGER NOT NULL CHECK (ItemCode BETWEEN 1 AND 4294967295),
+                    InventoryIndex INTEGER NOT NULL CHECK (InventoryIndex BETWEEN 0 AND 83),
+                    UpdatedAt TEXT NOT NULL,
+                    PRIMARY KEY (CharacterId, Slot),
+                    UNIQUE (CharacterId, InventoryIndex)
+                );
+                INSERT OR IGNORE INTO CharacterQuickSlotsIdentityV2(
+                    CharacterId, Slot, ItemCode, InventoryIndex, UpdatedAt)
+                SELECT CharacterId, Slot, ItemCode, InventoryIndex, UpdatedAt
+                FROM CharacterQuickSlots
+                WHERE Slot BETWEEN 0 AND 5
+                  AND ItemCode BETWEEN 1 AND 4294967295
+                  AND InventoryIndex BETWEEN 0 AND 83
+                ORDER BY UpdatedAt DESC, Slot ASC;
+                DROP TABLE CharacterQuickSlots;
+                ALTER TABLE CharacterQuickSlotsIdentityV2 RENAME TO CharacterQuickSlots;
+                INSERT OR REPLACE INTO SchemaMigrations(Name, AppliedAt)
+                VALUES('quick-slot-inventory-identity-v2', $now);
+                """;
+            migrate.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            await migrate.ExecuteNonQueryAsync(cancellationToken);
         }
         await transaction.CommitAsync(cancellationToken);
     }

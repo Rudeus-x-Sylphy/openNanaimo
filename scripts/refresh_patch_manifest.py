@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Refresh exact patch candidates, never approvals. Default: read-only JSON report.
 
 Only existing allowlist entries, the declared native/managed closure, and explicit --add paths
@@ -31,7 +31,7 @@ def rebuild(root: Path, previous: dict, additions: list[str] | None = None) -> t
         closure_domain = (
             path.parts[0] in {'release', 'adapter'} and path.suffix in {'.c', '.h', '.inc'}
             or path.parts[0] in {'managed', 'managed-host'} and path.suffix in {'.cs', '.csproj'}
-            or name == 'scripts/build_merged.ps1'
+            or name == 'scripts/build_complete_adapter.ps1'
         )
         if entry['layer'] == 'source' and closure_domain:
             continue

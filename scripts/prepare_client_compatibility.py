@@ -1,15 +1,17 @@
-"""Derive Nanaimo client compatibility files from a user-owned game tree.
+"""Derive and optionally apply Nanaimo compatibility files from a user-owned game tree.
 
-No input or output is authorized by a fixed SHA-256.  The tool validates only the
-container structures and exact local edit sites needed to perform the requested
-transformation.  By default it writes a separate overlay tree and never modifies
-the source client directory.
+The tool never ships client bytes and never authorizes an input by whole-file hash.
+It validates the PE/container structure plus the exact local sites required by the
+selected repairs. Outputs are first materialized in a separate local overlay;
+``--apply`` then installs only those named files into the same user-owned tree,
+with content-addressed backups and post-apply verification.
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
-import shutil
+import os
 import struct
 from pathlib import Path
 
@@ -17,6 +19,36 @@ ROUTE = [8, 7, 6, 11, 16, 17, 18, 19, 14, 9, 4, 3, 2, 1, 0, 5, 10, 15, 20, 21, 2
 FURNITURE_CALL_VA = 0x0041235F
 FURNITURE_OLD = bytes.fromhex('E99CC31B00')
 FURNITURE_NEW = bytes.fromhex('E97CCC1B00')
+EMOTION_GUARD_VA = 0x00837220
+EMOTION_OLD = bytes.fromhex(
+    '558BEC83EC08894DF88B45F88B882810000081C1C0209002518B4DF8E87546BDFF'
+    '8BC8E8EBABBCFF8945FC8B4DFCE845F5BDFF85C07407B801000000EB0233C08BE55DC3'
+)
+EMOTION_NEW = bytes.fromhex(
+    '5589E55689CE8B862810000085C0742B05C02090025089F1E87946BDFF89C1E8EF'
+    'ABBCFF85C0741389C1E849F5BDFF85C00F95C00FB6C05E5DC39031C05E5DC390909090'
+)
+CLIENT_COMPAT_RESOURCE_STEM = bytes.fromhex('7171667864').decode('ascii')
+ALIAS_SPECS = (
+    (Path('flying/hd0_ep22_dg01_st01.sstg'), Path('flying/hd0_ep22_dg00_st01.sstg'),
+     'dungeon7 SSTG name alias'),
+    (Path('flying/pon/mis_ep22_dg01_m_196.pon'), Path('flying/pon/mis_ep22_dg01_m_196_02.pon'),
+     'same-family PON fallback'),
+    (Path('flying/pon/mis_ep02_hd_bbm_08_00.pon'), Path(f'flying/pon/{CLIENT_COMPAT_RESOURCE_STEM}_cmp_005_0024.pon'),
+     'ep02 compound projectile alias 0'),
+    (Path('flying/pon/mis_ep02_hd_bbm_08_01.pon'), Path(f'flying/pon/{CLIENT_COMPAT_RESOURCE_STEM}_cmp_005_0025.pon'),
+     'ep02 compound projectile alias 1'),
+    (Path('flying/pon/mis_ep02_hd_bbm_08_02.pon'), Path(f'flying/pon/{CLIENT_COMPAT_RESOURCE_STEM}_cmp_005_0026.pon'),
+     'ep02 compound projectile alias 2'),
+    (Path('flying/pon/mis_ep02_hd_bbm_08_03.pon'), Path(f'flying/pon/{CLIENT_COMPAT_RESOURCE_STEM}_cmp_005_0027.pon'),
+     'ep02 compound projectile alias 3'),
+    (Path('flying/pon/mis_ep02_hd_bbm_08_04.pon'), Path(f'flying/pon/{CLIENT_COMPAT_RESOURCE_STEM}_cmp_005_0028.pon'),
+     'ep02 compound projectile alias 4'),
+    (Path('flying/pon/mis_ep02_hd_bbm_08_05.pon'), Path(f'flying/pon/{CLIENT_COMPAT_RESOURCE_STEM}_cmp_005_0029.pon'),
+     'ep02 compound projectile alias 5'),
+    (Path('flying/pon/mis_ep09_bbm_02.pon'), Path(f'flying/pon/{CLIENT_COMPAT_RESOURCE_STEM}_mov_009_0000.pon'),
+     'crow projectile alias'),
+)
 
 
 class CompatibilityError(ValueError):
@@ -26,6 +58,10 @@ class CompatibilityError(ValueError):
 def require(value, message: str) -> None:
     if not value:
         raise CompatibilityError(message)
+
+
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest().upper()
 
 
 class VillagePack:
@@ -92,7 +128,7 @@ def _strips(side: str):
 
 
 def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
-    """Build the final dungeon-7/P03 road layout directly from a source pack."""
+    """Build the validated P03 road layout directly from a structurally compatible pack."""
     pack = VillagePack(data)
     output = bytearray(data)
     edits = {}
@@ -106,7 +142,6 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
         edits[offset] = {'page': page, 'x': x, 'y': y, 'field': field,
                          'before': before, 'after': value, 'reason': reason}
 
-    # Connect the shipped sixth area (page17) to the seventh area (page18).
     for x in range(38, 50):
         for y in range(14, 21):
             put(17, x, y, 7, 0, 'open the page17 east corridor')
@@ -114,7 +149,6 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
         for x in (48, 49):
             put(17, x, y, 10, 18, 'page17 east exit to page18')
         put(17, 47, y, 11, 18, 'page17 arrival marker for source page18')
-    # Preserve/create the native seventh entrance and its return marker.
     for x in range(22, 28):
         for y in (3, 4):
             put(18, x, y, 13, 166, 'dungeon7 action166 region')
@@ -147,8 +181,12 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
     result = bytes(output)
     return result, {
         'operation': 'derive_dungeon7_village_roads',
+        'status': 'already_patched' if not edits else 'patched',
+        'changed': bool(edits),
         'input_size': len(data),
         'output_size': len(result),
+        'input_sha256': sha256(data),
+        'output_sha256': sha256(result),
         'changed_words': len(edits),
         'changed_pages': sorted({row['page'] for row in edits.values()}),
         'hash_gate_used': False,
@@ -177,85 +215,265 @@ def _va_offset(data: bytes, va: int, size: int) -> int:
     for start, _, raw_offset, raw_size in _pe_sections(data):
         if start <= va and va + size <= start + raw_size:
             return raw_offset + va - start
-    raise CompatibilityError(f'VA {va:#x} is not backed by file bytes')
+    raise CompatibilityError(f'VA 0x{va:08X} is not backed by PE file data')
+
+
+def _patch_site(data: bytes, va: int, old: bytes, new: bytes, operation: str, mismatch: str) -> tuple[bytes, dict]:
+    require(len(old) == len(new), f'{operation} patch span mismatch')
+    offset = _va_offset(data, va, len(old))
+    current = data[offset:offset + len(old)]
+    if current == new:
+        return data, {'operation': operation, 'changed': False, 'status': 'already_patched',
+                      'file_offset': offset, 'va': va, 'span': len(old), 'hash_gate_used': False}
+    require(current == old, mismatch)
+    output = bytearray(data)
+    output[offset:offset + len(new)] = new
+    return bytes(output), {'operation': operation, 'changed': True, 'status': 'patched',
+                           'file_offset': offset, 'va': va, 'span': len(old), 'hash_gate_used': False}
 
 
 def patch_furniture_getter(data: bytes) -> tuple[bytes, dict]:
-    offset = _va_offset(data, FURNITURE_CALL_VA, len(FURNITURE_OLD))
-    current = data[offset:offset + len(FURNITURE_OLD)]
-    if current == FURNITURE_NEW:
-        return data, {'operation': 'patch_furniture_index_getter', 'changed': False,
-                      'status': 'already_patched', 'hash_gate_used': False}
-    require(current == FURNITURE_OLD,
-            'the furniture call site differs; this unpacking needs a separately reviewed VA mapping')
-    output = bytearray(data)
-    output[offset:offset + len(FURNITURE_NEW)] = FURNITURE_NEW
-    return bytes(output), {'operation': 'patch_furniture_index_getter', 'changed': True,
-                           'file_offset': offset, 'va': FURNITURE_CALL_VA,
-                           'hash_gate_used': False}
+    return _patch_site(data, FURNITURE_CALL_VA, FURNITURE_OLD, FURNITURE_NEW,
+                       'patch_furniture_index_getter',
+                       'the furniture call site differs; this unpacking needs a separately reviewed VA mapping')
 
 
-def _write(path: Path, data: bytes, overwrite: bool) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists() and not overwrite:
-        raise CompatibilityError(f'output already exists (use --overwrite): {path}')
-    path.write_bytes(data)
+def patch_emotion_guard(data: bytes) -> tuple[bytes, dict]:
+    return _patch_site(data, EMOTION_GUARD_VA, EMOTION_OLD, EMOTION_NEW,
+                       'patch_emotion_null_guard',
+                       'the emotion guard site differs; this unpacking needs a separately reviewed VA mapping')
 
 
-def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: bool,
-            overwrite: bool = False) -> dict:
-    source_root = source_root.resolve()
-    output_root = output_root.resolve()
-    require(source_root.is_dir(), 'source client root does not exist')
-    require(output_root != source_root, 'output root must be separate from the source client root')
-    report = {'source_root': str(source_root), 'output_root': str(output_root),
-              'hash_gate_used': False, 'operations': []}
-    if furniture:
+def _safe_relative(path: Path) -> Path:
+    require(not path.is_absolute() and '..' not in path.parts and path.parts,
+            f'unsafe compatibility relative path: {path}')
+    return path
+
+
+def _collect_outputs(source_root: Path, furniture: bool, emotion: bool, dungeon7: bool):
+    files: dict[Path, bytes] = {}
+    operations = []
+    if furniture or emotion:
         source = source_root / 'game.exe'
         require(source.is_file(), 'source game.exe is missing')
-        data, row = patch_furniture_getter(source.read_bytes())
-        _write(output_root / 'game.exe', data, overwrite)
-        report['operations'].append(row)
+        original = source.read_bytes()
+        data = original
+        if furniture:
+            data, row = patch_furniture_getter(data)
+            operations.append(row)
+        if emotion:
+            data, row = patch_emotion_guard(data)
+            operations.append(row)
+        files[Path('game.exe')] = data
+        operations.append({'operation': 'derive_client_crash_fixes', 'source': 'game.exe',
+                           'input_sha256': sha256(original), 'output_sha256': sha256(data),
+                           'changed': data != original, 'hash_gate_used': False})
     if dungeon7:
         village_rel = Path('Village_map_image/Village_map_image.pack')
         village = source_root / village_rel
         require(village.is_file(), f'source file is missing: {village_rel.as_posix()}')
         data, row = patch_village_pack(village.read_bytes())
-        _write(output_root / village_rel, data, overwrite)
-        report['operations'].append(row)
-        aliases = [
-            ('flying/hd0_ep22_dg01_st01.sstg', 'flying/hd0_ep22_dg00_st01.sstg', 'dungeon7 SSTG name alias'),
-            ('flying/pon/mis_ep22_dg01_m_196.pon', 'flying/pon/mis_ep22_dg01_m_196_02.pon', 'same-family PON fallback'),
-        ]
-        for source_rel, target_rel, role in aliases:
+        files[village_rel] = data
+        operations.append(row)
+        for source_rel, target_rel, role in ALIAS_SPECS:
             source = source_root / source_rel
-            require(source.is_file(), f'source file is missing: {source_rel}')
-            target = output_root / target_rel
-            _write(target, source.read_bytes(), overwrite)
-            report['operations'].append({'operation': 'copy_alias', 'source': source_rel,
-                                         'target': target_rel, 'role': role, 'hash_gate_used': False})
+            require(source.is_file(), f'source file is missing: {source_rel.as_posix()}')
+            alias_data = source.read_bytes()
+            files[target_rel] = alias_data
+            operations.append({'operation': 'copy_alias', 'source': source_rel.as_posix(),
+                               'target': target_rel.as_posix(), 'role': role,
+                               'source_sha256': sha256(alias_data), 'output_sha256': sha256(alias_data),
+                               'hash_gate_used': False})
+    return files, operations
+
+
+def _atomic_write(path: Path, data: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + '.nanaimo-compat.tmp')
+    if temporary.exists():
+        temporary.unlink()
+    try:
+        temporary.write_bytes(data)
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _write_overlay(output_root: Path, files: dict[Path, bytes], overwrite: bool):
+    rows = []
+    for relative, data in files.items():
+        relative = _safe_relative(relative)
+        target = output_root / relative
+        if target.exists():
+            current = target.read_bytes()
+            if current == data:
+                rows.append({'path': relative.as_posix(), 'status': 'unchanged', 'sha256': sha256(data)})
+                continue
+            require(overwrite, f'output already exists with different bytes (use --overwrite): {target}')
+        _atomic_write(target, data)
+        rows.append({'path': relative.as_posix(), 'status': 'written', 'sha256': sha256(data)})
+    return rows
+
+
+def _apply_outputs(source_root: Path, output_root: Path, files: dict[Path, bytes]):
+    originals: dict[Path, bytes | None] = {}
+    rows = []
+    backup_root = output_root / 'backups'
+    for relative, data in files.items():
+        relative = _safe_relative(relative)
+        target = source_root / relative
+        current = target.read_bytes() if target.exists() else None
+        originals[relative] = current
+        if current == data:
+            rows.append({'path': relative.as_posix(), 'status': 'unchanged', 'sha256': sha256(data)})
+            continue
+        backup = None
+        if current is not None:
+            backup = backup_root / sha256(current) / relative
+            if not backup.exists():
+                _atomic_write(backup, current)
+        rows.append({'path': relative.as_posix(), 'status': 'pending',
+                     'before_sha256': sha256(current) if current is not None else None,
+                     'after_sha256': sha256(data), 'backup': str(backup) if backup is not None else None})
+    applied = []
+    try:
+        for row in rows:
+            if row['status'] != 'pending':
+                continue
+            relative = Path(row['path'])
+            _atomic_write(source_root / relative, files[relative])
+            row['status'] = 'applied'
+            applied.append(relative)
+    except Exception:
+        for relative in reversed(applied):
+            original = originals[relative]
+            target = source_root / relative
+            if original is None:
+                if target.exists():
+                    target.unlink()
+            else:
+                _atomic_write(target, original)
+        raise
+    return rows
+
+
+def _check(name: str, ok: bool, detail: str):
+    return {'name': name, 'ok': bool(ok), 'detail': detail}
+
+
+def _verify_client_bytes(data: bytes, furniture: bool, emotion: bool):
+    checks = []
+    if furniture:
+        offset = _va_offset(data, FURNITURE_CALL_VA, len(FURNITURE_NEW))
+        actual = data[offset:offset + len(FURNITURE_NEW)]
+        checks.append(_check('furniture_index_getter', actual == FURNITURE_NEW,
+                             f'VA=0x{FURNITURE_CALL_VA:08X} actual={actual.hex().upper()}'))
+    if emotion:
+        offset = _va_offset(data, EMOTION_GUARD_VA, len(EMOTION_NEW))
+        actual = data[offset:offset + len(EMOTION_NEW)]
+        checks.append(_check('emotion_null_guard', actual == EMOTION_NEW,
+                             f'VA=0x{EMOTION_GUARD_VA:08X} actual_sha256={sha256(actual)}'))
+    return checks
+
+
+def _verify_village_bytes(data: bytes):
+    pack = VillagePack(data)
+    checks = []
+    page17_ok = all(pack.field(17, x, y, 7) == 0 for x in range(38, 50) for y in range(14, 21))
+    page17_ok = page17_ok and all(pack.field(17, x, y, 10) == 18 for x in (48, 49) for y in range(14, 21))
+    checks.append(_check('page17_to_page18', page17_ok, 'east corridor and destination page18'))
+    action_ok = all(pack.field(18, x, y, 13) == 166 for x in range(22, 28) for y in (3, 4))
+    checks.append(_check('dungeon7_action166', action_ok, 'page18 action region'))
+    checks.append(_check('dungeon7_return_marker169', pack.field(18, 25, 6, 14) == 169,
+                         f'actual={pack.field(18, 25, 6, 14)}'))
+    route_ok = True
+    for source, target in zip(ROUTE[6:-1], ROUTE[7:]):
+        for page, other in ((source, target), (target, source)):
+            exits, markers = _strips(_side(page, other))
+            route_ok = route_ok and all(pack.field(page, x, y, 7) == 0 and
+                                        pack.field(page, x, y, 10) == other for x, y in exits)
+            route_ok = route_ok and all(pack.field(page, x, y, 7) == 0 and
+                                        pack.field(page, x, y, 11) == other for x, y in markers)
+    checks.append(_check('p03_route_chain', route_ok, '16 bidirectional links after page17/page18'))
+    return checks
+
+
+def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
+                 furniture: bool, emotion: bool, dungeon7: bool):
+    def read(relative: Path) -> bytes:
+        if files is not None and relative in files:
+            return files[relative]
+        path = source_root / relative
+        require(path.is_file(), f'verification file is missing: {relative.as_posix()}')
+        return path.read_bytes()
+
+    checks = []
+    if furniture or emotion:
+        checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture, emotion))
+    if dungeon7:
+        checks.extend(_verify_village_bytes(read(Path('Village_map_image/Village_map_image.pack'))))
+        for source_rel, target_rel, role in ALIAS_SPECS:
+            source_data = read(source_rel)
+            target_data = read(target_rel)
+            checks.append(_check('alias_' + target_rel.name, source_data == target_data,
+                                 f'{role}; source={sha256(source_data)} target={sha256(target_data)}'))
+    return {'all_pass': all(row['ok'] for row in checks), 'checks': checks}
+
+
+def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: bool,
+            overwrite: bool = False, emotion: bool = False, dry_run: bool = False,
+            apply: bool = False) -> dict:
+    source_root = source_root.resolve()
+    output_root = output_root.resolve()
+    require(source_root.is_dir(), 'source client root does not exist')
+    require(output_root != source_root, 'output root must be separate from the source client root')
+    files, operations = _collect_outputs(source_root, furniture, emotion, dungeon7)
+    require(files, 'no compatibility operation selected')
+    report = {'schema_version': 2, 'source_root': str(source_root), 'output_root': str(output_root),
+              'hash_gate_used': False, 'dry_run': bool(dry_run), 'apply_requested': bool(apply),
+              'operations': operations, 'planned_files': [relative.as_posix() for relative in files]}
+    report['planned_verification'] = _verify_data(source_root, files, furniture, emotion, dungeon7)
+    require(report['planned_verification']['all_pass'], 'derived compatibility verification failed')
+    if dry_run:
+        report['overlay_writes'] = []
+        report['apply_results'] = []
+        report['verification'] = report['planned_verification']
+        return report
+
     output_root.mkdir(parents=True, exist_ok=True)
-    (output_root / 'nanaimo_compatibility_report.json').write_text(
-        json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
+    report['overlay_writes'] = _write_overlay(output_root, files, overwrite)
+    report['apply_results'] = _apply_outputs(source_root, output_root, files) if apply else []
+    report['verification'] = _verify_data(source_root, None if apply else files, furniture, emotion, dungeon7)
+    require(report['verification']['all_pass'], 'post-write compatibility verification failed')
+    report_path = output_root / 'nanaimo_compatibility_report.json'
+    _atomic_write(report_path, (json.dumps(report, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
+    report['report_path'] = str(report_path)
     return report
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source-root', type=Path, required=True, help='unmodified/user-owned Nanaimo client root')
-    parser.add_argument('--output-root', type=Path, required=True, help='separate overlay output directory')
-    parser.add_argument('--furniture', action='store_true', help='derive the furniture Index-getter game.exe patch')
-    parser.add_argument('--dungeon7', action='store_true', help='derive the village roads and two resource aliases')
-    parser.add_argument('--all', action='store_true', help='perform both derivations')
-    parser.add_argument('--overwrite', action='store_true', help='replace only the named output files')
+    parser.add_argument('--source-root', type=Path, required=True, help='user-owned Nanaimo client root')
+    parser.add_argument('--output-root', type=Path, required=True, help='separate local overlay/output directory')
+    parser.add_argument('--furniture', action='store_true', help='derive the furniture Index-getter repair')
+    parser.add_argument('--emotion', action='store_true', help='derive the inherited emotion null guard')
+    parser.add_argument('--dungeon7', action='store_true', help='derive P03 roads and SSTG/PON aliases')
+    parser.add_argument('--all', action='store_true', help='derive furniture, emotion, and dungeon7 compatibility')
+    parser.add_argument('--overwrite', action='store_true', help='replace differing named files in the overlay')
+    parser.add_argument('--dry-run', action='store_true', help='validate and report without writing any file')
+    parser.add_argument('--apply', action='store_true',
+                        help='atomically apply named outputs to the source tree with local backups')
     args = parser.parse_args(argv)
     furniture = args.furniture or args.all
+    emotion = args.emotion or args.all
     dungeon7 = args.dungeon7 or args.all
-    if not furniture and not dungeon7:
-        parser.error('select --furniture, --dungeon7 or --all')
+    if not furniture and not emotion and not dungeon7:
+        parser.error('select --furniture, --emotion, --dungeon7 or --all')
     try:
-        report = prepare(args.source_root, args.output_root, furniture, dungeon7, args.overwrite)
-        print('CLIENT_COMPATIBILITY_DERIVED', json.dumps(report, ensure_ascii=False))
+        report = prepare(args.source_root, args.output_root, furniture, dungeon7,
+                         args.overwrite, emotion, args.dry_run, args.apply)
+        print('CLIENT_COMPATIBILITY_READY', json.dumps(report, ensure_ascii=False))
         return 0
     except (CompatibilityError, OSError, struct.error) as exc:
         print('CLIENT_COMPATIBILITY_REFUSED:', exc)

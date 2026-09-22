@@ -62,7 +62,11 @@ p->hp_max=g_profile_hp_max;p->hp_current=g_profile_hp_current;p->mp_max=g_profil
 p->attack_modifier=g_profile_attack_modifier;p->defense_flat=g_profile_defense_flat;
 #endif
 p->coin=g_profile_coin_hans;p->nana=g_profile_nana_cash;}
-static void multi_apply_profile(const struct multiplayer_profile*p){unsigned i;for(i=0;i<16u;i++)g_stable_name[i]=p->name[i];g_stable_name_len=p->name_len;g_stable_level=p->level;g_stable_gender=p->gender;g_stable_pet=p->pet;g_stable_pet_age_a=p->pet_age_a;g_stable_pet_age_b=p->pet_age_b;g_initial_attack_mode=p->attack_mode;for(i=0;i<5u;i++)g_stable_equip[i]=p->equip[i];g_stable_effect=p->effect;
+static void multi_apply_profile(const struct multiplayer_profile*p){unsigned i;for(i=0;i<16u;i++)g_stable_name[i]=p->name[i];g_stable_name_len=p->name_len;g_stable_level=p->level;g_stable_gender=p->gender;g_stable_pet=p->pet;g_stable_pet_age_a=p->pet_age_a;g_stable_pet_age_b=p->pet_age_b;g_initial_attack_mode=p->attack_mode;
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+g_managed_pet_combat_level=p->attack_mode+1u;if(g_managed_pet_combat_level<1u)g_managed_pet_combat_level=1u;if(g_managed_pet_combat_level>3u)g_managed_pet_combat_level=3u;
+#endif
+for(i=0;i<5u;i++)g_stable_equip[i]=p->equip[i];g_stable_effect=p->effect;
 #if TEAMPLAY_FEATURE_SKIP_TUTORIAL
 g_skip_tutorial=p->skip_tutorial;
 #endif

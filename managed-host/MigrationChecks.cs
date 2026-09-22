@@ -15,6 +15,9 @@ internal static class MigrationChecks
         await ChannelReentryChecks.RunAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var token = timeout.Token;
+        InventoryQuickbarChecks.Run();
+        ApartmentProtocolChecks.Run();
+        await InventoryQuickbarChecks.RunStorageAsync(database, token);
         var character = await database.ImportLocalProfileAsync(await File.ReadAllTextAsync(profile, token), token);
         FriendProtocol.VerifyStaticContract();
         Assert(DungeonCombatCatalog.Count > 0 && DungeonCombatCatalog.RuntimeCount > 0, "Combat catalog resources loaded");
@@ -59,6 +62,10 @@ internal static class MigrationChecks
             await RequestAsync(world, 0xC437, [], 0xC438, token);
             await RequestAsync(world, 0xC3D4, [], 0xC3D5, token);
             await RequestAsync(world, 0xC417, [], 0xC418, token);
+            var apartmentSnapshot = await RequestAsync(world, 0xC392, new byte[4], 0xC393, token);
+            Assert(apartmentSnapshot.Length == 1012, "C393 uses a fixed 1012-byte payload / 1020-byte frame");
+            Assert(BinaryPrimitives.ReadUInt16LittleEndian(apartmentSnapshot.AsSpan(2, 2)) == 2000,
+                "C393 marks a complete apartment snapshot with final-info 2000");
             await RequestAsync(world, 0xCF09, new byte[56], 0xCF0A, token);
             await RequestAsync(world, 0xC587, [], 0xC588, token);
             await RequestAsync(world, 0xCF1D, [], 0xCF1E, token);
@@ -196,7 +203,7 @@ internal static class MigrationChecks
         }
         var launchedCharacter = (await db.GetCharacterAsync(launched, token))!;
         Assert(!launchedCharacter.TutorialCompleted && launchedCharacter.Hans == 9999999 && launchedCharacter.Cash == 9999999,
-            "New character retains tutorial and donor initial currencies");
+            "New character retains tutorial and baseline initial currencies");
         using (var world = new TcpClient())
         {
             await world.ConnectAsync(IPAddress.Loopback, worldPort, token);

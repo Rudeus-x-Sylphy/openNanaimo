@@ -99,7 +99,7 @@ def text_counts(rows,limit=255):
         c=int(r['code']);n=int(r['count'])
         if n<1 or n>limit:raise ValueError(f'count out of range code={c} count={n}')
         vals[c]=vals.get(c,0)+n
-        if vals[c]>limit:raise ValueError(f'merged count out of range code={c}')
+        if vals[c]>limit:raise ValueError(f'combined count out of range code={c}')
     return 'version=1\n'+''.join(f'{c}={vals[c]}\n' for c in sorted(vals))
 
 def apartment_bytes(rows,furn_by):

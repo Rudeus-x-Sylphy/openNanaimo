@@ -10,5 +10,6 @@
     <InternalsVisibleTo Include="Nanaimo.Adapter" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.16" />
     <Content Include="资源/数据/**/*" Condition="Exists('资源/数据')" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="..\release\components\cards\synthesis_recipe_data.inc" LogicalName="OpenNanaimo.Adapter.CardSynthesisRecipes.inc" />
   </ItemGroup>
 </Project>

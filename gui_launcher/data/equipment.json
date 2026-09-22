@@ -3189,7 +3189,7 @@
     "level_or_days": 15,
     "price_or_grade": 28,
     "slot_code": 4,
-    "description": "想成为飞行岛的王者",
+    "description": "想成为Nanaimo的王者",
     "effect_description": "防御力 +3",
     "restriction": "女性专用道具/使用期限：15天",
     "date": "19880507"
@@ -3204,7 +3204,7 @@
     "level_or_days": 30,
     "price_or_grade": 56,
     "slot_code": 4,
-    "description": "想成为飞行岛的王者",
+    "description": "想成为Nanaimo的王者",
     "effect_description": "防御力 +3",
     "restriction": "女性专用道具/使用期限：30天",
     "date": "19880506"
@@ -3219,7 +3219,7 @@
     "level_or_days": 90,
     "price_or_grade": 110,
     "slot_code": 4,
-    "description": "想成为飞行岛的王者",
+    "description": "想成为Nanaimo的王者",
     "effect_description": "防御力 +3",
     "restriction": "女性专用道具/使用期限：90天",
     "date": "19880505"
@@ -3234,7 +3234,7 @@
     "level_or_days": 15,
     "price_or_grade": 20,
     "slot_code": 4,
-    "description": "想成为飞行岛的王者",
+    "description": "想成为Nanaimo的王者",
     "effect_description": "防御力 +3",
     "restriction": "男性专用道具/使用期限：15天",
     "date": "19880507"
@@ -3249,7 +3249,7 @@
     "level_or_days": 30,
     "price_or_grade": 40,
     "slot_code": 4,
-    "description": "想成为飞行岛的王者",
+    "description": "想成为Nanaimo的王者",
     "effect_description": "防御力 +3",
     "restriction": "男性专用道具/使用期限：30天",
     "date": "19880506"
@@ -3264,7 +3264,7 @@
     "level_or_days": 90,
     "price_or_grade": 70,
     "slot_code": 4,
-    "description": "想成为飞行岛的王者",
+    "description": "想成为Nanaimo的王者",
     "effect_description": "防御力 +3",
     "restriction": "男性专用道具/使用期限：90天",
     "date": "19880505"
@@ -25734,7 +25734,7 @@
     "level_or_days": 15,
     "price_or_grade": 0,
     "slot_code": 8,
-    "description": "我是飞行岛百万富人",
+    "description": "我是Nanaimo百万富人",
     "effect_description": "卡片合成率提高+3% ",
     "restriction": "女性专用道具/使用期限：15天",
     "date": "19980418"
@@ -25749,7 +25749,7 @@
     "level_or_days": 30,
     "price_or_grade": 0,
     "slot_code": 8,
-    "description": "我是飞行岛百万富人",
+    "description": "我是Nanaimo百万富人",
     "effect_description": "卡片合成率提高+3% ",
     "restriction": "女性专用道具/使用期限：30天",
     "date": "19980417"
@@ -25764,7 +25764,7 @@
     "level_or_days": 90,
     "price_or_grade": 0,
     "slot_code": 8,
-    "description": "我是飞行岛百万富人",
+    "description": "我是Nanaimo百万富人",
     "effect_description": "卡片合成率提高+3% ",
     "restriction": "女性专用道具/使用期限：90天",
     "date": "19980416"
@@ -25779,7 +25779,7 @@
     "level_or_days": 15,
     "price_or_grade": 0,
     "slot_code": 8,
-    "description": "我是飞行岛百万富人",
+    "description": "我是Nanaimo百万富人",
     "effect_description": "卡片合成率提高+3% ",
     "restriction": "男性专用道具/使用期限：15天",
     "date": "19980418"
@@ -25794,7 +25794,7 @@
     "level_or_days": 30,
     "price_or_grade": 0,
     "slot_code": 8,
-    "description": "我是飞行岛百万富人",
+    "description": "我是Nanaimo百万富人",
     "effect_description": "卡片合成率提高+3% ",
     "restriction": "男性专用道具/使用期限：30天",
     "date": "19980417"
@@ -25809,7 +25809,7 @@
     "level_or_days": 90,
     "price_or_grade": 0,
     "slot_code": 8,
-    "description": "我是飞行岛百万富人",
+    "description": "我是Nanaimo百万富人",
     "effect_description": "卡片合成率提高+3% ",
     "restriction": "男性专用道具/使用期限：90天",
     "date": "19980416"
@@ -26274,7 +26274,7 @@
     "level_or_days": 15,
     "price_or_grade": 0,
     "slot_code": 8,
-    "description": "庆祝QQ飞行岛诞生",
+    "description": "庆祝Nanaimo诞生",
     "effect_description": "卡片合成率提高+3% ",
     "restriction": "女性专用道具/使用期限：15天",
     "date": "19980510"
@@ -26289,7 +26289,7 @@
     "level_or_days": 15,
     "price_or_grade": 0,
     "slot_code": 8,
-    "description": "庆祝QQ飞行岛诞生",
+    "description": "庆祝Nanaimo诞生",
     "effect_description": "卡片合成率提高+3% ",
     "restriction": "男性专用道具/使用期限：15天",
     "date": "19980510"

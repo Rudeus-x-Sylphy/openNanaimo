@@ -93,7 +93,8 @@ def main() -> None:
             'inspection_tool': 'scripts/verify_client_baseline.py',
         },
         'derived_client_assets': {
-            'validation': 'not-checked',
+            'validation': 'local-derivation-and-post-apply-verification',
+            'size_or_hash_gate': False,
             'derivation_tool': 'scripts/prepare_client_compatibility.py',
             'recipe_manifest': 'manifest/patch_runtime_requirements.json',
         },

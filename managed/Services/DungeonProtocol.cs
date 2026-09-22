@@ -6,7 +6,7 @@ using OpenNanaimo.Adapter.Models;
 
 namespace OpenNanaimo.Adapter.Services;
 
-// Packet layouts ported from server-csharp's DungeonPackets and EntityPackets.
+// Packet layouts for the current Nanaimo DungeonPackets and EntityPackets contract.
 internal static class DungeonProtocol
 {
     public readonly record struct GameSkillRecord(
@@ -129,6 +129,8 @@ internal static class DungeonProtocol
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(0x7A - 8, 2),
             expandedQuickSlotsActive ? (ushort)1 : (ushort)0);
+        // CF71 frame+0xA8 restores the local character revival-credit counter.
+        payload[0xA8 - 8] = character.RevivalUseCount;
         // The retail CF71 consumer passes frame+0xA9 directly to the same
         // expansion switch used by C3E8 before installing the Z/X records.
         var expandedSkillSlotActive = SkillSlotExpansionTime.TryDecode(
@@ -210,7 +212,7 @@ internal static class DungeonProtocol
         payload[0] = 1;
         // Retail CFEC consumes two interleaved signed-word tables at body
         // +0x02/+0x04. Its offline fallback fills both with rand()%100 before
-        // initializing the dungeon runtime, so the server must not leave them
+        // initializing the dungeon runtime, so the adapter must not leave them
         // as an all-zero table in the network path.
         for (var index = 0; index < 150; index++)
         {

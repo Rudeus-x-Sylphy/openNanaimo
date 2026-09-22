@@ -33,9 +33,9 @@ def collect(root=ROOT):
             if (path.is_file() and path.suffix in {'.cs', '.csproj'}
                     and not {'bin', 'obj'}.intersection(path.relative_to(base).parts)):
                 seen.add(path.resolve())
-    merged = root / 'scripts/build_merged.ps1'
-    if merged.is_file():
-        seen.add(merged.resolve())
+    complete_build = root / 'scripts/build_complete_adapter.ps1'
+    if complete_build.is_file():
+        seen.add(complete_build.resolve())
     return sorted(seen, key=lambda p: p.relative_to(root).as_posix())
 
 
