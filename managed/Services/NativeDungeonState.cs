@@ -9,6 +9,9 @@ public sealed class NativeDungeonState
     public const int Size = 5120;
     public const int PetLevelOffset = 152;
     public const int PetExperienceOffset = 156;
+    public const int AttackModifierOffset = 80;
+    public const int DefenseFlatOffset = 84;
+    public const int PetCombatLevelOffset = 5116;
     public byte[] Bytes { get; }
     public NativeDungeonState(byte[] bytes)
     {
@@ -42,6 +45,8 @@ public sealed class NativeDungeonState
                 ? 15_000_000u + (uint)c.PetVariant
                 : 0u;
         s.Put(60, c.RevivalUseCount); s.Put(64, c.QuickSlotExpansionExpires); s.Put(68, equippedPetItemCode);
+        s.Put(AttackModifierOffset, c.AttackModifier); s.Put(DefenseFlatOffset, c.DefenseFlat);
+        s.Put(PetCombatLevelOffset, (uint)Math.Clamp(c.InitialAttackMode + 1, 1, 3));
         var pet = c.Items.FirstOrDefault(i => i.ItemCode == equippedPetItemCode && i.Quantity > 0);
         var petState = PetProgression.GetState(c, equippedPetItemCode);
         s.Put(72, petState.CurrentStage); s.Put(76, petState.MaximumStage);

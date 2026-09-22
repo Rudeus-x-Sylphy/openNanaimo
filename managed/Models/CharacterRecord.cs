@@ -26,6 +26,9 @@ public sealed class CharacterRecord
     public uint InteriorInventoryExpansionExpires { get; set; }
     public uint QuickSlotExpansionExpires { get; set; }
     public uint FreeMagicExpansionExpires { get; set; }
+    public uint AttackModifier { get; set; }
+    public ushort DefenseFlat { get; set; }
+    public byte InitialAttackMode { get; set; }
     public List<CharacterQuickSlotRecord> QuickSlots { get; set; } = [];
     public ushort SkillPoints { get; set; }
     public uint SelectedSkill0 { get; set; }

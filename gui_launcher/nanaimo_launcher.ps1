@@ -31,8 +31,6 @@ if(-not(Test-Path -LiteralPath $InventoryAdminGui)){throw 'Inventory administrat
 $LaunchModeDir=Join-Path $Root 'gui_launcher\launch_modes'
 $NetworkOptionTemplate=Join-Path $LaunchModeDir 'gamestartoption.network.ini'
 $ActiveGameOption=Join-Path $Root 'StateOption\gamestartoption.ini'
-$ExpectedClientHash='6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90'
-$AcceptedClientHashes=@($ExpectedClientHash,'FEF34EE03DA60BD86975B453D013AE8593AF086B0EA79413466C43B58EC19DDC')
 $ExpectedAdapterHash=''
 $ExpectedAdapterSize=0
 $ExpectedBridgeHash=''
@@ -43,38 +41,6 @@ if(Test-Path -LiteralPath $AdapterManifest){
     $bridgeRow=@($adapterContract.files|Where-Object name -eq 'nanaimo_gameplay_bridge.exe')[0]
     if($adapterRow){$ExpectedAdapterHash=[string]$adapterRow.sha256;$ExpectedAdapterSize=[long]$adapterRow.size}
     if($bridgeRow){$ExpectedBridgeHash=[string]$bridgeRow.sha256;$ExpectedBridgeSize=[long]$bridgeRow.size}
-}
-$ExpectedClientSize=14198272
-$VillagePack=Join-Path $Root 'Village_map_image\Village_map_image.pack'
-$ExpectedVillagePackHash='69EF0FA688DBCB4EE2A36151F76F78A5A3D4F051253ABE81EA824F37749FCD56'
-$ExpectedVillagePackSize=17011373
-function Test-VillagePack {
-    if(-not(Test-Path -LiteralPath $VillagePack)){throw 'village pack missing.'}
-    if((Get-Item -LiteralPath $VillagePack).Length-ne$ExpectedVillagePackSize){throw 'village pack size mismatch.'}
-    if((Get-FileHash -LiteralPath $VillagePack -Algorithm SHA256).Hash-ne$ExpectedVillagePackHash){throw 'village pack hash mismatch; mixed release refused.'}
-}
-$SuperBossStage=Join-Path $Root 'flying\hd0_ep22_dg00_st01.sstg'
-$SuperBossOriginal=Join-Path $Root 'flying\hd0_ep22_dg01_st01.sstg'
-$ExpectedSuperBossStageHash='899B1820EC0F49E032589AEAAA582086D5471C4BB1982EFB104E96FEC74D6D27'
-function Test-SuperBossStage {
-    foreach($p in @($SuperBossStage,$SuperBossOriginal)){
-        if(-not(Test-Path -LiteralPath $p)){throw 'Super-Boss stage resource missing; mixed release refused.'}
-        if((Get-Item -LiteralPath $p).Length-ne103124 -or (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash-ne$ExpectedSuperBossStageHash){throw 'Super-Boss stage hash mismatch; mixed release refused.'}
-    }
-}
-function Test-LocalResourcePatches {
-    $dir=Join-Path $Root 'gui_launcher\resource_patches'
-    if(-not(Test-Path -LiteralPath $dir)){throw 'Local resource repair registry missing; release validation required.'}
-    $base=[IO.Path]::GetFullPath($Root).TrimEnd('\')+'\'
-    foreach($f in Get-ChildItem -LiteralPath $dir -Filter '*.json' -File){
-        $patch=Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8|ConvertFrom-Json
-        foreach($a in $patch.assets){
-            $p=[IO.Path]::GetFullPath((Join-Path $Root $a.relative_path))
-            if(-not($p.StartsWith($base,[StringComparison]::OrdinalIgnoreCase))){throw 'Invalid resource repair path.'}
-            if(-not(Test-Path -LiteralPath $p)){throw ('Resource repair file missing: '+$a.relative_path)}
-            if((Get-Item -LiteralPath $p).Length-ne$a.size -or (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash-ne$a.sha256){throw ('Resource repair hash mismatch: '+$a.relative_path)}
-        }
-    }
 }
 $GbK=[Text.Encoding]::GetEncoding(936)
 $KnownDungeonTitles=@{0='修炼中的初级收集者';2='打败大机械熊偶的收集者';23='打败头脑胶囊的收集者'}
@@ -319,9 +285,6 @@ if($SelfTestTitleIO){
 }
 if($SelfTestInventoryIO){Write-Output (Test-InventoryAdminInstallation $Root);exit 0}
 if($ValidateOnly){
-    Test-VillagePack
-    Test-SuperBossStage
-    Test-LocalResourcePatches
     $inventoryValidation=Test-InventoryAdminInstallation $Root
     if($pets.Count-ne868){throw 'pet catalog count'};if($equips.Count-ne3885){throw 'equipment catalog count'};if($attackModes.Count-ne868){throw 'attack mode catalog count'};if($petPreviewRows.Count-ne868-or$equipPreviewRows.Count-ne3885-or-not(Test-Path -LiteralPath $PetPreviewPng)-or-not(Test-Path -LiteralPath $EquipPreviewPng)){throw 'catalog preview assets'}
     foreach($path in @($AdapterManifest,$Adapter,$AdapterBridge)){if(-not(Test-Path -LiteralPath $path)){throw "adapter artifact missing: $path"}};if((Get-Item -LiteralPath $Adapter).Length-ne$ExpectedAdapterSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $Adapter).Hash-ne$ExpectedAdapterHash){throw 'adapter validation'};if((Get-Item -LiteralPath $AdapterBridge).Length-ne$ExpectedBridgeSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $AdapterBridge).Hash-ne$ExpectedBridgeHash){throw 'bridge validation'}
@@ -481,11 +444,10 @@ function File-State-Line([string]$label,[string]$path,[long]$expectedSize,[strin
     $hashText=if($ComputeHash){$h=(Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash;if($h-eq$expectedHash){"SHA256_OK $h"}else{"SHA256_BAD expected=$expectedHash actual=$h"}}else{"SHA256 expected=$expectedHash（点击刷新后计算actual）"}
     return "$label : $sizeState actual=$($item.Length) | $hashText`r`n         $path"
 }
-function Client-State-Line([switch]$ComputeHash){
-    if(-not(Test-Path -LiteralPath $Client)){return "Client : MISSING | $Client"}
+function Client-State-Line {
+    if(-not(Test-Path -LiteralPath $Client -PathType Leaf)){return "Client : MISSING | $Client"}
     $item=Get-Item -LiteralPath $Client
-    $hashText=if($ComputeHash){$actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $Client).Hash.ToUpperInvariant();if($AcceptedClientHashes -contains $actual){"SHA256_OK actual=$actual"}else{"SHA256_BAD actual=$actual"}}else{"SHA256 accepted=$($AcceptedClientHashes -join ',')；点击刷新后计算实际值"}
-    return "Client : $(if($item.Length -eq $ExpectedClientSize){'SIZE_OK'}else{"SIZE_BAD expected=$ExpectedClientSize"}) actual=$($item.Length) | $hashText`r`n         $Client"
+    return "Client : PRESENT actual_size=$($item.Length) | user-supplied unpacking; hash/size are not launch gates`r`n         $Client"
 }
 function Get-ResourceSelection {
     $hpMax=[uint16][decimal]$hpMaxBox.Value;$hpCurrent=[uint16][decimal]$hpCurrentBox.Value
@@ -511,8 +473,8 @@ function Update-LaunchPreview([switch]$ComputeHashes){
         ('Equipment: '+($equipSummary-join '; ')),
         "Profile INI : $ProfileIni","Profile JSON: $ProfileJson",'',
         '=== Binary validation ===',$adapterState,$bridgeState,
-        (File-State-Line 'Village pack' $VillagePack $ExpectedVillagePackSize $ExpectedVillagePackHash -ComputeHash:$ComputeHashes),
-        (Client-State-Line $ComputeHashes),
+        (Client-State-Line),
+        'Derived client compatibility assets are not validated at launch; create them from your own game files with scripts/prepare_client_compatibility.py.',
         '=== Pre-launch actions ===',
         ('Processes to stop: '+($running-join ', ')),
         'Adapter button: save profile; start/stop the complete local adapter; never launch the game.',
@@ -563,13 +525,7 @@ function Test-AdapterBinary {
     }
 }
 function Test-ClientBinary {
-    Test-VillagePack
-    Test-SuperBossStage
-    Test-LocalResourcePatches
-    if(-not(Test-Path -LiteralPath $Client)){throw "Client missing: $Client"}
-    if((Get-Item -LiteralPath $Client).Length-ne$ExpectedClientSize){throw "Client size mismatch; accepted patched/baseline size is $ExpectedClientSize bytes."}
-    $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $Client).Hash.ToUpperInvariant()
-    if($AcceptedClientHashes -notcontains $actual){throw "Client SHA-256 mismatch; expected one of: $($AcceptedClientHashes -join ', '); actual=$actual."}
+    if(-not(Test-Path -LiteralPath $Client -PathType Leaf)){throw "Client missing: $Client"}
 }
 function Register-ClientProfile([string]$ip){
     $tcp=New-Object Net.Sockets.TcpClient

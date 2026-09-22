@@ -2,8 +2,8 @@
 
 This does not approve redistribution, install a patch, or certify runtime play.
 The generated contract describes the current adapter_runtime tree in the
-release archive layout. User-supplied client files remain external, but only
-the exact reviewed client baselines below are accepted.
+release archive layout. User-supplied client binaries and locally derived
+compatibility resources are intentionally outside the exact-hash contract.
 """
 from __future__ import annotations
 
@@ -13,40 +13,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
-CLIENT_RESOURCES = [
-    'Village_map_image/Village_map_image.pack',
-    'flying/hd0_ep22_dg00_st01.sstg',
-    'flying/hd0_ep22_dg01_st01.sstg',
-    'flying/pon/mis_ep22_dg01_m_196.pon',
-    'flying/pon/mis_ep22_dg01_m_196_02.pon',
-]
 REPOSITORY_FILES = [
     'scripts/verify_client_baseline.py',
+    'scripts/prepare_client_compatibility.py',
     'gui_launcher/nanaimo_launcher.ps1',
     'gui_launcher/client_connect.ps1',
     'gui_launcher/inventory_admin_gui.ps1',
     'gui_launcher/inventory_admin_backend.py',
     'gui_launcher/launch_modes/gamestartoption.network.ini',
     'gui_launcher/resource_patches/superboss_projectile_alias.json',
+    'manifest/patch_runtime_requirements.json',
     'start_nanaimo_launcher.bat',
 ]
-CLIENT_BASELINES = [
-    {
-        'id': 'reviewed_adapter_baseline',
-        'path': 'game.exe',
-        'size': 14198272,
-        'sha256': '6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90',
-        'role': 'reviewed unpacked startup and fixed-point baseline',
-    },
-    {
-        'id': 'reviewed_furniture_patched_baseline',
-        'path': 'game.exe',
-        'size': 14198272,
-        'sha256': 'FEF34EE03DA60BD86975B453D013AE8593AF086B0EA79413466C43B58EC19DDC',
-        'role': 'reviewed unpacked startup and fixed-point baseline with the furniture client patch',
-    },
-]
-
 
 def sha(path: Path) -> str:
     h = hashlib.sha256()
@@ -95,26 +73,9 @@ def runtime_records() -> dict[str, dict]:
     return files
 
 
-def previous_manifest() -> dict:
-    path = ROOT / 'manifest/open_release_manifest.json'
-    return json.loads(path.read_text('utf-8-sig')) if path.is_file() else {}
-
-
-def client_or_previous(rel: str, previous: dict) -> dict:
-    path = ROOT / rel
-    if path.is_file():
-        return record(path)
-    old = previous.get('critical_files', {}).get(rel)
-    if isinstance(old, dict) and {'size', 'sha256'} <= old.keys():
-        return {'size': old['size'], 'sha256': str(old['sha256']).upper()}
-    raise ValueError('missing external release dependency and no recorded baseline: ' + rel)
-
 
 def main() -> None:
-    previous = previous_manifest()
-    critical = {}
-    for rel in sorted(set(CLIENT_RESOURCES + REPOSITORY_FILES)):
-        critical[rel] = client_or_previous(rel, previous)
+    critical = {rel: record(safe_file(rel)) for rel in sorted(set(REPOSITORY_FILES))}
 
     runtime = runtime_records()
     critical.update(runtime)
@@ -123,9 +84,19 @@ def main() -> None:
         'channel': 'release',
         'description': 'Korean flight-shooting game Nanaimo adapter and launcher',
         'runtime_acceptance': False,
-        'validation_scope': 'Exact local file contract and deterministic rebuild; not clean official-install or gameplay acceptance',
-        'client_baseline_policy': 'exact-match-one-of-listed-baselines',
-        'client_baselines': CLIENT_BASELINES,
+        'validation_scope': 'Exact project/runtime contract and deterministic rebuild; user client and derived compatibility assets are not hash-gated',
+        'client_policy': {
+            'path': 'game.exe',
+            'required_for_launch': True,
+            'validation': 'presence-only',
+            'size_or_hash_gate': False,
+            'inspection_tool': 'scripts/verify_client_baseline.py',
+        },
+        'derived_client_assets': {
+            'validation': 'not-checked',
+            'derivation_tool': 'scripts/prepare_client_compatibility.py',
+            'recipe_manifest': 'manifest/patch_runtime_requirements.json',
+        },
         'runtime_contract': {
             'root': RUNTIME_ROOT,
             'manifest': f'{RUNTIME_ROOT}/adapter_manifest.json',

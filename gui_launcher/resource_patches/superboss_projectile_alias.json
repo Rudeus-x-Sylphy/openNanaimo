@@ -9,13 +9,13 @@
   "assets": [
     {
       "relative_path": "flying/pon/mis_ep22_dg01_m_196.pon",
-      "size": 21508,
-      "sha256": "D25279362ACD02505AEA542DDD05BD9A6A38C1023BF60BD66859E4F8D9AD1EC4"
+      "role": "user-owned source input"
     },
     {
       "relative_path": "flying/pon/mis_ep22_dg01_m_196_02.pon",
-      "size": 21508,
-      "sha256": "D25279362ACD02505AEA542DDD05BD9A6A38C1023BF60BD66859E4F8D9AD1EC4"
+      "role": "derived same-family alias",
+      "derive_from": "flying/pon/mis_ep22_dg01_m_196.pon",
+      "operation": "byte-for-byte copy"
     }
   ],
   "evidence_roots": [
@@ -25,6 +25,9 @@
   ],
   "original_missing_path": "flying/pon/mis_ep22_dg01_m_196_02.pon",
   "source_path": "flying/pon/mis_ep22_dg01_m_196.pon",
-  "rollback": "Remove only the verified added alias/registry and coordinated GUI resource-patch guard during controlled no-client rollback; never remove the original PON, candidate or raw failures.",
-  "evidence_availability": "Private originals are not included; these labels are sanitized historical attribution, not local paths."
+  "evidence_availability": "Private originals are not included; these labels are sanitized historical attribution, not local paths.",
+  "schema_version": 2,
+  "launcher_validation": false,
+  "derivation_tool": "scripts/prepare_client_compatibility.py --dungeon7",
+  "rollback": "Remove only the derived _02 alias; the launcher does not validate either source or output."
 }

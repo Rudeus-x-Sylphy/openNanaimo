@@ -1,104 +1,45 @@
 {
-  "schema_version": 1,
-  "purpose": "runtime_dependency_requirements",
-  "official_baseline_verified": false,
+  "schema_version": 2,
+  "purpose": "runtime_dependency_and_derivation_guidance",
   "runtime_acceptance": false,
-  "binary_delta_implemented": false,
   "complete_playable_game": false,
-  "runtime_status": "blocked",
-  "blocked_dependencies": [
-    {
-      "path": "game.exe",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied client executable must match the runtime checks. Client executables and client patch generation are outside this exporter."
-    },
-    {
-      "path": "Village_map_image/Village_map_image.pack",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/hd0_ep22_dg00_st01.sstg",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/hd0_ep22_dg01_st01.sstg",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/pon/mis_ep22_dg01_m_196.pon",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/pon/mis_ep22_dg01_m_196_02.pon",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/pon/nanaimo_cmp_005_0024.pon",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/pon/nanaimo_cmp_005_0025.pon",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/pon/nanaimo_cmp_005_0026.pon",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/pon/nanaimo_cmp_005_0027.pon",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/pon/nanaimo_cmp_005_0028.pon",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/pon/nanaimo_cmp_005_0029.pon",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    },
-    {
-      "path": "flying/pon/nanaimo_mov_009_0000.pon",
-      "required_for_current_runtime": true,
-      "status": "blocked",
-      "export": "never_by_this_exporter",
-      "reason": "User-supplied game resource must match the launcher resource checks; not an export payload."
-    }
-  ],
+  "client_policy": {
+    "path": "game.exe",
+    "supplied_by_user": true,
+    "launcher_gate": "presence-only",
+    "size_or_hash_gate": false,
+    "reason": "Different users may use different legitimate unpacking implementations."
+  },
+  "compatibility_derivation": {
+    "tool": "scripts/prepare_client_compatibility.py",
+    "hash_gate": false,
+    "source_inputs": [
+      "game.exe",
+      "Village_map_image/Village_map_image.pack",
+      "flying/hd0_ep22_dg01_st01.sstg",
+      "flying/pon/mis_ep22_dg01_m_196.pon"
+    ],
+    "derived_outputs": [
+      {
+        "path": "game.exe",
+        "operation": "optional furniture Index-getter VA patch"
+      },
+      {
+        "path": "Village_map_image/Village_map_image.pack",
+        "operation": "dungeon7/P03 cell-grid transformation"
+      },
+      {
+        "path": "flying/hd0_ep22_dg00_st01.sstg",
+        "operation": "copy from the user-owned dg01 SSTG"
+      },
+      {
+        "path": "flying/pon/mis_ep22_dg01_m_196_02.pon",
+        "operation": "same-family copy fallback from the base 196 PON"
+      }
+    ],
+    "output_validation_policy": "not checked by launcher, package verifier, or release manifest; runtime errors remain diagnostic",
+    "output_distribution": "never exported by this repository"
+  },
   "provided_in_repository": [
     {
       "path": "gui_launcher/data/equipment.json",
@@ -184,8 +125,7 @@
   "never_export": [
     "manifest/package_files.tsv",
     "official client exe and DLLs",
-    "official asset packs/audio/art/stages and derived previews",
-    "resource_patches local installation registry",
+    "official asset packs/audio/art/stages and any locally derived compatibility outputs",
     "state/log/build/private/backups/evidence/snapshots",
     "bundled installers and Python pip wheels"
   ]

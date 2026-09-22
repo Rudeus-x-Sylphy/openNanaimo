@@ -6,6 +6,7 @@
 #define MANAGED_STATE_SIZE 5120u
 #define MANAGED_PET_LEVEL_OFFSET 152u
 #define MANAGED_PET_EXPERIENCE_OFFSET 156u
+#define MANAGED_PET_COMBAT_LEVEL_OFFSET 5116u
 static unsigned managed_get(const unsigned char*p,unsigned o){return (unsigned)p[o]|((unsigned)p[o+1]<<8)|((unsigned)p[o+2]<<16)|((unsigned)p[o+3]<<24);}
 static void managed_put(unsigned char*p,unsigned o,unsigned v){p[o]=(unsigned char)v;p[o+1]=(unsigned char)(v>>8);p[o+2]=(unsigned char)(v>>16);p[o+3]=(unsigned char)(v>>24);}
 static int managed_bridge_import(const unsigned char*p){
@@ -26,6 +27,7 @@ static int managed_bridge_import(const unsigned char*p){
     g_stable_pet=managed_get(p,68);g_stable_pet_age_a=managed_get(p,72);g_stable_pet_age_b=managed_get(p,76);
     g_profile_attack_modifier=managed_get(p,80);g_profile_defense_flat=managed_get(p,84);
     g_managed_pet_level=managed_get(p,MANAGED_PET_LEVEL_OFFSET);g_managed_pet_experience=managed_get(p,MANAGED_PET_EXPERIENCE_OFFSET);
+    g_managed_pet_combat_level=managed_get(p,MANAGED_PET_COMBAT_LEVEL_OFFSET);if(g_managed_pet_combat_level<1u||g_managed_pet_combat_level>3u)return 0;
     for(i=0;i<5u;i++)g_stable_equip[i]=managed_get(p,112+i*4);
     g_stable_effect=managed_get(p,132);shopping_sync_legacy_equipped();
     shopping_add_unique(g_owned_pets,&g_owned_pets_n,SHOPPING_MAX_OWNED_PETS,g_stable_pet);
@@ -76,6 +78,7 @@ static void managed_bridge_snapshot(SOCKET c,unsigned status){
     managed_put(p,68,g_stable_pet);managed_put(p,72,g_stable_pet_age_a);managed_put(p,76,g_stable_pet_age_b);managed_put(p,80,g_profile_attack_modifier);managed_put(p,84,g_profile_defense_flat);
     managed_put(p,88,g_stable_name_len);managed_put(p,92,g_stable_gender);memcpy(p+96,g_stable_name,g_stable_name_len);
     managed_put(p,MANAGED_PET_LEVEL_OFFSET,g_managed_pet_level);managed_put(p,MANAGED_PET_EXPERIENCE_OFFSET,g_managed_pet_experience);
+    managed_put(p,MANAGED_PET_COMBAT_LEVEL_OFFSET,g_managed_pet_combat_level);
     for(i=0;i<5u;i++)managed_put(p,112+i*4,g_stable_equip[i]);managed_put(p,132,g_stable_effect);managed_put(p,136,g_profile_quickbar_current);
     for(i=0;i<16u;i++)managed_put(p,160+i*4,g_skill_progress_grade[i]);
     for(i=0;i<6u;i++){managed_put(p,224+i*8,g_quickbar_code[i]);managed_put(p,228+i*8,g_quickbar_instance[i]);}

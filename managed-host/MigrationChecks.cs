@@ -12,6 +12,7 @@ internal static class MigrationChecks
 #if NET6_0
         await CompatibilityChecks.RunAsync();
 #endif
+        await ChannelReentryChecks.RunAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var token = timeout.Token;
         var character = await database.ImportLocalProfileAsync(await File.ReadAllTextAsync(profile, token), token);
@@ -24,7 +25,7 @@ internal static class MigrationChecks
         {
             await native.ConnectAsync(token);
             var reply = await native.ExchangeAsync(null, state, token);
-            foreach (int field in new[] { 4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 52, 56, 60, 64, 68, 72, 76, 88, 92, NativeDungeonState.PetLevelOffset, NativeDungeonState.PetExperienceOffset, 1952 })
+            foreach (int field in new[] { 4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 52, 56, 60, 64, 68, 72, 76, 88, 92, NativeDungeonState.AttackModifierOffset, NativeDungeonState.DefenseFlatOffset, NativeDungeonState.PetLevelOffset, NativeDungeonState.PetExperienceOffset, NativeDungeonState.PetCombatLevelOffset, 1952 })
                 Assert(reply.Get(field) == state.Get(field), $"Native state field {field}");
             Assert(reply.Bytes.AsSpan(160, 1792).SequenceEqual(state.Bytes.AsSpan(160, 1792)), "Skills, quickbar and cards round trip");
         }

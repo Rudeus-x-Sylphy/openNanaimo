@@ -799,7 +799,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         string Username,
         string? CharacterName,
         string? RemoteIp,
-        DateTime ExpiresAtUtc);
+        DateTime ExpiresAtUtc,
+        bool ChannelReentry);
 
     private sealed record LaunchTicket(
         long AccountId,
@@ -2034,12 +2035,20 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return BuildNativeFrame(frame, 0x271A, BuildPostLoginPayload(session), session);
 
             case 0x271B: // channel list request
-                if (session.AccountId <= 0 || payload.Length != ChannelListRequestPayloadLength)
+                if (payload.Length != ChannelListRequestPayloadLength)
                 {
-                    _log($"{channel}:{remote} 拒绝频道列表请求：accountId={session.AccountId} payload={payload.Length}，期望已登录且负载 {ChannelListRequestPayloadLength} 字节");
+                    _log($"{channel}:{remote} rejected channel-list payload={payload.Length}; expected {ChannelListRequestPayloadLength}");
                     return null;
                 }
-                CacheLoginTicket(session);
+                if (session.AccountId > 0)
+                {
+                    CacheLoginTicket(session);
+                }
+                else
+                {
+                    var reentryMatches = CacheUnambiguousChannelReentryTicket(remoteIp);
+                    _log($"{channel}:{remote} fresh channel-list reentry candidates={reentryMatches}");
+                }
                 return BuildNativeFrame(frame, 0x271C, BuildChannelListPayload(), session);
 
             case 0x2732: // game restriction/anti-addiction check
@@ -13921,7 +13930,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         }
     }
 
-    private void CacheLoginTicket(ConnectionSession session)
+    private void CacheLoginTicket(ConnectionSession session, bool channelReentry = false)
     {
         if (session.AccountId <= 0 || string.IsNullOrWhiteSpace(session.Username))
             return;
@@ -13930,12 +13939,50 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             session.Username,
             session.Character?.Name,
             session.RemoteIp,
-            DateTime.UtcNow.AddMinutes(10));
+            DateTime.UtcNow.AddMinutes(10),
+            channelReentry);
         _loginTicketsByUsername[session.Username] = ticket;
         if (!string.IsNullOrWhiteSpace(ticket.CharacterName))
             _loginTicketsByCharacterName[ticket.CharacterName] = ticket;
         _loginTicketsByAccountId[session.AccountId] = ticket;
         PruneLoginTickets();
+    }
+
+    private int CacheUnambiguousChannelReentryTicket(string? remoteIp)
+    {
+        if (string.IsNullOrWhiteSpace(remoteIp))
+            return 0;
+        var matches = _activeWorldSessions.Values
+            .Where(item => item.Session.OnlineTracked
+                           && !item.Session.AuxiliaryGameSession
+                           && string.Equals(item.RemoteIp, remoteIp, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToArray();
+        if (matches.Length == 1)
+            CacheLoginTicket(matches[0].Session, channelReentry: true);
+        return matches.Length;
+    }
+
+    private async Task<bool> WaitForChannelReentryReleaseAsync(
+        LoginTicket ticket,
+        string? remoteIp,
+        CancellationToken token)
+    {
+        if (!ticket.ChannelReentry)
+            return true;
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        do
+        {
+            var active = _activeWorldSessions.Values
+                .FirstOrDefault(item => item.AccountId == ticket.AccountId);
+            if (active is null)
+                return true;
+            if (!string.Equals(active.RemoteIp, remoteIp, StringComparison.OrdinalIgnoreCase))
+                return false;
+            await Task.Delay(10, token);
+        }
+        while (DateTime.UtcNow < deadline);
+        return !_activeWorldSessions.Values.Any(item => item.AccountId == ticket.AccountId);
     }
 
     private void PruneLoginTickets()
@@ -13978,6 +14025,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             return false;
         if (ticket.RemoteIp is not null
             && !string.Equals(ticket.RemoteIp, remoteIp, StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (!await WaitForChannelReentryReleaseAsync(ticket, remoteIp, token))
             return false;
         var account = await _database.GetAccountAccessByIdAsync(ticket.AccountId, token);
         if (account is null || account.Value.IsBanned)

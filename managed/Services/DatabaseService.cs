@@ -84,7 +84,8 @@ public sealed partial class DatabaseService
         MikeChannelUseCount, MikeGlobalUseCount, RevivalUseCount,
         AvatarInventoryExpansionExpires, PetInventoryExpansionExpires,
         GameInventoryExpansionExpires, InteriorInventoryExpansionExpires,
-        QuickSlotExpansionExpires, FreeMagicExpansionExpires
+        QuickSlotExpansionExpires, FreeMagicExpansionExpires,
+        AttackModifier, DefenseFlat, InitialAttackMode
         """;
 
     private readonly string _databasePath;
@@ -169,6 +170,9 @@ public sealed partial class DatabaseService
                     InteriorInventoryExpansionExpires INTEGER NOT NULL DEFAULT 0 CHECK (InteriorInventoryExpansionExpires BETWEEN 0 AND 4294967295),
                     QuickSlotExpansionExpires INTEGER NOT NULL DEFAULT 0 CHECK (QuickSlotExpansionExpires BETWEEN 0 AND 4294967295),
                     FreeMagicExpansionExpires INTEGER NOT NULL DEFAULT 0 CHECK (FreeMagicExpansionExpires BETWEEN 0 AND 4294967295),
+                    AttackModifier INTEGER NOT NULL DEFAULT 0 CHECK (AttackModifier BETWEEN 0 AND 1000000),
+                    DefenseFlat INTEGER NOT NULL DEFAULT 0 CHECK (DefenseFlat BETWEEN 0 AND 65535),
+                    InitialAttackMode INTEGER NOT NULL DEFAULT 0 CHECK (InitialAttackMode BETWEEN 0 AND 3),
                     SkillPoints INTEGER NOT NULL DEFAULT 0 CHECK (SkillPoints BETWEEN 0 AND 65535),
                     SelectedSkill0 INTEGER NOT NULL DEFAULT 0,
                     SelectedSkill1 INTEGER NOT NULL DEFAULT 0,
@@ -505,6 +509,9 @@ public sealed partial class DatabaseService
         await EnsureColumnAsync(connection, "Characters", "InteriorInventoryExpansionExpires", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "QuickSlotExpansionExpires", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "FreeMagicExpansionExpires", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "Characters", "AttackModifier", "INTEGER NOT NULL DEFAULT 0 CHECK (AttackModifier BETWEEN 0 AND 1000000)", cancellationToken);
+        await EnsureColumnAsync(connection, "Characters", "DefenseFlat", "INTEGER NOT NULL DEFAULT 0 CHECK (DefenseFlat BETWEEN 0 AND 65535)", cancellationToken);
+        await EnsureColumnAsync(connection, "Characters", "InitialAttackMode", "INTEGER NOT NULL DEFAULT 0 CHECK (InitialAttackMode BETWEEN 0 AND 3)", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "CardKeyStateVersion", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "PetVariant", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "EquippedPetItemCode", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
@@ -11079,7 +11086,10 @@ public sealed partial class DatabaseService
             GameInventoryExpansionExpires = checked((uint)reader.GetInt64(51)),
             InteriorInventoryExpansionExpires = checked((uint)reader.GetInt64(52)),
             QuickSlotExpansionExpires = checked((uint)reader.GetInt64(53)),
-            FreeMagicExpansionExpires = checked((uint)reader.GetInt64(54))
+            FreeMagicExpansionExpires = checked((uint)reader.GetInt64(54)),
+            AttackModifier = checked((uint)reader.GetInt64(55)),
+            DefenseFlat = checked((ushort)reader.GetInt32(56)),
+            InitialAttackMode = checked((byte)reader.GetInt32(57))
         };
     }
 

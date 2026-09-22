@@ -360,12 +360,14 @@ class ExportPatchTests(unittest.TestCase):
 
     def test_invalid_source_closure_records_rejected(self):
         valid = {'path': 'release/main.c', 'size': 1, 'sha256': 'a' * 64}
-        for row in (dict(valid, path='scripts/export_patch.py'), dict(valid, size=True),
+        for row in (dict(valid, path='docs/not-source.md'), dict(valid, size=True),
                     dict(valid, sha256='bad'), dict(valid, path='../secret.c')):
             with self.subTest(row=row), self.assertRaises(patch.ExportError):
                 patch.validated_closure({'count': 1, 'files': [row]})
         with self.assertRaises(patch.ExportError):
             patch.validated_closure({'count': 1, 'files': [valid], 'entrypoints': ['release/absent.c']})
+        managed = dict(valid, path='managed/Services/Fixture.cs')
+        self.assertEqual(patch.validated_closure({'count': 1, 'files': [managed]}), [managed])
 
     def test_inventory_revalidates_in_memory_allowlist(self):
         self.add('manifest/package_files.tsv', 'source')
@@ -517,7 +519,8 @@ class ExportPatchTests(unittest.TestCase):
         self.assertFalse(receipt['runtime_acceptance'])
         self.assertFalse(receipt['binary_delta_implemented'])
         self.assertEqual(receipt['runtime_status'], 'blocked')
-        self.assertEqual(len(receipt['runtime_gaps']), 5)
+        self.assertEqual({row['id'] for row in receipt['runtime_gaps']},
+                         {'user_client', 'derived_client_assets', 'launcher_metadata', 'fresh_runtime_acceptance'})
 
 
     def test_verifier_import_dependency_cannot_be_omitted(self):

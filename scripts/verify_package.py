@@ -1,8 +1,8 @@
 """Verify project sources and the complete local release-runtime contract.
 
-The complete mode validates the exact reviewed client baselines, the full
-self-contained adapter_runtime tree, the adapter runtime manifest, and all
-client/launcher files declared by manifest/open_release_manifest.json.
+The complete mode validates the exact project/runtime files, the full
+self-contained adapter_runtime tree, and only the presence of the user-supplied
+client. Locally derived client compatibility outputs are never checked.
 
 This is not a license audit and does not claim original-client gameplay
 acceptance. Use export_patch.py for a deny-by-default source distribution.
@@ -159,23 +159,19 @@ def verify_runtime_contract(root: Path, manifest: dict) -> None:
         raise _format_errors('adapter runtime verification failed', errors)
 
 
-def verify_client_baselines(root: Path, manifest: dict) -> str:
-    baselines = manifest.get('client_baselines')
-    if not isinstance(baselines, list) or not baselines:
-        raise ValueError('release manifest missing exact client_baselines')
-    paths = {item.get('path') for item in baselines if isinstance(item, dict)}
-    if paths != {'game.exe'}:
-        raise ValueError('client_baselines must contain exact records for game.exe only')
+def verify_client_presence(root: Path, manifest: dict) -> str:
+    policy = manifest.get('client_policy')
+    if not isinstance(policy, dict) or policy.get('path') != 'game.exe':
+        raise ValueError('release manifest missing game.exe client policy')
+    if policy.get('validation') != 'presence-only' or policy.get('size_or_hash_gate') is not False:
+        raise ValueError('release manifest must not hash-gate the user client')
     path = safe_file(root, 'game.exe')
-    actual = {'size': path.stat().st_size, 'sha256': sha(path)}
-    matches = [item for item in baselines if item.get('size') == actual['size'] and str(item.get('sha256', '')).upper() == actual['sha256']]
-    if not matches:
-        accepted = ', '.join(str(item.get('sha256', '')).upper() for item in baselines)
-        raise ValueError(
-            'client baseline mismatch: game.exe '
-            f'(actual size={actual["size"]}, sha256={actual["sha256"]}; accepted exact baselines={accepted})'
-        )
-    return str(matches[0].get('id', matches[0].get('sha256')))
+    if path.stat().st_size <= 0:
+        raise ValueError('user-supplied game.exe is empty')
+    derived = manifest.get('derived_client_assets')
+    if not isinstance(derived, dict) or derived.get('validation') != 'not-checked':
+        raise ValueError('release manifest must exclude derived client assets from validation')
+    return 'presence-only-no-hash'
 
 
 def scan_public_text(root: Path) -> None:
@@ -244,14 +240,14 @@ def main() -> int:
             raise ValueError('release manifest contains legacy adapter paths: ' + ', '.join(legacy))
         verify_records(root, manifest.get('critical_files', {}).items())
         verify_runtime_contract(root, manifest)
-        baseline_id = verify_client_baselines(root, manifest)
+        baseline_id = verify_client_presence(root, manifest)
         critical_count = len(manifest.get('critical_files', {}))
         if manifest.get('runtime_acceptance') is not False:
             raise ValueError('this consolidation has no fresh original-client acceptance')
     scan_public_text(root)
     print('PACKAGE_STRUCTURE_PASS', 'source_files=' + str(len(files)),
           'critical_files=' + str(critical_count), 'runtime_acceptance=false',
-          'client_baseline=' + baseline_id,
+          'client_policy=' + baseline_id,
           'scope=project-text-and-declared-files-not-whole-workspace')
     return 0
 

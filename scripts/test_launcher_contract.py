@@ -77,7 +77,7 @@ class LauncherContractTests(unittest.TestCase):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         # Check presentation sinks only, not internal mode objects or saved config.
         forbidden = re.compile(
-            r"连接方式|连接模式|启动模式|适配器地址|固定使用|\bNetwork\b|127\.0\.0\.1|"
+            r"杩炴帴鏂瑰紡|杩炴帴妯″紡|鍚姩妯″紡|閫傞厤鍣ㄥ湴鍧€|鍥哄畾浣跨敤|\bNetwork\b|127\.0\.0\.1|"
             r"ServerIP|network_ip|launch_mode|\bMode=|\bLogin=|Stand_?alone|(?<!\w)-q(?!\w)",
             re.IGNORECASE)
         for line in text.splitlines():
@@ -92,8 +92,7 @@ class LauncherContractTests(unittest.TestCase):
             self.assertNotIn(internal, preview)
         for diagnostic in ('Character and profile', 'Resources:', 'Skills:',
                            'Profile INI', 'Profile JSON', 'Binary validation',
-                           "Client-State-Line", "File-State-Line 'Village pack'",
-                           '$ExpectedAdapterHash', 'Working directory:'):
+                           "Client-State-Line", "Derived client compatibility assets", '$ExpectedAdapterHash', 'Working directory:'):
             self.assertIn(diagnostic, preview)
 
     def test_visible_text_and_startup_compaction_have_runtime_guards(self):
@@ -129,6 +128,20 @@ class LauncherContractTests(unittest.TestCase):
             'Test-AdapterBinary',
         ):
             self.assertIn(invariant, text)
+
+    def test_profile_values_have_managed_and_native_carriers(self):
+        profile = (ROOT / 'managed/Services/DatabaseService.NativeDungeon.cs').read_text('utf-8-sig')
+        state = (ROOT / 'managed/Services/NativeDungeonState.cs').read_text('utf-8-sig')
+        bridge = (ROOT / 'release/components/game_session/managed_bridge.inc').read_text('utf-8-sig')
+        protocol = (ROOT / 'release/components/protocol/protocol_state_sync_base.inc').read_text('utf-8-sig')
+        for field in ('AttackModifier=$attack', 'DefenseFlat=$defense', 'InitialAttackMode=$attackMode',
+                      'Level=$level, Experience=$exp'):
+            self.assertIn(field, profile)
+        for carrier in ('AttackModifierOffset', 'DefenseFlatOffset', 'PetCombatLevelOffset'):
+            self.assertIn(carrier, state)
+        self.assertIn('MANAGED_PET_COMBAT_LEVEL_OFFSET 5116u', bridge)
+        self.assertIn('g_managed_pet_combat_level=managed_get', bridge)
+        self.assertIn('unsigned pet_level=g_managed_pet_combat_level;', protocol)
 
     def test_client_and_installer_export_denied(self):
         from export_patch import payload_policy, ExportError

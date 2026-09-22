@@ -3,6 +3,7 @@
 #ifdef NANAIMO_GAMEPLAY_BRIDGE
 static unsigned g_managed_pet_level=0u;
 static unsigned g_managed_pet_experience=0u;
+static unsigned g_managed_pet_combat_level=1u;
 #endif
 /* ROOM_START_BASE derives from the REALTIME_CORE protocol baseline but replaces only the
    room-slot carriers whose original-wire/static meaning is now closed. */
@@ -28,7 +29,7 @@ static void send_cfd2_p2p_my_info(SOCKET c){
 static void send_cf72_dynamic_actor_refresh(SOCKET c,unsigned actor_uid){
     char p[4096];unsigned i,hm,hc,mm,mc,qb[6]={0,0,0,0,0,0};
 #ifdef NANAIMO_GAMEPLAY_BRIDGE
-    unsigned pet_level=g_managed_pet_level;
+    unsigned pet_level=g_managed_pet_combat_level;
 #else
     unsigned pet_level=g_initial_attack_mode+1u;if(pet_level<1u)pet_level=1u;if(pet_level>3u)pet_level=3u;
 #endif
@@ -127,4 +128,3 @@ send_cf72_dynamic_actor_refresh(c,member_uid);
 }
 #endif
 #endif
-

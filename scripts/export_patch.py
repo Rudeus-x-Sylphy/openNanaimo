@@ -41,7 +41,7 @@ FORBIDDEN_SUFFIXES = {
 RESERVED = re.compile(r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)", re.I)
 SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"\r\n]+)"', re.M)
-TEXT_SUFFIXES = {".py", ".ps1", ".bat", ".c", ".h", ".inc", ".md", ".json", ".ini", ".tsv"}
+TEXT_SUFFIXES = {".py", ".ps1", ".bat", ".c", ".h", ".inc", ".cs", ".csproj", ".md", ".json", ".ini", ".tsv"}
 # This is only a rejection aid; NOT a privacy certification. Exact-byte human review
 # remains mandatory for every payload, especially knowledge and protocol fixtures.
 PRIVATE_MARKERS = (
@@ -86,6 +86,7 @@ def payload_policy(value: str, layer: str) -> None:
         good = value == "adapter/nanaimo_adapter_testports.exe"
     elif layer == "source":
         good = ((parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"})
+                or (parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"})
                 or (parts[0] == "scripts" and p.suffix in {".py", ".ps1"})
                 or value == "manifest/source_closure.json")
     elif layer == "docs":
@@ -275,8 +276,11 @@ def validated_closure(closure: dict) -> list[dict]:
             raise ExportError("invalid source closure record")
         rel = relative_name(row.get("path"))
         p = PurePosixPath(rel)
-        if p.parts[0] not in {"release", "adapter"} or p.suffix not in {".c", ".h", ".inc"}:
-            raise ExportError("source closure must contain only project C sources")
+        native = p.parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"}
+        managed = p.parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"}
+        build_script = rel == "scripts/build_merged.ps1"
+        if not (native or managed or build_script):
+            raise ExportError("source closure contains an ineligible project source")
         payload_policy(rel, "source")
         if rel.casefold() in seen:
             raise ExportError("duplicate source closure record")
@@ -290,9 +294,8 @@ def validated_closure(closure: dict) -> list[dict]:
 
 
 RUNTIME_GAPS = [
-    {"id": "official_baseline", "status": "unverified", "detail": "User-supplied official install and upgrade order; per-file hashes not established."},
-    {"id": "client_delta", "status": "not_implemented", "detail": "game.exe is excluded; authorized delta/importer/applier and base/target hashes required."},
-    {"id": "official_resources", "status": "excluded", "detail": "Village map pack, Boss SSTG and registered resource fallbacks require baseline comparison and review."},
+    {"id": "user_client", "status": "excluded", "detail": "game.exe is user-supplied; runtime launch uses presence only and does not require a fixed hash."},
+    {"id": "derived_client_assets", "status": "excluded", "detail": "The source tree includes a local derivation tool, but never exports the generated game.exe, village pack, SSTG or PON outputs."},
     {"id": "launcher_metadata", "status": "excluded", "detail": "gui_launcher/data catalogs, resource_patches and previews are not payloads."},
     {"id": "fresh_runtime_acceptance", "status": "not_performed", "detail": "No installer or game launched by these tools."},
 ]

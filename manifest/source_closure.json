@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 164,
+  "count": 166,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -17,7 +17,7 @@
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
       "size": 18292736,
-      "sha256": "6669D86C5480542540071CD4DF163B23B17F60C302FC88B786CA21E6325A87BA"
+      "sha256": "EC61119B66B9FD0B2997A63A45451E0E32A90402456816B8E54D21B593A88463"
     }
   },
   "files": [
@@ -37,6 +37,11 @@
       "sha256": "34768DC26781037772AAE2B84CBE381A02136A6DD8B34977CFB73F9D92547D26"
     },
     {
+      "path": "managed-host/ChannelReentryChecks.cs",
+      "size": 9210,
+      "sha256": "797ADE0506FE6DF380427ACF09F95595BAB078B277ACA154F1878398CAECBA72"
+    },
+    {
       "path": "managed-host/CompatibilityChecks.cs",
       "size": 1717,
       "sha256": "58AAEDFC983605431BCC745453902E58B0E6B9772020CA80FCCDBA2BF3BD05D1"
@@ -47,9 +52,14 @@
       "sha256": "FE6553F418137442A17155B1D55EBA46F3023F011DB07C83B83549C492BF0C06"
     },
     {
+      "path": "managed-host/LauncherProfileChecks.cs",
+      "size": 4491,
+      "sha256": "3829C5BA89E24D98C9C813F3BCD87EDC97A4150E45E552D36C2C6A3AD1208D17"
+    },
+    {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 29030,
-      "sha256": "A0E0A4BB6E6159268A9607DEB4453C555831FEF4807B57DC11EA25E8282AF66E"
+      "size": 29197,
+      "sha256": "8013CF03AF547FF22285DC432C2168FCF170CAF9EABA7B7814F05812C09E996C"
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
@@ -58,8 +68,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 6338,
-      "sha256": "3120DBD80F5DD6735397DC10B49228586D77FEA6F71D228422764A55ED2D9D43"
+      "size": 6558,
+      "sha256": "CE12443CF58B2D64362790DB2FCA7C6EEE636CB8693D22E1BE4C7BAE0D16F199"
     },
     {
       "path": "managed-host/ShopDungeonChecks.cs",
@@ -123,8 +133,8 @@
     },
     {
       "path": "managed/Models/CharacterRecord.cs",
-      "size": 5197,
-      "sha256": "91066FCD597A11063B5B3E64DB77D9B4E1F3CA3287DDAFF4BBAC7996E661ADF8"
+      "size": 5334,
+      "sha256": "C3E0EAB5F4B6511D2FD65DE34991CA56669C12A02321D4500272A5248F4B8C1E"
     },
     {
       "path": "managed/Models/CharacterRuntimeState.cs",
@@ -248,13 +258,13 @@
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
-      "size": 44057,
-      "sha256": "84345B380CE2BA08E331D173B1AEB1125E856294E0D7665CB85F1EB8864AF80E"
+      "size": 44876,
+      "sha256": "E54BD0469B909465DE15FE0C38ABA652B0EE1AF3C50B4130D6A5F2DF35C7925C"
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 552936,
-      "sha256": "E1B3C178E61C8075C97688B191CF8CE421D4AE7BEFB9FA0855B2CC8B178BA4DB"
+      "size": 554010,
+      "sha256": "C786FEE02B70C103A4C86255D550795E6CA92258616F99891A7F5C0F90275E82"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -313,8 +323,8 @@
     },
     {
       "path": "managed/Services/NativeDungeonState.cs",
-      "size": 4556,
-      "sha256": "4C053DB9DD98B30B6784FA0A41E10E27338DB78079C63A8C41A1F2F10CC34016"
+      "size": 4881,
+      "sha256": "F507262376146D3F05E7965269EC852D182FDCF244ED1D94426D9C085457E2E1"
     },
     {
       "path": "managed/Services/NativeProcessJob.cs",
@@ -338,8 +348,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 903609,
-      "sha256": "2A165F8D92A08173D80BC43153B2029D8301D228B06629391063E0642A7D6A01"
+      "size": 905463,
+      "sha256": "2D2CDA41E951C416F6FE65598EEA83D8CFC3AF15CAA7E8F2772CC437196C97B5"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -583,8 +593,8 @@
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
-      "size": 8855,
-      "sha256": "1D3A10E9065AEE7A29A0163FF3529794190ED697CC6CF31B46F75E74D65694C7"
+      "size": 9132,
+      "sha256": "C0705C9D194B27253263D4D440B5D9C72A62A0C752CB86E746FF7C3C535A61A0"
     },
     {
       "path": "release/components/game_session/revival_runtime.inc",
@@ -718,8 +728,8 @@
     },
     {
       "path": "release/components/protocol/protocol_state_sync_base.inc",
-      "size": 9985,
-      "sha256": "0099914AE1C0393CB11519A2324533CD90D3F37F6107F69BAA702A3C91A0A4A2"
+      "size": 10038,
+      "sha256": "E9C5A4CAEA60C0FF2B255BCFA51ACCC807AFC23E3F87A51C04552FF76329B34D"
     },
     {
       "path": "release/components/protocol_extensions/protocol_overrides.inc",

@@ -17,6 +17,16 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+if (args.Contains("--channel-reentry-self-test"))
+{
+    await ChannelReentryChecks.RunAsync();
+    return;
+}
+if (args.Contains("--launcher-profile-self-test"))
+{
+    await LauncherProfileChecks.RunAsync();
+    return;
+}
 string Option(string name, string fallback)
 {
     int index = Array.IndexOf(args, name);

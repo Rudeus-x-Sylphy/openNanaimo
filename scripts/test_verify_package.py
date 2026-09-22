@@ -37,6 +37,24 @@ class VerifyPackageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verifier.safe_file(self.root, 'missing.c')
 
+    def test_user_client_is_presence_only_and_derived_assets_are_not_checked(self):
+        (self.root / 'game.exe').write_bytes(b'arbitrary unpack implementation')
+        manifest = {
+            'client_policy': {'path': 'game.exe', 'validation': 'presence-only', 'size_or_hash_gate': False},
+            'derived_client_assets': {'validation': 'not-checked'},
+        }
+        self.assertEqual(verifier.verify_client_presence(self.root, manifest), 'presence-only-no-hash')
+        # No village/SSTG/PON output is created in the fixture; validation still succeeds.
+
+    def test_client_policy_rejects_reintroduced_hash_gate(self):
+        (self.root / 'game.exe').write_bytes(b'arbitrary unpack implementation')
+        manifest = {
+            'client_policy': {'path': 'game.exe', 'validation': 'exact-sha256', 'size_or_hash_gate': True},
+            'derived_client_assets': {'validation': 'not-checked'},
+        }
+        with self.assertRaisesRegex(ValueError, 'must not hash-gate'):
+            verifier.verify_client_presence(self.root, manifest)
+
     def test_absolute_host_path(self):
         (self.root / 'README.md').write_text(chr(67) + ':' + chr(92) + 'Users' + chr(92) + 'test-user', 'utf-8')
         with self.assertRaises(ValueError):

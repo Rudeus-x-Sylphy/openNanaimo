@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.21-feat-social",
+  "version": "2026.09.22-feat-social-fallbacks",
   "role": "complete Nanaimo adapter overlay; client not included",
   "published": false,
   "runtime_acceptance": false,
@@ -18,70 +18,58 @@
   "adapter_manifest": {
     "version": 1,
     "role": "full Nanaimo adapter",
-    "built_at": "2026-09-21T22:56:38Z",
+    "built_at": "2026-09-22T11:28:30Z",
     "framework": "net6.0/win-x64/self-contained",
     "sdk": "8.0.425",
     "files": [
       {
         "name": "Nanaimo.Adapter.exe",
         "size": 151040,
-        "sha256": "E48EC11AADA9221034A43A25A1D4B185006C05B7E1771022304A0CE0FAF9D475"
+        "sha256": "9A298511B215EE23B8F8C4F26BC667A016F31F7BC1914EEA7B834DCA9DACEC67"
       },
       {
         "name": "nanaimo_gameplay_bridge.exe",
         "size": 18292736,
-        "sha256": "6669D86C5480542540071CD4DF163B23B17F60C302FC88B786CA21E6325A87BA"
+        "sha256": "EC61119B66B9FD0B2997A63A45451E0E32A90402456816B8E54D21B593A88463"
       }
     ]
   },
   "external_client_dependencies": [
     {
       "path": "game.exe",
-      "size": 14198272,
-      "sha256": "6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90"
+      "validation": "presence-only",
+      "size_or_hash_gate": false,
+      "supplied_by_user": true
     },
     {
-      "path": "Village_map_image/Village_map_image.pack",
-      "size": 17011373,
-      "sha256": "69EF0FA688DBCB4EE2A36151F76F78A5A3D4F051253ABE81EA824F37749FCD56"
-    },
-    {
-      "path": "flying/hd0_ep22_dg00_st01.sstg",
-      "size": 103124,
-      "sha256": "899B1820EC0F49E032589AEAAA582086D5471C4BB1982EFB104E96FEC74D6D27"
-    },
-    {
-      "path": "flying/hd0_ep22_dg01_st01.sstg",
-      "size": 103124,
-      "sha256": "899B1820EC0F49E032589AEAAA582086D5471C4BB1982EFB104E96FEC74D6D27"
-    },
-    {
-      "path": "flying/pon/mis_ep22_dg01_m_196.pon",
-      "size": 21508,
-      "sha256": "D25279362ACD02505AEA542DDD05BD9A6A38C1023BF60BD66859E4F8D9AD1EC4"
-    },
-    {
-      "path": "flying/pon/mis_ep22_dg01_m_196_02.pon",
-      "size": 21508,
-      "sha256": "D25279362ACD02505AEA542DDD05BD9A6A38C1023BF60BD66859E4F8D9AD1EC4"
+      "inputs": [
+        "Village_map_image/Village_map_image.pack",
+        "flying/hd0_ep22_dg01_st01.sstg",
+        "flying/pon/mis_ep22_dg01_m_196.pon"
+      ],
+      "role": "user-owned inputs for scripts/prepare_client_compatibility.py",
+      "validation": "not-hash-gated"
     }
   ],
   "validation": {
-    "full_adapter_selftest": "PASS",
-    "python_tests": "91 PASS; 6 source-only skips",
+    "full_adapter_selftest": "BLOCKED by live parent-runtime ports; targeted no-port self-tests PASS",
+    "python_tests": "100 PASS; 5 environment/source-only skips",
     "shop_appearance": "6/6 PASS",
     "native_ui_protocol": "4/4 PASS",
     "gui_validate": "PASS",
     "gui_layout": "PASS",
     "gui_catalog_preview": "PASS",
     "installed_adapter_smoke": "11005/11999/12050 and profile registration PASS",
-    "installed_adapter_stop": "graceful stop PASS"
+    "installed_adapter_stop": "graceful stop PASS",
+    "channel_reentry_selftest": "PASS fresh-271B ticket teardown-wait c351-c355 ambiguity",
+    "launcher_profile_selftest": "PASS level/HP/MP/attack/defense/inventory/Selina combat level",
+    "full_adapter_build": "PASS adapter=9A298511... bridge=EC61119B..."
   },
   "files": [
     {
       "path": "adapter_runtime/adapter_manifest.json",
       "size": 701,
-      "sha256": "AECAA46F4CA13D2AE3592985625F3BCA4A35A43C97E2451C3CEB9287FD3F5295"
+      "sha256": "8C89BF78577BE28136CD3A75B5C89BA646812659D84427BC5C250FB061D95047"
     },
     {
       "path": "adapter_runtime/api-ms-win-core-console-l1-1-0.dll",
@@ -405,18 +393,18 @@
     },
     {
       "path": "adapter_runtime/Nanaimo.Adapter.dll",
-      "size": 103424,
-      "sha256": "62FA1AF6A010E2B8F3A3C475CF9C6A7107710909A86AFA2CCBD7C3B3405CEB33"
+      "size": 119296,
+      "sha256": "D155AE470EAB8737611390EB8884DD42303465420721751BEB994312D4D489F2"
     },
     {
       "path": "adapter_runtime/Nanaimo.Adapter.exe",
       "size": 151040,
-      "sha256": "1ADB7799549290E6FD835091CCD427388B7EE97B37DEA8B6502B971622B65F4D"
+      "sha256": "9A298511B215EE23B8F8C4F26BC667A016F31F7BC1914EEA7B834DCA9DACEC67"
     },
     {
       "path": "adapter_runtime/Nanaimo.Adapter.pdb",
-      "size": 24892,
-      "sha256": "6D7CB8E8825168361F36F73989DD73F95E7C2F81F33CACBB4524F60B21BE8150"
+      "size": 27580,
+      "sha256": "F78AFD6098C05603AA669EC31A0F7E92CD33A742C19A5AA4F78111EE0FF0D287"
     },
     {
       "path": "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json",
@@ -425,18 +413,18 @@
     },
     {
       "path": "adapter_runtime/Nanaimo.Gameplay.dll",
-      "size": 2102272,
-      "sha256": "218B2D219A7F95E496D357B15FE5D23C2F246E768CD029EDD4E6854F1BA3AE6B"
+      "size": 2108416,
+      "sha256": "359DE289D1782CDE86710CCB2D24A8EB9F86618AF160408E185F152E8AF865EA"
     },
     {
       "path": "adapter_runtime/Nanaimo.Gameplay.pdb",
-      "size": 355380,
-      "sha256": "1B1007B5A689AC25E06E94CD856137479040D6CCD3ED902A04C77A612A294213"
+      "size": 356196,
+      "sha256": "62576305FE10260E754832E115C70CF7A3D35E2FBF649ECCDF15B9F9F0B8D900"
     },
     {
       "path": "adapter_runtime/nanaimo_gameplay_bridge.exe",
       "size": 18292736,
-      "sha256": "6669D86C5480542540071CD4DF163B23B17F60C302FC88B786CA21E6325A87BA"
+      "sha256": "EC61119B66B9FD0B2997A63A45451E0E32A90402456816B8E54D21B593A88463"
     },
     {
       "path": "adapter_runtime/netstandard.dll",
@@ -1362,250 +1350,15 @@
       "path": "adapter_runtime/资源/数据/SP._D34",
       "size": 288,
       "sha256": "7D765B33E29EC6A8B6DC85C226B6C51199BA6B01ED42F64C138259AA2651BCE9"
-    },
-    {
-      "path": "CHANGELOG.md",
-      "size": 4215,
-      "sha256": "887FF8A0A0D8DB62E9323B72D699D55AA9C008A80BD24FAAF31485B969FCD9C8"
-    },
-    {
-      "path": "docs/启动流程与源码索引.md",
-      "size": 9710,
-      "sha256": "489173117F9B1A05BF8AD441ACEA3966127AEA97813F6E356F6643F44628265B"
-    },
-    {
-      "path": "docs/完整适配器与客户端补丁指引.md",
-      "size": 9189,
-      "sha256": "0D4792365B520B39AA667A41D8ADAEA0351F8870BAA6837984DD4D7D43483F51"
-    },
-    {
-      "path": "docs/文件清单与导出工具.md",
-      "size": 5618,
-      "sha256": "720CD25E1A4715221C41617DB83D4D9D67F6F0035727ABE41BD136841E8D2D4B"
-    },
-    {
-      "path": "docs/构建与验证.md",
-      "size": 5756,
-      "sha256": "36AEDA0AC7AD12E64722987EA80ABEA9327E7296F80AFCC0BF3C41E983123F06"
-    },
-    {
-      "path": "docs/第三方与许可说明.md",
-      "size": 1263,
-      "sha256": "F5D4BD4E0781015159451007922450B3EB4702A650F83EB0C2DD22ABB6FBC9AD"
-    },
-    {
-      "path": "docs/运行依赖.md",
-      "size": 4957,
-      "sha256": "E3D979DDA3E17802CD0F041AA5F93C3387EAF658B98AD25FAD9B3B4B28F29742"
-    },
-    {
-      "path": "gui_launcher/client_connect.ps1",
-      "size": 4958,
-      "sha256": "230D41FF1C10C507AC9C194E5C3D0311BD66F5F0CD56CA7388A215D8E35803BC"
-    },
-    {
-      "path": "gui_launcher/data/equipment.json",
-      "size": 1870316,
-      "sha256": "E20116E7580F07C64138137B513D795E40E2E2822CC78D92CE6B9EB279A891C9"
-    },
-    {
-      "path": "gui_launcher/data/inventory_cards.json",
-      "size": 85974,
-      "sha256": "CD3975765EAD35B109D4E7BBEF2D47C2C41A5DD2528AC814AB4A48F000F21119"
-    },
-    {
-      "path": "gui_launcher/data/inventory_catalog_summary.json",
-      "size": 2220,
-      "sha256": "F1F4080298F03FC4037A2DAC8C9719A831226EC886600D7CB9CE35DA93FC2769"
-    },
-    {
-      "path": "gui_launcher/data/inventory_clothing.json",
-      "size": 1485699,
-      "sha256": "FD5184500CADE1C2A2E17BDAEAB59A8ACF38422F4B27A707BBCF7EF74D0A8803"
-    },
-    {
-      "path": "gui_launcher/data/inventory_furniture.json",
-      "size": 157888,
-      "sha256": "994CDECE857BDF4AEAE84D229D8B93BAA074EE4BCD97F6AA8DB607C9B380CB30"
-    },
-    {
-      "path": "gui_launcher/data/inventory_game_items.json",
-      "size": 4477788,
-      "sha256": "4244DB0151123E0BE2F9C4DFF18D187EB8BEBE708A3EF817CF75D18CD8E3F120"
-    },
-    {
-      "path": "gui_launcher/data/inventory_pet_gems.json",
-      "size": 3752698,
-      "sha256": "69BEA1E0887DCE720645F5862C9E3275F8AD57DC91D7D2C5DFF279D9EE51C1C3"
-    },
-    {
-      "path": "gui_launcher/data/inventory_pets.json",
-      "size": 2228393,
-      "sha256": "17EFC16963B029AE4679BE0EEF7D69E89A7698743FAD2C65D844AB0869078869"
-    },
-    {
-      "path": "gui_launcher/data/pet_attack_modes.json",
-      "size": 1376329,
-      "sha256": "30409067787D30544593E3CB18EE525724BBF05A0709704185ED820900C9005D"
-    },
-    {
-      "path": "gui_launcher/data/pets.json",
-      "size": 2611184,
-      "sha256": "088BD8CE8FC280E56ABB09982EE5DC00C162D077619E6B2642D0110F35DE59BD"
-    },
-    {
-      "path": "gui_launcher/data/previews/equipment_icons.json",
-      "size": 539027,
-      "sha256": "0D023115A2BE6F33D91FABC7A9A47D2E336E87E901ECF824BB371343BDADECDF"
-    },
-    {
-      "path": "gui_launcher/data/previews/equipment_icons.png",
-      "size": 2590109,
-      "sha256": "3C4F25C71ACC00888BB868899339401CF909C6DA722FF70325F6A411BAF9E971"
-    },
-    {
-      "path": "gui_launcher/data/previews/pet_icons.json",
-      "size": 152948,
-      "sha256": "165075F6EC4646D11AB43F20C9BD70374A0FEE4CA14FB29BC04AFD27FAE70781"
-    },
-    {
-      "path": "gui_launcher/data/previews/pet_icons.png",
-      "size": 414915,
-      "sha256": "FD59D7583F43CFF0343F7965057A34CA04D50B4325108DE6D17EA691CA47E14D"
-    },
-    {
-      "path": "gui_launcher/data/previews/preview_summary.json",
-      "size": 436,
-      "sha256": "1D9C3775BA3078950F015BEEEDC31B599C91D7231967C1E03C856FA686296C5E"
-    },
-    {
-      "path": "gui_launcher/inventory_admin_backend.py",
-      "size": 11300,
-      "sha256": "2348179B1E00B4A8BD8830832EEB1D17CBBF51A70C9307E3F72EA9CCCA7D792B"
-    },
-    {
-      "path": "gui_launcher/inventory_admin_gui.ps1",
-      "size": 23183,
-      "sha256": "99077F08A21F0E6379D67B3C0DD9EAAE2CB11D61FF4A1F10F94F07C91828C207"
-    },
-    {
-      "path": "gui_launcher/launch_modes/gamestartoption.network.ini",
-      "size": 193,
-      "sha256": "5930276C765992A27CA85E7FBB07F78CFF56FB427CCBEEA36F31287F90955117"
-    },
-    {
-      "path": "gui_launcher/launch_modes/gamestartoption.standalone.ini",
-      "size": 197,
-      "sha256": "C7D3F6E87D537826F20A7DBE364D3880556572F2499CAA104BBA1488DE055875"
-    },
-    {
-      "path": "gui_launcher/nanaimo_launcher.ps1",
-      "size": 95722,
-      "sha256": "5840B925A95DCC973D378D754AE2846CD0A9BBEBA538A66220B548CE3C5ECAEB"
-    },
-    {
-      "path": "gui_launcher/resource_patches/superboss_projectile_alias.json",
-      "size": 1588,
-      "sha256": "3B4544218D63CFFFF1A57CEFC1EC77324D4E8D260CB5878561E87CDBEB67EF24"
-    },
-    {
-      "path": "knowledge/authority/01-协议分帧与连接.md",
-      "size": 5498,
-      "sha256": "759419AA10156259C6BD3A6AD01F222115D00944A8580FB86D55D9446749638F"
-    },
-    {
-      "path": "knowledge/authority/02-登录村庄与角色.md",
-      "size": 7785,
-      "sha256": "95B00C34B64E8EED49C916EAA6C811336790AD42FEB6667BF4B7270D68A02DC4"
-    },
-    {
-      "path": "knowledge/authority/03-角色资料与背包.md",
-      "size": 59514,
-      "sha256": "A4D31C44A4295D4FCCC2721F914A2F7561432FB7316E0275D69F171D20F37A40"
-    },
-    {
-      "path": "knowledge/authority/04-宠物与战斗.md",
-      "size": 21746,
-      "sha256": "5FD18EFA09DA42A797B5009C9714BAEDD5BEE1C368C950F9C30CE5917F375E91"
-    },
-    {
-      "path": "knowledge/authority/05-房间与多人同步.md",
-      "size": 13413,
-      "sha256": "22608248231F965627455DF2E756F8762231D2B5455A04776FD8A4DC13B1678F"
-    },
-    {
-      "path": "knowledge/authority/06-目标掉落与首领.md",
-      "size": 31769,
-      "sha256": "3F21574E1D3560D9E035F3566AB64F731169199E644699371C43DFFF678C345C"
-    },
-    {
-      "path": "knowledge/authority/07-拾取结算与奖励.md",
-      "size": 14180,
-      "sha256": "DCD3486C713C299A1C30956B742AD7799B2C0877381F553AB3CF136DAF9905BC"
-    },
-    {
-      "path": "knowledge/authority/08-静态地址与调用链.md",
-      "size": 95739,
-      "sha256": "99ED3AE8D0FA92016D82003643AF94CB730765F86C5D9B9FA61AC785D3B54B06"
-    },
-    {
-      "path": "knowledge/authority/09-运行配置与验证.md",
-      "size": 4371,
-      "sha256": "D359FDA6527E24BC901BBC3BB8865CB938C4A1AB138E12E1164A3A03AADAF195"
-    },
-    {
-      "path": "knowledge/知识库索引.md",
-      "size": 2415,
-      "sha256": "3E8B96B7EA8D7809C86BBA7056B4F48615B4889907DC06D4A32751C9BE70E91F"
-    },
-    {
-      "path": "LICENSE",
-      "size": 34523,
-      "sha256": "8486A10C4393CEE1C25392769DDD3B2D6C242D6EC7928E1414EFFF7DFB2F07EF"
-    },
-    {
-      "path": "manifest/open_release_manifest.json",
-      "size": 90661,
-      "sha256": "F94F9195AB7537A150A7E28AEE5337409B95992655D804FA64A1E24DDBF7C826"
-    },
-    {
-      "path": "manifest/patch_allowlist.json",
-      "size": 41661,
-      "sha256": "A49389C20213FA7BD284B528F01021D14726839AD5D055A5842BC749C2D2A8D0"
-    },
-    {
-      "path": "manifest/patch_runtime_requirements.json",
-      "size": 8112,
-      "sha256": "F039B5602F22B57BAA0FC5A744CED7E6CB1154F1A91D5D79796A0629DA91B9DB"
-    },
-    {
-      "path": "manifest/source_closure.json",
-      "size": 30075,
-      "sha256": "3DBEC501542E62203F2D74EE12A64AB9903C5028F5C81B3D822F25FFE50B4476"
-    },
-    {
-      "path": "README.md",
-      "size": 8414,
-      "sha256": "49E2DDEFB6AD770439BFB3D25013355BFE1665502C02FF2B14EA2162107DDBA1"
-    },
-    {
-      "path": "start_nanaimo_launcher.bat",
-      "size": 164,
-      "sha256": "EAABAC6548E7B59A0C14B087CE96E8E37374849642FABC810AAB6B35FD14AC14"
     }
   ],
-  "accepted_client_baselines": [
-    {
-      "id": "reviewed_adapter_baseline",
-      "path": "game.exe",
-      "size": 14198272,
-      "sha256": "6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90"
-    },
-    {
-      "id": "reviewed_furniture_patched_baseline",
-      "path": "game.exe",
-      "size": 14198272,
-      "sha256": "FEF34EE03DA60BD86975B453D013AE8593AF086B0EA79413466C43B58EC19DDC"
-    }
-  ]
+  "client_policy": {
+    "path": "game.exe",
+    "validation": "presence-only",
+    "size_or_hash_gate": false
+  },
+  "derived_client_assets": {
+    "validation": "not-checked",
+    "derivation_tool": "scripts/prepare_client_compatibility.py"
+  }
 }

@@ -1,7 +1,7 @@
 ﻿#!/usr/bin/env python3
 """Refresh exact patch candidates, never approvals. Default: read-only JSON report.
 
-Only existing allowlist entries, the declared C closure, and explicit --add paths
+Only existing allowlist entries, the declared native/managed closure, and explicit --add paths
 are read. No recursive discovery, legacy-path fallback, builds or installers.
 """
 from __future__ import annotations
@@ -21,15 +21,21 @@ def rebuild(root: Path, previous: dict, additions: list[str] | None = None) -> t
     root = patch.no_links(root)
     patch.validate_manifest(previous)
     old = {e['path']: e for e in previous['files']}
-    selected = {}
-    # The C subset is authoritative in source_closure, not a stale renamed list.
-    for name, entry in old.items():
-        p = PurePosixPath(name)
-        if entry['layer'] == 'source' and p.parts[0] in {'release', 'adapter'} and p.suffix in {'.c', '.h', '.inc'}:
-            continue
-        selected[name] = entry['layer']
     closure_path = patch.safe_file(root, 'manifest/source_closure.json')
     closure = patch.validated_closure(patch.load_json(closure_path))
+    closure_names = {row['path'] for row in closure}
+    selected = {}
+    # The complete native + managed source set is authoritative in source_closure.
+    for name, entry in old.items():
+        path = PurePosixPath(name)
+        closure_domain = (
+            path.parts[0] in {'release', 'adapter'} and path.suffix in {'.c', '.h', '.inc'}
+            or path.parts[0] in {'managed', 'managed-host'} and path.suffix in {'.cs', '.csproj'}
+            or name == 'scripts/build_merged.ps1'
+        )
+        if entry['layer'] == 'source' and closure_domain:
+            continue
+        selected[name] = entry['layer']
     for row in closure:
         selected[row['path']] = 'source'
     selected['manifest/source_closure.json'] = 'source'
