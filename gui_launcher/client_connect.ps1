@@ -8,6 +8,7 @@ $SavedIP=Join-Path $Root 'adapter_ip.txt'
 $ProfileIni=if($ProfileIniOverride){[IO.Path]::GetFullPath($ProfileIniOverride)}else{Join-Path $Root 'nanaimo_launcher_profile.ini'}
 $ExpectedClientSize=14198272
 $ExpectedClientHash='6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90'
+$AcceptedClientHashes=@($ExpectedClientHash,'FEF34EE03DA60BD86975B453D013AE8593AF086B0EA79413466C43B58EC19DDC')
 function Test-Admin{try{$id=[Security.Principal.WindowsIdentity]::GetCurrent();$p=New-Object Security.Principal.WindowsPrincipal($id);return $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)}catch{return $false}}
 function Ensure-P2PFirewall{
  if(-not(Test-Admin)){throw 'Run PowerShell as Administrator to configure the Nanaimo P2P firewall.'}
@@ -28,7 +29,7 @@ if($AdapterIP-notmatch '^\d{1,3}(\.\d{1,3}){3}$'-or-not[Net.IPAddress]::TryParse
 if(-not(Test-Path -LiteralPath $ProfileIni)){throw "缺少客户端资源配置: $ProfileIni"}
 if(-not(Test-Path -LiteralPath $Client)){throw "缺少客户端: $Client"}
 if((Get-Item -LiteralPath $Client).Length-ne$ExpectedClientSize){throw '客户端大小不匹配，拒绝启动。'}
-if((Get-FileHash -Algorithm SHA256 -LiteralPath $Client).Hash-ne$ExpectedClientHash){throw '客户端 SHA-256 不匹配，拒绝启动。'}
+$actualClientHash=(Get-FileHash -Algorithm SHA256 -LiteralPath $Client).Hash.ToUpperInvariant();if($AcceptedClientHashes -notcontains $actualClientHash){throw "客户端 SHA-256 不在支持的基线列表中，拒绝启动。actual=$actualClientHash"}
 if(-not(Test-Path -LiteralPath $Template)){throw "缺少 Network 模板: $Template"}
 $text=Get-Content -LiteralPath $Template -Raw;$text=$text-replace '(?m)^ServerIP=.*$',("ServerIP={0}"-f$AdapterIP)
 $args=[string[]]@('-q',':1:1:0:3:4:-i','5:-r',("6:7:1:{0}:"-f$AdapterIP))

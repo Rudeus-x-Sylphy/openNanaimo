@@ -48,8 +48,8 @@
     },
     {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 20172,
-      "sha256": "EA5808E8F54CB91EE4A74368F899395B6D00340A7AC62943987FF341860616E6"
+      "size": 29030,
+      "sha256": "A0E0A4BB6E6159268A9607DEB4453C555831FEF4807B57DC11EA25E8282AF66E"
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
@@ -58,8 +58,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 6305,
-      "sha256": "A5503C5DFBAA641BCAE8995533D701CC8AD281914E5956210A147B4C7F0D071E"
+      "size": 6338,
+      "sha256": "3120DBD80F5DD6735397DC10B49228586D77FEA6F71D228422764A55ED2D9D43"
     },
     {
       "path": "managed-host/ShopDungeonChecks.cs",
@@ -248,8 +248,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
-      "size": 20070,
-      "sha256": "4A3A65BF77522814AFE76A28BDAFF9E60DEB069631474C7AC017D40B2EABDD8B"
+      "size": 44057,
+      "sha256": "84345B380CE2BA08E331D173B1AEB1125E856294E0D7665CB85F1EB8864AF80E"
     },
     {
       "path": "managed/Services/DatabaseService.cs",
@@ -333,8 +333,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 13601,
-      "sha256": "DB7A834C461B19D2F283662033279BFA678FE4DAF4084FAB468F7F2C1CA0AC08"
+      "size": 13642,
+      "sha256": "D3CABAB9CF6CC5C1641C9E2C428629349863FB423E4C078161B6E762D3B79A44"
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",

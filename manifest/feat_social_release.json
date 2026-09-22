@@ -1,22 +1,19 @@
 {
   "version": "2026.09.21-feat-social",
   "role": "complete Nanaimo adapter overlay; client not included",
-  "published": true,
+  "published": false,
   "runtime_acceptance": false,
   "source_attribution": {
-    "latest_zip_features": "??",
     "openNanaimo_changes": [
       "GUI one-click integration",
       "pet progression repair",
       "Hans shop repair",
       "face coupon repair",
       "5% ordinary card drop policy"
+    ],
+    "contributed_features": [
+      "Additional adapter features contributed by Lanmo"
     ]
-  },
-  "latest_zip": {
-    "path": "latest.zip (external input)",
-    "size": 1436326242,
-    "sha256": "3C688430EDBFA3D6A96AC50FC72EEDADA0405CB28BDC4842247B3CE18CA24B83"
   },
   "adapter_manifest": {
     "version": 1,
@@ -84,7 +81,7 @@
     {
       "path": "adapter_runtime/adapter_manifest.json",
       "size": 701,
-      "sha256": "C9322CD40C337FF65D2737ABA3EF1D791EFFEE687AD0B4B43FCDC21134F10744"
+      "sha256": "AECAA46F4CA13D2AE3592985625F3BCA4A35A43C97E2451C3CEB9287FD3F5295"
     },
     {
       "path": "adapter_runtime/api-ms-win-core-console-l1-1-0.dll",
@@ -408,18 +405,18 @@
     },
     {
       "path": "adapter_runtime/Nanaimo.Adapter.dll",
-      "size": 89088,
-      "sha256": "3F5034F2494213153B32091992FF005ABED92C6C5AB90EE8CE3F14523F9E0AC0"
+      "size": 103424,
+      "sha256": "62FA1AF6A010E2B8F3A3C475CF9C6A7107710909A86AFA2CCBD7C3B3405CEB33"
     },
     {
       "path": "adapter_runtime/Nanaimo.Adapter.exe",
       "size": 151040,
-      "sha256": "E48EC11AADA9221034A43A25A1D4B185006C05B7E1771022304A0CE0FAF9D475"
+      "sha256": "1ADB7799549290E6FD835091CCD427388B7EE97B37DEA8B6502B971622B65F4D"
     },
     {
       "path": "adapter_runtime/Nanaimo.Adapter.pdb",
-      "size": 23400,
-      "sha256": "78767DF925238005AFA8358DD28AA8F10AFC4A3017C03A69322D52775C39FD54"
+      "size": 24892,
+      "sha256": "6D7CB8E8825168361F36F73989DD73F95E7C2F81F33CACBB4524F60B21BE8150"
     },
     {
       "path": "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json",
@@ -428,13 +425,13 @@
     },
     {
       "path": "adapter_runtime/Nanaimo.Gameplay.dll",
-      "size": 2065920,
-      "sha256": "A8D2068D429AB1EF25422673FBB496570BBD5C10C48622D0C372460CB489296A"
+      "size": 2102272,
+      "sha256": "218B2D219A7F95E496D357B15FE5D23C2F246E768CD029EDD4E6854F1BA3AE6B"
     },
     {
       "path": "adapter_runtime/Nanaimo.Gameplay.pdb",
-      "size": 349068,
-      "sha256": "A6D5E66685954708D5808AB905676922A1A73EBA8E5960AE99BA4864AD229C0C"
+      "size": 355380,
+      "sha256": "1B1007B5A689AC25E06E94CD856137479040D6CCD3ED902A04C77A612A294213"
     },
     {
       "path": "adapter_runtime/nanaimo_gameplay_bridge.exe",
@@ -1368,8 +1365,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 3520,
-      "sha256": "C347E43A40B50D9622948E6C99713336D53EEBDA1EA0293D95841C66DE5D0AC9"
+      "size": 4215,
+      "sha256": "887FF8A0A0D8DB62E9323B72D699D55AA9C008A80BD24FAAF31485B969FCD9C8"
     },
     {
       "path": "docs/启动流程与源码索引.md",
@@ -1378,8 +1375,8 @@
     },
     {
       "path": "docs/完整适配器与客户端补丁指引.md",
-      "size": 7423,
-      "sha256": "CCC960410FD611B88226D21716FD3AA6CA86D609B4575FD4DD2F914A6111D800"
+      "size": 9189,
+      "sha256": "0D4792365B520B39AA667A41D8ADAEA0351F8870BAA6837984DD4D7D43483F51"
     },
     {
       "path": "docs/文件清单与导出工具.md",
@@ -1403,8 +1400,8 @@
     },
     {
       "path": "gui_launcher/client_connect.ps1",
-      "size": 4779,
-      "sha256": "D767CAB492D152504B10C8F765B0EF297C159332C4407AA28089F531C1E82757"
+      "size": 4958,
+      "sha256": "230D41FF1C10C507AC9C194E5C3D0311BD66F5F0CD56CA7388A215D8E35803BC"
     },
     {
       "path": "gui_launcher/data/equipment.json",
@@ -1483,8 +1480,8 @@
     },
     {
       "path": "gui_launcher/inventory_admin_backend.py",
-      "size": 11045,
-      "sha256": "374E79B82D26FEA6C74C4D324B792DC70C38EBE88BC9F051A49615C7AB05E533"
+      "size": 11300,
+      "sha256": "2348179B1E00B4A8BD8830832EEB1D17CBBF51A70C9307E3F72EA9CCCA7D792B"
     },
     {
       "path": "gui_launcher/inventory_admin_gui.ps1",
@@ -1503,18 +1500,13 @@
     },
     {
       "path": "gui_launcher/nanaimo_launcher.ps1",
-      "size": 94862,
-      "sha256": "D49BEA45071395A7362B2F4B26687A297C65ED315C3F2011690BC8D191C9F1A8"
+      "size": 95722,
+      "sha256": "5840B925A95DCC973D378D754AE2846CD0A9BBEBA538A66220B548CE3C5ECAEB"
     },
     {
       "path": "gui_launcher/resource_patches/superboss_projectile_alias.json",
       "size": 1588,
       "sha256": "3B4544218D63CFFFF1A57CEFC1EC77324D4E8D260CB5878561E87CDBEB67EF24"
-    },
-    {
-      "path": "install_to_client_root.ps1",
-      "size": 899,
-      "sha256": "73033B9D4AADA73D1835DB9022A72DB86350D5B87B17AF3C6082C89944C92D9A"
     },
     {
       "path": "knowledge/authority/01-协议分帧与连接.md",
@@ -1558,8 +1550,8 @@
     },
     {
       "path": "knowledge/authority/09-运行配置与验证.md",
-      "size": 4413,
-      "sha256": "67EBC1A01A90C776F015DB1157E03246F4D96E197A1A1FFE7745496B55F55E49"
+      "size": 4371,
+      "sha256": "D359FDA6527E24BC901BBC3BB8865CB938C4A1AB138E12E1164A3A03AADAF195"
     },
     {
       "path": "knowledge/知识库索引.md",
@@ -1572,14 +1564,9 @@
       "sha256": "8486A10C4393CEE1C25392769DDD3B2D6C242D6EC7928E1414EFFF7DFB2F07EF"
     },
     {
-      "path": "manifest/feat_social_release.json",
-      "size": 57233,
-      "sha256": "7B44959E73531B4061A9A94ABC36F3484A3EDAAE32FF4BCD8F007AA63AB78A8E"
-    },
-    {
       "path": "manifest/open_release_manifest.json",
-      "size": 3202,
-      "sha256": "40CC18B2894423711BE4CBEBC6CF0D9CC3C8BB2BEEFFBC74E12C02F6B4B75141"
+      "size": 90661,
+      "sha256": "F94F9195AB7537A150A7E28AEE5337409B95992655D804FA64A1E24DDBF7C826"
     },
     {
       "path": "manifest/patch_allowlist.json",
@@ -1594,28 +1581,31 @@
     {
       "path": "manifest/source_closure.json",
       "size": 30075,
-      "sha256": "5A4C16B5D430370D3465FF1FE47CD491761E57CDCFBDBAE6B934717381616A77"
+      "sha256": "3DBEC501542E62203F2D74EE12A64AB9903C5028F5C81B3D822F25FFE50B4476"
     },
     {
       "path": "README.md",
-      "size": 7627,
-      "sha256": "FC0C7D208EFB5E14D02DE3BD859D3B0AF4D7AC516B2FD7FF4B5E80E8FED094D9"
+      "size": 8414,
+      "sha256": "49E2DDEFB6AD770439BFB3D25013355BFE1665502C02FF2B14EA2162107DDBA1"
     },
     {
       "path": "start_nanaimo_launcher.bat",
       "size": 164,
       "sha256": "EAABAC6548E7B59A0C14B087CE96E8E37374849642FABC810AAB6B35FD14AC14"
-    },
-    {
-      "path": "试玩说明.txt",
-      "size": 483,
-      "sha256": "D8E7B6AC4DD1D59972DC64CD9BFD9D4B4D3BD8648ED417E9A9C2FD1BBCA9B5ED"
     }
   ],
-  "distribution": {
-    "file": "openNanaimo-2026.09.21-feat-social-r2.zip",
-    "size": 48742142,
-    "sha256": "90933FCBC920D3AFE82BD08C80495381F11B0FE6294B55CE70EC21D0E9F5550B",
-    "installed_root": "client root (local handoff; client remains user-supplied)"
-  }
+  "accepted_client_baselines": [
+    {
+      "id": "reviewed_adapter_baseline",
+      "path": "game.exe",
+      "size": 14198272,
+      "sha256": "6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90"
+    },
+    {
+      "id": "reviewed_furniture_patched_baseline",
+      "path": "game.exe",
+      "size": 14198272,
+      "sha256": "FEF34EE03DA60BD86975B453D013AE8593AF086B0EA79413466C43B58EC19DDC"
+    }
+  ]
 }

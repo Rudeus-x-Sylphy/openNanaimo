@@ -25,6 +25,7 @@ __pycache__/
 /exports/
 /.private/
 /adapter/*.rebuilt.exe
+/adapter/*.exe
 # Official installers are supplied separately, never as patch payload
 /installer/
 
@@ -43,6 +44,9 @@ __pycache__/
 /adapter_pet_items_*
 
 /adapter_cash_bundle_migration_*
+
+# Generated self-contained adapter runtime. The release archive must carry the
+# complete adapter_runtime tree; these build outputs are not source-tracked.
 /adapter_runtime/
 /adapter_data/
 **/bin/

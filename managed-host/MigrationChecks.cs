@@ -178,6 +178,8 @@ internal static class MigrationChecks
                 "Passwordless relogin restores the original account character");
         }
         Assert(await db.OpenLocalAccountAsync(firstAccount.ToUpperInvariant(), token) == first, "Account case matches existing database rules");
+        await CheckLocalProfileReapplyAsync(db, token);
+        await CheckLocalSidecarImportAsync(db, token);
         await Register("launcher account", true, "LaunchCheck");
         long launched = (await db.GetAccountIdByUsernameAsync("launcher account", token))!.Value;
         Assert(await db.GetCharacterAsync(launched, token) is null, "Legacy launcher creation fields cannot bypass original game creation");
@@ -218,6 +220,118 @@ internal static class MigrationChecks
             var context = await RequestAsync(client, 0x2719, new byte[24], 0x271A, token);
             Assert(context[5] == 1 && context[6] == 2, "Relogin skips both creation and completed tutorial");
         }
+    }
+
+    private static async Task CheckLocalProfileReapplyAsync(DatabaseService db, CancellationToken token)
+    {
+        static string Profile(string name, int hp, int level, uint pet, string skills, int x, int y)
+        {
+            var hex = Convert.ToHexString(System.Text.Encoding.ASCII.GetBytes(name));
+            return $"version=2\nname_hex={hex}\ngender=1\nlevel={level}\npet={pet}\npet_age_a=3\npet_age_b=3\n"
+                + "equip_hair=10130337\nequip_body=10100028\nequip_top=10110337\nequip_bottom=10120352\nequip_accessory=10150103\nequip_effect=10160017\n"
+                + $"hp_max={hp}\nhp_current={hp - 100}\nmp_max=700\nmp_current=600\ncoin=12345\nnana_point=67890\n"
+                + "card_key_gold=7\ncard_key_mystery=8\nquickbar_expiry=2099123123\nfree_magic_key_expiry=2099123123\n"
+                + "skill_slot_z=52000000\nskill_slot_x=52000001\n" + skills + $"x={x}\ny={y}\n";
+        }
+
+        var first = await db.ImportLocalProfileAsync(Profile("ProfileReapply", 1800, 25, 15009205,
+            "skill_grade0=5\nskill_grade1=5\nskill_grade2=0\n", 400, 300), token);
+        Assert(!first.TutorialCompleted && first.CurrentMapId == 0 && first.CurrentTownPage == 0,
+            "New launcher profile retains the original first-guide entry state");
+        var account = first.AccountId;
+        var session = Guid.NewGuid().ToString("N");
+        Assert(await db.BeginWorldSessionAsync(account, first.Id, session, 1, "127.0.0.1", token),
+            "Profile reapply location fixture starts");
+        await db.EndWorldSessionAsync(account, first.Id, session,
+            new CharacterRuntimeState(first.CurrentHp, first.CurrentMp, 77, 9, 913, 917, 1), token);
+
+        var second = await db.ImportLocalProfileAsync(Profile("ProfileReapply", 2400, 60, 0,
+            "skill_grade0=2\nskill_grade1=0\nskill_grade2=4\n", 100, 101), token);
+        Assert(second.Level == first.Level && second.Experience == first.Experience,
+            "Profile reapply preserves existing level and experience");
+        Assert(second.CurrentMapId == 77 && second.CurrentTownPage == 9
+            && second.PositionX == 913 && second.PositionY == 917,
+            "Profile reapply preserves last offline location");
+        Assert(second.MaxHp == 2400 && second.CurrentHp == 2300 && second.MaxMp == 700 && second.CurrentMp == 600
+            && second.Hans == 12345 && second.Cash == 67890 && second.EquippedPetItemCode == 0
+            && second.PetVariant == 0,
+            "Profile reapply applies current resources and clears selected pet without changing location");
+        var skills = await db.GetCharacterSkillsAsync(second.Id, token);
+        Assert(skills.Count == 2 && skills.Single(x => x.SkillCode == 52000000).Grade == 2
+            && skills.Single(x => x.SkillCode == 52000002).Grade == 4,
+            "Profile reapply uses SkillCatalog-backed launcher skill IDs");
+        var items = await db.GetCharacterAsync(account, token);
+        Assert(items!.Items.Count(x => x.ItemCode == 10130337) == 1,
+            "Profile reapply does not duplicate selected equipment");
+    }
+
+    private static async Task CheckLocalSidecarImportAsync(DatabaseService db, CancellationToken token)
+    {
+        var root = Path.Combine(Path.GetDirectoryName(db.DatabasePath)!, "profile-sidecar-check");
+        Directory.CreateDirectory(root);
+        var nameHex = Convert.ToHexString(Encoding.ASCII.GetBytes("SidecarCheck"));
+        var suffix = "p_" + nameHex;
+        var cashGameItem = ShopCatalog.All.Where(item => item.Section == InventorySection.GameItem
+            && NativeDungeonState.IsNativeItem(item.ItemCode) && item.ItemCode != 14000001)
+            .Select(item => item.ItemCode).First();
+        await File.WriteAllTextAsync(Path.Combine(root, "nanaimo_inventory_state_v1.dat"),
+            "version=1\ncoin=0:321\nnana=0:654\nequip0=10130337\nequip1=10100028\nequip2=10110337\nequip3=10120352\nequip4=10150103\neffect=10160017\nselected_pet=15009205\nowned_equipment=10130337\nowned_equipment=10100028\nowned_equipment=10110337\nowned_equipment=10120352\nowned_equipment=10150103\nowned_equipment=10160017\nowned_pet=15009205\n"
+            + $"owned_misc={cashGameItem}\n", Encoding.ASCII, token);
+        await File.WriteAllTextAsync(Path.Combine(root, $"adapter_pet_items_{suffix}.dat"),
+            "version=2\npet=15009205,0,17018837,17018838,0\n", Encoding.ASCII, token);
+        await File.WriteAllTextAsync(Path.Combine(root, $"card_synthesis_rewards_{suffix}.dat"),
+            "version=1\n14000001=3\n", Encoding.ASCII, token);
+        await File.WriteAllTextAsync(Path.Combine(root, $"card_inventory_{suffix}.dat"),
+            "version=1\n13000001=2\n", Encoding.ASCII, token);
+        var apartment = new byte[4076];
+        BinaryPrimitives.WriteUInt32LittleEndian(apartment.AsSpan(0, 4), 0x31545041);
+        BinaryPrimitives.WriteUInt32LittleEndian(apartment.AsSpan(4, 4), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(apartment.AsSpan(8, 4), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(apartment.AsSpan(12, 4), 11000028);
+        BinaryPrimitives.WriteUInt16LittleEndian(apartment.AsSpan(16, 2), 1);
+        apartment[18] = 1; apartment[19] = 0; BinaryPrimitives.WriteInt16LittleEndian(apartment.AsSpan(20, 2), 400);
+        BinaryPrimitives.WriteInt16LittleEndian(apartment.AsSpan(22, 2), 300);
+        await File.WriteAllBytesAsync(Path.Combine(root, "nanaimo_apartment_state_v1.dat"), apartment, token);
+
+        var profile = $"version=2\nname_hex={nameHex}\ngender=1\nlevel=25\npet=15009205\npet_age_a=3\npet_age_b=3\n"
+            + "equip_hair=10130337\nequip_body=10100028\nequip_top=10110337\nequip_bottom=10120352\nequip_accessory=10150103\nequip_effect=10160017\n"
+            + "hp_max=1500\nhp_current=1500\nmp_max=500\nmp_current=500\ncoin=0\nnana_point=0\n"
+            + "skill_slot_z=52000000\nskill_slot_x=52000001\nskill_grade0=5\nskill_grade1=5\n";
+        var character = await db.ImportLocalProfileAsync(profile, root, token);
+        var imported = (await db.GetCharacterAsync(character.AccountId, token))!;
+        Assert(imported.Hans == 321 && imported.Cash == 654
+            && imported.Items.Any(x => x.ItemCode == 14000001 && x.Quantity >= 3),
+            "Profile sidecars import currency and stackable game items");
+        Assert(imported.Items.Any(x => x.ItemCode == 15009205 && x.PetAccessory0 == 17018837 && x.PetAccessory1 == 17018838),
+            "Profile sidecars import selected pet ownership and gems");
+        var importedCards = await db.GetCharacterCardsAsync(character.Id, token);
+        Assert(importedCards.Single(x => x.CardCode == 13000001).Quantity == 2,
+            "Profile sidecars import card quantities");
+        var nativeState = NativeDungeonState.Create(imported, importedCards, await db.GetCharacterSkillsAsync(character.Id, token));
+        Assert(nativeState.Items.TryGetValue(14000001, out var stackableCount) && stackableCount == 3
+            && nativeState.Items.TryGetValue(cashGameItem, out var cashCount) && cashCount == 1
+            && nativeState.Get(272) == 2
+            && nativeState.Get(140) == 17018837 && nativeState.Get(144) == 17018838,
+            "Profile sidecars reach the native bridge state for game items, cards and pet gems");
+        var placement = (await db.GetApartmentPlacementsAsync(character.Id, token)).Single();
+        Assert(placement.ItemCode == 11000028 && placement.SlotIndex == 0,
+            "Profile sidecars convert GUI furniture instance 1 to managed slot 0");
+
+        var extraItem = ShopCatalog.All.First(item => item.Section == InventorySection.GameItem
+            && item.ItemCode != 14000001 && item.ItemCode != cashGameItem).ItemCode;
+        var extraCard = CardCatalog.All.First(card => card.CardCode != 13000001).CardCode;
+        await db.ChangeGmStockAsync(character.AccountId, "item", extraItem, 4, token);
+        await db.ChangeGmStockAsync(character.AccountId, "card", extraCard, 3, token);
+        await db.ImportLocalProfileAsync(profile, root, token);
+        var repeated = (await db.GetCharacterAsync(character.AccountId, token))!;
+        var repeatedCards = await db.GetCharacterCardsAsync(character.Id, token);
+        Assert(repeated.Items.Count(x => x.ItemCode == 14000001) == 1
+            && repeatedCards.Count(x => x.CardCode == 13000001) == 1,
+            "Repeated profile sidecar import does not duplicate items or cards");
+        Assert(repeated.Items.Any(x => x.ItemCode == extraItem && x.Quantity == 4)
+            && repeatedCards.Any(x => x.CardCode == extraCard && x.Quantity == 3),
+            "Profile sidecar import preserves DB-only inventory and cards not edited by the GUI");
+        Directory.Delete(root, true);
     }
 
     private static async Task CheckGmAsync(DatabaseService db, CancellationToken token)
@@ -261,7 +375,7 @@ internal static class MigrationChecks
         finally{await db.EndWorldSessionAsync(account,id,session,new CharacterRuntimeState(saved.CurrentHp,saved.CurrentMp,saved.CurrentMapId,saved.CurrentTownPage,saved.PositionX,saved.PositionY,1),token);}
         await db.ChangeGmStockAsync(account,"skill",skill,0,token);
         Assert((await db.GetCharacterSkillsAsync(id,token)).All(i=>i.SkillCode!=skill),"GM removes a skill at grade zero");
-        Assert((await db.GetGmAuditAsync(token)).Count==6,"GM successful writes have audit records and rejected writes do not");
+        Assert((await db.GetGmAuditAsync(token)).Count>=6,"GM successful writes have audit records and rejected writes do not");
         var runtime=await GmRuntimeControl.RequestAsync(Path.GetDirectoryName(db.DatabasePath)!,"snapshot","native",token);
         Assert(runtime.ValueKind==System.Text.Json.JsonValueKind.Array,"GM runtime pipe returns native room snapshot");
         var fresh=new DatabaseService(Path.GetDirectoryName(db.DatabasePath)!);

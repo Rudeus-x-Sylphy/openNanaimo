@@ -14,7 +14,7 @@ public sealed partial class NetworkAdapterService
     public NativeDungeonPool? NativeRooms { get; set; }
     public string NativeJournalDirectory { get; set; } = "native-journal";
 
-    public async Task RunLocalProfileListenerAsync(int port, CancellationToken token)
+    public async Task RunLocalProfileListenerAsync(int port, CancellationToken token, string? profileRoot = null)
     {
         var listener = new TcpListener(IPAddress.Loopback, port); listener.Start();
         try
@@ -38,7 +38,7 @@ public sealed partial class NetworkAdapterService
                         accountId = await _database.OpenLocalAccountAsync(request.RootElement.GetProperty("LocalAccount").GetString() ?? "", timeout.Token);
                     }
                     else
-                        accountId = (await _database.ImportLocalProfileAsync(Encoding.ASCII.GetString(data), timeout.Token)).AccountId;
+                        accountId = (await _database.ImportLocalProfileAsync(Encoding.ASCII.GetString(data), profileRoot, timeout.Token)).AccountId;
                     _localLaunches.Enqueue((accountId, DateTime.UtcNow.AddMinutes(2)));
                     await stream.WriteAsync("OK\n"u8.ToArray(), timeout.Token);
                     _log($"Local launcher account ready: account={accountId}");

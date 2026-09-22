@@ -2,7 +2,9 @@
 import re
 import unittest
 from pathlib import Path
-from verify_client_baseline import verify, read_va, CLIENT_SHA256, NATIVE_WINDOWS
+from verify_client_baseline import verify, read_va, CLIENT_SHA256, PATCHED_CLIENT_SHA256, NATIVE_WINDOWS
+
+PATCHED_CLIENT_SHA256 = 'FEF34EE03DA60BD86975B453D013AE8593AF086B0EA79413466C43B58EC19DDC'
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,6 +51,7 @@ class NativeIntegrationTests(unittest.TestCase):
                 self.skipTest('source-only tree: launcher runtime not supplied')
             text = path.read_text('utf-8-sig')
             self.assertIn("$ExpectedClientHash='" + CLIENT_SHA256 + "'", text)
+            self.assertIn(PATCHED_CLIENT_SHA256, text)
             self.assertNotRegex(text, r'(?i)flamethrower|Projectile DIY|Get-FlamethrowerSelection|projectileReverseBox|projectilePreview')
 
     def test_adapter_keeps_native_combat_resolution(self):

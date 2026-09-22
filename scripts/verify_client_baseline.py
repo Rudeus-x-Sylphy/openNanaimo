@@ -12,6 +12,7 @@ from pathlib import Path
 
 CLIENT_SIZE = 14198272
 CLIENT_SHA256 = '6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90'
+PATCHED_CLIENT_SHA256 = 'FEF34EE03DA60BD86975B453D013AE8593AF086B0EA79413466C43B58EC19DDC'
 ORIGINAL_SHA256 = 'D56C80CA893990761BBB7FAF412F54D8CB56763AD2D2D74AEFC3F9FE63187515'
 NATIVE_WINDOWS = {
     0x41235F: bytes.fromhex('E99CC31B00'),
@@ -63,9 +64,18 @@ def read_va(data, va, size):
 
 
 def verify(data, original=None):
-    if len(data) != CLIENT_SIZE or digest(data) != CLIENT_SHA256:
-        raise ValueError('client differs from the reviewed startup/FP baseline')
-    for va, expected in {**NATIVE_WINDOWS, **STARTUP_WINDOWS}.items():
+    if len(data) != CLIENT_SIZE:
+        raise ValueError('client size differs from the reviewed baselines')
+    actual_hash = digest(data)
+    if actual_hash == CLIENT_SHA256:
+        native_windows = NATIVE_WINDOWS
+        baseline_id = 'reviewed_adapter_baseline'
+    elif actual_hash == PATCHED_CLIENT_SHA256:
+        native_windows = {**NATIVE_WINDOWS, 0x41235F: bytes.fromhex('E97CC C1B00'.replace(' ', ''))}
+        baseline_id = 'reviewed_furniture_patched_baseline'
+    else:
+        raise ValueError('client differs from the reviewed exact baselines')
+    for va, expected in {**native_windows, **STARTUP_WINDOWS}.items():
         if read_va(data, va, len(expected)) != expected:
             raise ValueError(f'client window mismatch at {va:#x}')
     if read_va(data, 0xB98000, 0x2000) != b'\xCC' * 0x2000:
@@ -80,7 +90,7 @@ def verify(data, original=None):
         allowed = {va + i for va, blob in STARTUP_WINDOWS.items() for i in range(len(blob))}
         if len(changed) != 35 or not changed <= allowed:
             raise ValueError('unexpected original-to-baseline code changes')
-    return {'size': len(data), 'sha256': digest(data), 'native_windows': len(NATIVE_WINDOWS),
+    return {'size': len(data), 'sha256': actual_hash, 'baseline_id': baseline_id, 'native_windows': len(native_windows),
             'original_code_comparison': original is not None, 'runtime_acceptance': False}
 
 

@@ -92,7 +92,7 @@ class LauncherContractTests(unittest.TestCase):
             self.assertNotIn(internal, preview)
         for diagnostic in ('Character and profile', 'Resources:', 'Skills:',
                            'Profile INI', 'Profile JSON', 'Binary validation',
-                           "File-State-Line 'Client'", "File-State-Line 'Village pack'",
+                           "Client-State-Line", "File-State-Line 'Village pack'",
                            '$ExpectedAdapterHash', 'Working directory:'):
             self.assertIn(diagnostic, preview)
 

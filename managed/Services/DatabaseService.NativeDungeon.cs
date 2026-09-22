@@ -18,11 +18,187 @@ public readonly record struct NativeDungeonApplyResult(
 
 public sealed partial class DatabaseService
 {
+    private sealed class LocalShoppingSidecar
+    {
+        public long? Coin { get; init; }
+        public long? Nana { get; init; }
+        public uint[] Equipped { get; init; } = new uint[5];
+        public uint Effect { get; set; }
+        public uint SelectedPet { get; set; }
+        public HashSet<uint> OwnedEquipment { get; init; } = [];
+        public HashSet<uint> OwnedPets { get; init; } = [];
+        public HashSet<uint> GiftPets { get; init; } = [];
+        public List<uint> OwnedMisc { get; init; } = [];
+    }
+
+    private sealed record LocalPetSidecar(uint UpgradeMaterial, uint Accessory0, uint Accessory1, uint Accessory2);
+    private sealed record LocalFurnitureSidecar(ushort SlotIndex, uint ItemCode, byte Placed, byte InteriorType, short X, short Y, byte Layer, byte Mirror);
+
+    private sealed class LocalSidecars
+    {
+        public LocalShoppingSidecar? Shopping { get; init; }
+        public Dictionary<uint, LocalPetSidecar>? Pets { get; init; }
+        public Dictionary<uint, ushort>? GameItems { get; init; }
+        public Dictionary<uint, ushort>? Cards { get; init; }
+        public List<LocalFurnitureSidecar>? Furniture { get; init; }
+    }
+
+    private static LocalSidecars? LoadLocalSidecars(string? root, string nameHex)
+    {
+        if (string.IsNullOrWhiteSpace(root)) return null;
+        var directory = Path.GetFullPath(root);
+        var suffix = "p_" + nameHex.ToUpperInvariant()[..Math.Min(32, nameHex.Length)];
+        var shoppingPath = Path.Combine(directory, "nanaimo_inventory_state_v1.dat");
+        var petPath = Path.Combine(directory, $"adapter_pet_items_{suffix}.dat");
+        var gamePath = Path.Combine(directory, $"card_synthesis_rewards_{suffix}.dat");
+        var cardPath = Path.Combine(directory, $"card_inventory_{suffix}.dat");
+        var furniturePath = Path.Combine(directory, "nanaimo_apartment_state_v1.dat");
+        if (!File.Exists(shoppingPath) && !File.Exists(petPath) && !File.Exists(gamePath)
+            && !File.Exists(cardPath) && !File.Exists(furniturePath)) return null;
+
+        return new LocalSidecars
+        {
+            Shopping = File.Exists(shoppingPath) ? ParseShoppingSidecar(shoppingPath) : null,
+            Pets = File.Exists(petPath) ? ParsePetSidecar(petPath) : null,
+            GameItems = File.Exists(gamePath) ? ParseCountSidecar(gamePath, "game item") : null,
+            Cards = File.Exists(cardPath) ? ParseCardSidecar(cardPath) : null,
+            Furniture = File.Exists(furniturePath) ? ParseFurnitureSidecar(furniturePath) : null
+        };
+    }
+
+    private static LocalShoppingSidecar ParseShoppingSidecar(string path)
+    {
+        var result = new LocalShoppingSidecar();
+        long? coin = null, nana = null;
+        foreach (var raw in File.ReadAllLines(path, Encoding.ASCII))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#')) continue;
+            var pair = line.Split('=', 2);
+            if (pair.Length != 2) throw new InvalidDataException($"Invalid inventory sidecar line: {line}");
+            var key = pair[0].Trim(); var value = pair[1].Trim();
+            if (key == "version") { if (value != "1") throw new InvalidDataException($"Unsupported inventory sidecar version: {value}"); continue; }
+            if (key is "coin" or "nana")
+            {
+                var halves = value.Split(':', 2);
+                if (halves.Length != 2 || !uint.TryParse(halves[0], out var hi) || !uint.TryParse(halves[1], out var lo))
+                    throw new InvalidDataException($"Invalid {key} in inventory sidecar.");
+                var number = ((ulong)hi << 32) | lo;
+                if (number > long.MaxValue) throw new InvalidDataException($"{key} exceeds database range.");
+                if (key == "coin") coin = (long)number; else nana = (long)number;
+                continue;
+            }
+            if (key.StartsWith("equip", StringComparison.Ordinal) && int.TryParse(key[5..], out var slot) && slot is >= 0 and < 5)
+            { result.Equipped[slot] = ParseCode(value, key); continue; }
+            if (key == "effect") { result.Effect = ParseCode(value, key); continue; }
+            if (key == "selected_pet") { result.SelectedPet = ParseCode(value, key); continue; }
+            if (key == "owned_equipment") { result.OwnedEquipment.Add(ParseCode(value, key)); continue; }
+            if (key == "owned_pet") { result.OwnedPets.Add(ParseCode(value, key)); continue; }
+            if (key == "gift_pet") { result.GiftPets.Add(ParseCode(value, key)); continue; }
+            if (key == "owned_misc") { result.OwnedMisc.Add(ParseCode(value, key)); continue; }
+        }
+        return new LocalShoppingSidecar
+        {
+            Coin = coin, Nana = nana, Effect = result.Effect, SelectedPet = result.SelectedPet,
+            Equipped = result.Equipped, OwnedEquipment = result.OwnedEquipment,
+            OwnedPets = result.OwnedPets, GiftPets = result.GiftPets, OwnedMisc = result.OwnedMisc
+        };
+    }
+
+    private static Dictionary<uint, ushort> ParseCountSidecar(string path, string label)
+    {
+        var result = new Dictionary<uint, ushort>();
+        foreach (var raw in File.ReadAllLines(path, Encoding.ASCII))
+        {
+            var line = raw.Trim(); if (line.Length == 0) continue;
+            var pair = line.Split('=', 2); if (pair.Length != 2) throw new InvalidDataException($"Invalid {label} sidecar line: {line}");
+            if (pair[0] == "version") { if (pair[1] != "1") throw new InvalidDataException($"Unsupported {label} sidecar version: {pair[1]}"); continue; }
+            if (!uint.TryParse(pair[0], out var code) || !ushort.TryParse(pair[1], out var count) || count == 0)
+                throw new InvalidDataException($"Invalid {label} sidecar entry: {line}");
+            result[code] = count;
+        }
+        return result;
+    }
+
+    private static Dictionary<uint, ushort> ParseCardSidecar(string path)
+    {
+        var result = ParseCountSidecar(path, "card");
+        foreach (var (code, quantity) in result)
+            if (code is < 13000001 or > 13000420 || quantity > byte.MaxValue || !CardCatalog.TryGet(code, out _))
+                throw new InvalidDataException($"Card sidecar contains an invalid card {code}.");
+        return result;
+    }
+
+    private static Dictionary<uint, LocalPetSidecar> ParsePetSidecar(string path)
+    {
+        var result = new Dictionary<uint, LocalPetSidecar>();
+        var version = 1;
+        foreach (var raw in File.ReadAllLines(path, Encoding.ASCII))
+        {
+            var line = raw.Trim(); if (line.Length == 0) continue;
+            if (line.StartsWith("version=", StringComparison.Ordinal)) { if (!int.TryParse(line[8..], out version) || version is < 1 or > 2) throw new InvalidDataException("Unsupported pet sidecar version."); continue; }
+            var pair = line.Split('=', 2); if (pair.Length != 2 || pair[0] != "pet") throw new InvalidDataException($"Invalid pet sidecar line: {line}");
+            var fields = pair[1].Split(',');
+            if (fields.Length != 5 || !uint.TryParse(fields[0], out var pet) || !uint.TryParse(fields[1], out var upgrade)
+                || !uint.TryParse(fields[2], out var a) || !uint.TryParse(fields[3], out var b) || !uint.TryParse(fields[4], out var c)
+                || !ShopCatalog.TryGet(15, pet, out _)) throw new InvalidDataException($"Invalid pet sidecar entry: {line}");
+            if (version < 2) upgrade = 0;
+            result[pet] = new LocalPetSidecar(upgrade, a, b, c);
+        }
+        return result;
+    }
+
+    private static List<LocalFurnitureSidecar> ParseFurnitureSidecar(string path)
+    {
+        var bytes = File.ReadAllBytes(path);
+        if (bytes.Length != 4076 || BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(0, 4)) != 0x31545041
+            || BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(4, 4)) != 1)
+            throw new InvalidDataException("Invalid apartment sidecar header.");
+        var count = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(8, 4));
+        if (count > 254) throw new InvalidDataException("Apartment sidecar exceeds its 254-row capacity.");
+        var result = new List<LocalFurnitureSidecar>();
+        for (var i = 0; i < count; i++)
+        {
+            var offset = 12 + checked((int)i * 16);
+            var slot = BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset + 4, 2));
+            var code = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(offset + 0, 4));
+            var placed = bytes[offset + 6]; var type = bytes[offset + 7];
+            var x = BinaryPrimitives.ReadInt16LittleEndian(bytes.AsSpan(offset + 8, 2));
+            var y = BinaryPrimitives.ReadInt16LittleEndian(bytes.AsSpan(offset + 10, 2));
+            var layer = bytes[offset + 12]; var mirror = bytes[offset + 13];
+            if (!ShopCatalog.TryGet(code, out var item) || item.Section != InventorySection.Furniture || type > 4 || mirror > 1)
+                throw new InvalidDataException($"Invalid apartment sidecar furniture row: code={code}, type={type}, mirror={mirror}.");
+            if (placed != 0)
+            {
+                if (slot is < 1 or > 84)
+                    throw new InvalidDataException($"Placed apartment sidecar slot is outside the managed capacity: {slot}.");
+                slot--;
+            }
+            result.Add(new LocalFurnitureSidecar(slot, code, placed, type, x, y, layer, mirror));
+        }
+        return result;
+    }
+
+    private static uint ParseCode(string value, string key)
+        => uint.TryParse(value, out var code) ? code : throw new InvalidDataException($"Invalid {key} in inventory sidecar.");
+
     public async Task<CharacterRecord> ImportLocalProfileAsync(string profile, CancellationToken token = default)
+        => await ImportLocalProfileAsync(profile, null, token);
+
+    public async Task<CharacterRecord> ImportLocalProfileAsync(string profile, string? sidecarRoot, CancellationToken token = default)
     {
         var values = profile.Split('\n').Select(s => s.Trim()).Where(s => s.Contains('='))
             .Select(s => s.Split('=', 2)).ToDictionary(s => s[0], s => s[1], StringComparer.OrdinalIgnoreCase);
-        uint Read(string key, uint fallback = 0) => values.TryGetValue(key, out var v) && uint.TryParse(v, out var n) ? n : fallback;
+        uint Read(string key, uint fallback = 0)
+            => values.TryGetValue(key, out var v) && uint.TryParse(v, out var n) ? n : fallback;
+        long ReadInt64(string key, long fallback = 0)
+        {
+            if (!values.TryGetValue(key, out var value)) return fallback;
+            if (!ulong.TryParse(value, out var parsed) || parsed > long.MaxValue)
+                throw new InvalidDataException($"Profile value {key} is outside the database integer range.");
+            return (long)parsed;
+        }
+
         var nameBytes = Convert.FromHexString(values["name_hex"]);
         if (nameBytes.Length is < 1 or > 14 || nameBytes.Contains((byte)0))
             throw new InvalidDataException("Profile name must contain 1..14 nonzero GBK bytes.");
@@ -35,14 +211,31 @@ public sealed partial class DatabaseService
             if (!created.Success) throw new InvalidOperationException(created.Error);
             accountId = await GetAccountIdByUsernameAsync(username, token);
         }
+
+        var sidecars = LoadLocalSidecars(sidecarRoot, values["name_hex"]);
         var existing = await GetCharacterAsync(accountId!.Value, token);
-        if (existing is not null) return existing;
-        var appearance = new byte[36];
         string[] equipment = ["equip_hair", "equip_body", "equip_top", "equip_bottom", "equip_accessory"];
-        for (int i = 0; i < equipment.Length; i++) BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(i * 4), Read(equipment[i]));
-        BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(24), Read("equip_effect"));
-        BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(28), Read("pet"));
+        uint ReadAppearanceEquipment(int index) => sidecars?.Shopping is { } shopping ? shopping.Equipped[index] : Read(equipment[index]);
+        uint selectedPet = sidecars?.Shopping is { } shoppingState ? shoppingState.SelectedPet : Read("pet");
+        uint selectedEffect = sidecars?.Shopping is { } shoppingEffect ? shoppingEffect.Effect : Read("equip_effect");
+        long selectedCoin = sidecars?.Shopping?.Coin ?? ReadInt64("coin");
+        long selectedNana = sidecars?.Shopping?.Nana ?? ReadInt64("nana_point");
+        var appearance = new byte[36];
+        for (int i = 0; i < equipment.Length; i++)
+            BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(i * 4), ReadAppearanceEquipment(i));
+        BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(24), selectedEffect);
+        BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(28), selectedPet);
         BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(32), Read("gender"));
+
+        // The launcher profile is an authoritative edit for profile-controlled fields.
+        // It is deliberately not authoritative for runtime location: an existing character
+        // must resume at the last persisted logout position.
+        if (existing is not null)
+        {
+            await ApplyLocalProfileAsync(existing, values, appearance, equipment, Read, selectedPet, selectedCoin, selectedNana, sidecars, token);
+            return (await GetCharacterAsync(accountId.Value, token))!;
+        }
+
         var result = await CreateCharacterAsync(accountId.Value, name, (int)Read("gender"), 0, appearance, token);
         if (!result.Success) throw new InvalidOperationException(result.Error);
         await using var connection = await OpenConnectionAsync(token);
@@ -56,28 +249,258 @@ public sealed partial class DatabaseService
         }
         int level = (int)Math.Clamp(Read("level", 1), 1, 99);
         await Execute("""
-            UPDATE Characters SET TutorialCompleted=1, Appearance=$appearance, Gender=$gender,
+            UPDATE Characters SET TutorialCompleted=0, Appearance=$appearance, Gender=$gender,
               Level=$level, Experience=$exp, MaxHp=$hpmax, CurrentHp=$hp, MaxMp=$mpmax, CurrentMp=$mp,
-              Hans=$coin, Cash=$cash, EquippedPetItemCode=$pet, PetVariant=1,
-              CurrentMapId=1, CurrentTownPage=33, PositionX=400, PositionY=300,
-              SkillPoints=65535, QuickSlotExpansionExpires=2099123123 WHERE Id=$id
+              Hans=$coin, Cash=$cash, CardMysteryKeyCount=$mystery, CardGoldenKeyCount=$gold,
+              EquippedPetItemCode=$pet, PetVariant=$pet_variant, QuickSlotExpansionExpires=$quickbar,
+              FreeMagicExpansionExpires=$free_magic, SelectedSkill0=$skill0, SelectedSkill1=$skill1,
+              CurrentMapId=0, CurrentTownPage=0, PositionX=320, PositionY=240,
+              SkillPoints=65535 WHERE Id=$id
             """, ("$appearance", appearance), ("$gender", Read("gender")), ("$level", level),
             ("$exp", CharacterProgression.ExperienceRequiredForLevel(level)),
             ("$hpmax", Read("hp_max", 1500)), ("$hp", Read("hp_current", 1500)),
             ("$mpmax", Read("mp_max", 500)), ("$mp", Read("mp_current", 500)),
-            ("$coin", Read("coin")), ("$cash", Read("nana_point")), ("$pet", Read("pet")));
-        foreach (uint code in equipment.Select(k => Read(k)).Append(Read("equip_effect")).Append(Read("pet")).Where(c => c > 0))
-            await Execute("""
-                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,PetCurrentStage,PetMaximumStage,UpdatedAt)
-                VALUES($id,$code,1,$agea,$ageb,$now) ON CONFLICT(CharacterId,ItemCode) DO NOTHING
-                """, ("$code", code), ("$agea", Read("pet_age_a", 3)), ("$ageb", Read("pet_age_b", 3)), ("$now", DateTime.UtcNow.ToString("O")));
-        foreach (uint code in new uint[] { 52000000, 52000001, 52000008, 52000009 })
-            await Execute("""
-                INSERT INTO CharacterSkills(CharacterId,SkillCode,Grade,UpdatedAt) VALUES($id,$code,5,$now)
-                ON CONFLICT(CharacterId,SkillCode) DO UPDATE SET Grade=5
-                """, ("$code", code), ("$now", DateTime.UtcNow.ToString("O")));
+            ("$coin", selectedCoin), ("$cash", selectedNana),
+            ("$mystery", Read("card_key_mystery", 99)), ("$gold", Read("card_key_gold", 99)),
+            ("$pet", selectedPet), ("$pet_variant", selectedPet > 0 ? 1 : 0),
+            ("$quickbar", Read("quickbar_expiry")),
+            ("$free_magic", Read("free_magic_key_expiry")),
+            ("$skill0", Read("skill_slot_z")), ("$skill1", Read("skill_slot_x")));
+        await UpsertLocalProfileItemsAsync(connection, transaction, result.CharacterId, values, equipment, Read, token);
+        await ApplyLocalSidecarsAsync(connection, transaction, result.CharacterId, sidecars, token);
+        await ReplaceLocalProfileSkillsAsync(connection, transaction, result.CharacterId, values, token);
         await transaction.CommitAsync(token);
         return (await GetCharacterAsync(accountId.Value, token))!;
+    }
+
+    private async Task ApplyLocalProfileAsync(
+        CharacterRecord existing,
+        IReadOnlyDictionary<string, string> values,
+        byte[] appearance,
+        string[] equipment,
+        Func<string, uint, uint> read,
+        uint selectedPet,
+        long selectedCoin,
+        long selectedNana,
+        LocalSidecars? sidecars,
+        CancellationToken token)
+    {
+        await using var connection = await OpenConnectionAsync(token);
+        await using var transaction = connection.BeginTransaction();
+        async Task Execute(string sql, params (string Key, object Value)[] args)
+        {
+            await using var cmd = connection.CreateCommand(); cmd.Transaction = transaction; cmd.CommandText = sql;
+            cmd.Parameters.AddWithValue("$id", existing.Id);
+            foreach (var (key, value) in args) cmd.Parameters.AddWithValue(key, value);
+            await cmd.ExecuteNonQueryAsync(token);
+        }
+
+        await Execute("""
+            UPDATE Characters SET Appearance=$appearance, Gender=$gender,
+              MaxHp=$hpmax, CurrentHp=$hp, MaxMp=$mpmax, CurrentMp=$mp,
+              Hans=$coin, Cash=$cash, CardMysteryKeyCount=$mystery, CardGoldenKeyCount=$gold,
+              EquippedPetItemCode=$pet, PetVariant=$pet_variant, QuickSlotExpansionExpires=$quickbar,
+              FreeMagicExpansionExpires=$free_magic, SelectedSkill0=$skill0, SelectedSkill1=$skill1,
+              LastSavedAt=$now WHERE Id=$id
+            """, ("$appearance", appearance), ("$gender", read("gender", (uint)existing.Gender)),
+            ("$hpmax", read("hp_max", (uint)existing.MaxHp)), ("$hp", read("hp_current", (uint)existing.CurrentHp)),
+            ("$mpmax", read("mp_max", (uint)existing.MaxMp)), ("$mp", read("mp_current", (uint)existing.CurrentMp)),
+            ("$coin", selectedCoin), ("$cash", selectedNana),
+            ("$mystery", read("card_key_mystery", existing.CardMysteryKeyCount)),
+            ("$gold", read("card_key_gold", existing.CardGoldenKeyCount)),
+            ("$pet", selectedPet),
+            ("$pet_variant", selectedPet > 0 ? 1 : 0),
+            ("$quickbar", read("quickbar_expiry", existing.QuickSlotExpansionExpires)),
+            ("$free_magic", read("free_magic_key_expiry", existing.FreeMagicExpansionExpires)),
+            ("$skill0", read("skill_slot_z", existing.SelectedSkill0)),
+            ("$skill1", read("skill_slot_x", existing.SelectedSkill1)),
+            ("$now", DateTime.UtcNow.ToString("O")));
+        await UpsertLocalProfileItemsAsync(connection, transaction, existing.Id, values, equipment, read, token);
+        await ApplyLocalSidecarsAsync(connection, transaction, existing.Id, sidecars, token);
+        await ReplaceLocalProfileSkillsAsync(connection, transaction, existing.Id, values, token);
+        await transaction.CommitAsync(token);
+    }
+
+    private static async Task ApplyLocalSidecarsAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        long characterId,
+        LocalSidecars? sidecars,
+        CancellationToken token)
+    {
+        if (sidecars is null) return;
+        var now = DateTime.UtcNow.ToString("O");
+        async Task<int> Execute(string sql, params (string Key, object Value)[] args)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction; command.CommandText = sql;
+            command.Parameters.AddWithValue("$id", characterId);
+            foreach (var (key, value) in args) command.Parameters.AddWithValue(key, value);
+            return await command.ExecuteNonQueryAsync(token);
+        }
+        async Task UpsertItem(uint code, ushort quantity)
+        {
+            await Execute("""
+                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt)
+                VALUES($id,$code,$quantity,$now)
+                ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET Quantity=$quantity,UpdatedAt=$now
+                """, ("$code", code), ("$quantity", quantity), ("$now", now));
+        }
+
+        if (sidecars.Shopping is { } shopping)
+        {
+            var clothing = new HashSet<uint>(shopping.OwnedEquipment);
+            foreach (var code in shopping.Equipped.Append(shopping.Effect).Where(code => code != 0)) clothing.Add(code);
+            var pets = new HashSet<uint>(shopping.OwnedPets);
+            if (shopping.SelectedPet != 0) pets.Add(shopping.SelectedPet);
+
+            // Sidecars are applied as explicit edits. Preserve DB-only items that were
+            // not represented by the GUI files; zero/removal requires a future delta contract.
+            foreach (var code in clothing)
+            {
+                if (!ShopCatalog.TryGet(code, out var item) || item.Section != InventorySection.Clothing)
+                    throw new InvalidDataException($"GUI clothing sidecar contains an invalid item: {code}.");
+                await UpsertItem(code, 1);
+            }
+            foreach (var code in pets)
+            {
+                if (!ShopCatalog.TryGet(15, code, out _))
+                    throw new InvalidDataException($"GUI pet sidecar contains an invalid item: {code}.");
+                await UpsertItem(code, 1);
+            }
+
+
+        }
+
+        if (sidecars.GameItems is { } gameItems)
+        {
+            // The GUI writes cash-carried game items as repeated owned_misc rows.
+            // Merge them into CharacterItems because NativeDungeonState consumes
+            // CharacterItems, not CharacterCashInboxItems.
+            var desired = gameItems.ToDictionary(pair => pair.Key, pair => (uint)pair.Value);
+            if (sidecars.Shopping is { } miscShopping)
+                foreach (var code in miscShopping.OwnedMisc)
+                    desired[code] = desired.GetValueOrDefault(code) + 1;
+
+            foreach (var (code, quantity) in desired)
+            {
+                if (quantity == 0 || quantity > ushort.MaxValue)
+                    throw new InvalidDataException($"GUI game item quantity is outside the database range: {code}={quantity}.");
+                if (!ShopCatalog.TryGet(code, out var item) || item.Section != InventorySection.GameItem)
+                    throw new InvalidDataException($"GUI game item sidecar contains an invalid item: {code}.");
+                await UpsertItem(code, checked((ushort)quantity));
+            }
+        }
+
+        if (sidecars.Pets is { } petStates)
+        {
+            foreach (var (code, state) in petStates)
+            {
+                if (!ShopCatalog.TryGet(15, code, out var pet)) continue;
+                var stage = pet.PetModelStage == 0 ? 1 : pet.PetModelStage;
+                var maximum = pet.PetUpgradeStage == 0 ? 2 : pet.PetUpgradeStage;
+                await Execute("""
+                    INSERT INTO CharacterItems(
+                        CharacterId,ItemCode,Quantity,PetCurrentStage,PetMaximumStage,
+                        PetAccessory0,PetAccessory1,PetAccessory2,UpdatedAt)
+                    VALUES($id,$code,1,$stage,$maximum,$a,$b,$c,$now)
+                    ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET
+                        Quantity=MAX(1,CharacterItems.Quantity),
+                        PetAccessory0=$a,PetAccessory1=$b,PetAccessory2=$c,UpdatedAt=$now
+                    """, ("$code", code), ("$stage", stage), ("$maximum", maximum),
+                    ("$a", state.Accessory0), ("$b", state.Accessory1), ("$c", state.Accessory2), ("$now", now));
+            }
+        }
+
+        if (sidecars.Cards is { } cards)
+        {
+            foreach (var (code, quantity) in cards)
+                await Execute("""
+                    INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt) VALUES($id,$code,$quantity,$now)
+                    ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=$quantity,UpdatedAt=$now
+                    """, ("$code", code), ("$quantity", quantity), ("$now", now));
+        }
+
+        if (sidecars.Furniture is { } furniture)
+        {
+            foreach (var group in furniture.GroupBy(row => row.ItemCode))
+                await Execute("""
+                    INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES($id,$code,$quantity,$now)
+                    ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET
+                        Quantity=MAX(CharacterItems.Quantity,$quantity),UpdatedAt=$now
+                    """, ("$code", group.Key), ("$quantity", checked((ushort)group.Count())), ("$now", now));
+            foreach (var row in furniture)
+            {
+                if (!ShopCatalog.TryGet(row.ItemCode, out var item) || item.Section != InventorySection.Furniture) continue;
+                if (row.Placed == 0) continue;
+                await Execute("""
+                    INSERT INTO CharacterApartmentItems(
+                        CharacterId,SlotIndex,ItemCode,PositionX,PositionY,Layer,Mirror,InteriorType,UpdatedAt)
+                    VALUES($id,$slot,$code,$x,$y,$layer,$mirror,$type,$now)
+                    ON CONFLICT(CharacterId,SlotIndex) DO UPDATE SET
+                        ItemCode=$code,PositionX=$x,PositionY=$y,Layer=$layer,Mirror=$mirror,InteriorType=$type,UpdatedAt=$now
+                    """, ("$slot", row.SlotIndex), ("$code", row.ItemCode), ("$x", row.X), ("$y", row.Y),
+                    ("$layer", row.Layer), ("$mirror", row.Mirror), ("$type", row.InteriorType), ("$now", now));
+            }
+        }
+    }
+
+    private static async Task UpsertLocalProfileItemsAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        long characterId,
+        IReadOnlyDictionary<string, string> values,
+        string[] equipment,
+        Func<string, uint, uint> read,
+        CancellationToken token)
+    {
+        var codes = equipment.Select(key => read(key, 0))
+            .Append(read("equip_effect", 0)).Append(read("pet", 0)).Where(code => code > 0).Distinct();
+        foreach (var code in codes)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = """
+                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,PetCurrentStage,PetMaximumStage,UpdatedAt)
+                VALUES($id,$code,1,$agea,$ageb,$now)
+                ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET Quantity=MAX(1,CharacterItems.Quantity), UpdatedAt=$now
+                """;
+            command.Parameters.AddWithValue("$id", characterId);
+            command.Parameters.AddWithValue("$code", code);
+            command.Parameters.AddWithValue("$agea", values.TryGetValue("pet_age_a", out var ageA) && byte.TryParse(ageA, out var a) ? a : 3);
+            command.Parameters.AddWithValue("$ageb", values.TryGetValue("pet_age_b", out var ageB) && byte.TryParse(ageB, out var b) ? b : 3);
+            command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            await command.ExecuteNonQueryAsync(token);
+        }
+    }
+
+    private static async Task ReplaceLocalProfileSkillsAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        long characterId,
+        IReadOnlyDictionary<string, string> values,
+        CancellationToken token)
+    {
+        var skillCodes = SkillCatalog.All.Select(skill => skill.SkillCode).ToArray();
+        var expectedCodes = Enumerable.Range(0, 16).Select(index => 52000000u + (uint)index).ToArray();
+        if (!skillCodes.SequenceEqual(expectedCodes))
+            throw new InvalidDataException("Launcher skill indexes do not match the embedded SkillCatalog IDs.");
+        for (int index = 0; index < skillCodes.Length; index++)
+        {
+            var key = $"skill_grade{index}";
+            if (!values.TryGetValue(key, out var raw) || !int.TryParse(raw, out var grade)) continue;
+            var skillCode = skillCodes[index];
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.Parameters.AddWithValue("$id", characterId);
+            command.Parameters.AddWithValue("$code", skillCode);
+            command.Parameters.AddWithValue("$grade", Math.Clamp(grade, 0, 5));
+            command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            command.CommandText = grade > 0
+                ? "INSERT INTO CharacterSkills(CharacterId,SkillCode,Grade,UpdatedAt) VALUES($id,$code,$grade,$now) ON CONFLICT(CharacterId,SkillCode) DO UPDATE SET Grade=$grade,UpdatedAt=$now"
+                : "DELETE FROM CharacterSkills WHERE CharacterId=$id AND SkillCode=$code";
+            await command.ExecuteNonQueryAsync(token);
+        }
     }
 
     public async Task<NativeDungeonApplyResult> ApplyNativeDungeonDeltaAsync(long accountId, long characterId, string sessionId,

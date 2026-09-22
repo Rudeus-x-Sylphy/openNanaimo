@@ -103,7 +103,9 @@ def text_counts(rows,limit=255):
     return 'version=1\n'+''.join(f'{c}={vals[c]}\n' for c in sorted(vals))
 
 def apartment_bytes(rows,furn_by):
-    if len(rows)>254:raise ValueError('furniture capacity is 254')
+    if len(rows)>254:raise ValueError('furniture inventory capacity is 254')
+    placed_rows=[r for r in rows if r.get('placed')]
+    if len(placed_rows)>84:raise ValueError('placed furniture capacity is 84')
     used=set();packed=[]
     for r in rows:
         code=int(r['code'])
@@ -112,6 +114,7 @@ def apartment_bytes(rows,furn_by):
         if idx<=0:
             idx=next((x for x in range(1,255) if x not in used),0)
         if not (1<=idx<=254) or idx in used:raise ValueError(f'invalid/duplicate furniture index {idx}')
+        if r.get('placed') and idx>84:raise ValueError(f'placed furniture index exceeds adapter capacity: {idx}')
         used.add(idx);typ=int(furn_by[code]['type']);placed=1 if r.get('placed') else 0;x=int(r.get('x',400));y=int(r.get('y',300));z=int(r.get('z',0));mirror=int(r.get('mirror',0))
         if not(-32768<=x<=32767 and -32768<=y<=32767 and 0<=z<=255 and mirror in (0,1)):raise ValueError(f'invalid furniture placement index={idx}')
         packed.append((code,idx,placed,typ,x,y,z,mirror))

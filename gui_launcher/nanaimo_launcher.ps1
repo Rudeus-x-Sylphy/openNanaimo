@@ -32,6 +32,7 @@ $LaunchModeDir=Join-Path $Root 'gui_launcher\launch_modes'
 $NetworkOptionTemplate=Join-Path $LaunchModeDir 'gamestartoption.network.ini'
 $ActiveGameOption=Join-Path $Root 'StateOption\gamestartoption.ini'
 $ExpectedClientHash='6E3985CB7BEBA0207DEB6201BFB05D01CF8D548D3B674D8E6BD6A6F2DEB72B90'
+$AcceptedClientHashes=@($ExpectedClientHash,'FEF34EE03DA60BD86975B453D013AE8593AF086B0EA79413466C43B58EC19DDC')
 $ExpectedAdapterHash=''
 $ExpectedAdapterSize=0
 $ExpectedBridgeHash=''
@@ -480,6 +481,12 @@ function File-State-Line([string]$label,[string]$path,[long]$expectedSize,[strin
     $hashText=if($ComputeHash){$h=(Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash;if($h-eq$expectedHash){"SHA256_OK $h"}else{"SHA256_BAD expected=$expectedHash actual=$h"}}else{"SHA256 expected=$expectedHash（点击刷新后计算actual）"}
     return "$label : $sizeState actual=$($item.Length) | $hashText`r`n         $path"
 }
+function Client-State-Line([switch]$ComputeHash){
+    if(-not(Test-Path -LiteralPath $Client)){return "Client : MISSING | $Client"}
+    $item=Get-Item -LiteralPath $Client
+    $hashText=if($ComputeHash){$actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $Client).Hash.ToUpperInvariant();if($AcceptedClientHashes -contains $actual){"SHA256_OK actual=$actual"}else{"SHA256_BAD actual=$actual"}}else{"SHA256 accepted=$($AcceptedClientHashes -join ',')；点击刷新后计算实际值"}
+    return "Client : $(if($item.Length -eq $ExpectedClientSize){'SIZE_OK'}else{"SIZE_BAD expected=$ExpectedClientSize"}) actual=$($item.Length) | $hashText`r`n         $Client"
+}
 function Get-ResourceSelection {
     $hpMax=[uint16][decimal]$hpMaxBox.Value;$hpCurrent=[uint16][decimal]$hpCurrentBox.Value
     $mpMax=[uint16][decimal]$mpMaxBox.Value;$mpCurrent=[uint16][decimal]$mpCurrentBox.Value
@@ -505,7 +512,7 @@ function Update-LaunchPreview([switch]$ComputeHashes){
         "Profile INI : $ProfileIni","Profile JSON: $ProfileJson",'',
         '=== Binary validation ===',$adapterState,$bridgeState,
         (File-State-Line 'Village pack' $VillagePack $ExpectedVillagePackSize $ExpectedVillagePackHash -ComputeHash:$ComputeHashes),
-        (File-State-Line 'Client' $Client $ExpectedClientSize $ExpectedClientHash -ComputeHash:$ComputeHashes),
+        (Client-State-Line $ComputeHashes),
         '=== Pre-launch actions ===',
         ('Processes to stop: '+($running-join ', ')),
         'Adapter button: save profile; start/stop the complete local adapter; never launch the game.',
@@ -560,8 +567,9 @@ function Test-ClientBinary {
     Test-SuperBossStage
     Test-LocalResourcePatches
     if(-not(Test-Path -LiteralPath $Client)){throw "Client missing: $Client"}
-    if((Get-Item -LiteralPath $Client).Length-ne$ExpectedClientSize){throw 'Client size mismatch; launch refused.'}
-    if((Get-FileHash -Algorithm SHA256 -LiteralPath $Client).Hash-ne$ExpectedClientHash){throw 'Client SHA-256 mismatch; launch refused.'}
+    if((Get-Item -LiteralPath $Client).Length-ne$ExpectedClientSize){throw "Client size mismatch; accepted patched/baseline size is $ExpectedClientSize bytes."}
+    $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $Client).Hash.ToUpperInvariant()
+    if($AcceptedClientHashes -notcontains $actual){throw "Client SHA-256 mismatch; expected one of: $($AcceptedClientHashes -join ', '); actual=$actual."}
 }
 function Register-ClientProfile([string]$ip){
     $tcp=New-Object Net.Sockets.TcpClient

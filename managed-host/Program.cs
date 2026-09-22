@@ -79,7 +79,7 @@ try
     { NativeDungeonEnabled = true, NativeJournalDirectory = journal, NativeRooms = rooms };
     await host.StartAsync(new AdapterOptions { GameAdapterPort = loginPort, WorldAdapterPort = worldPort },
         new[] { new AdapterEndpoint { Id = 1, Port = worldPort } }, stop.Token);
-    var profiles = host.RunLocalProfileListenerAsync(profilePort, stop.Token);
+    var profiles = host.RunLocalProfileListenerAsync(profilePort, stop.Token, Path.GetDirectoryName(profile)!);
     var gmControl = GmRuntimeControl.RunAsync(data, host, rooms, Console.WriteLine, stop.Token);
     Console.WriteLine($"READY login={loginPort} world={worldPort} profiles={profilePort} native=52050 data={data}");
     if (args.Contains("--self-test"))
