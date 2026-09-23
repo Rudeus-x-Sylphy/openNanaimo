@@ -2,6 +2,15 @@
 
 面向韩国的飞行射击游戏 **Nanaimo** 的客户端行为研究与本地协议适配工程，包含 Windows 图形启动器、完整 adapter 源码、构建脚本、验证脚本和工程知识库。
 
+# 寻找拥有韩国Nanaimo客户端安装包的小伙伴
+许多Nanaimo爱好者希望获取韩服Nanaimo的客户端（主要是其中包含的L8与高等级宠物的静态资源包）。遗憾的是，由于年代久远，该客户端安装包已从互联网及个人磁盘中遗失。在此恳请持有韩国Nanaimo客户端安装包的小伙伴能够分享出来。
+
+# 한국 나나이모 클라이언트 설치 파일을 보유하신 분을 찾습니다
+많은 나나이모 애호가분들이 한국 서버 나나이모 클라이언트(주로 L8 및 고레벨 펫을 포함한 정적 리소스 팩)를 구하고 있습니다. 안타깝게도 오랜 세월이 지나면서 해당 클라이언트 설치 파일은 인터넷과 개인 디스크에서 모두 유실되었습니다. 한국 나나이모 클라이언트 설치 파일을 보유하고 계신 분께서는 공유해 주시기를 간곡히 부탁드립니다.
+
+# Call for Korean Nanaimo Client Installer
+Many Nanaimo enthusiasts are eager to obtain the Korean server Nanaimo client (primarily for its static resource packs containing L8 and high-level pets). Unfortunately, due to the passage of time, the client installer has been lost from both the internet and personal drives. We hereby kindly request anyone who still has the Korean Nanaimo client installer to share it.
+
 ## 使用边界
 
 1. 本仓库仅用于本地研究、兼容性分析和非营利体验，禁止盈利、对外运营、商业化使用和未经授权的网络节点运营。
