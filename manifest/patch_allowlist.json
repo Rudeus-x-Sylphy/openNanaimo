@@ -99,8 +99,8 @@
     {
       "path": "docs/\u6784\u5efa\u4e0e\u9a8c\u8bc1.md",
       "layer": "docs",
-      "size": 6317,
-      "sha256": "dde3752237a4bc2595b8a90f709802c3abeddc6fe8d931b0193c2b05c3bfa479",
+      "size": 6303,
+      "sha256": "770e076983f7a8520b856e21a97e663f91eb59dde10618be3b0600e403c0776a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -187,8 +187,8 @@
     {
       "path": "knowledge/authority/03-\u89d2\u8272\u8d44\u6599\u4e0e\u80cc\u5305.md",
       "layer": "knowledge",
-      "size": 62368,
-      "sha256": "4dc3172457f99afb14c3ce7857db32c27944c870cb39b1644df1f10f470d97e8",
+      "size": 61084,
+      "sha256": "53d7c3a34b2934a2d029d2ebe054bd1f8a6b7ed6f4b1c5fa2bad0789d498b270",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -219,16 +219,16 @@
     {
       "path": "knowledge/authority/07-\u62fe\u53d6\u7ed3\u7b97\u4e0e\u5956\u52b1.md",
       "layer": "knowledge",
-      "size": 14180,
-      "sha256": "dcd3486c713c299a1c30956b742ad7799b2c0877381f553ab3cf136daf9905bc",
+      "size": 13759,
+      "sha256": "38a8ab1ec424d17cb11f7e1f04a4155264f8dbb1e238211eb6e2122c149b80de",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/authority/08-\u9759\u6001\u5730\u5740\u4e0e\u8c03\u7528\u94fe.md",
       "layer": "knowledge",
-      "size": 96897,
-      "sha256": "04e0e4915e2912c1d3d931d09f2fb3091f88bc9e201b7bef1fb9b22cd0dd8f1c",
+      "size": 96563,
+      "sha256": "b2d46f1b2c59daef1973b63dcfb2c6f041be54e90df853e42bea65f956a32b23",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
