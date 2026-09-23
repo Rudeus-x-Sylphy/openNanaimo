@@ -431,14 +431,15 @@ internal static class ShopCatalog
                 offset,
                 0,
                 2,
-                5,
+                null,
                 null,
                 InventorySection.GameItem,
                 "PR._D27",
                 index,
                 iconPathField: 1,
                 tokenModeField: 3,
-                tokenUseCountField: 6);
+                tokenUseCountField: 6,
+                cashPriceField: 5);
         }
     }
 

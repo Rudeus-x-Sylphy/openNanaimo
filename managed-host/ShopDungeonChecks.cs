@@ -70,6 +70,65 @@ internal static class ShopDungeonChecks
                     && BinaryPrimitives.ReadInt64LittleEndian(response.AsSpan(96)) == hans,
                     $"shop purchase debits only {(useCash ? "Cash" : "gold")}");
             }
+            const uint mysteryKeyBundle = 47_000_004u;
+            Check(ShopCatalog.TryGet(mysteryKeyBundle, out var keyItem)
+                && keyItem.PaysWithCash
+                && keyItem.PurchasePrice == 280
+                && keyItem.TokenMode == 1
+                && keyItem.TokenUseCount == 30,
+                "mystery-key bundle uses the PR._D27 Cash price and grants 30 uses");
+            var keyPurchaseRequest = new byte[8];
+            BinaryPrimitives.WriteUInt16LittleEndian(keyPurchaseRequest.AsSpan(0, 2), 4);
+            BinaryPrimitives.WriteUInt16LittleEndian(keyPurchaseRequest.AsSpan(2, 2), 1);
+            BinaryPrimitives.WriteUInt32LittleEndian(keyPurchaseRequest.AsSpan(4, 4), mysteryKeyBundle);
+            var keyPurchase = await Request(0xC46F, keyPurchaseRequest);
+            cash -= keyItem.PurchasePrice;
+            Check(keyPurchase.Length == 104 && keyPurchase[8] == 10
+                && BinaryPrimitives.ReadInt64LittleEndian(keyPurchase.AsSpan(88)) == cash
+                && BinaryPrimitives.ReadInt64LittleEndian(keyPurchase.AsSpan(96)) == hans,
+                "mystery-key purchase debits Cash only");
+
+            var cashPageRequest = new byte[4];
+            BinaryPrimitives.WriteUInt16LittleEndian(cashPageRequest.AsSpan(0, 2), 1);
+            BinaryPrimitives.WriteUInt16LittleEndian(cashPageRequest.AsSpan(2, 2), 1);
+            var cashPage = await Request(0xC473, cashPageRequest);
+            Check(cashPage.Length >= 20 && cashPage[10] == 1 && cashPage[11] >= 1
+                && Enumerable.Range(0, cashPage[11]).Any(index =>
+                    BinaryPrimitives.ReadUInt32LittleEndian(cashPage.AsSpan(12 + index * 8, 4)) == mysteryKeyBundle),
+                "purchased mystery-key bundle appears in C474 pending inventory");
+
+            var claimRequest = new byte[12];
+            claimRequest[0] = 1;
+            BinaryPrimitives.WriteUInt16LittleEndian(claimRequest.AsSpan(2, 2), 1);
+            BinaryPrimitives.WriteUInt32LittleEndian(claimRequest.AsSpan(8, 4), mysteryKeyBundle);
+            var claim = await Request(0xC475, claimRequest);
+            Check(claim.Length == 16
+                && BinaryPrimitives.ReadUInt16LittleEndian(claim.AsSpan(8, 2)) == 3
+                && BinaryPrimitives.ReadUInt16LittleEndian(claim.AsSpan(10, 2)) == 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(claim.AsSpan(12, 4)) == mysteryKeyBundle,
+                "mystery-key bundle claim returns C476 allocation success");
+
+            var gameInventory = await Request(0xC42F);
+            var gameItemCount = BinaryPrimitives.ReadUInt16LittleEndian(gameInventory.AsSpan(10, 2));
+            var keyRow = Enumerable.Range(0, gameItemCount)
+                .Single(index => BinaryPrimitives.ReadUInt32LittleEndian(gameInventory.AsSpan(12 + index * 8, 4)) == mysteryKeyBundle);
+            var keyIdentity = BinaryPrimitives.ReadUInt16LittleEndian(gameInventory.AsSpan(16 + keyRow * 8, 2));
+            Check(gameInventory.Length == 688,
+                "claimed mystery-key bundle is visible in C430 game inventory");
+
+            var beforeKeyUse = (await db.GetCharacterAsync(account, token))!;
+            var useKeyRequest = new byte[8];
+            BinaryPrimitives.WriteUInt32LittleEndian(useKeyRequest.AsSpan(0, 4), mysteryKeyBundle);
+            BinaryPrimitives.WriteUInt32LittleEndian(useKeyRequest.AsSpan(4, 4), keyIdentity);
+            var useKey = await Request(0xC46D, useKeyRequest);
+            var afterKeyUse = (await db.GetCharacterAsync(account, token))!;
+            Check(useKey.Length == 20
+                && BinaryPrimitives.ReadUInt32LittleEndian(useKey.AsSpan(8, 4)) == 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(useKey.AsSpan(12, 4)) == mysteryKeyBundle
+                && BinaryPrimitives.ReadUInt32LittleEndian(useKey.AsSpan(16, 4)) == keyIdentity
+                && afterKeyUse.CardMysteryKeyCount == beforeKeyUse.CardMysteryKeyCount + keyItem.TokenUseCount,
+                "C46D consumes the C430 key identity and credits 30 mystery-key uses");
+
             var saved = (await new DatabaseService(directory).GetCharacterAsync(account, token))!;
             Check(saved.Hans == hans && saved.Cash == cash, "shop balances survive reopening the database");
             await db.EndWorldSessionAsync(account, character.Id, id,

@@ -2954,7 +2954,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
                 // The fixed C46D payload reuses its second dword by item
                 // family. Category 42 copies the C46A token-list selector;
-                // category 47 copies the expiration from C46A.
+                // categories 14/47/48 copy the C430 inventory identity.
                 var tokenItemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
                 var tokenSelector = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
                 if (!ShopCatalog.TryGet(tokenItemCode, out var tokenCatalogItem)
@@ -3078,10 +3078,19 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return BuildNativeFrame(frame, 0xC46E, mikeUsePayload, session);
                 }
 
-                if (tokenSelector != PermanentItemExpiration)
+                await RefreshSessionCharacterAsync(session, token);
+                if (!TryResolveGameInventoryIdentity(
+                        session.Character,
+                        tokenSelector,
+                        out var selectedTokenItemCode)
+                    || selectedTokenItemCode != tokenItemCode)
                 {
-                    _log($"{channel}:{remote} token use expiration invalid: item={tokenItemCode} expiration=0x{tokenSelector:X8}; inventory unchanged");
-                    return null;
+                    _log($"{channel}:{remote} token use identity invalid: item={tokenItemCode} identity={tokenSelector}; inventory unchanged");
+                    return BuildNativeFrame(
+                        frame,
+                        0xC46E,
+                        BuildTokenUseResultPayload(false, tokenItemCode, tokenSelector),
+                        session);
                 }
 
                 var useResult = await _database.ActivateTokenItemAsync(
@@ -3092,8 +3101,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     token);
                 if (!useResult.Success)
                 {
-                    _log($"{channel}:{remote} token use rejected: item={tokenItemCode} expiration=0x{tokenSelector:X8} quantity={useResult.Quantity} error={useResult.Error}; no success response");
-                    return null;
+                    _log($"{channel}:{remote} token use rejected: item={tokenItemCode} identity={tokenSelector} quantity={useResult.Quantity} error={useResult.Error}");
+                    return BuildNativeFrame(
+                        frame,
+                        0xC46E,
+                        BuildTokenUseResultPayload(false, tokenItemCode, tokenSelector),
+                        session);
                 }
                 await RefreshSessionCharacterAsync(session, token);
                 var tokenUsePayload = new byte[12];
@@ -3103,7 +3116,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 BinaryPrimitives.WriteUInt32LittleEndian(tokenUsePayload.AsSpan(0, 4), 1);
                 BinaryPrimitives.WriteUInt32LittleEndian(tokenUsePayload.AsSpan(4, 4), tokenItemCode);
                 BinaryPrimitives.WriteUInt32LittleEndian(tokenUsePayload.AsSpan(8, 4), tokenSelector);
-                _log($"{channel}:{remote} token used: item={tokenItemCode} name={tokenCatalogItem.Name} expiration=0x{tokenSelector:X8} remaining={useResult.Quantity} mysteryUses={useResult.MysteryKeyCount} goldenUses={useResult.GoldenKeyCount}");
+                _log($"{channel}:{remote} token used: item={tokenItemCode} name={tokenCatalogItem.Name} identity={tokenSelector} remaining={useResult.Quantity} mysteryUses={useResult.MysteryKeyCount} goldenUses={useResult.GoldenKeyCount}");
                 return BuildNativeFrame(frame, 0xC46E, tokenUsePayload, session);
             }
 
@@ -3117,18 +3130,20 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
 
-                // C46B and C46D share the fixed item-code/expiration fields.
+                // C46B and C46D share the fixed item-code/inventory-identity fields.
                 // C46C reports a dword result followed by those same fields.
                 var tokenItemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
-                var tokenExpiration = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
+                var tokenIdentity = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
                 var responsePayload = new byte[12];
                 BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(4, 4), tokenItemCode);
-                BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(8, 4), tokenExpiration);
-                if (tokenExpiration != PermanentItemExpiration
-                    || !ShopCatalog.TryGet(tokenItemCode, out var tokenCatalogItem)
-                    || tokenCatalogItem.Category != 47)
+                BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(8, 4), tokenIdentity);
+                await RefreshSessionCharacterAsync(session, token);
+                if (!ShopCatalog.TryGet(tokenItemCode, out var tokenCatalogItem)
+                    || tokenCatalogItem.Category != 47
+                    || !TryResolveGameInventoryIdentity(session.Character, tokenIdentity, out var selectedTokenItemCode)
+                    || selectedTokenItemCode != tokenItemCode)
                 {
-                    _log($"{channel}:{remote} token delete fields invalid: item={tokenItemCode} expiration=0x{tokenExpiration:X8}; inventory unchanged");
+                    _log($"{channel}:{remote} token delete fields invalid: item={tokenItemCode} identity={tokenIdentity}; inventory unchanged");
                     return BuildNativeFrame(frame, 0xC46C, responsePayload, session);
                 }
 
@@ -3143,7 +3158,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(0, 4), 1);
                     await RefreshSessionCharacterAsync(session, token);
                 }
-                _log($"{channel}:{remote} token delete: item={tokenItemCode} name={tokenCatalogItem.Name} expiration=0x{tokenExpiration:X8} result={(deleteResult.Success ? "success" : "failure")} remaining={deleteResult.Quantity} error={deleteResult.Error}");
+                _log($"{channel}:{remote} token delete: item={tokenItemCode} name={tokenCatalogItem.Name} identity={tokenIdentity} result={(deleteResult.Success ? "success" : "failure")} remaining={deleteResult.Quantity} error={deleteResult.Error}");
                 return BuildNativeFrame(frame, 0xC46C, responsePayload, session);
             }
 
@@ -16828,7 +16843,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             .Where(item => item.Quantity > 0
                 && ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
                 && catalogItem.Section == InventorySection.GameItem
-                && catalogItem.Category is not (42 or 47))
+                && catalogItem.Category != 42)
             .OrderBy(item => item.ItemCode)
             .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
             .Take(84)
@@ -17070,15 +17085,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var itemCodes = character?.Items
             .Where(item => item.Quantity > 0
                 && ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
-                && catalogItem.Category is 42 or 47)
+                && catalogItem.Category == 42)
             .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
             .Take(ushort.MaxValue)
             .ToArray() ?? [];
 
-        // The C46A consumer owns the shared category 41-48 list at
-        // CDInventory+0x6CC. Category 42 uses the record index as its opaque
-        // selector; category 47 keeps the permanent-expiration selector used
-        // by the card-key path.
+        // C46A carries the category-42 mike inventory. Category-47 card keys
+        // are C430 game-inventory rows and use that row's identity in C46D.
         var payload = new byte[4 + itemCodes.Length * 8];
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0, 2), 1);
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), checked((ushort)itemCodes.Length));
@@ -17086,11 +17099,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         {
             var record = payload.AsSpan(4 + index * 8, 8);
             BinaryPrimitives.WriteUInt32LittleEndian(record[..4], itemCodes[index]);
-            var selector = ShopCatalog.TryGet(itemCodes[index], out var catalogItem)
-                && catalogItem.Category == 47
-                    ? PermanentItemExpiration
-                    : checked((uint)index);
-            BinaryPrimitives.WriteUInt32LittleEndian(record[4..], selector);
+            BinaryPrimitives.WriteUInt32LittleEndian(record[4..], checked((uint)index));
         }
         return payload;
     }

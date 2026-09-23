@@ -27,6 +27,19 @@ internal static class InventoryQuickbarChecks
         Check(inventory[10] == 0 && inventory[18] == 1,
             "C430 selected bit follows the exact quick-slot identity");
 
+        var keyCharacter = new CharacterRecord
+        {
+            Name = "CardKeyCheck",
+            Items = [new CharacterItemRecord { ItemCode = 47_000_004u, Quantity = 1 }]
+        };
+        var keyInventory = NetworkAdapterService.BuildGameInventoryPayload(keyCharacter);
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(keyInventory.AsSpan(2, 2)) == 1
+            && BinaryPrimitives.ReadUInt32LittleEndian(keyInventory.AsSpan(4, 4)) == 47_000_004u,
+            "domain-47 card key is restored through C430");
+        Check(NetworkAdapterService.TryResolveGameInventoryIdentity(keyCharacter, 0, out var resolvedKey)
+            && resolvedKey == 47_000_004u,
+            "domain-47 C46D identity resolves through the C430 row");
+
         character.QuickSlots =
         [
             new CharacterQuickSlotRecord { Slot = 0, ItemCode = repeatedCode, InventoryIndex = 0 },
