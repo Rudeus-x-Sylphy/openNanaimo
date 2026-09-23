@@ -74,6 +74,25 @@ internal static class VillagePositionChecks
             Check(!TownPositionPolicy.IsPersistable(0x3FF, 0x3FF),
                 "legacy clamp image 03FF/03FF is not persistable");
 
+            foreach (var (label, selector, requestedPage, mode, expectedPage) in new[]
+                     {
+                         ("1->2", (byte)1, 0, (byte)1, (byte)0),
+                         ("2->3", (byte)2, 0, (byte)1, (byte)0),
+                         ("3->4", (byte)3, 29, (byte)1, (byte)0),
+                         ("4->3", (byte)2, 0, (byte)1, (byte)0),
+                         ("explicit selector3 return", (byte)3, 6, (byte)0, (byte)6),
+                         ("explicit selector4 return", (byte)4, 12, (byte)0, (byte)12)
+                     })
+            {
+                var transition = TownPositionPolicy.ResolveTransition(selector, requestedPage, mode);
+                Check(transition.Page == expectedPage && transition.Flag == 0,
+                    $"C365/C366 {label} resolves page {requestedPage} mode {mode} to page {expectedPage} flag 0");
+            }
+
+            var selectorZeroTransition = TownPositionPolicy.ResolveTransition(0, 27, 1);
+            Check(selectorZeroTransition.Page == 27 && selectorZeroTransition.Flag == 0,
+                "selector0 mode1 retains its explicit page while clearing the transient flag");
+
             var townUserInfoBuilder = typeof(NetworkAdapterService).GetMethod(
                 "BuildTownUserInfoPayload",
                 BindingFlags.NonPublic | BindingFlags.Static,
@@ -173,29 +192,77 @@ internal static class VillagePositionChecks
                   && runtimeCharacter.PositionY == TownPositionPolicy.FallbackY,
                 "C367 replaces the unsafe saved page with the first-process bootstrap tuple");
 
-            byte[] c365 = new byte[10];
-            c365[0] = 4;
-            BinaryPrimitives.WriteUInt16LittleEndian(c365.AsSpan(2, 2), 18);
-            BinaryPrimitives.WriteUInt16LittleEndian(c365.AsSpan(6, 2), ushort.MaxValue);
-            BinaryPrimitives.WriteUInt16LittleEndian(c365.AsSpan(8, 2), ushort.MaxValue);
-            byte[] c366 = (await Dispatch(0xC365, c365))!;
+            byte[] BuildC365(byte selector, ushort page, byte mode, ushort x, ushort y)
+            {
+                byte[] result = new byte[10];
+                result[0] = selector;
+                BinaryPrimitives.WriteUInt16LittleEndian(result.AsSpan(2, 2), page);
+                result[4] = mode;
+                BinaryPrimitives.WriteUInt16LittleEndian(result.AsSpan(6, 2), x);
+                BinaryPrimitives.WriteUInt16LittleEndian(result.AsSpan(8, 2), y);
+                return result;
+            }
+
+            byte[] c366 = (await Dispatch(
+                0xC365,
+                BuildC365(4, 18, 0, ushort.MaxValue, ushort.MaxValue)))!;
             Check(ReadOpcode(c366) == 0xC366,
                 "C365 sentinel still follows the request-driven C366 tuple");
+            Check(c366[8] == 200 && c366[9] == 4 && c366[10] == 18 && c366[11] == 0,
+                "mode0 explicit page18 remains page18 with response flag0");
             Check(runtimeCharacter.PositionX == TownPositionPolicy.FallbackX
                   && runtimeCharacter.PositionY == TownPositionPolicy.FallbackY,
-                "C365 never writes its FFFF/FFFF sentinel into Character");
+                "C365 never writes its FFFF/FFFF transient coordinates into Character");
 
             runtimeCharacter.PositionX = 444;
             runtimeCharacter.PositionY = 222;
             Set(session, "LastReportedPositionX", (ushort)444);
             Set(session, "LastReportedPositionY", (ushort)222);
+
+            foreach (var (label, selector, requestedPage, mode, x, y, expectedPage) in new[]
+                     {
+                         ("1->2", (byte)1, (ushort)0, (byte)1, (ushort)240, (ushort)320, (byte)0),
+                         ("2->3", (byte)2, (ushort)0, (byte)1, (ushort)320, (ushort)400, (byte)0),
+                         ("3->4", (byte)3, (ushort)29, (byte)1, (ushort)272, (ushort)240, (byte)0),
+                         ("4->3", (byte)2, (ushort)0, (byte)1, (ushort)320, (ushort)400, (byte)0),
+                         ("mode0 reverse", (byte)3, (ushort)6, (byte)0, (ushort)208, (ushort)272, (byte)6)
+                     })
+            {
+                c366 = (await Dispatch(0xC365, BuildC365(selector, requestedPage, mode, x, y)))!;
+                Check(ReadOpcode(c366) == 0xC366
+                      && c366[8] == 200
+                      && c366[9] == selector
+                      && c366[10] == expectedPage
+                      && c366[11] == 0,
+                    $"C365/C366 {label} response uses selector {selector}, page {expectedPage}, flag 0");
+                Check(runtimeCharacter.CurrentMapId == selector
+                      && runtimeCharacter.CurrentTownPage == expectedPage,
+                    $"C365/C366 {label} stores the canonical destination page");
+                Check(runtimeCharacter.PositionX == 444
+                      && runtimeCharacter.PositionY == 222
+                      && (ushort)sessionType.GetProperty("LastReportedPositionX")!.GetValue(session)! == 444
+                      && (ushort)sessionType.GetProperty("LastReportedPositionY")!.GetValue(session)! == 222,
+                    $"C365/C366 {label} does not persist transient transport coordinates ({x},{y})");
+            }
+
+            byte[] destinationC367 = new byte[8];
+            BinaryPrimitives.WriteInt32LittleEndian(destinationC367, 6);
+            BinaryPrimitives.WriteUInt16LittleEndian(destinationC367.AsSpan(4, 2), 368);
+            BinaryPrimitives.WriteUInt16LittleEndian(destinationC367.AsSpan(6, 2), 32);
+            byte[] destinationC368 = (await Dispatch(0xC367, destinationC367))!;
+            Check(ReadOpcode(destinationC368) == 0xC368
+                  && destinationC368[9] == 6
+                  && BinaryPrimitives.ReadUInt16LittleEndian(destinationC368.AsSpan(0x30, 2)) == 368
+                  && BinaryPrimitives.ReadUInt16LittleEndian(destinationC368.AsSpan(0x32, 2)) == 32,
+                "destination C367/C368 remains authoritative after C365 and carries its own page/landing coordinates");
+
             byte[] cb21Sentinel = new byte[16];
             BinaryPrimitives.WriteUInt16LittleEndian(cb21Sentinel.AsSpan(8, 2), ushort.MaxValue);
             BinaryPrimitives.WriteUInt16LittleEndian(cb21Sentinel.AsSpan(10, 2), ushort.MaxValue);
             Check(await Dispatch(0xCB21, cb21Sentinel) is null,
                 "CB21 activity sentinel remains response-free");
-            Check(runtimeCharacter.PositionX == 444 && runtimeCharacter.PositionY == 222,
-                "CB21 FFFF/FFFF is relayed as activity but cannot overwrite the last legal position");
+            Check(runtimeCharacter.PositionX == 368 && runtimeCharacter.PositionY == 32,
+                "CB21 FFFF/FFFF is relayed as activity but cannot overwrite the last legal C367 position");
 
             byte[] cb21Move = new byte[16];
             BinaryPrimitives.WriteUInt16LittleEndian(cb21Move.AsSpan(8, 2), 512);
@@ -204,7 +271,7 @@ internal static class VillagePositionChecks
             Check(runtimeCharacter.PositionX == 512 && runtimeCharacter.PositionY == 288,
                 "CB21 legal movement still updates the persistent carrier");
 
-            Console.WriteLine("VILLAGE_POSITION_CHECKS_PASS c355-bootstrap c365 c367 c368-offsets cb21 sentinel persistence startup-self-heal");
+            Console.WriteLine("VILLAGE_POSITION_CHECKS_PASS c355-bootstrap c365-c366-transition-matrix c367 c368-offsets cb21 sentinel persistence startup-self-heal");
         }
         finally
         {

@@ -147,6 +147,49 @@ class LauncherContractTests(unittest.TestCase):
         ):
             self.assertIn(invariant, text)
 
+    def test_launcher_profile_field_map_and_title_pipeline(self):
+        launcher = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
+        importer = (ROOT / 'managed/Services/DatabaseService.NativeDungeon.cs').read_text('utf-8-sig')
+        state = (ROOT / 'managed/Services/NativeDungeonState.cs').read_text('utf-8-sig')
+        village = (ROOT / 'managed/Services/NetworkAdapterService.cs').read_text('utf-8-sig')
+        room = (ROOT / 'managed/Services/DungeonProtocol.cs').read_text('utf-8-sig')
+        save = launcher.split('function Save-Profile {', 1)[1].split('if($SelfTestProfileIO){', 1)[0]
+
+        field_groups = {
+            'connector': {'version', 'launch_mode', 'network_ip'},
+            'managed_profile': {
+                'gender', 'name_hex', 'dungeon_grade', 'level', 'pet',
+                'initial_attack_mode', 'equip_hair', 'equip_body', 'equip_top',
+                'equip_bottom', 'equip_accessory', 'equip_effect', 'hp_max',
+                'hp_current', 'mp_max', 'mp_current', 'attack', 'defense',
+                'coin', 'nana_point', 'card_key_gold', 'card_key_mystery',
+                'free_magic_key_expiry', 'quickbar_expiry', 'skill_config',
+                'skill_projectile_route', 'skill_meat_route', 'skill_slot_z',
+                'skill_slot_x',
+            },
+            # Audited source gaps retained as explicit classifications so a new
+            # field cannot silently disappear from the launcher -> adapter map.
+            'known_gap': {
+                'skip_tutorial', 'card_key_normal', 'card_key_special',
+                'pet_age_a', 'pet_age_b',
+            },
+        }
+        mapped = set().union(*field_groups.values())
+        expected = mapped | {f'skill_grade{i}' for i in range(16)}
+        for key in sorted(expected):
+            if key.startswith('skill_grade'):
+                self.assertIn('$lines+="skill_grade$i=', save)
+            else:
+                self.assertRegex(save, rf"['\"]?{re.escape(key)}=")
+        self.assertEqual(len(mapped), sum(len(group) for group in field_groups.values()))
+
+        self.assertIn('ParseLauncherDungeonGrade', importer)
+        self.assertIn('ApplyLauncherDungeonGradeAsync', importer)
+        self.assertIn('NativeDungeonState.DungeonGradeOffset', importer)
+        self.assertIn('public const int DungeonGradeOffset = 5024;', state)
+        self.assertIn('payload[0x24 - NativeHeaderLength] = character?.DungeonGrade ?? 0;', village)
+        self.assertIn('payload[0x49 - 8] = character.DungeonGrade;', room)
+
     def test_profile_values_have_managed_and_native_carriers(self):
         profile = (ROOT / 'managed/Services/DatabaseService.NativeDungeon.cs').read_text('utf-8-sig')
         state = (ROOT / 'managed/Services/NativeDungeonState.cs').read_text('utf-8-sig')

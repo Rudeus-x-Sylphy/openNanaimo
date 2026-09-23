@@ -171,6 +171,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         1400, 1400, 1400, 1400, 1400, 1400, 1400, 1400, 1400, 1400, 1400, 1400
     ];
     private static readonly ushort[] SpecialDungeonContinueCosts = [300, 800, 1200, 1600];
+    internal static bool IsKnownDungeonContinueCost(ushort value)
+        => value > 0
+            && (Array.IndexOf(NormalDungeonContinueCosts, value) >= 0
+                || Array.IndexOf(SpecialDungeonContinueCosts, value) >= 0);
     private const int ArenaResettingResponsePayloadLength = 40;
     private static readonly TimeSpan ArenaResultCollectionTimeout = TimeSpan.FromSeconds(5);
     private const int DungeonStageRecordsPayloadLength = 4;
@@ -4546,26 +4550,24 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
 
-                var entryPosition = TownPositionPolicy.Normalize(requestedPositionX, requestedPositionY);
+                var transition = TownPositionPolicy.ResolveTransition(townId, townPage, transientFlag);
                 LeaveTradeRoomScene(session, "town enter");
                 LeaveApartmentScene(session, "town enter");
                 LeaveVillageShopScene(session, "town enter");
                 LeaveTownScene(session, "town change");
                 session.TownId = townId;
-                session.TownPage = (byte)townPage;
-                session.LastReportedPositionX = entryPosition.X;
-                session.LastReportedPositionY = entryPosition.Y;
+                session.TownPage = transition.Page;
                 session.Character.CurrentMapId = townId;
-                session.Character.CurrentTownPage = (byte)townPage;
-                session.Character.PositionX = entryPosition.X;
-                session.Character.PositionY = entryPosition.Y;
-                _log(entryPosition.Repaired
-                    ? $"{channel}:{remote} C365 town-entry sentinel normalized: town={townId} page={townPage} flag={transientFlag} requested=({requestedPositionX},{requestedPositionY}) position=({entryPosition.X},{entryPosition.Y}); sentinel not persisted"
-                    : $"{channel}:{remote} C365 town-entry position accepted: town={townId} page={townPage} flag={transientFlag} position=({entryPosition.X},{entryPosition.Y})");
+                session.Character.CurrentTownPage = transition.Page;
+                // C365 runs while the old village actor/controller is being torn
+                // down. Its X/Y describe transient transport context, not the new
+                // actor's authoritative landing point. Preserve the last legal
+                // position until the destination C367/CB21 chain reports one.
+                _log($"{channel}:{remote} C365 village transition: selector={townId} requestedPage={townPage} mode={transientFlag} -> responsePage={transition.Page} responseFlag={transition.Flag} transientPosition=({requestedPositionX},{requestedPositionY}) retainedPosition=({session.LastReportedPositionX},{session.LastReportedPositionY}) canonicalized={transition.Canonicalized}");
                 return BuildNativeFrame(
                     frame,
                     0xC366,
-                    BuildTownEnterPayload(townId, (byte)townPage, transientFlag),
+                    BuildTownEnterPayload(townId, transition.Page, transition.Flag),
                     session);
             }
 
@@ -8161,8 +8163,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 DungeonRoom dungeonContinueRoom;
                 DungeonBattleInstance dungeonContinueBattle;
                 byte remainingContinues;
-                ushort continuePositionX;
-                ushort continuePositionY;
                 ushort expectedContinueCost;
                 lock (_dungeonRoomGate)
                 {
@@ -8180,17 +8180,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             candidateRoom.BattleEpisode,
                             out expectedContinueCost)
                         || requestedContinueCost != expectedContinueCost
-                        || !session.HasReportedDungeonPosition
                         || !candidateRoom.Battle.ContinuingCharacters.Add(session.Character.Id))
                     {
-                        _log($"{channel}:{remote} Rejected dungeon continue request: room={session.DungeonRoomId} character={session.Character.Id} mode={continueMode} requestedCost={requestedContinueCost} expectedCost={(candidateRoom is not null && TryGetDungeonContinueCost(candidateRoom.HdIndex, candidateRoom.BattleEpisode, out var loggedCost) ? loggedCost : 0)} dead={candidateRoom?.Battle.DeadCharacters.Contains(session.Character.Id) == true} remaining={(candidateRoom?.Battle.RemainingContinues.GetValueOrDefault(session.Character.Id)).GetValueOrDefault()} hasPosition={session.HasReportedDungeonPosition}");
+                        _log($"{channel}:{remote} Rejected dungeon continue request: room={session.DungeonRoomId} character={session.Character.Id} mode={continueMode} requestedCost={requestedContinueCost} expectedCost={(candidateRoom is not null && TryGetDungeonContinueCost(candidateRoom.HdIndex, candidateRoom.BattleEpisode, out var loggedCost) ? loggedCost : 0)} dead={candidateRoom?.Battle.DeadCharacters.Contains(session.Character.Id) == true} remaining={(candidateRoom?.Battle.RemainingContinues.GetValueOrDefault(session.Character.Id)).GetValueOrDefault()}");
                         return null;
                     }
 
                     dungeonContinueRoom = candidateRoom;
                     dungeonContinueBattle = candidateRoom.Battle;
-                    continuePositionX = session.LastReportedPositionX;
-                    continuePositionY = session.LastReportedPositionY;
                 }
 
                 // The retail CF84 consumer writes payload +0x04/+0x06
@@ -8251,32 +8248,16 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     session.Character.CurrentMp = consumedContinue.CurrentMp;
                 }
 
-                var continueResultPayload = new byte[DungeonContinueResponsePayloadLength];
-                BinaryPrimitives.WriteUInt16LittleEndian(
-                    continueResultPayload.AsSpan(0, 2),
+                var continueResultPayload = BuildDungeonContinueApplyPayload(
+                    session.Character,
                     continueMode == 0 ? (ushort)20 : (ushort)60);
-                BinaryPrimitives.WriteUInt16LittleEndian(
-                    continueResultPayload.AsSpan(2, 2),
-                    GetSceneEntityId(session.Character));
-                BinaryPrimitives.WriteUInt16LittleEndian(
-                    continueResultPayload.AsSpan(4, 2),
-                    checked((ushort)Math.Clamp(consumedContinue.CurrentHp, 1, ushort.MaxValue)));
-                BinaryPrimitives.WriteUInt16LittleEndian(
-                    continueResultPayload.AsSpan(6, 2),
-                    checked((ushort)Math.Clamp(consumedContinue.CurrentMp, 1, ushort.MaxValue)));
-                BinaryPrimitives.WriteInt32LittleEndian(
-                    continueResultPayload.AsSpan(8, 4),
-                    continuePositionX);
-                BinaryPrimitives.WriteInt32LittleEndian(
-                    continueResultPayload.AsSpan(12, 4),
-                    continuePositionY);
                 QueueDungeonBroadcast(
                     session,
                     0xCF84,
                     continueResultPayload,
                     false,
                     "dungeon continue result");
-                _log($"{channel}:{remote} Dungeon continue completed: room={dungeonContinueRoom.Id} character={session.Character.Id} uid={GetSceneEntityId(session.Character)} mode={continueMode} result={(continueMode == 0 ? 20 : 60)} cost={expectedContinueCost} remaining={remainingContinues - 1} hp={session.Character.CurrentHp}/{session.Character.MaxHp} mp={session.Character.CurrentMp}/{session.Character.MaxMp} position=({continuePositionX},{continuePositionY}) hans={session.Character.Hans} revivalUses={session.Character.RevivalUseCount}");
+                _log($"{channel}:{remote} Dungeon continue completed: room={dungeonContinueRoom.Id} character={session.Character.Id} uid={GetSceneEntityId(session.Character)} mode={continueMode} result={(continueMode == 0 ? 20 : 60)} cost={expectedContinueCost} remaining={remainingContinues - 1} hp={session.Character.CurrentHp}/{session.Character.MaxHp} mp={session.Character.CurrentMp}/{session.Character.MaxMp} cf84Aux=(0,0) hans={session.Character.Hans} revivalUses={session.Character.RevivalUseCount}");
                 return BuildNativeFrame(frame, 0xCF84, continueResultPayload, session);
             }
 
@@ -15452,6 +15433,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // state +2. That is the same ushort read by the apartment level gate.
         var level = Math.Clamp(character?.Level ?? 1, 1, CharacterProgression.MaximumLevel);
         payload[27] = (byte)level;
+        // C355 frame+0x24 restores the persisted dungeon grade used by the
+        // title renderer. The launcher fixed selection and native CF88 state
+        // share this same managed snapshot.
+        payload[0x24 - NativeHeaderLength] = character?.DungeonGrade ?? 0;
         // The retail C355 handler stores frame+40/+44/+48 as accumulated
         // experience, this level's start, and the next-level threshold. The
         // profile window reads those same three local-state values to compute
@@ -16499,32 +16484,35 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var revive = BuildNativeFrame(
             frame,
             0xCF84,
-            BuildRevivalApplyPayload(
-                session.Character,
-                session.LastReportedPositionX,
-                session.LastReportedPositionY),
+            BuildRevivalApplyPayload(session.Character),
             session);
         var refresh = BuildNativeFrame(frame, 0xCF72, BuildDungeonActorRefreshPayload(session.Character), session);
         _log($"{channel}:{remote} dungeon revival retry completed: room={session.DungeonRoomId} character={session.Character.Id} hp={result.CurrentHp} uses={result.RevivalUseCount}");
         return CombineNativeFrames(ack, revive, refresh);
     }
 
-    internal static byte[] BuildRevivalApplyPayload(
+    internal static byte[] BuildRevivalApplyPayload(CharacterRecord character)
+        => BuildDungeonContinueApplyPayload(character, variant: 60);
+
+    internal static byte[] BuildDungeonContinueApplyPayload(
         CharacterRecord character,
-        ushort positionX,
-        ushort positionY)
+        ushort variant)
     {
+        if (variant is not (20 or 60))
+            throw new ArgumentOutOfRangeException(nameof(variant));
         var payload = new byte[DungeonContinueResponsePayloadLength];
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0, 2), 60);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0, 2), variant);
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), GetSceneEntityId(character));
+        // CF84 case 53124 consumes frame WORD +0x0C/+0x0E through the
+        // actor's clamped HP/MP setters (sub_6E3000/sub_6E3050). DWORD
+        // +0x10/+0x14 are separate actor auxiliary fields; they are not the
+        // 0x044C battle position and remain initialized to zero.
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(4, 2),
             checked((ushort)Math.Clamp(character.CurrentHp, 1, ushort.MaxValue)));
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(6, 2),
             checked((ushort)Math.Clamp(character.CurrentMp, 1, ushort.MaxValue)));
-        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(8, 4), positionX);
-        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(12, 4), positionY);
         return payload;
     }
 
@@ -18111,11 +18099,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
-    private static byte[] BuildTownEnterPayload(byte townId, byte townPage, byte transientFlag)
+    private static byte[] BuildTownEnterPayload(byte townId, byte responsePage, byte responseFlag)
     {
         // C366 is a fixed 12-byte frame. The handler consumes only these four
         // bytes and then creates the local entity from the saved 271A context.
-        return [200, townId, townPage, transientFlag];
+        // responsePage/responseFlag are the canonical server result, not a raw
+        // echo of C365's transient page/mode fields.
+        return [200, townId, responsePage, responseFlag];
     }
 
     private static byte[] BuildProfileResponsePayload(CharacterRecord? character)

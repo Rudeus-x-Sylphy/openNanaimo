@@ -117,12 +117,13 @@ public sealed partial class NetworkAdapterService
         // The second WORD is the client-visible continuation-price field. It
         // is diagnostic only for mode 1 and must never become a Hans gate.
         if (opcode == 0xCF83
-            && TryParseNativeRevivalContinueFrame(frame, out var clientCostField))
+            && TryParseNativeDungeonContinueFrame(frame, out var continueMode, out var clientCostField))
         {
-            await HandleNativeDungeonRevivalContinueAsync(
+            await HandleNativeDungeonContinueAsync(
                 frame,
                 channel,
                 session,
+                continueMode,
                 clientCostField,
                 token);
             return true;
@@ -152,34 +153,40 @@ public sealed partial class NetworkAdapterService
         return false;
     }
 
-    internal static bool TryParseNativeRevivalContinueFrame(
+    internal static bool TryParseNativeDungeonContinueFrame(
         ReadOnlySpan<byte> frame,
+        out ushort mode,
         out ushort clientCostField)
     {
+        mode = 0;
         clientCostField = 0;
         return frame.Length == 8 + DungeonContinueRequestPayloadLength
             && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) == frame.Length
             && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) == 0xCF83
-            && TryParseNativeRevivalContinueRequest(frame.Slice(8), out clientCostField);
+            && TryParseNativeDungeonContinueRequest(frame.Slice(8), out mode, out clientCostField);
     }
 
-    internal static bool TryParseNativeRevivalContinueRequest(
+    internal static bool TryParseNativeDungeonContinueRequest(
         ReadOnlySpan<byte> payload,
+        out ushort mode,
         out ushort clientCostField)
     {
+        mode = 0;
         clientCostField = 0;
-        if (payload.Length != DungeonContinueRequestPayloadLength
-            || BinaryPrimitives.ReadUInt16LittleEndian(payload) != 1)
+        if (payload.Length != DungeonContinueRequestPayloadLength)
+            return false;
+        mode = BinaryPrimitives.ReadUInt16LittleEndian(payload);
+        if (mode is not (0 or 1))
             return false;
         clientCostField = BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(2, 2));
         return true;
     }
 
-    internal static bool CanApplyNativeRevivalContinue(
+    internal static bool CanApplyNativeDungeonContinue(
         NativeDungeonState checkpoint,
         bool deathLatched,
-        bool hasReportedPosition)
-        => deathLatched && hasReportedPosition && checkpoint.Get(60) > 0;
+        ushort mode)
+        => deathLatched && (mode == 0 || mode == 1 && checkpoint.Get(60) > 0);
 
     internal static bool TryReadNativeDungeonLocalHp(
         ReadOnlySpan<byte> frame,
@@ -194,6 +201,54 @@ public sealed partial class NetworkAdapterService
             return false;
         currentHp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x10, 2));
         return true;
+    }
+
+    internal static byte[] BuildNativePaidContinueRuntimeSyncPayload(ushort currentHp, ushort currentMp)
+    {
+        var payload = new byte[8];
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0, 2), 0);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), currentHp);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(4, 2), currentMp);
+        return payload;
+    }
+
+    internal static bool TryParseNativePaidContinueRuntimeSyncAck(
+        ReadOnlySpan<byte> frame,
+        ushort expectedHp,
+        ushort expectedMp)
+        => frame.Length == 16
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) == frame.Length
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) == 0xF105
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(8, 2)) == 1
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(10, 2)) == 0
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(12, 2)) == expectedHp
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(14, 2)) == expectedMp;
+
+    private async Task HandleNativeDungeonContinueAsync(
+        byte[] frame,
+        string channel,
+        ConnectionSession session,
+        ushort mode,
+        ushort clientCostField,
+        CancellationToken token)
+    {
+        if (mode == 1)
+        {
+            await HandleNativeDungeonRevivalContinueAsync(
+                frame,
+                channel,
+                session,
+                clientCostField,
+                token);
+            return;
+        }
+
+        await HandleNativeDungeonPaidContinueAsync(
+            frame,
+            channel,
+            session,
+            clientCostField,
+            token);
     }
 
     private async Task HandleNativeDungeonRevivalContinueAsync(
@@ -211,12 +266,12 @@ public sealed partial class NetworkAdapterService
 
         var checkpoint = session.NativeCheckpoint;
         var character = session.Character;
-        if (!CanApplyNativeRevivalContinue(
+        if (!CanApplyNativeDungeonContinue(
                 checkpoint,
                 session.NativeDungeonDeathLatched,
-                session.HasReportedDungeonPosition))
+                mode: 1))
         {
-            _log($"{channel}: native dungeon revival continue rejected: character={character.Id} deathLatched={session.NativeDungeonDeathLatched} hasPosition={session.HasReportedDungeonPosition} checkpointHp={checkpoint.Get(20)} uses={checkpoint.Get(60)} clientCostField={clientCostField} hansDebited=0 reason=runtime-death-position-or-revival-gate");
+            _log($"{channel}: native dungeon revival continue rejected: character={character.Id} deathLatched={session.NativeDungeonDeathLatched} checkpointHp={checkpoint.Get(20)} uses={checkpoint.Get(60)} clientCostField={clientCostField} hansDebited=0 reason=runtime-death-or-revival-gate");
             return;
         }
 
@@ -238,16 +293,95 @@ public sealed partial class NetworkAdapterService
         }
 
         session.NativeDungeonDeathLatched = false;
-        var revivePayload = BuildRevivalApplyPayload(
-            character,
-            session.LastReportedPositionX,
-            session.LastReportedPositionY);
+        var revivePayload = BuildRevivalApplyPayload(character);
         var revive = BuildNativeFrame(frame, 0xCF84, revivePayload, session);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
             revive,
             "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
-            true, false, "native revival complete CF84"), token);
-        _log($"{channel}: native dungeon revival continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} position=({session.LastReportedPositionX},{session.LastReportedPositionY}) hans={character.Hans} hansDebited=0 workerAck=CF95-captured clientResponse=CF84-only");
+            true, false, "native revival complete CF84 variant60"), token);
+        _log($"{channel}: native dungeon revival continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} cf84Aux=(0,0) hans={character.Hans} hansDebited=0 workerAck=CF95-captured clientResponse=CF84-variant60");
+    }
+
+    private async Task HandleNativeDungeonPaidContinueAsync(
+        byte[] frame,
+        string channel,
+        ConnectionSession session,
+        ushort clientCostField,
+        CancellationToken token)
+    {
+        if (!session.OnlineTracked
+            || session.Character is null
+            || session.NativeDungeon is null
+            || session.NativeCheckpoint is null)
+            return;
+
+        var checkpoint = session.NativeCheckpoint;
+        var character = session.Character;
+        if (!CanApplyNativeDungeonContinue(
+                checkpoint,
+                session.NativeDungeonDeathLatched,
+                mode: 0)
+            || !IsKnownDungeonContinueCost(clientCostField))
+        {
+            _log($"{channel}: native dungeon paid continue rejected: character={character.Id} deathLatched={session.NativeDungeonDeathLatched} checkpointHp={checkpoint.Get(20)} uses={checkpoint.Get(60)} clientCostField={clientCostField} hans={character.Hans} reason=runtime-death-or-cost-gate");
+            return;
+        }
+
+        var restoredHp = Math.Max(1, (character.MaxHp + 1) / 2);
+        var restoredMp = Math.Max(1, (character.MaxMp + 1) / 2);
+        var consumed = await _database.ConsumeDungeonContinueAsync(
+            session.AccountId,
+            character.Id,
+            session.SessionId,
+            mode: 0,
+            clientCostField,
+            restoredHp,
+            restoredMp,
+            token);
+        if (!consumed.Success)
+        {
+            _log($"{channel}: native dungeon paid continue payment rejected: character={character.Id} cost={clientCostField} error={consumed.Error}");
+            return;
+        }
+
+        character.Hans = consumed.Hans;
+        character.RevivalUseCount = consumed.RevivalUseCount;
+        character.CurrentHp = consumed.CurrentHp;
+        character.CurrentMp = consumed.CurrentMp;
+
+        var importedBytes = checkpoint.Bytes.ToArray();
+        BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(20, 4), checked((uint)consumed.CurrentHp));
+        BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(28, 4), checked((uint)consumed.CurrentMp));
+        BinaryPrimitives.WriteInt64LittleEndian(importedBytes.AsSpan(32, 8), consumed.Hans);
+        BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(60, 4), consumed.RevivalUseCount);
+        var importedState = new NativeDungeonState(importedBytes);
+        var syncPayload = BuildNativePaidContinueRuntimeSyncPayload(
+            checked((ushort)Math.Clamp(consumed.CurrentHp, 1, ushort.MaxValue)),
+            checked((ushort)Math.Clamp(consumed.CurrentMp, 1, ushort.MaxValue)));
+        var exchange = await session.NativeDungeon.ExchangeCapturedAsync(
+            NativeDungeonClient.Frame(0xF104, syncPayload),
+            importedState,
+            token);
+        var runtimeSynchronized = exchange.Frames.Any(item =>
+            TryParseNativePaidContinueRuntimeSyncAck(
+                item,
+                checked((ushort)consumed.CurrentHp),
+                checked((ushort)consumed.CurrentMp)));
+        if (!runtimeSynchronized
+            || exchange.State.Get(20) != consumed.CurrentHp
+            || exchange.State.Get(28) != consumed.CurrentMp
+            || exchange.State.GetBalance(32) != consumed.Hans)
+            throw new InvalidDataException("Native paid-continue runtime synchronization failed after the committed payment.");
+
+        session.NativeCheckpoint = exchange.State;
+        session.NativeDungeonDeathLatched = false;
+        var continuePayload = BuildDungeonContinueApplyPayload(character, variant: 20);
+        var response = BuildNativeFrame(frame, 0xCF84, continuePayload, session);
+        await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
+            response,
+            "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
+            true, false, "native paid continue complete CF84 variant20"), token);
+        _log($"{channel}: native dungeon paid continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} cf84Aux=(0,0) hans={character.Hans} hansDebited={clientCostField} workerAck=F105 clientResponse=CF84-variant20");
     }
 
     private async Task CommitNativeCheckpointAsync(ConnectionSession session, byte[]? frame, CancellationToken token)

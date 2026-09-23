@@ -11,6 +11,8 @@ public sealed class NativeDungeonState
     public const int PetExperienceOffset = 156;
     public const int AttackModifierOffset = 80;
     public const int DefenseFlatOffset = 84;
+    public const int DungeonGradeOffset = 5024;
+    public const int DungeonGradeStateLength = 28;
     public const int PetCombatLevelOffset = 5116;
     public byte[] Bytes { get; }
     public NativeDungeonState(byte[] bytes)
@@ -54,6 +56,7 @@ public sealed class NativeDungeonState
         s.Put(72, petState.CurrentStage); s.Put(76, petState.MaximumStage);
         s.Put(PetLevelOffset, petState.Level);
         s.Put(PetExperienceOffset, petState.Experience);
+        s.Put(DungeonGradeOffset, Math.Min(c.DungeonGrade, (byte)42));
         // Keep the original adapter's zero additive damage and defense policy.
         s.Put(88, name.Length); s.Put(92, c.Gender); name.CopyTo(data, 96);
         ReadOnlySpan<int> equipmentAppearanceOffsets = [0, 4, 8, 12, 20];

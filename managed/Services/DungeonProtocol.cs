@@ -105,9 +105,9 @@ internal static class DungeonProtocol
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x44 - 8),
             (uint)Math.Clamp(character.Experience, levelStartExperience, nextLevelExperience));
         payload[0x48 - 8] = (byte)Math.Clamp(character.Level, 0, 0x7F);
-        // Retail CF71 passes frame+0x49 to qz_inter_lv_icon%d. The shipped
-        // resource set contains icon bands 1..7, one band per ten levels.
-        payload[0x49 - 8] = GetLevelIcon(character.Level);
+        // Retail CF71 frame+0x49 is the persisted dungeon grade/title, not
+        // a level-derived icon band. Keep it coherent with C355 and CF88.
+        payload[0x49 - 8] = character.DungeonGrade;
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x4A - 8), ClampStat(character.MaxHp));
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x4C - 8), ClampStat(character.MaxMp));
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x4E - 8), ClampCurrent(character.CurrentHp, character.MaxHp));

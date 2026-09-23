@@ -274,7 +274,12 @@ static void gs_thread(void* arg){
                     }
 #endif
 #ifdef NANAIMO_GAMEPLAY_BRIDGE
-                    if(managed_bridge_handle(c,type,len,(const unsigned char*)&buf[off])) {
+                    if(type==0xF104){
+                        char ack[16];unsigned mode=0u,hp=0u,mp=0u;int ok=0;
+                        if(len==16){mode=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8);hp=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);mp=(unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8);ok=mode==0u&&hp>0u&&hp<=pet_crafting_pet_effective_hp_max()&&mp>0u&&mp<=g_profile_mp_max;}
+                        if(ok){combat_hp=hp;g_profile_hp_current=hp;g_profile_mp_current=mp;injury_dead=0;death_latched=0;retry_acknowledged=0;lifesteal_remainder=0u;printf("  [REVIVE] internal F104 paid-continue sync hp=%u mp=%u battle=%u latch-cleared\n",hp,mp,boss_ctx.battle_epoch);fflush(0);}else{printf("  [REVIVE] internal F104 rejected len=%d mode=%u hp=%u mp=%u injury_dead=%d combat_hp=%u max_hp=%u max_mp=%u\n",len,mode,hp,mp,injury_dead,combat_hp,pet_crafting_pet_effective_hp_max(),g_profile_mp_max);fflush(0);}
+                        mkpkt(ack,0xF105,16,1);ack[8]=(char)(ok?1:0);ack[9]=0;ack[10]=(char)mode;ack[11]=(char)(mode>>8);ack[12]=(char)hp;ack[13]=(char)(hp>>8);ack[14]=(char)mp;ack[15]=(char)(mp>>8);sendbuf(c,ack,16);
+                    } else if(managed_bridge_handle(c,type,len,(const unsigned char*)&buf[off])) {
                         /* Internal state exchange; never routed from a game client. */
                     } else
 #endif

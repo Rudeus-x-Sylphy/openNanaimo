@@ -68,8 +68,8 @@
     },
     {
       "path": "managed-host/LauncherProfileChecks.cs",
-      "size": 5639,
-      "sha256": "1D13ABB38189B5DA7631008E2C3E9225024022F2FD827F75E83469FFD99D279C"
+      "size": 10214,
+      "sha256": "320F84388BA6966F18EF180016E3FE8AE8864157F46AC8053592E6EC2B88EF56"
     },
     {
       "path": "managed-host/MigrationChecks.cs",
@@ -83,8 +83,8 @@
     },
     {
       "path": "managed-host/PetRevivalVillageChecks.cs",
-      "size": 21672,
-      "sha256": "F530A810CA876E6205B09F6E57174CFF55AFAA15EED30381B0B1B09E6EF023EB"
+      "size": 25264,
+      "sha256": "1370D324B3E1A315B622CD40F71A0C65F29528C462D27AA3E81850287CC011EC"
     },
     {
       "path": "managed-host/Program.cs",
@@ -98,8 +98,8 @@
     },
     {
       "path": "managed-host/VillagePositionChecks.cs",
-      "size": 13751,
-      "sha256": "FC14BAB354088EC4A7A1247300E8F63AF6CDDC907F2DF5A134D5DC63A41DD8DB"
+      "size": 17959,
+      "sha256": "4CC791CE004D8FED325F541616C482723F9EF70E7918223204EA3D0BE92D26C8"
     },
     {
       "path": "managed/Compatibility/Net6.cs",
@@ -158,8 +158,8 @@
     },
     {
       "path": "managed/Models/CharacterRecord.cs",
-      "size": 5334,
-      "sha256": "C3E0EAB5F4B6511D2FD65DE34991CA56669C12A02321D4500272A5248F4B8C1E"
+      "size": 5377,
+      "sha256": "F802526893FCE953CC5614E72FCF5C863915BE6A4F82EB92F97FAA09F79FF853"
     },
     {
       "path": "managed/Models/CharacterRuntimeState.cs",
@@ -288,13 +288,13 @@
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
-      "size": 50119,
-      "sha256": "9A1A4D1907B93645996A8C6BC9DBBE61576F452F19E9D4DE874F333943F9D425"
+      "size": 53783,
+      "sha256": "F5EAAADF8F8C3CDC975492877831D0546BAD7FD2782237652A93ADCEDB4779C4"
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 576461,
-      "sha256": "93BC5EC95F047BCE9EE2F13148D6D00646B2E6B39822FC1CC2D73BB481D820C2"
+      "size": 576675,
+      "sha256": "D77834B14E3FF6A865C765525D6FAF361201A89ABEA8A46622EE45D33A7A7B7E"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -308,8 +308,8 @@
     },
     {
       "path": "managed/Services/DungeonProtocol.cs",
-      "size": 19970,
-      "sha256": "34D5FFC33ADD7EE925E5B0D273365B332A230B521A9744C30F4A8C8798FCEA4D"
+      "size": 19963,
+      "sha256": "CCBF317341AC0E6E6E397B136D27B18E5AD53AB7B278A9A4F347AADB81AA3391"
     },
     {
       "path": "managed/Services/DungeonRewardPolicy.cs",
@@ -353,8 +353,8 @@
     },
     {
       "path": "managed/Services/NativeDungeonState.cs",
-      "size": 7026,
-      "sha256": "29F0DF0D28D3E703A35932B96564D4167568CCB1FFCF87E2B34D0DC85FA9116D"
+      "size": 7196,
+      "sha256": "5ABF1284A2E48A29D231076C35551F9A028892AA8E5FBC0D4BA70BE1A483C6AD"
     },
     {
       "path": "managed/Services/NativeProcessJob.cs",
@@ -373,13 +373,13 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 20535,
-      "sha256": "A904D74964477D0C33517B8D7B6C52A67ED3EAE2C013744905000C20DC6C3424"
+      "size": 26546,
+      "sha256": "9E13259CB8703358F0DA636433275BC1CA3B17A6DBBF1EE7A9E70EE6A0EF9E9F"
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 933063,
-      "sha256": "9C9E1F8AB12E6E0BA8579B775CA40D09A653B03C74D0BA1C7BFFE7AFF192AD84"
+      "size": 932570,
+      "sha256": "2B1F8D6F3F8ABC7A8CC5C2CB7EE1D0ECF193A46E782996A011AA5A8271D7E64F"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -423,8 +423,8 @@
     },
     {
       "path": "managed/Services/TownPositionPolicy.cs",
-      "size": 1373,
-      "sha256": "048546B32B4A63754063847CCCA544A5362F337A9372F5D0789DD77474E33B25"
+      "size": 2513,
+      "sha256": "AD7A65BB8D8EB3905050C006241F2F4FBD95882A21CC9588E8888ACF1D1E920F"
     },
     {
       "path": "managed/Services/VillageBotLanguageCatalog.cs",
@@ -628,8 +628,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 127175,
-      "sha256": "0E2222655D19BFD83F9356C40BF6A7053EBAE01091986C4D41EE23DCD5E20EA4"
+      "size": 128352,
+      "sha256": "82D963F6CA5BA0199F8EB1A37685B4BF022D9FDEDF803297AA6A3208BD2BAB51"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",

@@ -7332,6 +7332,7 @@ public sealed partial class DatabaseService
         character.Items = await GetCharacterItemsAsync(connection, character.Id, cancellationToken);
         character.CashInboxItems = await GetCharacterCashInboxItemsAsync(connection, character.Id, cancellationToken);
         character.QuickSlots = await GetCharacterQuickSlotsAsync(connection, character.Id, cancellationToken);
+        character.DungeonGrade = await LoadDungeonGradeAsync(connection, character.Id, cancellationToken);
         return character;
     }
 
@@ -7349,6 +7350,7 @@ public sealed partial class DatabaseService
         character.Items = await GetCharacterItemsAsync(connection, character.Id, cancellationToken);
         character.CashInboxItems = await GetCharacterCashInboxItemsAsync(connection, character.Id, cancellationToken);
         character.QuickSlots = await GetCharacterQuickSlotsAsync(connection, character.Id, cancellationToken);
+        character.DungeonGrade = await LoadDungeonGradeAsync(connection, character.Id, cancellationToken);
         return character;
     }
 

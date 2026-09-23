@@ -44,6 +44,7 @@ public sealed class CharacterRecord
     public long Cash { get; set; }
     public int Level { get; set; } = 1;
     public long Experience { get; set; }
+    public byte DungeonGrade { get; set; }
     public int AttributePoints { get; set; }
     public int Strength { get; set; } = 5;
     public int Vitality { get; set; } = 5;

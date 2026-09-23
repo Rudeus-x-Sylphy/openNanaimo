@@ -183,6 +183,76 @@ public sealed partial class DatabaseService
     private static uint ParseCode(string value, string key)
         => uint.TryParse(value, out var code) ? code : throw new InvalidDataException($"Invalid {key} in inventory sidecar.");
 
+    private static byte? ParseLauncherDungeonGrade(IReadOnlyDictionary<string, string> values)
+    {
+        if (!values.TryGetValue("dungeon_grade", out var value)
+            || string.Equals(value, "auto", StringComparison.OrdinalIgnoreCase))
+            return null;
+        if (!byte.TryParse(value, out var grade) || grade > 42)
+            throw new InvalidDataException("Profile value dungeon_grade must be auto or 0..42.");
+        return grade;
+    }
+
+    private static async Task ApplyLauncherDungeonGradeAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        long characterId,
+        byte? grade,
+        CancellationToken token)
+    {
+        if (!grade.HasValue) return;
+        await using (var ensure = connection.CreateCommand())
+        {
+            ensure.Transaction = transaction;
+            ensure.CommandText = "CREATE TABLE IF NOT EXISTS NativeDungeonProfiles(CharacterId INTEGER PRIMARY KEY REFERENCES Characters(Id), State BLOB NOT NULL)";
+            await ensure.ExecuteNonQueryAsync(token);
+        }
+
+        byte[] state;
+        await using (var read = connection.CreateCommand())
+        {
+            read.Transaction = transaction;
+            read.CommandText = "SELECT State FROM NativeDungeonProfiles WHERE CharacterId=$id";
+            read.Parameters.AddWithValue("$id", characterId);
+            state = await read.ExecuteScalarAsync(token) is byte[] saved && saved.Length == NativeDungeonState.Size
+                ? saved.ToArray()
+                : new byte[NativeDungeonState.Size];
+        }
+        BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(0, 4), 1);
+        state.AsSpan(NativeDungeonState.DungeonGradeOffset, NativeDungeonState.DungeonGradeStateLength).Clear();
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            state.AsSpan(NativeDungeonState.DungeonGradeOffset, 4),
+            grade.Value);
+
+        await using var write = connection.CreateCommand();
+        write.Transaction = transaction;
+        write.CommandText = "INSERT INTO NativeDungeonProfiles(CharacterId,State) VALUES($id,$state) ON CONFLICT(CharacterId) DO UPDATE SET State=$state";
+        write.Parameters.AddWithValue("$id", characterId);
+        write.Parameters.AddWithValue("$state", state);
+        await write.ExecuteNonQueryAsync(token);
+    }
+
+    private static async Task<byte> LoadDungeonGradeAsync(
+        SqliteConnection connection,
+        long characterId,
+        CancellationToken token)
+    {
+        await using (var exists = connection.CreateCommand())
+        {
+            exists.CommandText = "SELECT 1 FROM sqlite_master WHERE type='table' AND name='NativeDungeonProfiles'";
+            if (await exists.ExecuteScalarAsync(token) is null) return 0;
+        }
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT State FROM NativeDungeonProfiles WHERE CharacterId=$id";
+        command.Parameters.AddWithValue("$id", characterId);
+        if (await command.ExecuteScalarAsync(token) is not byte[] state
+            || state.Length < NativeDungeonState.DungeonGradeOffset + 4)
+            return 0;
+        var grade = BinaryPrimitives.ReadUInt32LittleEndian(
+            state.AsSpan(NativeDungeonState.DungeonGradeOffset, 4));
+        return grade <= 42 ? (byte)grade : (byte)0;
+    }
+
     public async Task<CharacterRecord> ImportLocalProfileAsync(string profile, CancellationToken token = default)
         => await ImportLocalProfileAsync(profile, null, token);
 
@@ -214,6 +284,7 @@ public sealed partial class DatabaseService
         }
 
         var sidecars = LoadLocalSidecars(sidecarRoot, values["name_hex"]);
+        var dungeonGrade = ParseLauncherDungeonGrade(values);
         var existing = await GetCharacterAsync(accountId!.Value, token);
         string[] equipment = ["equip_hair", "equip_body", "equip_top", "equip_bottom", "equip_accessory"];
         uint ReadAppearanceEquipment(int index) => sidecars?.Shopping is { } shopping ? shopping.Equipped[index] : Read(equipment[index]);
@@ -236,7 +307,7 @@ public sealed partial class DatabaseService
         // must resume at the last persisted logout position.
         if (existing is not null)
         {
-            await ApplyLocalProfileAsync(existing, values, appearance, equipment, Read, selectedPet, selectedCoin, selectedNana, sidecars, token);
+            await ApplyLocalProfileAsync(existing, values, appearance, equipment, Read, selectedPet, selectedCoin, selectedNana, sidecars, dungeonGrade, token);
             return (await GetCharacterAsync(accountId.Value, token))!;
         }
 
@@ -283,6 +354,7 @@ public sealed partial class DatabaseService
         await UpsertLocalProfileItemsAsync(connection, transaction, result.CharacterId, values, equipment, Read, token);
         await ApplyLocalSidecarsAsync(connection, transaction, result.CharacterId, sidecars, token);
         await ReplaceLocalProfileSkillsAsync(connection, transaction, result.CharacterId, values, token);
+        await ApplyLauncherDungeonGradeAsync(connection, transaction, result.CharacterId, dungeonGrade, token);
         await transaction.CommitAsync(token);
         return (await GetCharacterAsync(accountId.Value, token))!;
     }
@@ -297,6 +369,7 @@ public sealed partial class DatabaseService
         long selectedCoin,
         long selectedNana,
         LocalSidecars? sidecars,
+        byte? dungeonGrade,
         CancellationToken token)
     {
         await using var connection = await OpenConnectionAsync(token);
@@ -347,6 +420,7 @@ public sealed partial class DatabaseService
         await UpsertLocalProfileItemsAsync(connection, transaction, existing.Id, values, equipment, read, token);
         await ApplyLocalSidecarsAsync(connection, transaction, existing.Id, sidecars, token);
         await ReplaceLocalProfileSkillsAsync(connection, transaction, existing.Id, values, token);
+        await ApplyLauncherDungeonGradeAsync(connection, transaction, existing.Id, dungeonGrade, token);
         await transaction.CommitAsync(token);
     }
 

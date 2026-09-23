@@ -193,17 +193,24 @@ internal static class PetRevivalVillageChecks
         var nativeState = NativeDungeonState.Create(character, [], []);
         Check(nativeState.Get(60) == 33, "native state imports the same activated revival ledger at offset 60");
         var observedCf83 = Convert.FromHexString("B1E0781D0C0083CF01000005");
-        Check(NetworkAdapterService.TryParseNativeRevivalContinueFrame(
-                observedCf83, out var clientCostField)
+        Check(NetworkAdapterService.TryParseNativeDungeonContinueFrame(
+                observedCf83, out var observedMode, out var clientCostField)
+            && observedMode == 1
             && clientCostField == 1280,
-            "observed CF83/12 frame selects revival and preserves its client cost field");
-        Check(!NetworkAdapterService.TryParseNativeRevivalContinueFrame(
-                observedCf83.AsSpan(0, 11), out _),
+            "observed first-cycle CF83/12 frame selects revival and preserves its client table value");
+        var observedSecondCycleCf83 = Convert.FromHexString("73E30D180C0083CF0000B603");
+        Check(NetworkAdapterService.TryParseNativeDungeonContinueFrame(
+                observedSecondCycleCf83, out var secondCycleMode, out var secondCycleCost)
+            && secondCycleMode == 0
+            && secondCycleCost == 950,
+            "future-dated host-clock second-cycle CF83/12 frame selects paid continue with table value 950");
+        Check(!NetworkAdapterService.TryParseNativeDungeonContinueFrame(
+                observedCf83.AsSpan(0, 11), out _, out _),
             "truncated observed CF83 frame is rejected before routing");
         var wrongOpcodeCf83 = observedCf83.ToArray();
         BinaryPrimitives.WriteUInt16LittleEndian(wrongOpcodeCf83.AsSpan(6, 2), 0xCF95);
-        Check(!NetworkAdapterService.TryParseNativeRevivalContinueFrame(wrongOpcodeCf83, out _),
-            "the revival frame gate is locked to the CF83 tuple");
+        Check(!NetworkAdapterService.TryParseNativeDungeonContinueFrame(wrongOpcodeCf83, out _, out _),
+            "the native continue frame gate is locked to the CF83 tuple");
         BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(5032, 4), 1);
         BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(5036, 4), 3);
         // The worker F102 profile snapshot does not mirror combat_hp after a
@@ -211,31 +218,54 @@ internal static class PetRevivalVillageChecks
         // authoritative gate for the observed CF83 tuple; state+20 may remain
         // at the full profile HP (22222 in the live run).
         BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(20, 4), 22_222);
-        Check(NetworkAdapterService.CanApplyNativeRevivalContinue(nativeState, deathLatched: true, hasReportedPosition: true),
-            "CF83 mode1 accepts the managed death latch even when F102 profile HP remains full");
-        Check(!NetworkAdapterService.CanApplyNativeRevivalContinue(nativeState, deathLatched: false, hasReportedPosition: true),
-            "CF83 mode1 rejects without an attributable local D010 death latch");
-        Check(!NetworkAdapterService.CanApplyNativeRevivalContinue(nativeState, deathLatched: true, hasReportedPosition: false),
-            "CF83 mode1 rejects before a battle position is observed");
+        Check(NetworkAdapterService.CanApplyNativeDungeonContinue(nativeState, deathLatched: true, mode: 1),
+            "CF83 mode1 accepts the managed death latch even when F102 profile HP remains full and no WorldAdapter 0x044C was observed");
+        Check(NetworkAdapterService.CanApplyNativeDungeonContinue(nativeState, deathLatched: true, mode: 0),
+            "CF83 mode0 second-cycle continue uses the same managed local-D010 death latch");
+        Check(!NetworkAdapterService.CanApplyNativeDungeonContinue(nativeState, deathLatched: false, mode: 1)
+            && !NetworkAdapterService.CanApplyNativeDungeonContinue(nativeState, deathLatched: false, mode: 0),
+            "both native CF83 modes reject without an attributable local D010 death latch");
         BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(60, 4), 0);
-        Check(!NetworkAdapterService.CanApplyNativeRevivalContinue(nativeState, deathLatched: true, hasReportedPosition: true),
+        Check(!NetworkAdapterService.CanApplyNativeDungeonContinue(nativeState, deathLatched: true, mode: 1),
             "CF83 mode1 rejects a zero revival ledger");
+        Check(NetworkAdapterService.CanApplyNativeDungeonContinue(nativeState, deathLatched: true, mode: 0),
+            "CF83 mode0 paid continue remains independent of the revival-item ledger");
         BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(60, 4), 33);
-        Check(!NetworkAdapterService.TryParseNativeRevivalContinueRequest(
-                new byte[] { 0, 0, 0, 5 }, out _),
-            "CF83 mode0 Hans continue remains outside the revival-item transaction");
+        Check(!NetworkAdapterService.TryParseNativeDungeonContinueRequest(
+                new byte[] { 2, 0, 0, 5 }, out _, out _),
+            "CF83 modes outside 0/1 are rejected");
+        Check(NetworkAdapterService.IsKnownDungeonContinueCost(950)
+            && NetworkAdapterService.IsKnownDungeonContinueCost(1280)
+            && !NetworkAdapterService.IsKnownDungeonContinueCost(951),
+            "native mode0 accepts only a client table value from the established continue-cost catalog");
         character.CurrentHp = 2_000;
         character.CurrentMp = 500;
-        var cf84 = NetworkAdapterService.BuildRevivalApplyPayload(character, 172, 115);
+        var cf84 = NetworkAdapterService.BuildRevivalApplyPayload(character);
+        var paidCf84 = NetworkAdapterService.BuildDungeonContinueApplyPayload(character, 20);
         var cf72 = NetworkAdapterService.BuildDungeonActorRefreshPayload(character);
         Check(cf84.Length == 16
             && BinaryPrimitives.ReadUInt16LittleEndian(cf84) == 60
             && BinaryPrimitives.ReadUInt16LittleEndian(cf84.AsSpan(2, 2)) == 77
             && BinaryPrimitives.ReadUInt16LittleEndian(cf84.AsSpan(4, 2)) == 2_000
             && BinaryPrimitives.ReadUInt16LittleEndian(cf84.AsSpan(6, 2)) == 500
-            && BinaryPrimitives.ReadInt32LittleEndian(cf84.AsSpan(8, 4)) == 172
-            && BinaryPrimitives.ReadInt32LittleEndian(cf84.AsSpan(12, 4)) == 115,
-            "CF84 revival payload carries variant, local actor, restored HP/MP and last battle position");
+            && cf84.AsSpan(8).SequenceEqual(new byte[8]),
+            "CF84 variant60 carries local actor HP/MP and zero-initialized auxiliary DWORDs");
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(paidCf84) == 20
+            && paidCf84.AsSpan(2).SequenceEqual(cf84.AsSpan(2)),
+            "CF84 variant20 shares the actor/HP/MP layout without decrementing the client revival counter");
+        var runtimeSync = NetworkAdapterService.BuildNativePaidContinueRuntimeSyncPayload(1_000, 250);
+        var runtimeAck = NativeDungeonClient.Frame(0xF105, new byte[8]);
+        BinaryPrimitives.WriteUInt16LittleEndian(runtimeAck.AsSpan(8, 2), 1);
+        BinaryPrimitives.WriteUInt16LittleEndian(runtimeAck.AsSpan(10, 2), 0);
+        BinaryPrimitives.WriteUInt16LittleEndian(runtimeAck.AsSpan(12, 2), 1_000);
+        BinaryPrimitives.WriteUInt16LittleEndian(runtimeAck.AsSpan(14, 2), 250);
+        RewriteChecksum(runtimeAck);
+        Check(runtimeSync.Length == 8
+            && BinaryPrimitives.ReadUInt16LittleEndian(runtimeSync) == 0
+            && BinaryPrimitives.ReadUInt16LittleEndian(runtimeSync.AsSpan(2, 2)) == 1_000
+            && BinaryPrimitives.ReadUInt16LittleEndian(runtimeSync.AsSpan(4, 2)) == 250
+            && NetworkAdapterService.TryParseNativePaidContinueRuntimeSyncAck(runtimeAck, 1_000, 250),
+            "internal F104/F105 paid-continue sync preserves worker combat HP/MP across the managed payment");
         Check(BinaryPrimitives.ReadUInt16LittleEndian(cf72.AsSpan(6, 2)) == 2_000,
             "CF72 refresh carries current HP for the separate CF95 retry family");
 
@@ -338,6 +368,29 @@ internal static class PetRevivalVillageChecks
                 "CF83 mode1/CF84 revival transaction consumes one credited use and restores HP");
             var duplicate = await database.ConsumeRevivalRetryAsync(accountId, characterId, sessionId);
             Check(!duplicate.Success, "duplicate revival transaction is idempotent");
+
+            await using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = database.DatabasePath,
+                Mode = SqliteOpenMode.ReadWrite,
+                ForeignKeys = true
+            }.ToString()))
+            {
+                await connection.OpenAsync();
+                await using var deadAgain = connection.CreateCommand();
+                deadAgain.CommandText = "UPDATE Characters SET CurrentHp=0,CurrentMp=0,Hans=5000 WHERE Id=$id";
+                deadAgain.Parameters.AddWithValue("$id", characterId);
+                await deadAgain.ExecuteNonQueryAsync();
+            }
+            var paidContinue = await database.ConsumeDungeonContinueAsync(
+                accountId, characterId, sessionId, mode: 0, hansCost: 950,
+                restoredHp: 1000, restoredMp: 250);
+            Check(paidContinue.Success
+                && paidContinue.Hans == 4050
+                && paidContinue.RevivalUseCount == 31
+                && paidContinue.CurrentHp == 1000
+                && paidContinue.CurrentMp == 250,
+                "second-cycle CF83 mode0 deducts Hans, preserves revival uses and restores the variant20 HP/MP values");
         }
         finally
         {
