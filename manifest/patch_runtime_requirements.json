@@ -29,7 +29,7 @@
     "derived_outputs": [
       {
         "path": "game.exe",
-        "operation": "emotion null guard; furniture Index-getter patch is manual and is not selected by the launcher"
+        "operation": "automatic five-byte furniture Index-getter redirect for the reviewed PE site; no emotion patch is derived"
       },
       {
         "path": "Village_map_image/Village_map_image.pack",
@@ -80,7 +80,27 @@
       }
     ],
     "output_validation_policy": "structural derivation plus byte-exact post-apply verification; no fixed input hash gate",
-    "output_distribution": "never exported by this repository"
+    "output_distribution": "never exported by this repository",
+    "launcher_selection": {
+      "arguments": [
+        "--furniture",
+        "--dungeon7",
+        "--overwrite",
+        "--apply"
+      ],
+      "modifies_game_exe": true,
+      "emotion_page_policy": "adapter C355/728 progression and couple-field boundary; the supported empty-couple state uses the protocol boundary",
+      "furniture_policy": "required local compatibility redirect for the reviewed PE site; fixed C393 does not replace the click-time getter"
+    },
+    "adapter_protocol_compatibility": {
+      "request": "C354/8 with zero-byte payload on the world connection",
+      "response": "C355/728",
+      "progression_segment": "full-frame +0x88..<+0xDF; final packed state1 byte 0x55, ending at +0xDE",
+      "partner_name": "full-frame +0xDF..+0xEF, 17 bytes",
+      "ring_suffix": "WORD full-frame +0xF0",
+      "revival_count": "BYTE full-frame +0xF2",
+      "fail_closed": "without a catalog-backed couple ring and nonempty partner name, name and ring remain zero so the native name gate blocks lookup"
+    }
   },
   "provided_in_repository": [
     {

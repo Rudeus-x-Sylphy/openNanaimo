@@ -9,7 +9,7 @@ internal static class PetRevivalVillageChecks
     {
         CheckVillageAndPetCarriers();
         await CheckStorageTransactionsAsync();
-        Console.WriteLine("PET_REVIVAL_VILLAGE_CHECKS_PASS village pet action3 action4 revival identity0 cf71 native-state cf83 backpack-item");
+        Console.WriteLine("PET_REVIVAL_VILLAGE_CHECKS_PASS village pet c355-emotion-boundary action3 action4 revival identity0 cf71 native-state cf83 backpack-item");
     }
 
     private static void CheckVillageAndPetCarriers()
@@ -41,11 +41,93 @@ internal static class PetRevivalVillageChecks
         };
         BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(28, 4), selectedPet);
 
-        var c355 = NetworkAdapterService.BuildLoadNecessityPayload(character, new byte[60], new byte[60], null);
-        Check(c355.AsSpan(0x80 - 8, 6).SequenceEqual(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F }),
-            "C355 opens villages 0..43 including Laminoes");
-        Check(c355[0x86 - 8] == 0 && c355[0x87 - 8] == 0, "C355 keeps village bits 44..63 clear");
+        var clearMasks = Enumerable.Range(0, 60).Select(index => (byte)(1 << (index % 4))).ToArray();
+        var ratings = Enumerable.Range(0, 60).Select(index => (byte)index).ToArray();
+        var c355 = NetworkAdapterService.BuildLoadNecessityPayload(character, clearMasks, ratings, null);
+        Check(c355.Length == 0x2D8 - 8, "C355 payload keeps the native 728-byte frame contract");
+        Check(c355.AsSpan(0x3C - 8, 60).ToArray().All(value => value == 0x0F),
+            "C355 final ordinary dungeon table matches the reference implementation all-open policy");
+        Check(c355.AsSpan(0x78 - 8, 8).SequenceEqual(new byte[8]),
+            "C355 all-open policy does not consume the adjacent grade/reserved carrier");
+        Check(BinaryPrimitives.ReadUInt64LittleEndian(c355.AsSpan(0x80 - 8, 8)) == (1UL << 44) - 1UL,
+            "C355 opens exactly the low 44 village prerequisite bits");
         Check(BinaryPrimitives.ReadUInt32LittleEndian(c355.AsSpan(0x38 - 8, 4)) == selectedPet, "C355 carries selected PET code");
+        Check(c355.AsSpan(0x88 - 8, 0xDF - 0x88).ToArray().All(value => value == 0x55),
+            "C355 final progression fill matches reference implementation and stops before partner name");
+        Check(c355.AsSpan(0xDF - 8, 17).SequenceEqual(new byte[17])
+            && BinaryPrimitives.ReadUInt16LittleEndian(c355.AsSpan(0xF0 - 8, 2)) == 0,
+            "C355 no-couple state leaves empty name and zero ring for the native emotion gate");
+        Check(c355[0xF2 - 8] == 33, "C355 revival count remains adjacent after the ring field");
+
+        // Regression from adapter.log line 32: the shipped frame already had
+        // low44=1, but +0x88..+0xDE was entirely zero while the couple fields
+        // were empty and revival count was 33. Reproduce that exact relevant
+        // boundary before final normalization.
+        var capturedFrame = NativeDungeonClient.Frame(0xC355, new byte[0x2D8 - 8]);
+        BinaryPrimitives.WriteUInt64LittleEndian(
+            capturedFrame.AsSpan(0x80, 8),
+            (1UL << 44) - 1UL);
+        capturedFrame[0xF2] = 33;
+        Check(capturedFrame.AsSpan(0x88, 60).ToArray().All(value => value == 0)
+            && capturedFrame.AsSpan(0xC4, 0xDF - 0xC4).ToArray().All(value => value == 0),
+            "captured C355 regression starts with both post-mask progress domains zero");
+        NetworkAdapterService.NormalizeC355VillageAccessFrame(capturedFrame);
+        Check(capturedFrame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0x55),
+            "captured C355 regression receives the reference implementation final packed-state1 progression fill");
+        Check(capturedFrame.AsSpan(0xDF, 17).ToArray().All(value => value == 0)
+            && BinaryPrimitives.ReadUInt16LittleEndian(capturedFrame.AsSpan(0xF0, 2)) == 0
+            && capturedFrame[0xF2] == 33,
+            "captured C355 regression preserves empty name, zero ring and revival 33");
+
+        var finalFrame = NativeDungeonClient.Frame(0xC355, new byte[0x2D8 - 8]);
+        finalFrame.AsSpan(0x78, 8).Fill(0xA7);
+        BinaryPrimitives.WriteUInt64LittleEndian(
+            finalFrame.AsSpan(0x80, 8),
+            0xABCDE00000000000UL);
+        finalFrame.AsSpan(0xDF, 0x2D8 - 0xDF).Fill(0xC3);
+        var untouchedPrefix = finalFrame.AsSpan(0, 0x3C).ToArray();
+        var untouchedMiddle = finalFrame.AsSpan(0x78, 8).ToArray();
+        var untouchedTail = finalFrame.AsSpan(0xDF).ToArray();
+        NetworkAdapterService.NormalizeC355VillageAccessFrame(finalFrame);
+        Check(finalFrame.AsSpan(0, 0x3C).SequenceEqual(untouchedPrefix)
+            && finalFrame.AsSpan(0x78, 8).SequenceEqual(untouchedMiddle)
+            && finalFrame.AsSpan(0xDF).SequenceEqual(untouchedTail),
+            "C355 final normalizer changes only the three proven progress domains");
+        Check((BinaryPrimitives.ReadUInt64LittleEndian(finalFrame.AsSpan(0x80, 8)) & ~((1UL << 44) - 1UL))
+                == 0xABCDE00000000000UL,
+            "C355 final normalizer preserves bit44..63 exactly");
+        Check(finalFrame.AsSpan(0x3C, 60).ToArray().All(value => value == 0x0F)
+            && finalFrame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0x55),
+            "C355 final normalizer repairs ordinary and reference implementation progression carriers");
+
+        var validCouple = new CoupleRelationRecord
+        {
+            Character1Id = character.Id,
+            Character1Name = character.Name,
+            Character2Id = 88,
+            Character2Name = "Partner",
+            RingItemCode = 43_000_002
+        };
+        var coupledC355 = NetworkAdapterService.BuildLoadNecessityPayload(
+            character, new byte[60], ratings, validCouple);
+        Check(coupledC355.AsSpan(0xDF - 8, 8).SequenceEqual("Partner\0"u8),
+            "C355 valid couple writes the bounded partner name");
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(coupledC355.AsSpan(0xF0 - 8, 2)) == 2,
+            "C355 valid couple writes the catalog ring suffix");
+
+        var invalidCouple = new CoupleRelationRecord
+        {
+            Character1Id = character.Id,
+            Character1Name = character.Name,
+            Character2Id = 89,
+            Character2Name = "Invalid",
+            RingItemCode = 43_099_999
+        };
+        var invalidC355 = NetworkAdapterService.BuildLoadNecessityPayload(
+            character, new byte[60], ratings, invalidCouple);
+        Check(invalidC355.AsSpan(0xDF - 8, 17).SequenceEqual(new byte[17])
+            && BinaryPrimitives.ReadUInt16LittleEndian(invalidC355.AsSpan(0xF0 - 8, 2)) == 0,
+            "C355 invalid relation fails closed before the native emotion lookup");
 
         var c44c = NetworkAdapterService.BuildPetInventoryPayload(character);
         Check(c44c[2] == 56 && c44c[3] == 55, "C44C retains selected PET beyond the first 56 rows");
@@ -110,17 +192,64 @@ internal static class PetRevivalVillageChecks
         Check(cf71[0xA8 - 8] == 33, "CF71 carries the activated revival ledger at frame+0xA8");
         var nativeState = NativeDungeonState.Create(character, [], []);
         Check(nativeState.Get(60) == 33, "native state imports the same activated revival ledger at offset 60");
-        Check(NetworkAdapterService.TryParseNativeRevivalContinueRequest(
-                new byte[] { 1, 0, 0, 5 }, out var revivalCost)
-            && revivalCost == 1280,
-            "CF83 mode1 death click selects the native revival-item transaction");
+        var observedCf83 = Convert.FromHexString("B1E0781D0C0083CF01000005");
+        Check(NetworkAdapterService.TryParseNativeRevivalContinueFrame(
+                observedCf83, out var clientCostField)
+            && clientCostField == 1280,
+            "observed CF83/12 frame selects revival and preserves its client cost field");
+        Check(!NetworkAdapterService.TryParseNativeRevivalContinueFrame(
+                observedCf83.AsSpan(0, 11), out _),
+            "truncated observed CF83 frame is rejected before routing");
+        var wrongOpcodeCf83 = observedCf83.ToArray();
+        BinaryPrimitives.WriteUInt16LittleEndian(wrongOpcodeCf83.AsSpan(6, 2), 0xCF95);
+        Check(!NetworkAdapterService.TryParseNativeRevivalContinueFrame(wrongOpcodeCf83, out _),
+            "the revival frame gate is locked to the CF83 tuple");
+        BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(5032, 4), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(5036, 4), 3);
+        // The worker F102 profile snapshot does not mirror combat_hp after a
+        // terminal D010. The managed runtime death latch is therefore the
+        // authoritative gate for the observed CF83 tuple; state+20 may remain
+        // at the full profile HP (22222 in the live run).
+        BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(20, 4), 22_222);
+        Check(NetworkAdapterService.CanApplyNativeRevivalContinue(nativeState, deathLatched: true, hasReportedPosition: true),
+            "CF83 mode1 accepts the managed death latch even when F102 profile HP remains full");
+        Check(!NetworkAdapterService.CanApplyNativeRevivalContinue(nativeState, deathLatched: false, hasReportedPosition: true),
+            "CF83 mode1 rejects without an attributable local D010 death latch");
+        Check(!NetworkAdapterService.CanApplyNativeRevivalContinue(nativeState, deathLatched: true, hasReportedPosition: false),
+            "CF83 mode1 rejects before a battle position is observed");
+        BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(60, 4), 0);
+        Check(!NetworkAdapterService.CanApplyNativeRevivalContinue(nativeState, deathLatched: true, hasReportedPosition: true),
+            "CF83 mode1 rejects a zero revival ledger");
+        BinaryPrimitives.WriteUInt32LittleEndian(nativeState.Bytes.AsSpan(60, 4), 33);
         Check(!NetworkAdapterService.TryParseNativeRevivalContinueRequest(
                 new byte[] { 0, 0, 0, 5 }, out _),
             "CF83 mode0 Hans continue remains outside the revival-item transaction");
-        var cf84 = NetworkAdapterService.BuildRevivalApplyPayload(character);
+        character.CurrentHp = 2_000;
+        character.CurrentMp = 500;
+        var cf84 = NetworkAdapterService.BuildRevivalApplyPayload(character, 172, 115);
         var cf72 = NetworkAdapterService.BuildDungeonActorRefreshPayload(character);
-        Check(BinaryPrimitives.ReadUInt16LittleEndian(cf84) == 60, "CF84 revival variant is 60");
-        Check(BinaryPrimitives.ReadUInt16LittleEndian(cf72.AsSpan(6, 2)) == 0, "CF72 refresh carries current HP");
+        Check(cf84.Length == 16
+            && BinaryPrimitives.ReadUInt16LittleEndian(cf84) == 60
+            && BinaryPrimitives.ReadUInt16LittleEndian(cf84.AsSpan(2, 2)) == 77
+            && BinaryPrimitives.ReadUInt16LittleEndian(cf84.AsSpan(4, 2)) == 2_000
+            && BinaryPrimitives.ReadUInt16LittleEndian(cf84.AsSpan(6, 2)) == 500
+            && BinaryPrimitives.ReadInt32LittleEndian(cf84.AsSpan(8, 4)) == 172
+            && BinaryPrimitives.ReadInt32LittleEndian(cf84.AsSpan(12, 4)) == 115,
+            "CF84 revival payload carries variant, local actor, restored HP/MP and last battle position");
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(cf72.AsSpan(6, 2)) == 2_000,
+            "CF72 refresh carries current HP for the separate CF95 retry family");
+
+        var localD010 = NativeDungeonClient.Frame(0xD010, new byte[28]);
+        BinaryPrimitives.WriteUInt16LittleEndian(localD010.AsSpan(8, 2), 1);
+        BinaryPrimitives.WriteUInt16LittleEndian(localD010.AsSpan(0x10, 2), 0);
+        RewriteChecksum(localD010);
+        Check(NetworkAdapterService.TryReadNativeDungeonLocalHp(localD010, 1, out var terminalHp)
+              && terminalHp == 0,
+            "terminal local D010 establishes the managed native-dungeon death latch input");
+        BinaryPrimitives.WriteUInt16LittleEndian(localD010.AsSpan(8, 2), 2);
+        RewriteChecksum(localD010);
+        Check(!NetworkAdapterService.TryReadNativeDungeonLocalHp(localD010, 1, out _),
+            "another actor D010 cannot establish the local death latch");
     }
 
     private static async Task CheckStorageTransactionsAsync()
@@ -214,6 +343,13 @@ internal static class PetRevivalVillageChecks
         {
             try { Directory.Delete(root, true); } catch { }
         }
+    }
+
+    private static void RewriteChecksum(byte[] frame)
+    {
+        uint sum = 0;
+        for (var index = 4; index < frame.Length; index++) sum += frame[index];
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(2, 2), (ushort)(sum ^ 0x0E0E));
     }
 
     private static void Check(bool passed, string name)

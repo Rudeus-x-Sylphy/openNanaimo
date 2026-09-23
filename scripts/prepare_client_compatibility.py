@@ -19,15 +19,6 @@ ROUTE = [8, 7, 6, 11, 16, 17, 18, 19, 14, 9, 4, 3, 2, 1, 0, 5, 10, 15, 20, 21, 2
 FURNITURE_CALL_VA = 0x0041235F
 FURNITURE_OLD = bytes.fromhex('E99CC31B00')
 FURNITURE_NEW = bytes.fromhex('E97CCC1B00')
-EMOTION_GUARD_VA = 0x00837220
-EMOTION_OLD = bytes.fromhex(
-    '558BEC83EC08894DF88B45F88B882810000081C1C0209002518B4DF8E87546BDFF'
-    '8BC8E8EBABBCFF8945FC8B4DFCE845F5BDFF85C07407B801000000EB0233C08BE55DC3'
-)
-EMOTION_NEW = bytes.fromhex(
-    '5589E55689CE8B862810000085C0742B05C02090025089F1E87946BDFF89C1E8EF'
-    'ABBCFF85C0741389C1E849F5BDFF85C00F95C00FB6C05E5DC39031C05E5DC390909090'
-)
 CLIENT_COMPAT_RESOURCE_STEM = bytes.fromhex('7171667864').decode('ascii')
 ALIAS_SPECS = (
     (Path('flying/hd0_ep22_dg01_st01.sstg'), Path('flying/hd0_ep22_dg00_st01.sstg'),
@@ -238,11 +229,6 @@ def patch_furniture_getter(data: bytes) -> tuple[bytes, dict]:
                        'the furniture call site differs; this unpacking needs a separately reviewed VA mapping')
 
 
-def patch_emotion_guard(data: bytes) -> tuple[bytes, dict]:
-    return _patch_site(data, EMOTION_GUARD_VA, EMOTION_OLD, EMOTION_NEW,
-                       'patch_emotion_null_guard',
-                       'the emotion guard site differs; this unpacking needs a separately reviewed VA mapping')
-
 
 def _safe_relative(path: Path) -> Path:
     require(not path.is_absolute() and '..' not in path.parts and path.parts,
@@ -250,10 +236,10 @@ def _safe_relative(path: Path) -> Path:
     return path
 
 
-def _collect_outputs(source_root: Path, furniture: bool, emotion: bool, dungeon7: bool):
+def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool):
     files: dict[Path, bytes] = {}
     operations = []
-    if furniture or emotion:
+    if furniture:
         source = source_root / 'game.exe'
         require(source.is_file(), 'source game.exe is missing')
         original = source.read_bytes()
@@ -261,11 +247,8 @@ def _collect_outputs(source_root: Path, furniture: bool, emotion: bool, dungeon7
         if furniture:
             data, row = patch_furniture_getter(data)
             operations.append(row)
-        if emotion:
-            data, row = patch_emotion_guard(data)
-            operations.append(row)
         files[Path('game.exe')] = data
-        operations.append({'operation': 'derive_client_crash_fixes', 'source': 'game.exe',
+        operations.append({'operation': 'derive_client_furniture_compatibility', 'source': 'game.exe',
                            'input_sha256': sha256(original), 'output_sha256': sha256(data),
                            'changed': data != original, 'hash_gate_used': False})
     if dungeon7:
@@ -362,18 +345,13 @@ def _check(name: str, ok: bool, detail: str):
     return {'name': name, 'ok': bool(ok), 'detail': detail}
 
 
-def _verify_client_bytes(data: bytes, furniture: bool, emotion: bool):
+def _verify_client_bytes(data: bytes, furniture: bool):
     checks = []
     if furniture:
         offset = _va_offset(data, FURNITURE_CALL_VA, len(FURNITURE_NEW))
         actual = data[offset:offset + len(FURNITURE_NEW)]
         checks.append(_check('furniture_index_getter', actual == FURNITURE_NEW,
                              f'VA=0x{FURNITURE_CALL_VA:08X} actual={actual.hex().upper()}'))
-    if emotion:
-        offset = _va_offset(data, EMOTION_GUARD_VA, len(EMOTION_NEW))
-        actual = data[offset:offset + len(EMOTION_NEW)]
-        checks.append(_check('emotion_null_guard', actual == EMOTION_NEW,
-                             f'VA=0x{EMOTION_GUARD_VA:08X} actual_sha256={sha256(actual)}'))
     return checks
 
 
@@ -400,7 +378,7 @@ def _verify_village_bytes(data: bytes):
 
 
 def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
-                 furniture: bool, emotion: bool, dungeon7: bool):
+                 furniture: bool, dungeon7: bool):
     def read(relative: Path) -> bytes:
         if files is not None and relative in files:
             return files[relative]
@@ -409,8 +387,8 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
         return path.read_bytes()
 
     checks = []
-    if furniture or emotion:
-        checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture, emotion))
+    if furniture:
+        checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture))
     if dungeon7:
         checks.extend(_verify_village_bytes(read(Path('Village_map_image/Village_map_image.pack'))))
         for source_rel, target_rel, role in ALIAS_SPECS:
@@ -422,18 +400,18 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
 
 
 def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: bool,
-            overwrite: bool = False, emotion: bool = False, dry_run: bool = False,
+            overwrite: bool = False, dry_run: bool = False,
             apply: bool = False) -> dict:
     source_root = source_root.resolve()
     output_root = output_root.resolve()
     require(source_root.is_dir(), 'source client root does not exist')
     require(output_root != source_root, 'output root must be separate from the source client root')
-    files, operations = _collect_outputs(source_root, furniture, emotion, dungeon7)
+    files, operations = _collect_outputs(source_root, furniture, dungeon7)
     require(files, 'no compatibility operation selected')
     report = {'schema_version': 2, 'source_root': str(source_root), 'output_root': str(output_root),
               'hash_gate_used': False, 'dry_run': bool(dry_run), 'apply_requested': bool(apply),
               'operations': operations, 'planned_files': [relative.as_posix() for relative in files]}
-    report['planned_verification'] = _verify_data(source_root, files, furniture, emotion, dungeon7)
+    report['planned_verification'] = _verify_data(source_root, files, furniture, dungeon7)
     require(report['planned_verification']['all_pass'], 'derived compatibility verification failed')
     if dry_run:
         report['overlay_writes'] = []
@@ -444,7 +422,7 @@ def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: boo
     output_root.mkdir(parents=True, exist_ok=True)
     report['overlay_writes'] = _write_overlay(output_root, files, overwrite)
     report['apply_results'] = _apply_outputs(source_root, output_root, files) if apply else []
-    report['verification'] = _verify_data(source_root, None if apply else files, furniture, emotion, dungeon7)
+    report['verification'] = _verify_data(source_root, None if apply else files, furniture, dungeon7)
     require(report['verification']['all_pass'], 'post-write compatibility verification failed')
     report_path = output_root / 'nanaimo_compatibility_report.json'
     _atomic_write(report_path, (json.dumps(report, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
@@ -457,22 +435,20 @@ def main(argv=None) -> int:
     parser.add_argument('--source-root', type=Path, required=True, help='user-owned Nanaimo client root')
     parser.add_argument('--output-root', type=Path, required=True, help='separate local overlay/output directory')
     parser.add_argument('--furniture', action='store_true', help='derive the furniture Index-getter repair')
-    parser.add_argument('--emotion', action='store_true', help='derive the inherited emotion null guard')
     parser.add_argument('--dungeon7', action='store_true', help='derive P03 roads and SSTG/PON aliases')
-    parser.add_argument('--all', action='store_true', help='derive furniture, emotion, and dungeon7 compatibility')
+    parser.add_argument('--all', action='store_true', help='derive furniture and dungeon7 compatibility')
     parser.add_argument('--overwrite', action='store_true', help='replace differing named files in the overlay')
     parser.add_argument('--dry-run', action='store_true', help='validate and report without writing any file')
     parser.add_argument('--apply', action='store_true',
                         help='atomically apply named outputs to the source tree with local backups')
     args = parser.parse_args(argv)
     furniture = args.furniture or args.all
-    emotion = args.emotion or args.all
     dungeon7 = args.dungeon7 or args.all
-    if not furniture and not emotion and not dungeon7:
-        parser.error('select --furniture, --emotion, --dungeon7 or --all')
+    if not furniture and not dungeon7:
+        parser.error('select --furniture, --dungeon7 or --all')
     try:
         report = prepare(args.source_root, args.output_root, furniture, dungeon7,
-                         args.overwrite, emotion, args.dry_run, args.apply)
+                         args.overwrite, args.dry_run, args.apply)
         print('CLIENT_COMPATIBILITY_READY', json.dumps(report, ensure_ascii=False))
         return 0
     except (CompatibilityError, OSError, struct.error) as exc:

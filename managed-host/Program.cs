@@ -17,6 +17,11 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--village-position-self-test"))
+    {
+        await VillagePositionChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--pet-revival-village-self-test"))
 {
     await PetRevivalVillageChecks.RunAsync();

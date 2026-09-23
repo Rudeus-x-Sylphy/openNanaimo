@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 172,
+  "count": 174,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -48,8 +48,8 @@
     },
     {
       "path": "managed-host/ChannelReentryChecks.cs",
-      "size": 10577,
-      "sha256": "38AE07CE12279B28C4EFFE1AF4D478FC430BBFAEF75DD7BB90BC4F90F9E76657"
+      "size": 11618,
+      "sha256": "F01D2C33A9D76E0E1EF1D5B8306EE8CA3495379FB15DDF1DC73FD6EC71A89BA4"
     },
     {
       "path": "managed-host/CompatibilityChecks.cs",
@@ -83,18 +83,23 @@
     },
     {
       "path": "managed-host/PetRevivalVillageChecks.cs",
-      "size": 12653,
-      "sha256": "33E4318507ABF31AB04E3F8D0EDA8DDAA4E1A6C573E42411144B05598C7E6859"
+      "size": 21672,
+      "sha256": "F530A810CA876E6205B09F6E57174CFF55AFAA15EED30381B0B1B09E6EF023EB"
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 6993,
-      "sha256": "AD705B14127F2BA86532CBC5C2AEEF608ADE295C285171988419122434FAD252"
+      "size": 7124,
+      "sha256": "CF9372EAF450BA5B334B2F42D9F31E6561BC01246FF094A6FE5859DB5407772E"
     },
     {
       "path": "managed-host/ShopDungeonChecks.cs",
       "size": 5741,
       "sha256": "D58ED943E06CF6631C3E6CCAB621D3757864A53097386329F8A8714F12961F17"
+    },
+    {
+      "path": "managed-host/VillagePositionChecks.cs",
+      "size": 11128,
+      "sha256": "F39516F640F885EE9040F874848132B3FCC8238387167AE78E952597E3DA97EA"
     },
     {
       "path": "managed/Compatibility/Net6.cs",
@@ -288,8 +293,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 575337,
-      "sha256": "5D815DF79FE34054E1095D08DEA6FF8222BFB771EFC02A982F257302C604545F"
+      "size": 576461,
+      "sha256": "93BC5EC95F047BCE9EE2F13148D6D00646B2E6B39822FC1CC2D73BB481D820C2"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -368,13 +373,13 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 18126,
-      "sha256": "50AD6384B7B79828FCE797706044C2DD5A4DF1FA635DE69D2A75C00074825207"
+      "size": 20535,
+      "sha256": "A904D74964477D0C33517B8D7B6C52A67ED3EAE2C013744905000C20DC6C3424"
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 923906,
-      "sha256": "E4022D01D8C97171D5D15569F971C1E4BEAA045D03CC5C37BCD205E3CE7569C3"
+      "size": 931794,
+      "sha256": "1220476EBECC97E8DDDFDC5E94604F9B65796959C15F1B48F7F5A198469BE056"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -415,6 +420,11 @@
       "path": "managed/Services/SkillSlotExpansionTime.cs",
       "size": 1016,
       "sha256": "9F1D7193DBB8A480E47F3248FA2FF576549F2E9FB7C21DC2C86333D50F424296"
+    },
+    {
+      "path": "managed/Services/TownPositionPolicy.cs",
+      "size": 954,
+      "sha256": "C45E680FF81CA14E66CB05B1E5A983C0EDAFA4674933B4442841D55E358DE952"
     },
     {
       "path": "managed/Services/VillageBotLanguageCatalog.cs",

@@ -64,3 +64,11 @@ __pycache__/
 
 # Locally generated deployment/audit contract (contains runtime hashes)
 /manifest/current_adapter_contract.json
+
+# Local investigation evidence, logs, traces, captures, and crash dumps
+/knowledge/evidence/
+*.log
+*.trace
+*.pcap
+*.pcapng
+*.dmp

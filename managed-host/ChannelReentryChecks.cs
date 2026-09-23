@@ -34,6 +34,7 @@ internal static class ChannelReentryChecks
             var sessionType = typeof(NetworkAdapterService).GetNestedType("ConnectionSession", BindingFlags.NonPublic)!;
             var presenceType = typeof(NetworkAdapterService).GetNestedType("WorldPresence", BindingFlags.NonPublic)!;
             var dispatch = typeof(NetworkAdapterService).GetMethod("HandleNativeFrameAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var finalize = typeof(NetworkAdapterService).GetMethod("FinalizeNativeFramesForSend", BindingFlags.Static | BindingFlags.NonPublic)!;
             var disconnect = typeof(NetworkAdapterService).GetMethod("TrackDisconnectedAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
             var cacheTicket = typeof(NetworkAdapterService).GetMethod("CacheLoginTicket", BindingFlags.Instance | BindingFlags.NonPublic)!;
             var presenceField = typeof(NetworkAdapterService).GetField("_activeWorldSessions", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -96,9 +97,20 @@ internal static class ChannelReentryChecks
             byte[] reconnect = (await Dispatch(reentered, 0xC351, identity, "WorldAdapter"))!;
             Check(ReadOpcode(reconnect) == 0xC352 && reconnect[8] == 100, "channel reentry restores C351/C352 after prior world teardown");
             byte[] profile = (await Dispatch(reentered, 0xC354, [], "WorldAdapter"))!;
+            finalize.Invoke(null, [profile, reentered]);
             Check(ReadOpcode(profile) == 0xC355
                   && BinaryPrimitives.ReadUInt16LittleEndian(profile.AsSpan(4, 2)) == 728,
                 "channel reentry preserves the request-driven C355 chain");
+            var c355Frame = profile.AsSpan(0, 728).ToArray();
+            Check(c355Frame.AsSpan(0x3C, 60).ToArray().All(value => value == 0x0F)
+                  && c355Frame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0x55),
+                "channel reentry receives the same final reference implementation C355 tables");
+            Check((BinaryPrimitives.ReadUInt64LittleEndian(c355Frame.AsSpan(0x80, 8))
+                    & ((1UL << 44) - 1UL)) == (1UL << 44) - 1UL,
+                "channel reentry receives all 22 village predecessor pairs");
+            Check(c355Frame.AsSpan(0xDF, 17).ToArray().All(value => value == 0)
+                  && BinaryPrimitives.ReadUInt16LittleEndian(c355Frame.AsSpan(0xF0, 2)) == 0,
+                "channel reentry all-open fill stops before couple name and ring");
             await (Task)disconnect.Invoke(service, [reentered])!;
 
             clearPresences.Invoke(presences, null);
@@ -133,7 +145,7 @@ internal static class ChannelReentryChecks
             Check(ReadOpcode(ambiguousConnect) == 0xC352 && ambiguousConnect[8] == 0, "same-IP ambiguity keeps world identities separate");
             clearPresences.Invoke(presences, null);
 
-            Console.WriteLine("CHANNEL_REENTRY_CHECKS_PASS fresh-271B disconnect-first ticket teardown-wait c351-c355 ambiguity");
+            Console.WriteLine("CHANNEL_REENTRY_CHECKS_PASS fresh-271B disconnect-first ticket teardown-wait c351-c355-final-unlock ambiguity");
         }
         finally
         {

@@ -177,6 +177,20 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private const byte DungeonEpisodeCount = 20;
     private const byte DungeonCountPerEpisode = 3;
     private const byte DungeonDifficultyCount = 3;
+    private const int C355FrameLength = 0x2D8;
+    private const int NativeHeaderLength = 8;
+    private const int C355DungeonClearFrameOffset = 0x3C;
+    private const int C355DungeonClearLength = DungeonEpisodeCount * DungeonDifficultyCount;
+    private const int C355VillagePrerequisiteFrameOffset = 0x80;
+    private const int C355VillagePrerequisiteLength = sizeof(ulong);
+    private const ulong C355VillagePrerequisiteLow44Mask = (1UL << 44) - 1UL;
+    private const int C355DungeonRatingsFrameOffset = 0x88;
+    private const int C355PartnerNameFrameOffset = 0xDF;
+    private const int C355PartnerNameLength = 17;
+    private const int C355RingSuffixFrameOffset = 0xF0;
+    private const int C355RevivalCountFrameOffset = 0xF2;
+    private const uint CoupleRingCodeBase = 43_000_000u;
+    private const string CoupleRingCatalogSource = "CI._D28/COUPLERING";
     private const byte DungeonLevelFallbackEpisodeCount = 16;
     // The stage-record UI only has qz_inter_lv_icon1..7. Values above seven
     // make its resource loader enter the CRT invalid-parameter path.
@@ -395,6 +409,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public NativeDungeonPool.Lease? NativeLease { get; set; }
         public NativeDungeonState? NativeCheckpoint { get; set; }
         public bool NativeForwarding { get; set; }
+        public bool NativeDungeonDeathLatched { get; set; }
     }
 
     private sealed record PendingNativeBroadcast(
@@ -4524,14 +4539,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var townId = payload[0];
                 var townPage = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2, 2));
                 var transientFlag = payload[4];
-                var positionX = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(6, 2));
-                var positionY = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(8, 2));
+                var requestedPositionX = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(6, 2));
+                var requestedPositionY = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(8, 2));
                 if (townPage > byte.MaxValue || transientFlag > 1)
                 {
                     _log($"{channel}:{remote} 城镇进入上下文无效：town={townId} page={townPage} flag={transientFlag}；未修改角色存档");
                     return null;
                 }
 
+                var entryPosition = TownPositionPolicy.Normalize(requestedPositionX, requestedPositionY);
                 LeaveTradeRoomScene(session, "town enter");
                 LeaveApartmentScene(session, "town enter");
                 LeaveVillageShopScene(session, "town enter");
@@ -4539,13 +4555,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.TownId = townId;
                 session.TownPage = (byte)townPage;
                 session.RestoreTownPositionPending = false;
-                session.LastReportedPositionX = positionX;
-                session.LastReportedPositionY = positionY;
+                session.LastReportedPositionX = entryPosition.X;
+                session.LastReportedPositionY = entryPosition.Y;
                 session.Character.CurrentMapId = townId;
                 session.Character.CurrentTownPage = (byte)townPage;
-                session.Character.PositionX = positionX;
-                session.Character.PositionY = positionY;
-                _log($"{channel}:{remote} 城镇进入上下文已确认：town={townId} page={townPage} flag={transientFlag} position=({positionX},{positionY})；将在页面完成或断线时存档");
+                session.Character.PositionX = entryPosition.X;
+                session.Character.PositionY = entryPosition.Y;
+                _log(entryPosition.Repaired
+                    ? $"{channel}:{remote} C365 town-entry sentinel normalized: town={townId} page={townPage} flag={transientFlag} requested=({requestedPositionX},{requestedPositionY}) position=({entryPosition.X},{entryPosition.Y}); sentinel not persisted"
+                    : $"{channel}:{remote} C365 town-entry position accepted: town={townId} page={townPage} flag={transientFlag} position=({entryPosition.X},{entryPosition.Y})");
                 return BuildNativeFrame(
                     frame,
                     0xC366,
@@ -4579,19 +4597,22 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     // C368 is consumed before that page finishes initializing, so
                     // wait for the page to finish before the client opens the
                     // game-service handshake and re-enters the retained room.
-                    session.LastReportedPositionX = requestedPositionX;
-                    session.LastReportedPositionY = requestedPositionY;
+                    var transitionPosition = TownPositionPolicy.Normalize(
+                        requestedPositionX,
+                        requestedPositionY);
+                    session.LastReportedPositionX = transitionPosition.X;
+                    session.LastReportedPositionY = transitionPosition.Y;
                     session.TownPage = (byte)roomIndex;
                     session.TownSceneActive = false;
-                    _log($"{channel}:{remote} Dungeon transition bridge entered: room={bridgeRoomId} action={bridgeAction} townPage={roomIndex} transientPosition=({requestedPositionX},{requestedPositionY}); returned C368 and awaiting C36C before the client-driven game-service handshake");
+                    _log($"{channel}:{remote} Dungeon transition bridge entered: room={bridgeRoomId} action={bridgeAction} townPage={roomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({transitionPosition.X},{transitionPosition.Y}); returned C368 and awaiting C36C before the client-driven game-service handshake");
                     return BuildNativeFrame(
                         frame,
                         0xC368,
                         BuildRoomEnterPayload(
                             session.Character,
                             (byte)roomIndex,
-                            requestedPositionX,
-                            requestedPositionY),
+                            transitionPosition.X,
+                            transitionPosition.Y),
                         session);
                 }
 
@@ -4600,12 +4621,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var effectiveRoomIndex = restoreSavedPosition
                     ? Math.Clamp(session.Character.CurrentTownPage, 0, byte.MaxValue)
                     : roomIndex;
-                var positionX = restoreSavedPosition
-                    ? (ushort)Math.Clamp(session.Character.PositionX, 0, 1023)
-                    : requestedPositionX;
-                var positionY = restoreSavedPosition
-                    ? (ushort)Math.Clamp(session.Character.PositionY, 0, 1023)
-                    : requestedPositionY;
+                var entryPosition = TownPositionPolicy.Normalize(
+                    restoreSavedPosition ? session.Character.PositionX : requestedPositionX,
+                    restoreSavedPosition ? session.Character.PositionY : requestedPositionY);
+                var positionX = entryPosition.X;
+                var positionY = entryPosition.Y;
 
                 LeaveTradeRoomScene(session, "town page enter");
                 LeaveApartmentScene(session, "town page enter");
@@ -4619,9 +4639,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.Character.CurrentTownPage = effectiveRoomIndex;
                 session.Character.PositionX = positionX;
                 session.Character.PositionY = positionY;
-                _log(restoreSavedPosition
-                    ? $"{channel}:{remote} 登录村庄落点已恢复：town={session.TownId} requestedRoom={roomIndex} savedRoom={effectiveRoomIndex} position=({positionX},{positionY})；将在页面完成时确认存档"
-                    : $"{channel}:{remote} 房间进入请求已确认：room={effectiveRoomIndex} transientPosition=({positionX},{positionY})；入口坐标将在页面完成或断线时存档");
+                _log(entryPosition.Repaired
+                    ? $"{channel}:{remote} C367 village-entry sentinel normalized: town={session.TownId} requestedRoom={roomIndex} effectiveRoom={effectiveRoomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({positionX},{positionY}); FFFF/FFFF and legacy 03FF/03FF are not persisted"
+                    : restoreSavedPosition
+                        ? $"{channel}:{remote} C367 restored saved village position: town={session.TownId} requestedRoom={roomIndex} savedRoom={effectiveRoomIndex} position=({positionX},{positionY})"
+                        : $"{channel}:{remote} C367 accepted village-entry position: room={effectiveRoomIndex} position=({positionX},{positionY})");
                 return BuildNativeFrame(
                     frame,
                     0xC368,
@@ -9383,10 +9405,18 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     QueueArenaBroadcast(session, 0xCB21, movementPayload, false, "arena movement/state");
                     return null;
                 }
-                session.LastReportedPositionX = BinaryPrimitives.ReadUInt16LittleEndian(movementPayload.AsSpan(8, 2));
-                session.LastReportedPositionY = BinaryPrimitives.ReadUInt16LittleEndian(movementPayload.AsSpan(10, 2));
-                session.Character.PositionX = session.LastReportedPositionX;
-                session.Character.PositionY = session.LastReportedPositionY;
+                var movementPositionX = BinaryPrimitives.ReadUInt16LittleEndian(movementPayload.AsSpan(8, 2));
+                var movementPositionY = BinaryPrimitives.ReadUInt16LittleEndian(movementPayload.AsSpan(10, 2));
+                if (TownPositionPolicy.IsPersistable(movementPositionX, movementPositionY))
+                {
+                    session.LastReportedPositionX = movementPositionX;
+                    session.LastReportedPositionY = movementPositionY;
+                    session.Character.PositionX = movementPositionX;
+                    session.Character.PositionY = movementPositionY;
+                }
+                // FFFF/FFFF is an observed CB21 activity sentinel. Relay the
+                // frame unchanged for the page-scoped client state machine, but
+                // never let it replace the last legal persistent town position.
                 QueueSceneBroadcast(session, 0xCB21, movementPayload, "scene movement/state");
                 return null;
 
@@ -13543,6 +13573,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.ResponseTransportTagIndex);
             BinaryPrimitives.WriteUInt16LittleEndian(frame.Slice(0, 2), sequenceControl);
 
+            // C355 has several independent progress domains. Apply the
+            // private all-open policy at the single final send boundary so a
+            // future local, remote or reconnect constructor cannot emit only
+            // the low-44 village mask while leaving the client's ordinary
+            // dungeon/stage gates closed. This is intentionally before the
+            // checksum and is idempotent with the primary C354 builder.
+            NormalizeC355VillageAccessFrame(frame);
+
             var checksum = ComputeNativeChecksum(frame);
             var transportXorKey = session.ResponseTransportXorKey;
             var xorMask = (ushort)(transportXorKey | (transportXorKey << 8));
@@ -14092,10 +14130,19 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             && !string.Equals(ticket.CharacterName, session.Character.Name, StringComparison.OrdinalIgnoreCase))
             return false;
         session.RemoteIp = remoteIp;
+        var restoredPosition = TownPositionPolicy.Normalize(
+            session.Character.PositionX,
+            session.Character.PositionY);
+        if (restoredPosition.Repaired)
+        {
+            _log($"World session repaired persisted town position before C355/C367: character={session.Character.Name} map={session.Character.CurrentMapId} page={session.Character.CurrentTownPage} old=({session.Character.PositionX},{session.Character.PositionY}) new=({restoredPosition.X},{restoredPosition.Y})");
+            session.Character.PositionX = restoredPosition.X;
+            session.Character.PositionY = restoredPosition.Y;
+        }
         session.TownId = (byte)Math.Clamp(session.Character.CurrentMapId, 0, byte.MaxValue);
         session.TownPage = (byte)Math.Clamp(session.Character.CurrentTownPage, 0, byte.MaxValue);
-        session.LastReportedPositionX = (ushort)Math.Clamp(session.Character.PositionX, 0, 1023);
-        session.LastReportedPositionY = (ushort)Math.Clamp(session.Character.PositionY, 0, 1023);
+        session.LastReportedPositionX = restoredPosition.X;
+        session.LastReportedPositionY = restoredPosition.Y;
         session.RestoreTownPositionPending = session.Character.TutorialCompleted;
         if (session.ChannelId <= 0 || !_endpoints.Any(item => item.Enabled && item.Id == session.ChannelId))
             session.ChannelId = _endpoints.FirstOrDefault(item => item.Enabled)?.Id ?? 1;
@@ -15365,7 +15412,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         byte[] dungeonBestRatings,
         CoupleRelationRecord? coupleRelation)
     {
-        var payload = new byte[0x2D8 - 8];
+        var payload = new byte[C355FrameLength - NativeHeaderLength];
         // The C355 consumer passes frame+13 to the client's pet-carry setter.
         // C44C restores the inventory/model, but this independent flag drives
         // village following and the "pet required" dungeon-entry check.
@@ -15413,32 +15460,106 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // stores Dungeon 1/2/3/Super-BOSS in bits 0/1/2/3.
         dungeonClearMasks.AsSpan(0, Math.Min(dungeonClearMasks.Length, 60))
             .CopyTo(payload.AsSpan(0x3C - 8, 60));
-        // C355 frame+0x80..+0x85 exposes villages 0..43, including
-        // Laminoes village (village 5). Bits 44..63 remain zero.
-        payload.AsSpan(0x80 - 8, 5).Fill(0xFF);
-        payload[0x85 - 8] = 0x0F;
-        // C355 frame+0x88 uses the same [episode][difficulty] coordinates and
-        // packs each Dungeon+Stage rating into two bits. Bits 6-7 belong to
-        // Super-BOSS and must not be truncated.
-        dungeonBestRatings.AsSpan(0, Math.Min(dungeonBestRatings.Length, 60))
-            .CopyTo(payload.AsSpan(0x88 - 8, 60));
-        // The retail C355 consumer restores the partner name from frame+223
-        // and the short ring number from frame+240 through the same setters
-        // used by an accepted C584. The 17-byte name slot ends immediately
-        // before the ring word; no synthetic C584 is needed on reconnect.
-        if (character is not null && coupleRelation is not null)
-        {
-            WriteFixedGbk(
-                payload.AsSpan(215, 17),
-                coupleRelation.GetPartnerName(character.Id));
-            BinaryPrimitives.WriteUInt16LittleEndian(
-                payload.AsSpan(232, 2),
-                checked((ushort)(coupleRelation.RingItemCode % 10_000u)));
-        }
-        // The retail C355 consumer reads frame+242 as the persisted revival
+        // The separate full-frame +0x80..+0x87 village prerequisite QWORD
+        // is applied with the other all-open carriers after every profile
+        // field has been serialized.
+        // The final C355 normalizer below owns full-frame +0x88..<+0xDF.
+        // Keep the persisted rating input explicit here: the current private
+        // all-open policy deliberately replaces the whole bounded region with
+        // the exact reference implementation final 0x55 fill at the final send boundary.
+        _ = dungeonBestRatings;
+        // The retail C355 consumer restores the partner name from frame+0xDF
+        // and the short ring suffix from frame+0xF0. The native emotion-page
+        // gate is name-derived: an empty slot blocks the ring lookup entirely.
+        // Serialize a nonempty name only with a catalog-backed 43,000,000+N
+        // ring so the unmodified client can resolve exactly that record. Any
+        // stale/corrupt relation fails closed to empty-name/zero-ring state.
+        WriteC355CoupleState(payload, character, coupleRelation);
+        // The retail C355 consumer reads frame+0xF2 as the persisted revival
         // item counter and stores it in the local character state at +0x5600.
-        payload[234] = character?.RevivalUseCount ?? 0;
+        payload[C355RevivalCountFrameOffset - NativeHeaderLength] =
+            character?.RevivalUseCount ?? 0;
+
+        // reference implementation's final all-open byte policy was not produced by the low-44
+        // prerequisite mask alone. Its final C355 also published the complete
+        // ordinary dungeon table as 0x0F and the complete +0x88..<0xDF progression
+        // region as packed state 1 (0x55). Keep those independent carriers coherent here;
+        // the final writer repeats this normalization before checksum.
+        NormalizeC355VillageAccessPayload(payload);
         return payload;
+    }
+
+    internal static void NormalizeC355VillageAccessFrame(Span<byte> frame)
+    {
+        if (frame.Length != C355FrameLength
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) != 0xC355)
+            return;
+
+        NormalizeC355VillageAccessPayload(frame[NativeHeaderLength..]);
+    }
+
+    internal static void NormalizeC355VillageAccessPayload(Span<byte> payload)
+    {
+        if (payload.Length != C355FrameLength - NativeHeaderLength)
+            return;
+
+        // sub_544000 copies full-frame +0x3C..+0x77 into the ordinary
+        // dungeon availability object consumed by sub_509BC0. reference implementation's final
+        // all-open payload used 0x0F in every one of these 60 cells.
+        payload.Slice(
+            C355DungeonClearFrameOffset - NativeHeaderLength,
+            C355DungeonClearLength).Fill(0x0F);
+
+        // Full-frame +0x80/+0x84 is a separate QWORD consumed by
+        // sub_54EDD0 and sub_509EC0. Set only the 22 predecessor pairs; retain
+        // bit44..63 exactly, including the not-implied final-clear pair.
+        var prerequisiteOffset = C355VillagePrerequisiteFrameOffset - NativeHeaderLength;
+        var prerequisites = BinaryPrimitives.ReadUInt64LittleEndian(
+            payload.Slice(prerequisiteOffset, C355VillagePrerequisiteLength));
+        BinaryPrimitives.WriteUInt64LittleEndian(
+            payload.Slice(prerequisiteOffset, C355VillagePrerequisiteLength),
+            prerequisites | C355VillagePrerequisiteLow44Mask);
+
+        // Full-frame +0x88..+0xDE is the independent reference implementation progression
+        // domain. Although an earlier constructor block writes 0xFF, the
+        // unlock helper is the last writer and replaces it with packed state 1
+        // (0x55). Match those final bytes and stop before +0xDF, the partner-
+        // name boundary.
+        payload.Slice(
+            C355DungeonRatingsFrameOffset - NativeHeaderLength,
+            C355PartnerNameFrameOffset - C355DungeonRatingsFrameOffset).Fill(0x55);
+    }
+
+    private static void WriteC355CoupleState(
+        Span<byte> payload,
+        CharacterRecord? character,
+        CoupleRelationRecord? coupleRelation)
+    {
+        var partnerNameField = payload.Slice(
+            C355PartnerNameFrameOffset - NativeHeaderLength,
+            C355PartnerNameLength);
+        var ringSuffixField = payload.Slice(
+            C355RingSuffixFrameOffset - NativeHeaderLength,
+            2);
+        partnerNameField.Clear();
+        ringSuffixField.Clear();
+
+        var partnerName = character is null || coupleRelation is null
+            ? string.Empty
+            : coupleRelation.GetPartnerName(character.Id);
+        var ringItemCode = coupleRelation?.RingItemCode ?? 0;
+        if (string.IsNullOrWhiteSpace(partnerName)
+            || ringItemCode <= CoupleRingCodeBase
+            || ringItemCode - CoupleRingCodeBase > ushort.MaxValue
+            || !ShopCatalog.TryGet(ringItemCode, out var ring)
+            || ring.Category != 43
+            || !string.Equals(ring.Source, CoupleRingCatalogSource, StringComparison.Ordinal))
+            return;
+
+        WriteFixedGbk(partnerNameField, partnerName);
+        BinaryPrimitives.WriteUInt16LittleEndian(
+            ringSuffixField,
+            checked((ushort)(ringItemCode - CoupleRingCodeBase)));
     }
 
     private static byte[] BuildClientDungeonClearMasks(byte[] persistedMasks)
@@ -16357,17 +16478,35 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             session.NativeCheckpoint = await session.NativeDungeon.ExchangeAsync(null, session.NativeCheckpoint, token);
         }
 
-        var revive = BuildNativeFrame(frame, 0xCF84, BuildRevivalApplyPayload(session.Character), session);
+        var revive = BuildNativeFrame(
+            frame,
+            0xCF84,
+            BuildRevivalApplyPayload(
+                session.Character,
+                session.LastReportedPositionX,
+                session.LastReportedPositionY),
+            session);
         var refresh = BuildNativeFrame(frame, 0xCF72, BuildDungeonActorRefreshPayload(session.Character), session);
         _log($"{channel}:{remote} dungeon revival retry completed: room={session.DungeonRoomId} character={session.Character.Id} hp={result.CurrentHp} uses={result.RevivalUseCount}");
         return CombineNativeFrames(ack, revive, refresh);
     }
 
-    internal static byte[] BuildRevivalApplyPayload(CharacterRecord character)
+    internal static byte[] BuildRevivalApplyPayload(
+        CharacterRecord character,
+        ushort positionX,
+        ushort positionY)
     {
-        var payload = new byte[16];
+        var payload = new byte[DungeonContinueResponsePayloadLength];
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0, 2), 60);
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), GetSceneEntityId(character));
+        BinaryPrimitives.WriteUInt16LittleEndian(
+            payload.AsSpan(4, 2),
+            checked((ushort)Math.Clamp(character.CurrentHp, 1, ushort.MaxValue)));
+        BinaryPrimitives.WriteUInt16LittleEndian(
+            payload.AsSpan(6, 2),
+            checked((ushort)Math.Clamp(character.CurrentMp, 1, ushort.MaxValue)));
+        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(8, 4), positionX);
+        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(12, 4), positionY);
         return payload;
     }
 

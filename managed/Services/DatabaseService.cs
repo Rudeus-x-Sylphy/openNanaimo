@@ -737,8 +737,22 @@ public sealed partial class DatabaseService
                         WHEN CurrentTownPage < 0 THEN 0
                         ELSE MIN(255, CurrentTownPage)
                     END,
-                    PositionX = CASE WHEN LastSavedAt IS NULL THEN SpawnX ELSE PositionX END,
-                    PositionY = CASE WHEN LastSavedAt IS NULL THEN SpawnY ELSE PositionY END,
+                    PositionX = CASE
+                        WHEN LastSavedAt IS NULL THEN SpawnX
+                        WHEN PositionX < 0 OR PositionX > $townPositionMaximum
+                          OR PositionY < 0 OR PositionY > $townPositionMaximum
+                          OR (PositionX = $townPositionMaximum AND PositionY = $townPositionMaximum)
+                        THEN $townFallbackX
+                        ELSE PositionX
+                    END,
+                    PositionY = CASE
+                        WHEN LastSavedAt IS NULL THEN SpawnY
+                        WHEN PositionX < 0 OR PositionX > $townPositionMaximum
+                          OR PositionY < 0 OR PositionY > $townPositionMaximum
+                          OR (PositionX = $townPositionMaximum AND PositionY = $townPositionMaximum)
+                        THEN $townFallbackY
+                        ELSE PositionY
+                    END,
                     LastSavedAt = COALESCE(LastSavedAt, CreatedAt, $now);
                 UPDATE Characters
                 SET Appearance = CASE WHEN Gender = 1 THEN $maleAppearance ELSE $femaleAppearance END,
@@ -763,6 +777,9 @@ public sealed partial class DatabaseService
                     OnlineSince = NULL;
                 """;
             migration.Parameters.AddWithValue("$now", now);
+            migration.Parameters.AddWithValue("$townPositionMaximum", TownPositionPolicy.MaximumPackedCoordinate);
+            migration.Parameters.AddWithValue("$townFallbackX", TownPositionPolicy.FallbackX);
+            migration.Parameters.AddWithValue("$townFallbackY", TownPositionPolicy.FallbackY);
             migration.Parameters.Add("$femaleAppearance", SqliteType.Blob).Value = DefaultFemaleAppearance;
             migration.Parameters.Add("$maleAppearance", SqliteType.Blob).Value = DefaultMaleAppearance;
             await migration.ExecuteNonQueryAsync(cancellationToken);
@@ -10937,12 +10954,13 @@ public sealed partial class DatabaseService
 
     private static void AddRuntimeStateParameters(SqliteCommand command, long characterId, CharacterRuntimeState state)
     {
+        var position = TownPositionPolicy.Normalize(state.PositionX, state.PositionY);
         command.Parameters.AddWithValue("$currentHp", state.CurrentHp);
         command.Parameters.AddWithValue("$currentMp", state.CurrentMp);
         command.Parameters.AddWithValue("$mapId", state.CurrentMapId);
         command.Parameters.AddWithValue("$townPage", state.CurrentTownPage);
-        command.Parameters.AddWithValue("$positionX", state.PositionX);
-        command.Parameters.AddWithValue("$positionY", state.PositionY);
+        command.Parameters.AddWithValue("$positionX", position.X);
+        command.Parameters.AddWithValue("$positionY", position.Y);
         command.Parameters.AddWithValue("$channelId", (object?)state.CurrentChannelId ?? DBNull.Value);
         command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
         command.Parameters.AddWithValue("$characterId", characterId);

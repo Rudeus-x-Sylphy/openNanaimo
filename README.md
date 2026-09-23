@@ -4,8 +4,8 @@
 
 ## 使用边界
 
-1. 本仓库仅用于本地研究、兼容性分析和非营利体验，禁止盈利、对外运营、商业化使用和游戏私服开设。
-2. 本仓库**不提供 Nanaimo 客户端**，不分发原始客户端可执行文件、动态库、安装包或完整资源包。使用者须自行准备合法取得的客户端和配套资源；不同脱壳实现不会因为大小或哈希不同而被启动器拒绝。
+1. 本仓库仅用于本地研究、兼容性分析和非营利体验，禁止盈利、对外运营、商业化使用和未经授权的网络节点运营。
+2. 本仓库**不提供 Nanaimo 客户端**，不分发原始客户端可执行文件、动态库、安装包或完整资源包。使用者须自行准备合法取得的客户端和配套资源。
 3. 仓库中的资源目录 JSON、预览图和兼容性数据用于本地研究，不代表原始开发方的授权或背书。
 4. 项目与 Nanaimo 的原始开发者、发行方及任何相关组织均无隶属或合作关系。
 
@@ -21,7 +21,7 @@ start_nanaimo_launcher.bat
   -> game.exe
 ```
 
-GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色配置、停止旧 adapter 和客户端、校验完整 adapter 运行文件闭包，从用户自备文件派生并验证 emotion／第五村地宫7兼容资源，随后启动完整 adapter、注册角色资料并启动客户端。家具数据由适配器端按固定 C393 快照契约提供；启动器不应用 Index-getter 客户端重定向。蓝色 **“仅启动适配器”** 只用于调试，不启动客户端，也不会修改客户端文件。
+GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色配置、停止当前运行的 adapter 和客户端、校验完整 adapter 运行文件闭包，从使用者自备文件派生并验证家具 Index 重定向及第五村地宫7兼容资源，随后启动完整 adapter、注册角色资料并启动客户端。表情翻页由适配器端有界 C355 情侣字段保障；家具快照由固定 C393 契约提供，点击路径由本地 Index getter 重定向处理。蓝色 **“仅启动适配器”** 用于单独运行 adapter 调试入口。
 
 ## 功能范围
 
@@ -37,7 +37,7 @@ GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色
 - 公寓、家具、室内商店和愿望清单。
 - 地宫房间、多人同步、伤害、首领、掉落、结算、复活和关卡进度。
 
-功能存在源码和自动检查，不等于每项都已经完成原客户端可见验收。证据边界见 [知识库](knowledge/知识库索引.md) 和 [完整 adapter 与客户端补丁指引](docs/完整适配器与客户端补丁指引.md)。
+源码与自动检查覆盖上述功能；原客户端可见验收范围单独记录在 [知识库](knowledge/知识库索引.md) 和 [完整 adapter 与客户端兼容说明](docs/完整适配器与客户端兼容说明.md)。
 
 ## 快速开始
 
@@ -69,10 +69,10 @@ GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色
 ```powershell
 python -B scripts/prepare_client_compatibility.py `
   --source-root '<原始客户端目录>' `
-  --output-root '<新建覆盖目录>' --emotion --dungeon7 --dry-run
+  --output-root '<新建覆盖目录>' --furniture --dungeon7 --dry-run
 ```
 
-该工具按 PE 节表验证 emotion 空指针边界，按 `NANA_PACK` 结构改写地宫7道路，并从已有 SSTG/PON 复制兼容别名；它不以输入或输出哈希作为授权条件。家具客户端补丁仍可作为显式手工工具使用；一键启动使用适配器端 C393 快照，不应用 Index-getter 客户端重定向。仓库不提供这些客户端文件。完整依赖见 [运行依赖](docs/运行依赖.md)。
+该工具按 PE 节表验证并局部重定向家具 Index getter，按 `NANA_PACK` 结构生成地宫7道路，并从现有 SSTG/PON 派生兼容别名。表情翻页由适配器端 C355 情侣姓名／戒指边界保障：空关系写入空姓名和零戒指，副本进度写入止于完整帧 `+0xDE`。C393 使用 1020 字节有界快照和 `info=2000` 终态；客户端仅在 `info=6000` 时续页。哈希用于本机诊断和备份识别。仓库仅包含适配工程文件，运行依赖见 [运行依赖](docs/运行依赖.md)。
 
 ### 2. adapter 运行目录（已随仓库提供）
 
@@ -86,7 +86,7 @@ adapter_runtime/
   资源/数据/...
 ```
 
-启动器启动前会逐文件校验 `adapter_manifest.json` 记录的大小与 SHA-256 闭包，并要求 `Nanaimo.Adapter.exe`、`nanaimo_gameplay_bridge.exe`、`Nanaimo.Adapter.dll`、`Nanaimo.Gameplay.dll` 均在闭包内；这些文件同时登记在 `manifest/open_release_manifest.json` 的 critical files 中，因此不要只复制其中几个文件。
+启动器启动前逐文件校验 `adapter_manifest.json` 记录的大小与 SHA-256 闭包。完整运行目录包含 `Nanaimo.Adapter.exe`、`nanaimo_gameplay_bridge.exe`、`Nanaimo.Adapter.dll`、`Nanaimo.Gameplay.dll` 及清单登记的全部 critical files。
 
 开发者如需自行重建（可选）：
 
@@ -98,7 +98,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_complete_adapt
   -SelfTest
 ```
 
-该命令生成 `adapter_runtime`，并运行隔离状态库、登录、资料注册、任务、商城、地宫桥接、宠物成长和持久化检查。`.NET 8 SDK` 用于构建，发布目标为自包含的 `net6.0/win-x64` 运行包，所以最终用户不需要安装 .NET 或 TinyCC。重建还要自备 `-ResourceDataRoot`（`资源/数据`：客户端同名数据文件加派生的 `dungeon_combat_catalog.bin`）；该数据不随仓库分发，普通用户不必重建。
+该命令生成 `adapter_runtime`，并运行隔离状态库、登录、资料注册、任务、商城、地宫桥接、宠物成长和持久化检查。`.NET 8 SDK` 用于构建；发布目标是自包含的 `net6.0/win-x64` 运行包，运行该发布包只需 Windows。构建输入还包括 `-ResourceDataRoot`（`资源/数据`：客户端同名数据文件与派生的 `dungeon_combat_catalog.bin`），该数据由构建者自行准备。
 
 ### 3. 一键启动
 
@@ -129,6 +129,7 @@ start_nanaimo_launcher.bat
 - 新角色首次进入仍走游戏原始的角色创建与新手引导流程，不预置到村庄页面。
 - 完成引导后，角色的地图、村庄页面和坐标写入现有人物档案；下次登录按档案恢复到上次保存的位置。
 - 正常离开或断开连接时保存当前 HP/MP、地图、页面和坐标，不把新角色的首次出生点逻辑与已有角色的续登逻辑混用。
+- C365/C367/CB21 中的 `FFFF/FFFF` 表示场景切换／活动哨兵。适配器转发对应帧并保留最后合法坐标；数据库中的 `65535,65535` 与 `1023,1023` 异常值在加载时保留地图／页面并归一化为 `(400,96)`。
 
 ## 构建与验证
 
@@ -152,7 +153,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_adapter.ps1 `
 | 文档 | 内容 |
 |---|---|
 | [知识库](knowledge/知识库索引.md) | 协议、状态、静态地址、实现机制和证据边界 |
-| [完整 adapter 与客户端补丁指引](docs/完整适配器与客户端补丁指引.md) | 完整 adapter 架构、家具与拉米诺斯村地宫7准备步骤 |
+| [完整 adapter 与客户端兼容说明](docs/完整适配器与客户端兼容说明.md) | 完整 adapter 架构、家具边界与拉米诺斯村地宫7兼容链 |
 | [启动流程与源码索引](docs/启动流程与源码索引.md) | GUI、资料注册、adapter 模块和端口 |
 | [构建与验证](docs/构建与验证.md) | 构建、自测和发布校验 |
 | [运行依赖](docs/运行依赖.md) | 客户端、资源、数据和工具依赖 |

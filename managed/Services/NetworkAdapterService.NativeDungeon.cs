@@ -78,6 +78,8 @@ public sealed partial class NetworkAdapterService
         if (opcode == 0xCF09 && frame.Length == 64 && session.OnlineTracked && session.Character is not null)
         {
             await CloseNativeDungeonAsync(session);
+            session.NativeDungeonDeathLatched = false;
+            session.HasReportedDungeonPosition = false;
             await RefreshSessionCharacterAsync(session, token);
             var character = session.Character!;
             var state = NativeDungeonState.Create(character,
@@ -102,18 +104,26 @@ public sealed partial class NetworkAdapterService
             return true;
         }
         if (session.NativeDungeon is null) return false;
+        if (opcode == 0x044C && frame.Length == 8 + ShootingSyncPayloadLength)
+        {
+            session.LastReportedPositionX = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(18, 2));
+            session.LastReportedPositionY = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(20, 2));
+            session.HasReportedDungeonPosition = true;
+        }
         // The original client uses CF83 mode 1 (not CF95) when the player
         // clicks the activated revival-item option on the dungeon death UI.
         // Do not forward that request to the retained worker: its CF83 path
         // has no managed database transaction and produces no CF84 response.
+        // The second WORD is the client-visible continuation-price field. It
+        // is diagnostic only for mode 1 and must never become a Hans gate.
         if (opcode == 0xCF83
-            && TryParseNativeRevivalContinueRequest(frame.AsSpan(8), out var requestedContinueCost))
+            && TryParseNativeRevivalContinueFrame(frame, out var clientCostField))
         {
             await HandleNativeDungeonRevivalContinueAsync(
                 frame,
                 channel,
                 session,
-                requestedContinueCost,
+                clientCostField,
                 token);
             return true;
         }
@@ -142,15 +152,47 @@ public sealed partial class NetworkAdapterService
         return false;
     }
 
+    internal static bool TryParseNativeRevivalContinueFrame(
+        ReadOnlySpan<byte> frame,
+        out ushort clientCostField)
+    {
+        clientCostField = 0;
+        return frame.Length == 8 + DungeonContinueRequestPayloadLength
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) == frame.Length
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) == 0xCF83
+            && TryParseNativeRevivalContinueRequest(frame.Slice(8), out clientCostField);
+    }
+
     internal static bool TryParseNativeRevivalContinueRequest(
         ReadOnlySpan<byte> payload,
-        out ushort requestedContinueCost)
+        out ushort clientCostField)
     {
-        requestedContinueCost = 0;
+        clientCostField = 0;
         if (payload.Length != DungeonContinueRequestPayloadLength
             || BinaryPrimitives.ReadUInt16LittleEndian(payload) != 1)
             return false;
-        requestedContinueCost = BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(2, 2));
+        clientCostField = BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(2, 2));
+        return true;
+    }
+
+    internal static bool CanApplyNativeRevivalContinue(
+        NativeDungeonState checkpoint,
+        bool deathLatched,
+        bool hasReportedPosition)
+        => deathLatched && hasReportedPosition && checkpoint.Get(60) > 0;
+
+    internal static bool TryReadNativeDungeonLocalHp(
+        ReadOnlySpan<byte> frame,
+        ushort localActorUid,
+        out ushort currentHp)
+    {
+        currentHp = 0;
+        if (frame.Length < 0x12
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) != frame.Length
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) != 0xD010
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(8, 2)) != localActorUid)
+            return false;
+        currentHp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x10, 2));
         return true;
     }
 
@@ -158,7 +200,7 @@ public sealed partial class NetworkAdapterService
         byte[] frame,
         string channel,
         ConnectionSession session,
-        ushort requestedContinueCost,
+        ushort clientCostField,
         CancellationToken token)
     {
         if (!session.OnlineTracked
@@ -167,60 +209,62 @@ public sealed partial class NetworkAdapterService
             || session.NativeCheckpoint is null)
             return;
 
-        // Snapshot first so CurrentHp=0 and the worker's revival counter are
-        // committed to the same database ledger consumed below. CF83 itself
-        // must not be sent to the worker; the managed response is authoritative.
-        await CommitNativeCheckpointAsync(session, null, token);
         var checkpoint = session.NativeCheckpoint;
         var character = session.Character;
-        if (checkpoint is null || character is null)
-            return;
-
-        var hdIndex = checked((byte)checkpoint.Get(5032));
-        var episode = checked((byte)checkpoint.Get(5036));
-        var hasExpectedCost = TryGetDungeonContinueCost(hdIndex, episode, out var expectedContinueCost);
-        if (checkpoint.Get(20) != 0
-            || checkpoint.Get(60) == 0
-            || (hasExpectedCost && requestedContinueCost != expectedContinueCost))
+        if (!CanApplyNativeRevivalContinue(
+                checkpoint,
+                session.NativeDungeonDeathLatched,
+                session.HasReportedDungeonPosition))
         {
-            _log($"{channel}: native dungeon revival continue rejected: character={character.Id} hp={checkpoint.Get(20)} uses={checkpoint.Get(60)} requestedCost={requestedContinueCost} expectedCost={(hasExpectedCost ? expectedContinueCost : 0)}");
+            _log($"{channel}: native dungeon revival continue rejected: character={character.Id} deathLatched={session.NativeDungeonDeathLatched} hasPosition={session.HasReportedDungeonPosition} checkpointHp={checkpoint.Get(20)} uses={checkpoint.Get(60)} clientCostField={clientCostField} hansDebited=0 reason=runtime-death-position-or-revival-gate");
             return;
         }
 
-        var result = await _database.ConsumeRevivalRetryAsync(
-            session.AccountId,
-            character.Id,
-            session.SessionId,
+        var usesBefore = checkpoint.Get(60);
+        var exchange = await CommitNativeCheckpointCapturedAsync(
+            session,
+            NativeDungeonClient.Frame(0xCF95, []),
             token);
-        if (!result.Success)
+        checkpoint = exchange.State;
+        character = session.Character;
+        if (character is null
+            || checkpoint.Get(60) + 1 != usesBefore
+            || checkpoint.Get(20) == 0)
         {
-            _log($"{channel}: native dungeon revival continue database rejection: character={character.Id} error={result.Error}");
+            var capturedOpcodes = string.Join(',', exchange.Frames.Select(
+                item => $"0x{BinaryPrimitives.ReadUInt16LittleEndian(item.AsSpan(6, 2)):X4}"));
+            _log($"{channel}: native dungeon revival continue worker rejection: character={session.Character?.Id ?? 0} uses={usesBefore}->{checkpoint.Get(60)} hp={checkpoint.Get(20)} captured={capturedOpcodes}");
             return;
         }
 
-        character.RevivalUseCount = result.RevivalUseCount;
-        character.CurrentHp = result.CurrentHp;
-        character.CurrentMp = result.CurrentMp;
-        BinaryPrimitives.WriteUInt32LittleEndian(checkpoint.Bytes.AsSpan(20, 4), checked((uint)result.CurrentHp));
-        BinaryPrimitives.WriteUInt32LittleEndian(checkpoint.Bytes.AsSpan(28, 4), checked((uint)result.CurrentMp));
-        BinaryPrimitives.WriteUInt32LittleEndian(checkpoint.Bytes.AsSpan(60, 4), result.RevivalUseCount);
-        session.NativeCheckpoint = await session.NativeDungeon.ExchangeAsync(null, checkpoint, token);
-        AccountStateChanged?.Invoke();
-
-        var revive = BuildNativeFrame(frame, 0xCF84, BuildRevivalApplyPayload(character), session);
-        var refresh = BuildNativeFrame(frame, 0xCF72, BuildDungeonActorRefreshPayload(character), session);
+        session.NativeDungeonDeathLatched = false;
+        var revivePayload = BuildRevivalApplyPayload(
+            character,
+            session.LastReportedPositionX,
+            session.LastReportedPositionY);
+        var revive = BuildNativeFrame(frame, 0xCF84, revivePayload, session);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
-            revive, "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
-            true, false, "native revival continue result"), token);
-        await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
-            refresh, "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
-            true, false, "native revival actor refresh"), token);
-        _log($"{channel}: native dungeon revival continue completed: character={character.Id} hp={result.CurrentHp} mp={result.CurrentMp} uses={result.RevivalUseCount}");
+            revive,
+            "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
+            true, false, "native revival complete CF84"), token);
+        _log($"{channel}: native dungeon revival continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} position=({session.LastReportedPositionX},{session.LastReportedPositionY}) hans={character.Hans} hansDebited=0 workerAck=CF95-captured clientResponse=CF84-only");
     }
 
     private async Task CommitNativeCheckpointAsync(ConnectionSession session, byte[]? frame, CancellationToken token)
     {
         if (session.NativeDungeon is null || session.NativeCheckpoint is null || session.Character is null) return;
+        var exchange = await CommitNativeCheckpointCapturedAsync(session, frame, token);
+        foreach (var response in exchange.Frames)
+            await HandleNativeWorkerFrameAsync(session, response, token);
+    }
+
+    private async Task<NativeDungeonExchangeResult> CommitNativeCheckpointCapturedAsync(
+        ConnectionSession session,
+        byte[]? frame,
+        CancellationToken token)
+    {
+        if (session.NativeDungeon is null || session.NativeCheckpoint is null || session.Character is null)
+            throw new InvalidOperationException("Native dungeon checkpoint capture requires an active owned worker session.");
         var exchange = await session.NativeDungeon.ExchangeCapturedAsync(frame, null, token);
         var next = exchange.State;
         Directory.CreateDirectory(NativeJournalDirectory);
@@ -237,10 +281,8 @@ public sealed partial class NetworkAdapterService
         File.Delete(journal);
         await RefreshSessionCharacterAsync(session, token);
         foreach (var response in exchange.Frames)
-        {
             PatchNativePetSettlementFrame(response, next.Get(4), applied);
-            await HandleNativeWorkerFrameAsync(session, response, token);
-        }
+        return exchange;
     }
 
     private async Task HandleNativeWorkerFrameAsync(
@@ -249,6 +291,12 @@ public sealed partial class NetworkAdapterService
         CancellationToken token)
     {
         PatchNativePetActorFrame(response, session.Character);
+        if (session.Character is { } character
+            && TryReadNativeDungeonLocalHp(response, GetSceneEntityId(character), out var currentHp))
+        {
+            session.NativeDungeonDeathLatched = currentHp == 0;
+            _log($"NativeDungeon local D010 observed: character={character.Id} hp={currentHp} deathLatched={session.NativeDungeonDeathLatched}");
+        }
         if (BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) == 0xF103)
         {
             await ApplyNativeQuestHitAsync(session, response, token);
@@ -326,6 +374,8 @@ public sealed partial class NetworkAdapterService
         finally
         {
             session.NativeForwarding = false;
+            session.NativeDungeonDeathLatched = false;
+            session.HasReportedDungeonPosition = false;
             await session.NativeDungeon.DisposeAsync(); session.NativeDungeon = null; session.NativeCheckpoint = null;
             if (session.NativeLease is not null) { await session.NativeLease.DisposeAsync(); session.NativeLease = null; }
         }

@@ -477,7 +477,7 @@ function Update-LaunchPreview([switch]$ComputeHashes){
         "Profile INI : $ProfileIni","Profile JSON: $ProfileJson",'',
         '=== Binary validation ===',$adapterState,$bridgeState,
         (Client-State-Line),
-        'Client compatibility is prepared from the local user-owned tree at launch: emotion guard, P03 roads, SSTG alias, and PON fallback. Furniture uses the adapter-side fixed C393 snapshot contract without the Index redirect.',
+        'Client compatibility is prepared from the local user-owned tree at launch: the furniture Index redirect, P03 roads, SSTG alias, and PON fallback. Emotion-page safety uses the adapter''s bounded C355 couple/progression fields; no emotion EXE guard is derived. Fixed C393 is protocol hygiene, not the click-time Index repair.',
         '=== Pre-launch actions ===',
         ('Processes to stop: '+($running-join ', ')),
         'Adapter button: save profile; start/stop the complete local adapter; never launch the game.',
@@ -553,7 +553,7 @@ function Ensure-ClientCompatibility {
     if(-not(Test-Path -LiteralPath $ClientCompatibilityTool -PathType Leaf)){throw "Client compatibility tool missing: $ClientCompatibilityTool"}
     if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
     $runtime=Get-ClientCompatibilityPython
-    $arguments=@($runtime.Prefix)+@($ClientCompatibilityTool,'--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--emotion','--dungeon7','--overwrite','--apply')
+    $arguments=@($runtime.Prefix)+@($ClientCompatibilityTool,'--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--furniture','--dungeon7','--overwrite','--apply')
     $output=@(& $runtime.Path @arguments 2>&1)
     if($LASTEXITCODE-ne0){throw ("Client compatibility preparation refused:`r`n"+($output-join"`r`n"))}
     if(-not(Test-Path -LiteralPath $ClientCompatibilityReport -PathType Leaf)){throw 'Client compatibility report was not generated.'}
