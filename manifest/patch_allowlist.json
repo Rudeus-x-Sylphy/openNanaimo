@@ -83,24 +83,24 @@
     {
       "path": "docs/\u542f\u52a8\u6d41\u7a0b\u4e0e\u6e90\u7801\u7d22\u5f15.md",
       "layer": "docs",
-      "size": 9919,
-      "sha256": "02b0444ef40c5d2fa0f1f960d1ce9b0e2846a78b46a55916d769c5d9e0bcc19d",
+      "size": 9918,
+      "sha256": "821d36cb5cc4dae9303b7a3581f31efe14661d4ef9e0c918232c2e1f510bb50d",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "docs/\u6587\u4ef6\u6e05\u5355\u4e0e\u5bfc\u51fa\u5de5\u5177.md",
       "layer": "docs",
-      "size": 5758,
-      "sha256": "7fc419dcb1805edb55fd02edf824c46dc9fdc5a119c2ada0c15b59b6eb3debaa",
+      "size": 5764,
+      "sha256": "6299396cdd8e51ec21ea0918e7689cc9e1456330e58ad639dfde75f1843351bf",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "docs/\u6784\u5efa\u4e0e\u9a8c\u8bc1.md",
       "layer": "docs",
-      "size": 6303,
-      "sha256": "770e076983f7a8520b856e21a97e663f91eb59dde10618be3b0600e403c0776a",
+      "size": 6293,
+      "sha256": "ea5584acbea0c2a98a045a4f369fba44a476c0347debf546e2b7e87fbb9caef6",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -171,64 +171,64 @@
     {
       "path": "knowledge/authority/01-\u534f\u8bae\u5206\u5e27\u4e0e\u8fde\u63a5.md",
       "layer": "knowledge",
-      "size": 5926,
-      "sha256": "54305da53da8e0a32f39b89e6ba0cd2f143e2074e0f65253609a38042964363e",
+      "size": 5760,
+      "sha256": "217cb2180b5dbb9b33dd7a095d35b07553997aba37597a11e6f10b9807a4c0d9",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/authority/02-\u767b\u5f55\u6751\u5e84\u4e0e\u89d2\u8272.md",
       "layer": "knowledge",
-      "size": 8492,
-      "sha256": "46d426092f80f684d6f5a5d4ff5b6792f10d4f126704ac2d9ba7f3674053912d",
+      "size": 8189,
+      "sha256": "7ed998f1f00dfecbe76da3540fadd5157ac676f0346ca359e1c4f3e76ae80fdd",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/authority/03-\u89d2\u8272\u8d44\u6599\u4e0e\u80cc\u5305.md",
       "layer": "knowledge",
-      "size": 61084,
-      "sha256": "53d7c3a34b2934a2d029d2ebe054bd1f8a6b7ed6f4b1c5fa2bad0789d498b270",
+      "size": 58325,
+      "sha256": "31e51d8036326480907ab2d540da015b38bd0094801acb50f0c0fe3ab35ba38b",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/authority/04-\u5ba0\u7269\u4e0e\u6218\u6597.md",
       "layer": "knowledge",
-      "size": 21746,
-      "sha256": "5fd18efa09da42a797b5009c9714baedd5bee1c368c950f9c30ce5917f375e91",
+      "size": 20864,
+      "sha256": "0112f89f9e7ec72b8f5a760a06f0eea699f88487f0b24290b55fe468d1b2f148",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/authority/05-\u623f\u95f4\u4e0e\u591a\u4eba\u540c\u6b65.md",
       "layer": "knowledge",
-      "size": 13619,
-      "sha256": "c339fcb0d844a3f17f4b9c42cc3744a001ba19e7dbb8db9b4ef59e5ee099b02b",
+      "size": 12736,
+      "sha256": "ed5a56525a4c3ed6c508299f3ca59351d9d75a831390fd6968376b1c6509807a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/authority/06-\u76ee\u6807\u6389\u843d\u4e0e\u9996\u9886.md",
       "layer": "knowledge",
-      "size": 31769,
-      "sha256": "3f21574e1d3560d9e035f3566ab64f731169199e644699371c43dfff678c345c",
+      "size": 27113,
+      "sha256": "bd32166043bcf49ff566be150d98fba97c6d95a70eefb746b2e254c3b5887aa7",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/authority/07-\u62fe\u53d6\u7ed3\u7b97\u4e0e\u5956\u52b1.md",
       "layer": "knowledge",
-      "size": 13759,
-      "sha256": "38a8ab1ec424d17cb11f7e1f04a4155264f8dbb1e238211eb6e2122c149b80de",
+      "size": 11486,
+      "sha256": "13d9da8be2601aa216bfd2ed22b520d9bbfae8f305f609f96610b3b2c60ac549",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/authority/08-\u9759\u6001\u5730\u5740\u4e0e\u8c03\u7528\u94fe.md",
       "layer": "knowledge",
-      "size": 96563,
-      "sha256": "b2d46f1b2c59daef1973b63dcfb2c6f041be54e90df853e42bea65f956a32b23",
+      "size": 95681,
+      "sha256": "107179c799691a6ba3596adb568748f154333deeca23d00fa0ccdee26c30c43f",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
