@@ -374,7 +374,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public bool OnlineTracked { get; set; }
         public byte TownId { get; set; }
         public byte TownPage { get; set; }
-        public bool RestoreTownPositionPending { get; set; }
         public bool TownSceneActive { get; set; }
         public bool TownMapMarkerInitialized { get; set; }
         public long ApartmentOwnerCharacterId { get; set; }
@@ -4554,7 +4553,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 LeaveTownScene(session, "town change");
                 session.TownId = townId;
                 session.TownPage = (byte)townPage;
-                session.RestoreTownPositionPending = false;
                 session.LastReportedPositionX = entryPosition.X;
                 session.LastReportedPositionY = entryPosition.Y;
                 session.Character.CurrentMapId = townId;
@@ -4616,14 +4614,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         session);
                 }
 
-                var restoreSavedPosition = session.RestoreTownPositionPending
-                    && session.Character.TutorialCompleted;
-                var effectiveRoomIndex = restoreSavedPosition
-                    ? Math.Clamp(session.Character.CurrentTownPage, 0, byte.MaxValue)
-                    : roomIndex;
+                // A fresh client process always enters its one-shot FirstVillageFlag
+                // actor path after C355. That path ignores C368 coordinates and reads
+                // the loaded page's built-in first-entry point. Do not replace the
+                // client's safe bootstrap C367 page with an arbitrary persisted page.
+                var effectiveRoomIndex = roomIndex;
                 var entryPosition = TownPositionPolicy.Normalize(
-                    restoreSavedPosition ? session.Character.PositionX : requestedPositionX,
-                    restoreSavedPosition ? session.Character.PositionY : requestedPositionY);
+                    requestedPositionX,
+                    requestedPositionY);
                 var positionX = entryPosition.X;
                 var positionY = entryPosition.Y;
 
@@ -4632,7 +4630,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 LeaveVillageShopScene(session, "town page enter");
                 LeaveTownScene(session, "town page change");
                 session.TownPage = (byte)effectiveRoomIndex;
-                session.RestoreTownPositionPending = false;
                 session.LastReportedPositionX = positionX;
                 session.LastReportedPositionY = positionY;
                 session.Character.CurrentMapId = session.TownId;
@@ -4640,10 +4637,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.Character.PositionX = positionX;
                 session.Character.PositionY = positionY;
                 _log(entryPosition.Repaired
-                    ? $"{channel}:{remote} C367 village-entry sentinel normalized: town={session.TownId} requestedRoom={roomIndex} effectiveRoom={effectiveRoomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({positionX},{positionY}); FFFF/FFFF and legacy 03FF/03FF are not persisted"
-                    : restoreSavedPosition
-                        ? $"{channel}:{remote} C367 restored saved village position: town={session.TownId} requestedRoom={roomIndex} savedRoom={effectiveRoomIndex} position=({positionX},{positionY})"
-                        : $"{channel}:{remote} C367 accepted village-entry position: room={effectiveRoomIndex} position=({positionX},{positionY})");
+                    ? $"{channel}:{remote} C367 village-entry sentinel normalized: town={session.TownId} room={effectiveRoomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({positionX},{positionY}); FFFF/FFFF and legacy 03FF/03FF are not persisted"
+                    : $"{channel}:{remote} C367 accepted village-entry position: room={effectiveRoomIndex} position=({positionX},{positionY})");
                 return BuildNativeFrame(
                     frame,
                     0xC368,
@@ -4982,7 +4977,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return BuildNativeFrame(
                     frame,
                     0xC36A,
-                    BuildTownUserInfoPayload(peerCharacter),
+                    BuildTownUserInfoPayload(
+                        peerCharacter,
+                        peer.Session.LastReportedPositionX,
+                        peer.Session.LastReportedPositionY),
                     session);
             }
 
@@ -10749,7 +10747,16 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             source.TownMapMarkerInitialized = true;
         }
 
-        var sourcePayload = BuildTownUserInfoPayload(source.Character);
+        // Before the first C365/C367 the native client can request a town
+        // entity immediately after C355.  The character record still carries
+        // the last persisted position, but the session has already selected
+        // the safe first-process wire position (400,96).  C36A must use the
+        // session carrier here; otherwise the client receives a stale/poisoned
+        // packed position and constructs CVillageChar(-1,-1) at the upper-left.
+        var sourcePayload = BuildTownUserInfoPayload(
+            source.Character,
+            source.LastReportedPositionX,
+            source.LastReportedPositionY);
         foreach (var peer in _activeWorldSessions.Values
                      .Where(item => IsSameTownPage(source, item.Session))
                      .Where(item => item.Session.SessionId != source.SessionId))
@@ -10766,7 +10773,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             source.PendingBroadcasts.Add(new PendingNativeBroadcast(
                 sourcePresence,
                 0xC36A,
-                BuildTownUserInfoPayload(peerCharacter),
+                BuildTownUserInfoPayload(
+                    peerCharacter,
+                    peer.Session.LastReportedPositionX,
+                    peer.Session.LastReportedPositionY),
                 "existing town entity snapshot"));
         }
 
@@ -14139,11 +14149,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             session.Character.PositionX = restoredPosition.X;
             session.Character.PositionY = restoredPosition.Y;
         }
-        session.TownId = (byte)Math.Clamp(session.Character.CurrentMapId, 0, byte.MaxValue);
-        session.TownPage = (byte)Math.Clamp(session.Character.CurrentTownPage, 0, byte.MaxValue);
-        session.LastReportedPositionX = restoredPosition.X;
-        session.LastReportedPositionY = restoredPosition.Y;
-        session.RestoreTownPositionPending = session.Character.TutorialCompleted;
+        // The unmodified client turns the first C355 of every process into a
+        // one-shot FirstVillageFlag actor creation. It ignores C368 coordinates
+        // in that branch, so bootstrap on the proven 0/0 page instead of loading
+        // an arbitrary persisted page whose first-entry point may be (-1,-1).
+        session.TownId = TownPositionPolicy.LoginBootstrapMapId;
+        session.TownPage = TownPositionPolicy.LoginBootstrapTownPage;
+        session.LastReportedPositionX = TownPositionPolicy.FallbackX;
+        session.LastReportedPositionY = TownPositionPolicy.FallbackY;
         if (session.ChannelId <= 0 || !_endpoints.Any(item => item.Enabled && item.Id == session.ChannelId))
             session.ChannelId = _endpoints.FirstOrDefault(item => item.Enabled)?.Id ?? 1;
         var connected = await TrackConnectedAsync(session, remoteIp, token);
@@ -15422,12 +15435,17 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         payload[6] = character?.MikeChannelUseCount ?? 0;
         payload[7] = character?.MikeGlobalUseCount ?? 0;
         // The retail C355 consumer restores its town/page globals from
-        // frame+32/frame+33 before constructing the first C367 request.
-        // New characters keep 0/0 so only their first login enters the guide.
+        // frame+32/frame+33 before constructing the first C367 request. Every
+        // fresh process also promotes this first C355 into FirstVillageFlag=1;
+        // that actor path ignores C368 coordinates and uses the loaded page's
+        // built-in first-entry point. Keep completed characters on the proven
+        // 0/0 bootstrap tuple instead of restoring an arbitrary saved page that
+        // can yield CVillageChar(-1,-1). Normal C365/C367/CB21 movement remains
+        // persistent after this bootstrap actor exists.
         if (character is { TutorialCompleted: true })
         {
-            payload[24] = (byte)Math.Clamp(character.CurrentMapId, 0, byte.MaxValue);
-            payload[25] = (byte)Math.Clamp(character.CurrentTownPage, 0, byte.MaxValue);
+            payload[24] = TownPositionPolicy.LoginBootstrapMapId;
+            payload[25] = TownPositionPolicy.LoginBootstrapTownPage;
         }
         // The C355 consumer reads frame+35 and calls sub_40FEE8, whose
         // implementation (sub_A72570) stores this value at local-character
@@ -18399,12 +18417,27 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         => BuildTownUserInfoPayload(
             character,
             GetSceneEntityId(character),
-            GetCharacterUid(character));
+            GetCharacterUid(character),
+            (ushort)Math.Clamp(character.PositionX, 0, 0x3FF),
+            (ushort)Math.Clamp(character.PositionY, 0, 0x3FF));
+
+    private static byte[] BuildTownUserInfoPayload(
+        CharacterRecord character,
+        ushort positionX,
+        ushort positionY)
+        => BuildTownUserInfoPayload(
+            character,
+            GetSceneEntityId(character),
+            GetCharacterUid(character),
+            positionX,
+            positionY);
 
     private static byte[] BuildTownUserInfoPayload(
         CharacterRecord character,
         ushort sceneEntityId,
-        ushort characterUid)
+        ushort characterUid,
+        ushort positionX,
+        ushort positionY)
     {
         // C36A is a fixed 112-byte frame. Its frame+60 control word carries:
         // bits 3..5 = 2: enqueue into MEDIATE_WAIT_MOVE_PACKET, then construct
@@ -18424,9 +18457,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             payload.AsSpan(52, 4),
             (2u << 3) | (characterLevel << 6) | ((uint)sceneEntityId << 20));
 
-        var positionX = (uint)Math.Clamp(character.PositionX, 0, 0x3FF);
-        var positionY = (uint)Math.Clamp(character.PositionY, 0, 0x3FF);
-        var packedPosition = (positionX << 2) | (positionY << 12);
+        var packedPosition = ((uint)positionX << 2) | ((uint)positionY << 12);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(80, 4), packedPosition);
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(102, 2),

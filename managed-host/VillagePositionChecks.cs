@@ -74,6 +74,52 @@ internal static class VillagePositionChecks
             Check(!TownPositionPolicy.IsPersistable(0x3FF, 0x3FF),
                 "legacy clamp image 03FF/03FF is not persistable");
 
+            var townUserInfoBuilder = typeof(NetworkAdapterService).GetMethod(
+                "BuildTownUserInfoPayload",
+                BindingFlags.NonPublic | BindingFlags.Static,
+                binder: null,
+                types: [typeof(CharacterRecord), typeof(ushort), typeof(ushort)],
+                modifiers: null)!;
+            var stalePositionCharacter = new CharacterRecord
+            {
+                Id = 79,
+                AccountId = accountId,
+                Name = "StaleWirePosition",
+                TutorialCompleted = true,
+                PositionX = 0,
+                PositionY = 0
+            };
+            var townUserInfo = (byte[])townUserInfoBuilder.Invoke(
+                null,
+                [stalePositionCharacter, TownPositionPolicy.FallbackX, TownPositionPolicy.FallbackY])!;
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(townUserInfo.AsSpan(80, 4))
+                  == (((uint)TownPositionPolicy.FallbackX << 2)
+                      | ((uint)TownPositionPolicy.FallbackY << 12)),
+                "C36A uses the session bootstrap position instead of stale character coordinates");
+
+            foreach (var (savedMap, savedPage) in new[] { (1, 33), (4, 18) })
+            {
+                var savedCharacter = new CharacterRecord
+                {
+                    Id = 70 + savedMap,
+                    AccountId = accountId,
+                    Name = $"Saved{savedMap}_{savedPage}",
+                    TutorialCompleted = true,
+                    CurrentMapId = savedMap,
+                    CurrentTownPage = savedPage,
+                    PositionX = TownPositionPolicy.FallbackX,
+                    PositionY = TownPositionPolicy.FallbackY
+                };
+                var c355Payload = NetworkAdapterService.BuildLoadNecessityPayload(
+                    savedCharacter,
+                    new byte[60],
+                    new byte[60],
+                    null);
+                Check(c355Payload[0x20 - 8] == TownPositionPolicy.LoginBootstrapMapId
+                      && c355Payload[0x21 - 8] == TownPositionPolicy.LoginBootstrapTownPage,
+                    $"C355 bootstraps saved map/page {savedMap}/{savedPage} through safe 0/0");
+            }
+
             await using var service = new NetworkAdapterService(reopened, _ => { }, root);
             var serviceType = typeof(NetworkAdapterService);
             var sessionType = serviceType.GetNestedType("ConnectionSession", BindingFlags.NonPublic)!;
@@ -99,9 +145,8 @@ internal static class VillagePositionChecks
             Set(session, "ChannelId", 1);
             Set(session, "ListenerPort", 12050);
             Set(session, "OnlineTracked", true);
-            Set(session, "TownId", (byte)4);
-            Set(session, "TownPage", (byte)18);
-            Set(session, "RestoreTownPositionPending", true);
+            Set(session, "TownId", TownPositionPolicy.LoginBootstrapMapId);
+            Set(session, "TownPage", TownPositionPolicy.LoginBootstrapTownPage);
 
             async Task<byte[]?> Dispatch(ushort opcode, byte[] payload)
             {
@@ -111,7 +156,7 @@ internal static class VillagePositionChecks
             }
 
             byte[] c367 = new byte[8];
-            BinaryPrimitives.WriteInt32LittleEndian(c367, 18);
+            BinaryPrimitives.WriteInt32LittleEndian(c367, TownPositionPolicy.LoginBootstrapTownPage);
             BinaryPrimitives.WriteUInt16LittleEndian(c367.AsSpan(4, 2), ushort.MaxValue);
             BinaryPrimitives.WriteUInt16LittleEndian(c367.AsSpan(6, 2), ushort.MaxValue);
             byte[] c368 = (await Dispatch(0xC367, c367))!;
@@ -120,10 +165,13 @@ internal static class VillagePositionChecks
             Check(BinaryPrimitives.ReadUInt16LittleEndian(c368.AsSpan(0x30, 2)) == TownPositionPolicy.FallbackX
                   && BinaryPrimitives.ReadUInt16LittleEndian(c368.AsSpan(0x32, 2)) == TownPositionPolicy.FallbackY,
                 "C368 +0x30/+0x32 carries 400/96 instead of 03FF/03FF");
-            Check(runtimeCharacter.CurrentTownPage == 18
+            Check(c368[9] == TownPositionPolicy.LoginBootstrapTownPage,
+                "C368 retains the safe bootstrap page instead of restoring page18 before first actor creation");
+            Check(runtimeCharacter.CurrentMapId == TownPositionPolicy.LoginBootstrapMapId
+                  && runtimeCharacter.CurrentTownPage == TownPositionPolicy.LoginBootstrapTownPage
                   && runtimeCharacter.PositionX == TownPositionPolicy.FallbackX
                   && runtimeCharacter.PositionY == TownPositionPolicy.FallbackY,
-                "C367 repairs in-memory persistent carrier without changing page18");
+                "C367 replaces the unsafe saved page with the first-process bootstrap tuple");
 
             byte[] c365 = new byte[10];
             c365[0] = 4;
@@ -156,7 +204,7 @@ internal static class VillagePositionChecks
             Check(runtimeCharacter.PositionX == 512 && runtimeCharacter.PositionY == 288,
                 "CB21 legal movement still updates the persistent carrier");
 
-            Console.WriteLine("VILLAGE_POSITION_CHECKS_PASS c365 c367 c368-offsets cb21 sentinel persistence startup-self-heal");
+            Console.WriteLine("VILLAGE_POSITION_CHECKS_PASS c355-bootstrap c365 c367 c368-offsets cb21 sentinel persistence startup-self-heal");
         }
         finally
         {

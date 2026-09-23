@@ -98,8 +98,8 @@
     },
     {
       "path": "managed-host/VillagePositionChecks.cs",
-      "size": 11128,
-      "sha256": "F39516F640F885EE9040F874848132B3FCC8238387167AE78E952597E3DA97EA"
+      "size": 13751,
+      "sha256": "FC14BAB354088EC4A7A1247300E8F63AF6CDDC907F2DF5A134D5DC63A41DD8DB"
     },
     {
       "path": "managed/Compatibility/Net6.cs",
@@ -378,8 +378,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 931794,
-      "sha256": "1220476EBECC97E8DDDFDC5E94604F9B65796959C15F1B48F7F5A198469BE056"
+      "size": 933063,
+      "sha256": "9C9E1F8AB12E6E0BA8579B775CA40D09A653B03C74D0BA1C7BFFE7AFF192AD84"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -423,8 +423,8 @@
     },
     {
       "path": "managed/Services/TownPositionPolicy.cs",
-      "size": 954,
-      "sha256": "C45E680FF81CA14E66CB05B1E5A983C0EDAFA4674933B4442841D55E358DE952"
+      "size": 1373,
+      "sha256": "048546B32B4A63754063847CCCA544A5362F337A9372F5D0789DD77474E33B25"
     },
     {
       "path": "managed/Services/VillageBotLanguageCatalog.cs",

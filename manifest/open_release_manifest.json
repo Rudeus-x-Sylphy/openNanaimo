@@ -54,28 +54,28 @@
         "sha256": "E2B4E0668CE1C9B86FAAF347CCF8FE5ECFAACCEBB859BF52A682511AD2A9C09C"
       },
       "adapter_runtime/Nanaimo.Adapter.dll": {
-        "size": 198144,
-        "sha256": "7C511167DE45E4E0BE0EFD0C0A046241310830EAF6CA8F4D8A4558B00DA4554F"
+        "size": 199680,
+        "sha256": "3F26626E1200F7E5553CE42AADF8CE1E0610948B84698D2E7D891ACAB4EF2B14"
       },
       "adapter_runtime/Nanaimo.Adapter.exe": {
         "size": 151040,
-        "sha256": "0F98487E03EA91011C33262C102B45C88909AA6A2CA43AA39D5E9CAF60EB63C7"
+        "sha256": "3E11FBA9ECD77E8840AF4A6B14DDE1898E269A9DF480C7EAE4D573439FC1D6F5"
       },
       "adapter_runtime/Nanaimo.Adapter.pdb": {
-        "size": 38140,
-        "sha256": "6F4A96057B46E69A6D464EE53E81B4E883FDB3809A5FFB60E6CFBB8B972D3956"
+        "size": 38312,
+        "sha256": "FD9718BF5F01330004D7CA09BF97BEA9A2C4E53D4F645D51C9A08B873B804DE4"
       },
       "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
         "size": 285,
         "sha256": "044C5CAFF98A01411AA8F0D8D61322710925F8E24516B207AE71F8B6B569EB2E"
       },
       "adapter_runtime/Nanaimo.Gameplay.dll": {
-        "size": 4227584,
-        "sha256": "952287DBAE744F68B0C9EF8D357229402754A655902FEB4D3B56A389BC73B09E"
+        "size": 4226560,
+        "sha256": "763BA0421B229EE98FACB4ECBD883C29542536AD837E9125665B98CE972C3261"
       },
       "adapter_runtime/Nanaimo.Gameplay.pdb": {
-        "size": 367828,
-        "sha256": "33C682A790C391198FE0A5712230F0C964A5F4F8B043FCB8EAC55D518AB9C353"
+        "size": 367720,
+        "sha256": "072071E8970828AB20E27A1032649DB12301888CF4C439EC4FCE98E092817A6F"
       },
       "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
         "size": 5120,
@@ -726,8 +726,8 @@
         "sha256": "2DA8CCD3D3DF04DCE2A7338C07964D22B55355CD19C89AEC5D2A74297FD5CE45"
       },
       "adapter_runtime/adapter_manifest.json": {
-        "size": 62270,
-        "sha256": "81DFBA7DC20259CDC095DC140D3B33C74CA713B7E66B426C0729F1066CA1E94E"
+        "size": 42017,
+        "sha256": "7708FF7610DAD16B389B935D63EA301E6ECE2803D9221D5AB4A8E0C4204830AE"
       },
       "adapter_runtime/api-ms-win-core-console-l1-1-0.dll": {
         "size": 20944,
@@ -965,87 +965,87 @@
         "size": 1122768,
         "sha256": "C04DAEBA7E7C4B711D33993AB4C51A2E087F98F4211AEA0DCB3A216656BA0AB7"
       },
-      "adapter_runtime/资源/数据/CI._D28": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/CI._D28": {
         "size": 1232,
         "sha256": "E6BB62AB7C285621F750B22309D04A8EEAA84F029250870FABD4C2B67D98C2B7"
       },
-      "adapter_runtime/资源/数据/EDdakgi._D19": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/EDdakgi._D19": {
         "size": 19280,
         "sha256": "0AC98B40BA0EAB15B8FD304FA0BE419D46C44B0F351DD2734A202995E9465879"
       },
-      "adapter_runtime/资源/数据/GS._D20": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/GS._D20": {
         "size": 40512,
         "sha256": "8910175338DBF32900A2EC93E7833EA1AF4763D5AB90136A25656C9684C1D61D"
       },
-      "adapter_runtime/资源/数据/GoldDust._D17": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/GoldDust._D17": {
         "size": 3248,
         "sha256": "2D579FF91070814A56ECD355D28F07CC9FFA5375ECD257D819442474F4F7B0E5"
       },
-      "adapter_runtime/资源/数据/IE._D23": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/IE._D23": {
         "size": 3088,
         "sha256": "5F0DFCEE636F06F2913D897D21B8DD027890432C7FDCAEEF54FA28E2244BC8A3"
       },
-      "adapter_runtime/资源/数据/MI._D22": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/MI._D22": {
         "size": 2240,
         "sha256": "98A9E1F2C09AE5ECD6FA4F83F50A3D1F4B4A263DD1541C27D8BBB2EC913CC22F"
       },
-      "adapter_runtime/资源/数据/PA._D9": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/PA._D9": {
         "size": 3535984,
         "sha256": "468DAD2E02CA2DB72F0BFD45BA5F85C8814F1F7DEF8A2A4EAF7C459AD0D59002"
       },
-      "adapter_runtime/资源/数据/PR._D27": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/PR._D27": {
         "size": 624,
         "sha256": "1E2F38AFDA240A3580CDF84CD6CDFC6663E6F5C12BF6059D8185F62225739606"
       },
-      "adapter_runtime/资源/数据/QH._D33": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/QH._D33": {
         "size": 15968,
         "sha256": "D51DF9FEB8E772ABF9048CC0ADA28C8F7B45478266671A40610E6236B8187764"
       },
-      "adapter_runtime/资源/数据/QS._D31": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/QS._D31": {
         "size": 28816,
         "sha256": "B174940B9ABFD4BE7A014F531A8F5057022380D18D16236B251103F4EEEBF0E7"
       },
-      "adapter_runtime/资源/数据/QT._D30": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/QT._D30": {
         "size": 57616,
         "sha256": "3E88C76D7373633F347A77EB22A9DF43C2551F26758D52A2685C9801654BFE3B"
       },
-      "adapter_runtime/资源/数据/SF._D21": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/SF._D21": {
         "size": 848,
         "sha256": "C927F522AF5C0879593616AA78A3BE2097EB55643464F526862F8F440BC944A4"
       },
-      "adapter_runtime/资源/数据/SK._D35": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/SK._D35": {
         "size": 9664,
         "sha256": "D6DD57FEF5F14A83AC76E98114E07E065C61FC264AF047E4A37D82F33B946DA8"
       },
-      "adapter_runtime/资源/数据/SP._D34": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/SP._D34": {
         "size": 288,
         "sha256": "7D765B33E29EC6A8B6DC85C226B6C51199BA6B01ED42F64C138259AA2651BCE9"
       },
-      "adapter_runtime/资源/数据/Sddakg._D35": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/Sddakg._D35": {
         "size": 6080,
         "sha256": "E08D122701372282BDB593AA776379BE338CC2EB4B26D3CD1DDBFCD176901C73"
       },
-      "adapter_runtime/资源/数据/ava._D1": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/ava._D1": {
         "size": 800880,
         "sha256": "9ED34D2DCE90B4CCE596F1F5F79E11BE89B01F6CA0AB1EFEED3EE919B4301D09"
       },
-      "adapter_runtime/资源/数据/ddakg._D4": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/ddakg._D4": {
         "size": 123760,
         "sha256": "338B9153192937070806BAE50E0E684E56907CBB2C44C65B34A9F0382492E63E"
       },
-      "adapter_runtime/资源/数据/dungeon_combat_catalog.bin": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/dungeon_combat_catalog.bin": {
         "size": 11465036,
         "sha256": "04045554315C71D4289C09471D884AB1C91C93A24033FD50A798590CD3905660"
       },
-      "adapter_runtime/资源/数据/gi._D6": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/gi._D6": {
         "size": 413760,
         "sha256": "4EEFD439D499B85D04C62D224BF9DF9374FEF369A3A80B4058DFC4A1DE9093BB"
       },
-      "adapter_runtime/资源/数据/inter._D3": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/inter._D3": {
         "size": 167552,
         "sha256": "EA3B1B1726FA999973338716C0F3E78E65FEF77992D38FCD7C0724381DF0234B"
       },
-      "adapter_runtime/资源/数据/pi._D7": {
+      "adapter_runtime/\u8d44\u6e90/\u6570\u636e/pi._D7": {
         "size": 483152,
         "sha256": "3EFC299B3F30920A0D154D8D3978975995400394D5997521F5E80E48E550638E"
       }
@@ -1079,8 +1079,8 @@
       "sha256": "B082CCE96EAF1C593D2B49D436D18E35817E9A7E4048C7152D781C105171379E"
     },
     "manifest/patch_runtime_requirements.json": {
-      "size": 8374,
-      "sha256": "32EBF75AEAE9ECEE83C72C8D9CFF2D89486ED7CDC966A9BB176B9C051CDC367C"
+      "size": 8365,
+      "sha256": "5FBFC600AEF4E745CA4397B2113431D8F2998D41719A13C4F8BFD8689A575600"
     },
     "scripts/prepare_client_compatibility.py": {
       "size": 22222,
@@ -1127,28 +1127,28 @@
       "sha256": "E2B4E0668CE1C9B86FAAF347CCF8FE5ECFAACCEBB859BF52A682511AD2A9C09C"
     },
     "adapter_runtime/Nanaimo.Adapter.dll": {
-      "size": 198144,
-      "sha256": "7C511167DE45E4E0BE0EFD0C0A046241310830EAF6CA8F4D8A4558B00DA4554F"
+      "size": 199680,
+      "sha256": "3F26626E1200F7E5553CE42AADF8CE1E0610948B84698D2E7D891ACAB4EF2B14"
     },
     "adapter_runtime/Nanaimo.Adapter.exe": {
       "size": 151040,
-      "sha256": "0F98487E03EA91011C33262C102B45C88909AA6A2CA43AA39D5E9CAF60EB63C7"
+      "sha256": "3E11FBA9ECD77E8840AF4A6B14DDE1898E269A9DF480C7EAE4D573439FC1D6F5"
     },
     "adapter_runtime/Nanaimo.Adapter.pdb": {
-      "size": 38140,
-      "sha256": "6F4A96057B46E69A6D464EE53E81B4E883FDB3809A5FFB60E6CFBB8B972D3956"
+      "size": 38312,
+      "sha256": "FD9718BF5F01330004D7CA09BF97BEA9A2C4E53D4F645D51C9A08B873B804DE4"
     },
     "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
       "size": 285,
       "sha256": "044C5CAFF98A01411AA8F0D8D61322710925F8E24516B207AE71F8B6B569EB2E"
     },
     "adapter_runtime/Nanaimo.Gameplay.dll": {
-      "size": 4227584,
-      "sha256": "952287DBAE744F68B0C9EF8D357229402754A655902FEB4D3B56A389BC73B09E"
+      "size": 4226560,
+      "sha256": "763BA0421B229EE98FACB4ECBD883C29542536AD837E9125665B98CE972C3261"
     },
     "adapter_runtime/Nanaimo.Gameplay.pdb": {
-      "size": 367828,
-      "sha256": "33C682A790C391198FE0A5712230F0C964A5F4F8B043FCB8EAC55D518AB9C353"
+      "size": 367720,
+      "sha256": "072071E8970828AB20E27A1032649DB12301888CF4C439EC4FCE98E092817A6F"
     },
     "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
       "size": 5120,
@@ -1799,8 +1799,8 @@
       "sha256": "2DA8CCD3D3DF04DCE2A7338C07964D22B55355CD19C89AEC5D2A74297FD5CE45"
     },
     "adapter_runtime/adapter_manifest.json": {
-      "size": 62270,
-      "sha256": "81DFBA7DC20259CDC095DC140D3B33C74CA713B7E66B426C0729F1066CA1E94E"
+      "size": 42017,
+      "sha256": "7708FF7610DAD16B389B935D63EA301E6ECE2803D9221D5AB4A8E0C4204830AE"
     },
     "adapter_runtime/api-ms-win-core-console-l1-1-0.dll": {
       "size": 20944,
@@ -2038,87 +2038,87 @@
       "size": 1122768,
       "sha256": "C04DAEBA7E7C4B711D33993AB4C51A2E087F98F4211AEA0DCB3A216656BA0AB7"
     },
-    "adapter_runtime/资源/数据/CI._D28": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/CI._D28": {
       "size": 1232,
       "sha256": "E6BB62AB7C285621F750B22309D04A8EEAA84F029250870FABD4C2B67D98C2B7"
     },
-    "adapter_runtime/资源/数据/EDdakgi._D19": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/EDdakgi._D19": {
       "size": 19280,
       "sha256": "0AC98B40BA0EAB15B8FD304FA0BE419D46C44B0F351DD2734A202995E9465879"
     },
-    "adapter_runtime/资源/数据/GS._D20": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/GS._D20": {
       "size": 40512,
       "sha256": "8910175338DBF32900A2EC93E7833EA1AF4763D5AB90136A25656C9684C1D61D"
     },
-    "adapter_runtime/资源/数据/GoldDust._D17": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/GoldDust._D17": {
       "size": 3248,
       "sha256": "2D579FF91070814A56ECD355D28F07CC9FFA5375ECD257D819442474F4F7B0E5"
     },
-    "adapter_runtime/资源/数据/IE._D23": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/IE._D23": {
       "size": 3088,
       "sha256": "5F0DFCEE636F06F2913D897D21B8DD027890432C7FDCAEEF54FA28E2244BC8A3"
     },
-    "adapter_runtime/资源/数据/MI._D22": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/MI._D22": {
       "size": 2240,
       "sha256": "98A9E1F2C09AE5ECD6FA4F83F50A3D1F4B4A263DD1541C27D8BBB2EC913CC22F"
     },
-    "adapter_runtime/资源/数据/PA._D9": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/PA._D9": {
       "size": 3535984,
       "sha256": "468DAD2E02CA2DB72F0BFD45BA5F85C8814F1F7DEF8A2A4EAF7C459AD0D59002"
     },
-    "adapter_runtime/资源/数据/PR._D27": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/PR._D27": {
       "size": 624,
       "sha256": "1E2F38AFDA240A3580CDF84CD6CDFC6663E6F5C12BF6059D8185F62225739606"
     },
-    "adapter_runtime/资源/数据/QH._D33": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/QH._D33": {
       "size": 15968,
       "sha256": "D51DF9FEB8E772ABF9048CC0ADA28C8F7B45478266671A40610E6236B8187764"
     },
-    "adapter_runtime/资源/数据/QS._D31": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/QS._D31": {
       "size": 28816,
       "sha256": "B174940B9ABFD4BE7A014F531A8F5057022380D18D16236B251103F4EEEBF0E7"
     },
-    "adapter_runtime/资源/数据/QT._D30": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/QT._D30": {
       "size": 57616,
       "sha256": "3E88C76D7373633F347A77EB22A9DF43C2551F26758D52A2685C9801654BFE3B"
     },
-    "adapter_runtime/资源/数据/SF._D21": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/SF._D21": {
       "size": 848,
       "sha256": "C927F522AF5C0879593616AA78A3BE2097EB55643464F526862F8F440BC944A4"
     },
-    "adapter_runtime/资源/数据/SK._D35": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/SK._D35": {
       "size": 9664,
       "sha256": "D6DD57FEF5F14A83AC76E98114E07E065C61FC264AF047E4A37D82F33B946DA8"
     },
-    "adapter_runtime/资源/数据/SP._D34": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/SP._D34": {
       "size": 288,
       "sha256": "7D765B33E29EC6A8B6DC85C226B6C51199BA6B01ED42F64C138259AA2651BCE9"
     },
-    "adapter_runtime/资源/数据/Sddakg._D35": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/Sddakg._D35": {
       "size": 6080,
       "sha256": "E08D122701372282BDB593AA776379BE338CC2EB4B26D3CD1DDBFCD176901C73"
     },
-    "adapter_runtime/资源/数据/ava._D1": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/ava._D1": {
       "size": 800880,
       "sha256": "9ED34D2DCE90B4CCE596F1F5F79E11BE89B01F6CA0AB1EFEED3EE919B4301D09"
     },
-    "adapter_runtime/资源/数据/ddakg._D4": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/ddakg._D4": {
       "size": 123760,
       "sha256": "338B9153192937070806BAE50E0E684E56907CBB2C44C65B34A9F0382492E63E"
     },
-    "adapter_runtime/资源/数据/dungeon_combat_catalog.bin": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/dungeon_combat_catalog.bin": {
       "size": 11465036,
       "sha256": "04045554315C71D4289C09471D884AB1C91C93A24033FD50A798590CD3905660"
     },
-    "adapter_runtime/资源/数据/gi._D6": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/gi._D6": {
       "size": 413760,
       "sha256": "4EEFD439D499B85D04C62D224BF9DF9374FEF369A3A80B4058DFC4A1DE9093BB"
     },
-    "adapter_runtime/资源/数据/inter._D3": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/inter._D3": {
       "size": 167552,
       "sha256": "EA3B1B1726FA999973338716C0F3E78E65FEF77992D38FCD7C0724381DF0234B"
     },
-    "adapter_runtime/资源/数据/pi._D7": {
+    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/pi._D7": {
       "size": 483152,
       "sha256": "3EFC299B3F30920A0D154D8D3978975995400394D5997521F5E80E48E550638E"
     }
