@@ -35,8 +35,8 @@
     {
       "path": "README.md",
       "layer": "docs",
-      "size": 10119,
-      "sha256": "dd260ed81651ae5245fe005c1ff08ff1942e31f89dec6d2188d3d1392689c499",
+      "size": 10145,
+      "sha256": "c2a49bcd50107a243354b9a1b09ce0ef239d411640f44c266e40b8ac8aa69969",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -99,8 +99,8 @@
     {
       "path": "docs/\u6784\u5efa\u4e0e\u9a8c\u8bc1.md",
       "layer": "docs",
-      "size": 6724,
-      "sha256": "7f0c16c848bbbce56bb9fce646e87f0b6d8548232a34bfe6daf550a91ab34eb1",
+      "size": 6792,
+      "sha256": "84800623acb5f2b638e0eb9a41517d03591861707b0fad1bdad8b9d8f8c456ef",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -187,8 +187,8 @@
     {
       "path": "knowledge/authority/03-\u89d2\u8272\u8d44\u6599\u4e0e\u80cc\u5305.md",
       "layer": "knowledge",
-      "size": 63221,
-      "sha256": "b89a742de5fc0524ba103d62ebdeda4c9627b4700cd966b5f8d32f11c09166e3",
+      "size": 64111,
+      "sha256": "99c4a90b170f795a0c2d743f7992f929c83ed771c1d0b729348ae8ee5f7d1112",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -227,24 +227,24 @@
     {
       "path": "knowledge/authority/08-\u9759\u6001\u5730\u5740\u4e0e\u8c03\u7528\u94fe.md",
       "layer": "knowledge",
-      "size": 100066,
-      "sha256": "c014c34a1b88da6e9c91d48efd0434a99c33b64a52df6b5d6de1ee08427a5b6a",
+      "size": 100352,
+      "sha256": "7d4cae8c85f05eeb5b898550867dac6eb18ec3dda7b2e4dd018de4550a61b7dd",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/authority/09-\u8fd0\u884c\u914d\u7f6e\u4e0e\u9a8c\u8bc1.md",
       "layer": "knowledge",
-      "size": 10420,
-      "sha256": "43c5b7485e2c8474624bcdb470bc5a62d280dd0930478e4fec360d50283c4f5d",
+      "size": 11024,
+      "sha256": "763b8a4b59925608d03ca6f4180c58293618eddf9bd03c837b4d258fa28fa9b9",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/\u77e5\u8bc6\u5e93\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 4835,
-      "sha256": "15ca44faa4ab7f1c946281a3314dbdf0d84ffa0b5e780d2227b0e2dfdc93bff7",
+      "size": 5251,
+      "sha256": "5fb667ce33af43add2c045eb6af205d309ce644712b8239d4a9ca54ce4395fb7",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -291,8 +291,8 @@
     {
       "path": "managed-host/InventoryQuickbarChecks.cs",
       "layer": "source",
-      "size": 11074,
-      "sha256": "035e9aa5767f6f9119fbe2ff7e35800a76791258d5dfdf4c7daae79b9416b522",
+      "size": 12901,
+      "sha256": "be7f7573edaba3ecd468a802641c19980363400bcfce68f5701341e31565453d",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -803,8 +803,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.cs",
       "layer": "source",
-      "size": 933489,
-      "sha256": "d3f93149fef10a2a01eb289162e78e1992609451bee34c7428fd5062da86fe46",
+      "size": 935696,
+      "sha256": "cbfcbd02cdea86fc611bc59490e2574008766a338684e63fc2657a5be4926bfa",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -916,7 +916,7 @@
       "path": "manifest/source_closure.json",
       "layer": "source",
       "size": 31993,
-      "sha256": "13df82d77d0f3ba874a908e3a274e158bde760a4c2658efc0630b593c7d88f56",
+      "sha256": "cdffd7e331adecd58b268703c4c5328cd8bf46d292ace3d57307df25e67c91bd",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

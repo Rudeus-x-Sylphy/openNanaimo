@@ -2470,7 +2470,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return CombineNativeFrames(
                     changeResponse,
                     BuildNativeFrame(frame, 0xC47F, petUserData, session),
-                    BuildNativeFrame(frame, 0xC379, BuildBoxInfoPayload(session.Character), session),
+                    BuildNativeFrame(
+                        frame,
+                        0xC379,
+                        BuildBoxInfoPayloadWithSkills(
+                            session.Character,
+                            await _database.GetCharacterSkillsAsync(session.Character.Id, token)),
+                        session),
                     BuildNativeFrame(frame, 0xC44C, BuildPetInventoryPayload(session.Character), session));
             }
 
@@ -2545,7 +2551,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         changedUserDataPayload,
                         session));
                 }
-                inventoryFrames.Add(BuildNativeFrame(frame, 0xC379, BuildBoxInfoPayload(session.Character), session));
+                inventoryFrames.Add(BuildNativeFrame(
+                    frame,
+                    0xC379,
+                    BuildBoxInfoPayloadWithSkills(
+                        session.Character,
+                        await _database.GetCharacterSkillsAsync(session.Character.Id, token)),
+                    session));
                 inventoryFrames.Add(BuildNativeFrame(frame, 0xC3CC, BuildAvatarInventoryPayload(session.Character), session));
                 inventoryFrames.Add(BuildNativeFrame(frame, 0xC44C, BuildPetInventoryPayload(session.Character), session));
                 return CombineNativeFrames(inventoryFrames.ToArray());
@@ -3171,7 +3183,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
                 await RefreshSessionCharacterAsync(session, token);
-                var boxInfo = BuildNativeFrame(frame, 0xC379, BuildBoxInfoPayload(session.Character), session);
+                var boxSkills = await _database.GetCharacterSkillsAsync(session.Character.Id, token);
+                var boxInfo = BuildNativeFrame(
+                    frame,
+                    0xC379,
+                    BuildBoxInfoPayloadWithSkills(session.Character, boxSkills),
+                    session);
                 var restoredPetAfterBox = BuildNativeFrame(frame, 0xC44C, BuildPetInventoryPayload(session.Character), session);
                 return CombineNativeFrames(boxInfo, restoredPetAfterBox);
 
@@ -17446,6 +17463,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     }
 
     internal static byte[] BuildBoxInfoPayload(CharacterRecord? character)
+        => BuildBoxInfoPayloadWithSkills(character, null);
+
+    internal static byte[] BuildBoxInfoPayloadWithSkills(
+        CharacterRecord? character,
+        IReadOnlyList<CharacterSkillRecord>? learnedSkills,
+        DateTime? currentTime = null)
     {
         // C379 builds the equipped clothing slots from frame+11's count and
         // the 12-byte records at frame+12. It does not derive those slots
@@ -17525,6 +17548,27 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt64LittleEndian(
             payload.AsSpan(208, 8),
             (ulong)Math.Max(0L, character.Cash));
+        // C379 restores the inventory-window Z/X skill cells independently
+        // from C3E8 and the dungeon CF71/CF72 carriers. Full-frame +0x130/+0x132
+        // are the selected grades (one byte in each two-byte cell), while
+        // +0x134/+0x138 are the exact selected skill codes. Publish only learned
+        // catalog skills so stale profile values cannot create phantom cells.
+        var skillGrades = (learnedSkills ?? [])
+            .Where(skill => skill.Grade is >= 1 and <= 5
+                && SkillCatalog.TryGet(skill.SkillCode, out _))
+            .GroupBy(skill => skill.SkillCode)
+            .ToDictionary(group => group.Key, group => group.Max(skill => skill.Grade));
+        var selectedSkill0 = skillGrades.ContainsKey(character.SelectedSkill0)
+            ? character.SelectedSkill0
+            : 0u;
+        var selectedSkill1 = skillGrades.ContainsKey(character.SelectedSkill1)
+            ? character.SelectedSkill1
+            : 0u;
+        payload[296] = skillGrades.GetValueOrDefault(selectedSkill0);
+        payload[298] = skillGrades.GetValueOrDefault(selectedSkill1);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(300, 4), selectedSkill0);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(304, 4), selectedSkill1);
+
         // C379 compares its encoded current time at frame+320 with the quick
         // bar and skill-slot expirations at frame+300 and frame+316.
         BinaryPrimitives.WriteUInt32LittleEndian(
@@ -17535,7 +17579,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             character.SkillSlotExpansionExpires);
         BinaryPrimitives.WriteUInt32LittleEndian(
             payload.AsSpan(312, 4),
-            SkillSlotExpansionTime.Encode(DateTime.Now));
+            SkillSlotExpansionTime.Encode(currentTime ?? DateTime.Now));
         return payload;
     }
 

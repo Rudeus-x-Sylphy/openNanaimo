@@ -66,6 +66,36 @@ internal static class InventoryQuickbarChecks
             && BinaryPrimitives.ReadUInt32LittleEndian(box.AsSpan(220 + 24, 4)) == addedCode
             && BinaryPrimitives.ReadUInt32LittleEndian(box.AsSpan(224 + 24, 4)) == 2,
             "C379 restores quick-slot code and C430 identity rows");
+        var skillCharacter = new CharacterRecord
+        {
+            Name = "SkillCellCheck",
+            SelectedSkill0 = 52_000_011u,
+            SelectedSkill1 = 52_000_007u,
+            QuickSlotExpansionExpires = 2_026_103_101u,
+            SkillSlotExpansionExpires = 2_026_112_301u
+        };
+        var skillBox = NetworkAdapterService.BuildBoxInfoPayloadWithSkills(
+            skillCharacter,
+            [
+                new CharacterSkillRecord { SkillCode = 52_000_011u, Grade = 4 },
+                new CharacterSkillRecord { SkillCode = 52_000_007u, Grade = 5 }
+            ],
+            new DateTime(2026, 9, 24, 12, 0, 0));
+        Check(skillBox[296] == 4 && skillBox[297] == 0
+            && skillBox[298] == 5 && skillBox[299] == 0
+            && BinaryPrimitives.ReadUInt32LittleEndian(skillBox.AsSpan(300, 4)) == 52_000_011u
+            && BinaryPrimitives.ReadUInt32LittleEndian(skillBox.AsSpan(304, 4)) == 52_000_007u,
+            "C379 restores equipped Z/X skill grades and codes");
+        Check(BinaryPrimitives.ReadUInt32LittleEndian(skillBox.AsSpan(292, 4)) == 2_026_103_101u
+            && BinaryPrimitives.ReadUInt32LittleEndian(skillBox.AsSpan(308, 4)) == 2_026_112_301u,
+            "C379 preserves independent quickbar and skill-slot expirations");
+        var staleSkillBox = NetworkAdapterService.BuildBoxInfoPayloadWithSkills(
+            skillCharacter,
+            [new CharacterSkillRecord { SkillCode = 52_000_011u, Grade = 4 }]);
+        Check(staleSkillBox[296] == 4 && staleSkillBox[298] == 0
+            && BinaryPrimitives.ReadUInt32LittleEndian(staleSkillBox.AsSpan(300, 4)) == 52_000_011u
+            && BinaryPrimitives.ReadUInt32LittleEndian(staleSkillBox.AsSpan(304, 4)) == 0,
+            "C379 suppresses an equipped skill cell when the selected code is not learned");
         character.Items.Add(new CharacterItemRecord { ItemCode = addedCode, Quantity = 1 });
         var native = NativeDungeonState.Create(character, [], []);
         Check(native.Get(228 + 8) == 2 && native.Get(228 + 16) == 3,

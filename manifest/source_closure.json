@@ -63,8 +63,8 @@
     },
     {
       "path": "managed-host/InventoryQuickbarChecks.cs",
-      "size": 11074,
-      "sha256": "035E9AA5767F6F9119FBE2FF7E35800A76791258D5DFDF4C7DAAE79B9416B522"
+      "size": 12901,
+      "sha256": "BE7F7573EDABA3ECD468A802641C19980363400BCFCE68F5701341E31565453D"
     },
     {
       "path": "managed-host/LauncherProfileChecks.cs",
@@ -383,8 +383,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 933489,
-      "sha256": "D3F93149FEF10A2A01EB289162E78E1992609451BEE34C7428FD5062DA86FE46"
+      "size": 935696,
+      "sha256": "CBFCBD02CDEA86FC611BC59490E2574008766A338684E63FC2657A5BE4926BFA"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
