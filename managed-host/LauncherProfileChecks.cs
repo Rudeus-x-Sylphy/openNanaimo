@@ -68,6 +68,13 @@ internal static class LauncherProfileChecks
                 CharacterProgression.ExperienceRequiredForLevel(second.Level),
                 CharacterProgression.ExperienceRequiredForLevel(second.Level + 1), 0, 0, 0, 0);
             Check(cf71[0x49 - 8] == 39, "CF71 does not carry the persisted dungeon grade");
+            Check(cf71[0xB4 - 8] == 0,
+                "CF71 default ready-room rank was fabricated from the character level");
+            var rankedCf71 = DungeonProtocol.BuildRoomMember(second, checked((ushort)second.Id), 0, 0, 15009205,
+                CharacterProgression.ExperienceRequiredForLevel(second.Level),
+                CharacterProgression.ExperienceRequiredForLevel(second.Level + 1), 0, 0, 0, 0, 3);
+            Check(rankedCf71[0xB4 - 8] == 3 && rankedCf71[0xB5 - 8] == 0,
+                "CF71 ready-room rank does not carry the selected stage S badge cleanly");
             var fixedAgain = await database.ImportLocalProfileAsync(Profile(60, 2400, 5000, "42"), root);
             Check(fixedAgain.DungeonGrade == 42, "fixed dungeon grade reapply did not replace the prior grade");
             var fixedState = NativeDungeonState.Create(fixedAgain, cards, await database.GetCharacterSkillsAsync(fixedAgain.Id));

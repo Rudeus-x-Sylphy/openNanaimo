@@ -54,28 +54,28 @@
         "sha256": "E2B4E0668CE1C9B86FAAF347CCF8FE5ECFAACCEBB859BF52A682511AD2A9C09C"
       },
       "adapter_runtime/Nanaimo.Adapter.dll": {
-        "size": 238080,
-        "sha256": "4566756F3D8F5628D3D576CBA06C80BDD6E3D6193AF28841DD95779ED13008FF"
+        "size": 246784,
+        "sha256": "6B8F7A5E0F39EFD911A1A7A9548BC78427B7CD0D8F9B982ECDE357879EEA83FC"
       },
       "adapter_runtime/Nanaimo.Adapter.exe": {
         "size": 151040,
-        "sha256": "A45B5E3BCB98921DB396A78B801723EBBA9D639DE152DAD63A92DE408399FBD1"
+        "sha256": "DA9724F6BA98ECAEDFB99550D7D532BD00AA862B64D14AE547C743FDA510433F"
       },
       "adapter_runtime/Nanaimo.Adapter.pdb": {
-        "size": 44096,
-        "sha256": "842493931567AAE78CCDA185D84F3FD0635E2A68D3F6DD6AE33FE522066181DF"
+        "size": 45372,
+        "sha256": "CFA73065E8DAEA61F6E3CE8A51BE4E3599DE47D7B031AEDF05D94221D0D67328"
       },
       "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
         "size": 285,
         "sha256": "044C5CAFF98A01411AA8F0D8D61322710925F8E24516B207AE71F8B6B569EB2E"
       },
       "adapter_runtime/Nanaimo.Gameplay.dll": {
-        "size": 4248576,
-        "sha256": "1D20816E3BD2218F5030A2BCEE7306976E7708D844C185154A22D1B8CD30C8FF"
+        "size": 4261376,
+        "sha256": "4F77A531742038D46B385974D6494FEEDC233FB31AC97A504AC7D7DE5D861666"
       },
       "adapter_runtime/Nanaimo.Gameplay.pdb": {
-        "size": 370552,
-        "sha256": "BEB0B9D4C65F535B45E23B02CF2845F1090BA35D5E861FBAD6A90520D9402221"
+        "size": 371960,
+        "sha256": "DE46E4661138055D8B435BB7096B8BCBDF75FAEFE82F93734E66B537BBD5FCB0"
       },
       "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
         "size": 5120,
@@ -727,7 +727,7 @@
       },
       "adapter_runtime/adapter_manifest.json": {
         "size": 62270,
-        "sha256": "ACDB05D739F411F1F5FDE6FAD292CA7988074DA9EF72314AFAD5EA59C565F0FB"
+        "sha256": "15E216B42076EFF97DF01116BA435AF3A74DCFB48101E38B4DF72ACEDA47CB39"
       },
       "adapter_runtime/api-ms-win-core-console-l1-1-0.dll": {
         "size": 20944,
@@ -1127,28 +1127,28 @@
       "sha256": "E2B4E0668CE1C9B86FAAF347CCF8FE5ECFAACCEBB859BF52A682511AD2A9C09C"
     },
     "adapter_runtime/Nanaimo.Adapter.dll": {
-      "size": 238080,
-      "sha256": "4566756F3D8F5628D3D576CBA06C80BDD6E3D6193AF28841DD95779ED13008FF"
+      "size": 246784,
+      "sha256": "6B8F7A5E0F39EFD911A1A7A9548BC78427B7CD0D8F9B982ECDE357879EEA83FC"
     },
     "adapter_runtime/Nanaimo.Adapter.exe": {
       "size": 151040,
-      "sha256": "A45B5E3BCB98921DB396A78B801723EBBA9D639DE152DAD63A92DE408399FBD1"
+      "sha256": "DA9724F6BA98ECAEDFB99550D7D532BD00AA862B64D14AE547C743FDA510433F"
     },
     "adapter_runtime/Nanaimo.Adapter.pdb": {
-      "size": 44096,
-      "sha256": "842493931567AAE78CCDA185D84F3FD0635E2A68D3F6DD6AE33FE522066181DF"
+      "size": 45372,
+      "sha256": "CFA73065E8DAEA61F6E3CE8A51BE4E3599DE47D7B031AEDF05D94221D0D67328"
     },
     "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
       "size": 285,
       "sha256": "044C5CAFF98A01411AA8F0D8D61322710925F8E24516B207AE71F8B6B569EB2E"
     },
     "adapter_runtime/Nanaimo.Gameplay.dll": {
-      "size": 4248576,
-      "sha256": "1D20816E3BD2218F5030A2BCEE7306976E7708D844C185154A22D1B8CD30C8FF"
+      "size": 4261376,
+      "sha256": "4F77A531742038D46B385974D6494FEEDC233FB31AC97A504AC7D7DE5D861666"
     },
     "adapter_runtime/Nanaimo.Gameplay.pdb": {
-      "size": 370552,
-      "sha256": "BEB0B9D4C65F535B45E23B02CF2845F1090BA35D5E861FBAD6A90520D9402221"
+      "size": 371960,
+      "sha256": "DE46E4661138055D8B435BB7096B8BCBDF75FAEFE82F93734E66B537BBD5FCB0"
     },
     "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
       "size": 5120,
@@ -1800,7 +1800,7 @@
     },
     "adapter_runtime/adapter_manifest.json": {
       "size": 62270,
-      "sha256": "ACDB05D739F411F1F5FDE6FAD292CA7988074DA9EF72314AFAD5EA59C565F0FB"
+      "sha256": "15E216B42076EFF97DF01116BA435AF3A74DCFB48101E38B4DF72ACEDA47CB39"
     },
     "adapter_runtime/api-ms-win-core-console-l1-1-0.dll": {
       "size": 20944,
@@ -2123,7 +2123,7 @@
       "sha256": "3EFC299B3F30920A0D154D8D3978975995400394D5997521F5E80E48E550638E"
     }
   },
-  "source_closure_count": 175,
+  "source_closure_count": 176,
   "public_export_policy": {
     "mode": "explicit-reviewed-allowlist-only",
     "exclude_private_profiles_states_logs_backups": true,

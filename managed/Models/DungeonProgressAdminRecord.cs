@@ -66,3 +66,9 @@ public sealed class DungeonProgressAdminRecord : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
+
+public sealed record DungeonStageLeaderboardRecord(
+    long CharacterId,
+    string CharacterName,
+    uint BestScore,
+    ushort CharacterLevel);

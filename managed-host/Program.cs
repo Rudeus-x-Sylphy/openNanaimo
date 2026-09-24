@@ -17,6 +17,11 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--dungeon-ranking-self-test"))
+    {
+        await DungeonRankingChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--shop-currency-pagination-self-test"))
     {
         await ShopCurrencyPaginationChecks.RunAsync();

@@ -31,28 +31,55 @@ internal static class DungeonSaveChecks
             var normalReward = await db.ApplyDungeonRewardAsync(
                 account, character.Id, session, 0, 10, 1, 1,
                 score: 600, elapsedMinutes: 12, experienceReward: 0, petExperienceReward: 0, hansReward: 0,
-                token, completed: true, superBoss: false, clearRating: DungeonRewardPolicy.ClearRatingA);
+                token, completed: true, superBoss: false, clearRating: DungeonRewardPolicy.ClearRatingA,
+                stageRecordScore: 1600);
             Check(normalReward is not null, "ordinary dungeon reward persists its score-board rank");
             var secretReward = await db.ApplyDungeonRewardAsync(
                 account, character.Id, session, 1, 3, 0, 0,
                 score: 1000, elapsedMinutes: 8, experienceReward: 0, petExperienceReward: 0, hansReward: 0,
-                token, completed: true, superBoss: false, clearRating: DungeonRewardPolicy.ClearRatingS);
+                token, completed: true, superBoss: false, clearRating: DungeonRewardPolicy.ClearRatingS,
+                stageRecordScore: 2000);
             Check(secretReward is not null, "secret dungeon reward persists its score-board rank");
             var secretBossReward = await db.ApplyDungeonRewardAsync(
                 account, character.Id, session, 1, 3, 2, 0,
                 score: 800, elapsedMinutes: 9, experienceReward: 0, petExperienceReward: 0, hansReward: 0,
-                token, completed: true, superBoss: true, clearRating: DungeonRewardPolicy.ClearRatingA);
+                token, completed: true, superBoss: true, clearRating: DungeonRewardPolicy.ClearRatingA,
+                stageRecordScore: 1800);
             Check(secretBossReward is not null, "secret BOSS reward persists in the fourth packed rank slot");
             _ = await db.ApplyDungeonRewardAsync(
                 account, character.Id, session, 1, 3, 0, 0,
                 score: 100, elapsedMinutes: 20, experienceReward: 0, petExperienceReward: 0, hansReward: 0,
-                token, completed: true, superBoss: false, clearRating: DungeonRewardPolicy.ClearRatingB);
+                token, completed: true, superBoss: false, clearRating: DungeonRewardPolicy.ClearRatingB,
+                stageRecordScore: 100);
             var normalRatings = await db.GetDungeonBestRatingsAsync(character.Id, token);
             var secretRatings = await db.GetDungeonSecretBestRatingsAsync(character.Id, token);
             Check(normalRatings[10 * 3 + 1] == (DungeonRewardPolicy.ClearRatingA - 2) << 2,
                 "ordinary best rating remains in its logical difficulty cell");
             Check(secretRatings[3] == 0x83,
                 "secret ratings pack S in slot0 and A in the BOSS slot without lower-result downgrade");
+
+            var normalLeaderboard = await db.GetDungeonStageLeaderboardAsync(0, 10, 1, 0, 1, cancellationToken: token);
+            var secretLeaderboard = await db.GetDungeonStageLeaderboardAsync(1, 3, 0, 0, 0, cancellationToken: token);
+            var secretBossLeaderboard = await db.GetDungeonStageLeaderboardAsync(1, 3, 2, 1, 0, cancellationToken: token);
+            Check(normalLeaderboard.Count == 1 && normalLeaderboard[0].BestScore == 1600,
+                "ordinary stage leaderboard did not persist its team record score");
+            Check(secretLeaderboard.Count == 1 && secretLeaderboard[0].BestScore == 2000,
+                "secret stage leaderboard did not retain the higher record score");
+            Check(secretBossLeaderboard.Count == 1 && secretBossLeaderboard[0].BestScore == 1800,
+                "secret Super-BOSS leaderboard did not use its independent archive slot");
+
+            var buildStageRecords = typeof(NetworkAdapterService).GetMethod(
+                "BuildDungeonStageRecordsPayload", BindingFlags.Static | BindingFlags.NonPublic)!;
+            var cf15Payload = new byte[] { 20, 0, 1, 0 };
+            var cf16Payload = (byte[])buildStageRecords.Invoke(null, [cf15Payload, normalLeaderboard])!;
+            Check(cf16Payload.Length == 244 && cf16Payload.AsSpan(0, 4).SequenceEqual(cf15Payload),
+                "CF16 payload does not preserve the four-byte CF15 selector");
+            Check(System.Text.Encoding.GetEncoding(936).GetString(cf16Payload, 4, 16).TrimEnd('\0') == character.Name
+                && BinaryPrimitives.ReadUInt32LittleEndian(cf16Payload.AsSpan(20, 4)) == 1600
+                && BinaryPrimitives.ReadUInt16LittleEndian(cf16Payload.AsSpan(24, 2)) == character.Level
+                && BinaryPrimitives.ReadUInt16LittleEndian(cf16Payload.AsSpan(26, 2)) == 1
+                && cf16Payload.AsSpan(28, 24).ToArray().All(value => value == 0),
+                "CF16 first 24-byte row or zero-filled unused row is malformed");
 
             // Legacy wire selector 2 is ordinary LOW, not logical HIGH.
             var legacy = new NativeDungeonState(baseline.Bytes.ToArray());

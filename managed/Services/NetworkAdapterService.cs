@@ -5739,7 +5739,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     _log($"{channel}:{remote} Dungeon transition ignored early CF70 room refresh: room={userInfoTransitionRoomId} action={userInfoTransitionAction} characterId={session.Character.Id}");
                 }
                 _log($"{channel}:{remote} 返回地宫房间成员：cursor={roomUserInfoCursor} member={roomUser.Character.Id} owner={roomOwner.Character.Id}");
-                QueueDungeonMemberSnapshots(session);
+                var readyRoom = GetDungeonRoom(session);
+                if (readyRoom is null)
+                    return null;
+                var readyRoomRanks = await LoadDungeonReadyRoomRanksAsync(readyRoom, token);
+                var roomUserReadyRank = readyRoomRanks.GetValueOrDefault(roomUser.Character.Id);
+                QueueDungeonMemberSnapshots(session, readyRoomRanks);
                 var roomUserSkillSlots = await GetEffectiveDungeonSkillSlotsAsync(roomUser, token);
                 IReadOnlyList<CharacterSkillRecord> roomUserLearnedSkills = roomUser.AccountId > 0
                     ? await _database.GetCharacterSkillsAsync(roomUser.Character.Id, token)
@@ -5767,7 +5772,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         roomUserSkillSlots.Skill0,
                         roomUserSkillSlots.Grade0,
                         roomUserSkillSlots.Skill1,
-                        roomUserSkillSlots.Grade1),
+                        roomUserSkillSlots.Grade1,
+                        roomUserReadyRank),
                     session);
                 _log($"{channel}:{remote} Dungeon runtime skills restored before CF71/CFEC: " +
                      $"z={roomUserSkillSlots.Skill0}:{roomUserSkillSlots.Grade0} " +
@@ -7196,6 +7202,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 int hitScore;
                 int bossBonusScore;
                 int score;
+                int stageRecordScore;
                 DungeonMaximumScore maximumScore;
                 byte[]? cachedEndPayload;
                 var rewardCharacterId = session.Character.Id;
@@ -7231,6 +7238,16 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     hitScore = endBattle.HitScores.GetValueOrDefault(rewardCharacterId);
                     bossBonusScore = endBattle.BossBonusScores.GetValueOrDefault(rewardCharacterId);
                     score = checked(hitScore + bossBonusScore);
+                    // CF16 associates one team stage-record score with every
+                    // participating name. Ordinary scores are per scorer, while
+                    // the BOSS bonus is mirrored to each member, so add it once.
+                    stageRecordScore = checked(
+                        endBattle.ParticipantCharacterIds.Sum(characterId =>
+                            endBattle.HitScores.GetValueOrDefault(characterId))
+                        + endBattle.ParticipantCharacterIds
+                            .Select(characterId => endBattle.BossBonusScores.GetValueOrDefault(characterId))
+                            .DefaultIfEmpty(0)
+                            .Max());
                     rewardCleared = endBattle.Bosses.Values.Any(boss => boss.ClearAnnounced);
                     // Settlement belongs to the battle instance, not to the
                     // mutable waiting-room membership. A member leaving after
@@ -7311,7 +7328,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         token,
                         completed: rewardProgressCompleted,
                         superBoss: rewardIsSuperBoss,
-                        clearRating: settlementReward.Rating);
+                        clearRating: settlementReward.Rating,
+                        stageRecordScore: stageRecordScore);
                     if (rewarded is null)
                         return null;
 
@@ -7593,13 +7611,29 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var recordsRoom = GetDungeonRoom(session);
                 if (recordsRoom is null)
                     return null;
-                byte[] recordsPayload;
+                if (BinaryPrimitives.ReadUInt16LittleEndian(payload) != DungeonEpisodeCount
+                    || BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2, 2)) >= DungeonDifficultyCount)
+                    return null;
+                byte recordsHdIndex;
+                byte recordsEpisode;
+                byte recordsDungeon;
+                byte recordsStage;
+                byte recordsDifficulty;
                 lock (_dungeonRoomGate)
                 {
                     if (!recordsRoom.Members.ContainsKey(session.SessionId))
                         return null;
-                    recordsPayload = BuildDungeonStageRecordsPayload(payload, recordsRoom);
+                    recordsHdIndex = recordsRoom.HdIndex;
+                    recordsEpisode = recordsRoom.BattleEpisode;
+                    recordsDungeon = recordsRoom.BattleDungeon;
+                    recordsStage = recordsRoom.BattleStage;
+                    recordsDifficulty = recordsRoom.BattleLogicalDifficulty;
                 }
+                var stageRecords = await _database.GetDungeonStageLeaderboardAsync(
+                    recordsHdIndex, recordsEpisode, recordsDungeon, recordsStage, recordsDifficulty,
+                    limit: 10, cancellationToken: token);
+                var recordsPayload = BuildDungeonStageRecordsPayload(payload, stageRecords);
+                _log($"{channel}:{remote} Dungeon stage leaderboard returned: selectors={recordsHdIndex}/{recordsEpisode}/{recordsDungeon}/{recordsStage}/{recordsDifficulty} records={stageRecords.Count}");
                 return BuildNativeFrame(frame, 0xCF16, recordsPayload, session);
             }
 
@@ -12236,7 +12270,60 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
            && room.SettlementAction is DungeonSettlementAction.ChallengeBoss
                or DungeonSettlementAction.RetryCurrent;
 
-    private void QueueDungeonMemberSnapshots(ConnectionSession initialized)
+    private async Task<IReadOnlyDictionary<long, byte>> LoadDungeonReadyRoomRanksAsync(
+        DungeonRoom room,
+        CancellationToken token)
+    {
+        byte hdIndex;
+        byte episode;
+        byte dungeon;
+        byte stage;
+        byte logicalDifficulty;
+        CharacterRecord[] characters;
+        lock (_dungeonRoomGate)
+        {
+            hdIndex = room.HdIndex;
+            episode = room.BattleEpisode;
+            dungeon = room.BattleDungeon;
+            stage = room.BattleStage;
+            logicalDifficulty = room.BattleLogicalDifficulty;
+            characters = room.Members.Values
+                .Select(member => member.Session.Character)
+                .Where(character => character is not null)
+                .Cast<CharacterRecord>()
+                .ToArray();
+        }
+
+        var archiveSlot = dungeon + stage;
+        if (archiveSlot > 3 || logicalDifficulty >= DungeonDifficultyCount)
+            return new Dictionary<long, byte>();
+
+        var result = new Dictionary<long, byte>(characters.Length);
+        foreach (var character in characters)
+        {
+            byte packedRatings;
+            if (hdIndex == 0)
+            {
+                if (episode >= DungeonEpisodeCount)
+                    continue;
+                var ratings = await _database.GetDungeonBestRatingsAsync(character.Id, token);
+                packedRatings = ratings[episode * DungeonDifficultyCount + logicalDifficulty];
+            }
+            else
+            {
+                if (hdIndex != 1 || episode >= 4)
+                    continue;
+                var ratings = await _database.GetDungeonSecretBestRatingsAsync(character.Id, token);
+                packedRatings = ratings[episode];
+            }
+            result[character.Id] = checked((byte)((packedRatings >> (archiveSlot * 2)) & 0x03));
+        }
+        return result;
+    }
+
+    private void QueueDungeonMemberSnapshots(
+        ConnectionSession initialized,
+        IReadOnlyDictionary<long, byte> readyRoomRanks)
     {
         lock (_dungeonRoomGate)
         {
@@ -12267,9 +12354,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     continue;
 
                 QueueDungeonEntityAnnouncementLocked(
-                    room, initialized, initialized, peer, ownerCharacter, "existing dungeon member snapshot");
+                    room, initialized, initialized, peer, ownerCharacter, readyRoomRanks,
+                    "existing dungeon member snapshot");
                 QueueDungeonEntityAnnouncementLocked(
-                    room, initialized, peer, initialized, ownerCharacter, "dungeon member entered");
+                    room, initialized, peer, initialized, ownerCharacter, readyRoomRanks,
+                    "dungeon member entered");
             }
         }
     }
@@ -12280,6 +12369,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         ConnectionSession recipient,
         ConnectionSession entity,
         CharacterRecord ownerCharacter,
+        IReadOnlyDictionary<long, byte> readyRoomRanks,
         string reason)
     {
         var announcementKey = $"{recipient.SessionId}\0{entity.SessionId}";
@@ -12291,7 +12381,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         source.PendingBroadcasts.Add(new PendingNativeBroadcast(
             recipientPresence,
             0xCF71,
-            BuildGameRoomUserPayload(entity.Character, ownerCharacter, entity.DungeonSlotIndex),
+            BuildGameRoomUserPayload(
+                entity.Character, ownerCharacter, entity.DungeonSlotIndex,
+                readyRoomRank: readyRoomRanks.GetValueOrDefault(entity.Character.Id)),
             reason));
         if (entity.DungeonMulticastInitialized)
         {
@@ -16392,28 +16484,23 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     }
 
     private static byte[] BuildDungeonStageRecordsPayload(
-        ReadOnlySpan<byte> requestPayload,
-        DungeonRoom room)
+        byte[] requestPayload,
+        IReadOnlyList<DungeonStageLeaderboardRecord> records)
     {
+        // CF16 is a 252-byte frame: the echoed four-byte CF15 selector plus
+        // ten fixed 24-byte records. The client consumes name[16], score u32,
+        // character level u16 and the 1..7 level-icon band u16.
         var payload = new byte[244];
-        requestPayload[..Math.Min(requestPayload.Length, 4)].CopyTo(payload);
-        var members = room.Members.Values.OrderBy(member => member.SlotIndex).Take(10).ToArray();
-        for (var index = 0; index < members.Length; index++)
+        requestPayload.AsSpan(0, Math.Min(requestPayload.Length, 4)).CopyTo(payload);
+        for (var index = 0; index < Math.Min(records.Count, 10); index++)
         {
-            if (members[index].Session.Character is not { } character)
-                continue;
+            var record = records[index];
             var offset = 4 + index * 0x18;
-            WriteFixedGbk(payload.AsSpan(offset, 16), character.Name);
-            BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset + 16, 4),
-                (uint)Math.Max(
-                    0,
-                    checked(
-                        room.HitScores.GetValueOrDefault(character.Id)
-                        + room.BossBonusScores.GetValueOrDefault(character.Id))));
-            BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(offset + 20, 2),
-                (ushort)Math.Clamp(character.Level, 1, ushort.MaxValue));
+            WriteFixedGbk(payload.AsSpan(offset, 16), record.CharacterName);
+            BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset + 16, 4), record.BestScore);
+            BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(offset + 20, 2), record.CharacterLevel);
             BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(offset + 22, 2),
-                GetDungeonLevelIcon(character.Level));
+                GetDungeonLevelIcon(record.CharacterLevel));
         }
         return payload;
     }
@@ -16683,13 +16770,20 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private static byte[] BuildGameRoomUserPayload(
         CharacterRecord character,
         CharacterRecord? owner = null) =>
-        BuildGameRoomUserPayload(character, owner, 0, 0, 0, 0, 0);
+        BuildGameRoomUserPayload(character, owner, 0, 0, 0, 0, 0, 0);
 
     private static byte[] BuildGameRoomUserPayload(
         CharacterRecord character,
         CharacterRecord? owner,
         byte roomSlot)
-        => BuildGameRoomUserPayload(character, owner, roomSlot, 0, 0, 0, 0);
+        => BuildGameRoomUserPayload(character, owner, roomSlot, 0, 0, 0, 0, 0);
+
+    private static byte[] BuildGameRoomUserPayload(
+        CharacterRecord character,
+        CharacterRecord? owner,
+        byte roomSlot,
+        byte readyRoomRank)
+        => BuildGameRoomUserPayload(character, owner, roomSlot, 0, 0, 0, 0, readyRoomRank);
 
     private static byte[] BuildGameRoomUserPayload(
         CharacterRecord character,
@@ -16698,7 +16792,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         uint skill0,
         byte skill0Grade,
         uint skill1,
-        byte skill1Grade)
+        byte skill1Grade,
+        byte readyRoomRank = 0)
     {
         var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
         var nextLevel = character.Level >= CharacterProgression.MaximumLevel
@@ -16715,7 +16810,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             skill0,
             skill0Grade,
             skill1,
-            skill1Grade);
+            skill1Grade,
+            readyRoomRank);
     }
 
     internal static bool TryParseCardSynthesisRequest(

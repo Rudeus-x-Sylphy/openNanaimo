@@ -348,6 +348,17 @@ public sealed partial class DatabaseService
                     UpdatedAt TEXT NOT NULL,
                     PRIMARY KEY (CharacterId, Episode, Difficulty, ArchiveSlot)
                 );
+                CREATE TABLE IF NOT EXISTS DungeonSecretStagePerformance (
+                    CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                    Episode INTEGER NOT NULL CHECK (Episode BETWEEN 0 AND 3),
+                    Difficulty INTEGER NOT NULL CHECK (Difficulty BETWEEN 0 AND 2),
+                    ArchiveSlot INTEGER NOT NULL CHECK (ArchiveSlot BETWEEN 0 AND 3),
+                    BestScore INTEGER NOT NULL DEFAULT 0 CHECK (BestScore >= 0),
+                    BestElapsedMinutes INTEGER NULL CHECK (BestElapsedMinutes IS NULL OR BestElapsedMinutes >= 0),
+                    ClearedAt TEXT NOT NULL,
+                    UpdatedAt TEXT NOT NULL,
+                    PRIMARY KEY (CharacterId, Episode, Difficulty, ArchiveSlot)
+                );
                 CREATE TABLE IF NOT EXISTS CharacterApartmentItems (
                     CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
                     SlotIndex INTEGER NOT NULL CHECK (SlotIndex BETWEEN 0 AND 83),
@@ -9554,7 +9565,8 @@ public sealed partial class DatabaseService
         CancellationToken cancellationToken = default,
         bool completed = true,
         bool superBoss = false,
-        byte clearRating = 0)
+        byte clearRating = 0,
+        int? stageRecordScore = null)
     {
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrWhiteSpace(sessionId)
             || hdIndex > 1
@@ -9563,7 +9575,7 @@ public sealed partial class DatabaseService
             || dungeon >= 3 || difficulty >= 3
             || (superBoss && dungeon != 2)
             || clearRating > 5
-            || score < 0 || elapsedMinutes < 0 || experienceReward < 0
+            || score < 0 || stageRecordScore < 0 || elapsedMinutes < 0 || experienceReward < 0
             || petExperienceReward < 0 || hansReward < 0)
             return null;
 
@@ -9799,32 +9811,43 @@ public sealed partial class DatabaseService
             progress.Parameters.AddWithValue("$now", now);
             await progress.ExecuteNonQueryAsync(cancellationToken);
 
-            if (hdIndex == 0)
-            {
             await using var performance = connection.CreateCommand();
             performance.Transaction = transaction;
-            performance.CommandText = """
-                INSERT INTO DungeonStagePerformance(
-                    CharacterId, Episode, Difficulty, ArchiveSlot, BestScore,
-                    BestElapsedMinutes, ClearedAt, UpdatedAt)
-                VALUES($characterId, $episode, $difficulty, $archiveSlot, $score, $elapsed, $now, $now)
-                ON CONFLICT(CharacterId, Episode, Difficulty, ArchiveSlot) DO UPDATE SET
-                    BestScore = MAX(DungeonStagePerformance.BestScore, excluded.BestScore),
-                    BestElapsedMinutes = CASE
-                        WHEN DungeonStagePerformance.BestElapsedMinutes IS NULL THEN excluded.BestElapsedMinutes
-                        ELSE MIN(DungeonStagePerformance.BestElapsedMinutes, excluded.BestElapsedMinutes)
-                    END,
-                    UpdatedAt = excluded.UpdatedAt
-                """;
+            performance.CommandText = hdIndex == 0
+                ? """
+                    INSERT INTO DungeonStagePerformance(
+                        CharacterId, Episode, Difficulty, ArchiveSlot, BestScore,
+                        BestElapsedMinutes, ClearedAt, UpdatedAt)
+                    VALUES($characterId, $episode, $difficulty, $archiveSlot, $score, $elapsed, $now, $now)
+                    ON CONFLICT(CharacterId, Episode, Difficulty, ArchiveSlot) DO UPDATE SET
+                        BestScore = MAX(DungeonStagePerformance.BestScore, excluded.BestScore),
+                        BestElapsedMinutes = CASE
+                            WHEN DungeonStagePerformance.BestElapsedMinutes IS NULL THEN excluded.BestElapsedMinutes
+                            ELSE MIN(DungeonStagePerformance.BestElapsedMinutes, excluded.BestElapsedMinutes)
+                        END,
+                        UpdatedAt = excluded.UpdatedAt
+                    """
+                : """
+                    INSERT INTO DungeonSecretStagePerformance(
+                        CharacterId, Episode, Difficulty, ArchiveSlot, BestScore,
+                        BestElapsedMinutes, ClearedAt, UpdatedAt)
+                    VALUES($characterId, $episode, $difficulty, $archiveSlot, $score, $elapsed, $now, $now)
+                    ON CONFLICT(CharacterId, Episode, Difficulty, ArchiveSlot) DO UPDATE SET
+                        BestScore = MAX(DungeonSecretStagePerformance.BestScore, excluded.BestScore),
+                        BestElapsedMinutes = CASE
+                            WHEN DungeonSecretStagePerformance.BestElapsedMinutes IS NULL THEN excluded.BestElapsedMinutes
+                            ELSE MIN(DungeonSecretStagePerformance.BestElapsedMinutes, excluded.BestElapsedMinutes)
+                        END,
+                        UpdatedAt = excluded.UpdatedAt
+                    """;
             performance.Parameters.AddWithValue("$characterId", characterId);
             performance.Parameters.AddWithValue("$episode", episode);
             performance.Parameters.AddWithValue("$difficulty", difficulty);
             performance.Parameters.AddWithValue("$archiveSlot", archiveSlot);
-            performance.Parameters.AddWithValue("$score", score);
+            performance.Parameters.AddWithValue("$score", stageRecordScore ?? score);
             performance.Parameters.AddWithValue("$elapsed", elapsedMinutes);
             performance.Parameters.AddWithValue("$now", now);
             await performance.ExecuteNonQueryAsync(cancellationToken);
-            }
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -9938,6 +9961,61 @@ public sealed partial class DatabaseService
             ratings[episode] = checked((byte)bestRatings);
         }
         return ratings;
+    }
+
+    public async Task<IReadOnlyList<DungeonStageLeaderboardRecord>> GetDungeonStageLeaderboardAsync(
+        byte hdIndex,
+        byte episode,
+        byte dungeon,
+        byte stage,
+        byte difficulty,
+        int limit = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (hdIndex > 1
+            || (hdIndex == 0 && episode >= 20)
+            || (hdIndex == 1 && episode >= 4)
+            || dungeon >= 3
+            || difficulty >= 3
+            || stage > 1
+            || (stage == 1 && dungeon != 2)
+            || limit is < 1 or > 10)
+            return [];
+
+        var archiveSlot = checked((byte)(dungeon + stage));
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        var table = hdIndex == 0 ? "DungeonStagePerformance" : "DungeonSecretStagePerformance";
+        command.CommandText = $"""
+            SELECT performance.CharacterId, character.Name, performance.BestScore, character.Level
+            FROM {table} AS performance
+            INNER JOIN Characters AS character ON character.Id = performance.CharacterId
+            WHERE performance.Episode = $episode
+              AND performance.Difficulty = $difficulty
+              AND performance.ArchiveSlot = $archiveSlot
+            ORDER BY performance.BestScore DESC,
+                     CASE WHEN performance.BestElapsedMinutes IS NULL THEN 1 ELSE 0 END,
+                     performance.BestElapsedMinutes ASC,
+                     performance.UpdatedAt ASC,
+                     performance.CharacterId ASC
+            LIMIT $limit
+            """;
+        command.Parameters.AddWithValue("$episode", episode);
+        command.Parameters.AddWithValue("$difficulty", difficulty);
+        command.Parameters.AddWithValue("$archiveSlot", archiveSlot);
+        command.Parameters.AddWithValue("$limit", limit);
+
+        var result = new List<DungeonStageLeaderboardRecord>(limit);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(new DungeonStageLeaderboardRecord(
+                reader.GetInt64(0),
+                reader.GetString(1),
+                checked((uint)reader.GetInt64(2)),
+                checked((ushort)Math.Clamp(reader.GetInt32(3), 0, ushort.MaxValue))));
+        }
+        return result;
     }
 
     public async Task<IReadOnlyList<DungeonProgressAdminRecord>> GetDungeonProgressAdminAsync(

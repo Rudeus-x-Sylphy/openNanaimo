@@ -75,7 +75,8 @@ internal static class DungeonProtocol
         uint skill0,
         byte skill0Grade,
         uint skill1,
-        byte skill1Grade)
+        byte skill1Grade,
+        byte readyRoomRank = 0)
     {
         var payload = new byte[0xB8 - 8];
         EncodeFixed(character.Name, payload.AsSpan(0, 16));
@@ -144,13 +145,14 @@ internal static class DungeonProtocol
         payload[0xAB - 8] = skill1Grade;
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0xAC - 8), skill0);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0xB0 - 8), skill1);
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0xB4 - 8),
-            (ushort)Math.Clamp(character.Level, 0, ushort.MaxValue));
+        // CF71 full-frame +0xB4 is the selected stage's ready-room rank badge.
+        // The client consumes only values 0/1/2/3 as blank/B/A/S. It is not
+        // the character level; writing level 1 fabricated a permanent B badge.
+        if (readyRoomRank > 3)
+            throw new ArgumentOutOfRangeException(nameof(readyRoomRank));
+        payload[0xB4 - 8] = readyRoomRank;
         return payload;
     }
-
-    private static byte GetLevelIcon(int level) =>
-        (byte)Math.Clamp((Math.Max(1, level) - 1) / 10 + 1, 1, 7);
 
     public static byte[] BuildSlotChange(byte slot, byte state)
     {

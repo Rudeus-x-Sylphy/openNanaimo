@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 175,
+  "count": 176,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -57,9 +57,14 @@
       "sha256": "58AAEDFC983605431BCC745453902E58B0E6B9772020CA80FCCDBA2BF3BD05D1"
     },
     {
+      "path": "managed-host/DungeonRankingChecks.cs",
+      "size": 6319,
+      "sha256": "9365D6EC38148B7848D4590731F1BC976BAF20A5F645C98EF08FA92E22D7C380"
+    },
+    {
       "path": "managed-host/DungeonSaveChecks.cs",
-      "size": 16051,
-      "sha256": "1D238E9EEB9FAB64947DD0CF0C070A2E1AB7E263F8AF8FBFB61BA9EDB8C74924"
+      "size": 18202,
+      "sha256": "A568DBC68CE97D855A87486254733DC788E68B12CCB0F553E6AC19FD007C12EE"
     },
     {
       "path": "managed-host/InventoryQuickbarChecks.cs",
@@ -68,13 +73,13 @@
     },
     {
       "path": "managed-host/LauncherProfileChecks.cs",
-      "size": 10227,
-      "sha256": "8ADC9A0B8EBE30547E383B4BEC63CAD582F5C3F55E89E0A7EF019295991289E7"
+      "size": 10811,
+      "sha256": "02E3A8FB3A15916968BDFBC943E5CE19130D206DBD92714223CBA9000165D020"
     },
     {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 29797,
-      "sha256": "9161CCCB86710AB0AE26A2CEE39C56A573142E4BEA7714BD40DB31E680618CE0"
+      "size": 29844,
+      "sha256": "D2047D97E4F958FD523F3AC72348E46B93454C39171AEBB0A88D020639E40839"
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
@@ -88,8 +93,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 7270,
-      "sha256": "7A5E41F4A49E433192A4C69D5277D44A2252D0F68ED987454D47065C5CF8DF3F"
+      "size": 7399,
+      "sha256": "FEB1ECC4A57C2DBA9CCF68AFE9308DF60551005F7EB2695412714A16806E5E6A"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -188,8 +193,8 @@
     },
     {
       "path": "managed/Models/DungeonProgressAdminRecord.cs",
-      "size": 2919,
-      "sha256": "D810A424C91800F3F83AB37A78E63BCCD48199251DBDEFEB093F70718CAF04CB"
+      "size": 3068,
+      "sha256": "3D56EF6C39EC626DFA1E33C7FBCCF93BB23F87E238672E906D07C652EBDDA155"
     },
     {
       "path": "managed/Models/FriendAdminRecord.cs",
@@ -298,8 +303,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 580055,
-      "sha256": "6EFE021AF1E01345A05D1797AB201E02ADBAEE16DCAEC197AF37E932A1D77353"
+      "size": 584346,
+      "sha256": "EC0F35AF251E71A1ADAEF171E3E4FE132152384AC277B7F557D1A1DA8F04AD12"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -313,8 +318,8 @@
     },
     {
       "path": "managed/Services/DungeonProtocol.cs",
-      "size": 19963,
-      "sha256": "CCBF317341AC0E6E6E397B136D27B18E5AD53AB7B278A9A4F347AADB81AA3391"
+      "size": 20116,
+      "sha256": "6D96FBC5677A43DC83E7969E59F4BC4E1B7C97663F38B33E472A7DFA7745A7AD"
     },
     {
       "path": "managed/Services/DungeonRewardPolicy.cs",
@@ -383,8 +388,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 936506,
-      "sha256": "8B5E1EFF444308ABB59DEF9F7474E0B649ADCB963DDE071554214DB6745E13F2"
+      "size": 941200,
+      "sha256": "E4CFFCE899EDFB6C439DED2B02498930B63234F3D2165209D9D280E4F96B1494"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
