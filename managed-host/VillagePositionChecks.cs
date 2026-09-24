@@ -133,6 +133,7 @@ internal static class VillagePositionChecks
                     savedCharacter,
                     new byte[60],
                     new byte[60],
+                    new byte[4],
                     null);
                 Check(c355Payload[0x20 - 8] == TownPositionPolicy.LoginBootstrapMapId
                       && c355Payload[0x21 - 8] == TownPositionPolicy.LoginBootstrapTownPage,

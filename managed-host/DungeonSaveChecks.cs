@@ -28,6 +28,32 @@ internal static class DungeonSaveChecks
         Check(await db.BeginWorldSessionAsync(account, character.Id, session, 1, "127.0.0.1", token), "dungeon save fixture online");
         try
         {
+            var normalReward = await db.ApplyDungeonRewardAsync(
+                account, character.Id, session, 0, 10, 1, 1,
+                score: 600, elapsedMinutes: 12, experienceReward: 0, petExperienceReward: 0, hansReward: 0,
+                token, completed: true, superBoss: false, clearRating: DungeonRewardPolicy.ClearRatingA);
+            Check(normalReward is not null, "ordinary dungeon reward persists its score-board rank");
+            var secretReward = await db.ApplyDungeonRewardAsync(
+                account, character.Id, session, 1, 3, 0, 0,
+                score: 1000, elapsedMinutes: 8, experienceReward: 0, petExperienceReward: 0, hansReward: 0,
+                token, completed: true, superBoss: false, clearRating: DungeonRewardPolicy.ClearRatingS);
+            Check(secretReward is not null, "secret dungeon reward persists its score-board rank");
+            var secretBossReward = await db.ApplyDungeonRewardAsync(
+                account, character.Id, session, 1, 3, 2, 0,
+                score: 800, elapsedMinutes: 9, experienceReward: 0, petExperienceReward: 0, hansReward: 0,
+                token, completed: true, superBoss: true, clearRating: DungeonRewardPolicy.ClearRatingA);
+            Check(secretBossReward is not null, "secret BOSS reward persists in the fourth packed rank slot");
+            _ = await db.ApplyDungeonRewardAsync(
+                account, character.Id, session, 1, 3, 0, 0,
+                score: 100, elapsedMinutes: 20, experienceReward: 0, petExperienceReward: 0, hansReward: 0,
+                token, completed: true, superBoss: false, clearRating: DungeonRewardPolicy.ClearRatingB);
+            var normalRatings = await db.GetDungeonBestRatingsAsync(character.Id, token);
+            var secretRatings = await db.GetDungeonSecretBestRatingsAsync(character.Id, token);
+            Check(normalRatings[10 * 3 + 1] == (DungeonRewardPolicy.ClearRatingA - 2) << 2,
+                "ordinary best rating remains in its logical difficulty cell");
+            Check(secretRatings[3] == 0x83,
+                "secret ratings pack S in slot0 and A in the BOSS slot without lower-result downgrade");
+
             // Legacy wire selector 2 is ordinary LOW, not logical HIGH.
             var legacy = new NativeDungeonState(baseline.Bytes.ToArray());
             Put(legacy, 5024, 1); Put(legacy, 5028, 1); Put(legacy, 5044, 2);

@@ -103,8 +103,8 @@ internal static class ChannelReentryChecks
                 "channel reentry preserves the request-driven C355 chain");
             var c355Frame = profile.AsSpan(0, 728).ToArray();
             Check(c355Frame.AsSpan(0x3C, 60).ToArray().All(value => value == 0x0F)
-                  && c355Frame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0x55),
-                "channel reentry receives the same final reference implementation C355 tables");
+                  && c355Frame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0),
+                "channel reentry keeps access open without fabricating score-board ranks");
             Check((BinaryPrimitives.ReadUInt64LittleEndian(c355Frame.AsSpan(0x80, 8))
                     & ((1UL << 44) - 1UL)) == (1UL << 44) - 1UL,
                 "channel reentry receives all 22 village predecessor pairs");

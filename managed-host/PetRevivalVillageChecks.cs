@@ -43,7 +43,9 @@ internal static class PetRevivalVillageChecks
 
         var clearMasks = Enumerable.Range(0, 60).Select(index => (byte)(1 << (index % 4))).ToArray();
         var ratings = Enumerable.Range(0, 60).Select(index => (byte)index).ToArray();
-        var c355 = NetworkAdapterService.BuildLoadNecessityPayload(character, clearMasks, ratings, null);
+        var secretRatings = new byte[] { 0xE4, 0x1B, 0x39, 0xC6 };
+        var c355 = NetworkAdapterService.BuildLoadNecessityPayload(
+            character, clearMasks, ratings, secretRatings, null);
         Check(c355.Length == 0x2D8 - 8, "C355 payload keeps the native 728-byte frame contract");
         Check(c355.AsSpan(0x3C - 8, 60).ToArray().All(value => value == 0x0F),
             "C355 final ordinary dungeon table matches the reference implementation all-open policy");
@@ -52,17 +54,20 @@ internal static class PetRevivalVillageChecks
         Check(BinaryPrimitives.ReadUInt64LittleEndian(c355.AsSpan(0x80 - 8, 8)) == (1UL << 44) - 1UL,
             "C355 opens exactly the low 44 village prerequisite bits");
         Check(BinaryPrimitives.ReadUInt32LittleEndian(c355.AsSpan(0x38 - 8, 4)) == selectedPet, "C355 carries selected PET code");
-        Check(c355.AsSpan(0x88 - 8, 0xDF - 0x88).ToArray().All(value => value == 0x55),
-            "C355 final progression fill matches reference implementation and stops before partner name");
+        Check(c355.AsSpan(0x88 - 8, 60).SequenceEqual(ratings),
+            "C355 ordinary score board preserves the persisted packed B/A/S ratings");
+        Check(c355.AsSpan(0xC4 - 8, 4).SequenceEqual(secretRatings),
+            "C355 secret score board preserves its four packed episode ratings");
+        Check(c355.AsSpan(0xC8 - 8, 23).SequenceEqual(new byte[23]),
+            "C355 unpersisted frontier score board remains unrated instead of fabricating B");
         Check(c355.AsSpan(0xDF - 8, 17).SequenceEqual(new byte[17])
             && BinaryPrimitives.ReadUInt16LittleEndian(c355.AsSpan(0xF0 - 8, 2)) == 0,
             "C355 no-couple state leaves empty name and zero ring for the native emotion gate");
         Check(c355[0xF2 - 8] == 33, "C355 revival count remains adjacent after the ring field");
 
-        // Regression from adapter.log line 32: the shipped frame already had
-        // low44=1, but +0x88..+0xDE was entirely zero while the couple fields
-        // were empty and revival count was 33. Reproduce that exact relevant
-        // boundary before final normalization.
+        // A final access normalization must not mutate the independent cached
+        // score-board tables. Reproduce a zero-rating profile with open village
+        // prerequisites and verify the ranks remain unrated.
         var capturedFrame = NativeDungeonClient.Frame(0xC355, new byte[0x2D8 - 8]);
         BinaryPrimitives.WriteUInt64LittleEndian(
             capturedFrame.AsSpan(0x80, 8),
@@ -72,8 +77,8 @@ internal static class PetRevivalVillageChecks
             && capturedFrame.AsSpan(0xC4, 0xDF - 0xC4).ToArray().All(value => value == 0),
             "captured C355 regression starts with both post-mask progress domains zero");
         NetworkAdapterService.NormalizeC355VillageAccessFrame(capturedFrame);
-        Check(capturedFrame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0x55),
-            "captured C355 regression receives the reference implementation final packed-state1 progression fill");
+        Check(capturedFrame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0),
+            "C355 access normalization preserves an unrated ordinary/secret/frontier score board");
         Check(capturedFrame.AsSpan(0xDF, 17).ToArray().All(value => value == 0)
             && BinaryPrimitives.ReadUInt16LittleEndian(capturedFrame.AsSpan(0xF0, 2)) == 0
             && capturedFrame[0xF2] == 33,
@@ -84,21 +89,24 @@ internal static class PetRevivalVillageChecks
         BinaryPrimitives.WriteUInt64LittleEndian(
             finalFrame.AsSpan(0x80, 8),
             0xABCDE00000000000UL);
+        finalFrame.AsSpan(0x88, 0xDF - 0x88).Fill(0x6C);
         finalFrame.AsSpan(0xDF, 0x2D8 - 0xDF).Fill(0xC3);
         var untouchedPrefix = finalFrame.AsSpan(0, 0x3C).ToArray();
         var untouchedMiddle = finalFrame.AsSpan(0x78, 8).ToArray();
+        var untouchedRatings = finalFrame.AsSpan(0x88, 0xDF - 0x88).ToArray();
         var untouchedTail = finalFrame.AsSpan(0xDF).ToArray();
         NetworkAdapterService.NormalizeC355VillageAccessFrame(finalFrame);
         Check(finalFrame.AsSpan(0, 0x3C).SequenceEqual(untouchedPrefix)
             && finalFrame.AsSpan(0x78, 8).SequenceEqual(untouchedMiddle)
+            && finalFrame.AsSpan(0x88, 0xDF - 0x88).SequenceEqual(untouchedRatings)
             && finalFrame.AsSpan(0xDF).SequenceEqual(untouchedTail),
-            "C355 final normalizer changes only the three proven progress domains");
+            "C355 final normalizer changes only the two access domains");
         Check((BinaryPrimitives.ReadUInt64LittleEndian(finalFrame.AsSpan(0x80, 8)) & ~((1UL << 44) - 1UL))
                 == 0xABCDE00000000000UL,
             "C355 final normalizer preserves bit44..63 exactly");
         Check(finalFrame.AsSpan(0x3C, 60).ToArray().All(value => value == 0x0F)
-            && finalFrame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0x55),
-            "C355 final normalizer repairs ordinary and reference implementation progression carriers");
+            && finalFrame.AsSpan(0x88, 0xDF - 0x88).SequenceEqual(untouchedRatings),
+            "C355 final normalizer repairs access without replacing score-board ranks");
 
         var validCouple = new CoupleRelationRecord
         {
@@ -109,7 +117,7 @@ internal static class PetRevivalVillageChecks
             RingItemCode = 43_000_002
         };
         var coupledC355 = NetworkAdapterService.BuildLoadNecessityPayload(
-            character, new byte[60], ratings, validCouple);
+            character, new byte[60], ratings, secretRatings, validCouple);
         Check(coupledC355.AsSpan(0xDF - 8, 8).SequenceEqual("Partner\0"u8),
             "C355 valid couple writes the bounded partner name");
         Check(BinaryPrimitives.ReadUInt16LittleEndian(coupledC355.AsSpan(0xF0 - 8, 2)) == 2,
@@ -124,7 +132,7 @@ internal static class PetRevivalVillageChecks
             RingItemCode = 43_099_999
         };
         var invalidC355 = NetworkAdapterService.BuildLoadNecessityPayload(
-            character, new byte[60], ratings, invalidCouple);
+            character, new byte[60], ratings, secretRatings, invalidCouple);
         Check(invalidC355.AsSpan(0xDF - 8, 17).SequenceEqual(new byte[17])
             && BinaryPrimitives.ReadUInt16LittleEndian(invalidC355.AsSpan(0xF0 - 8, 2)) == 0,
             "C355 invalid relation fails closed before the native emotion lookup");

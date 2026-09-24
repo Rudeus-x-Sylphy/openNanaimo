@@ -62,7 +62,7 @@ internal static class LauncherProfileChecks
                 && state.Get(128) == 10150103u,
                 "reserved D4 was mistaken for the D5 accessory in the native dungeon snapshot");
             Check(state.Items.TryGetValue(14000001, out var quantity) && quantity == 3 && state.Get(272) == 2, "backpack/cards missing from native bridge");
-            var c355 = NetworkAdapterService.BuildLoadNecessityPayload(second, new byte[60], new byte[60], null);
+            var c355 = NetworkAdapterService.BuildLoadNecessityPayload(second, new byte[60], new byte[60], new byte[4], null);
             Check(c355[0x24 - 8] == 39, "C355 does not carry the persisted dungeon grade");
             var cf71 = DungeonProtocol.BuildRoomMember(second, checked((ushort)second.Id), 0, 0, 15009205,
                 CharacterProgression.ExperienceRequiredForLevel(second.Level),

@@ -326,6 +326,17 @@ public sealed partial class DatabaseService
                     UpdatedAt TEXT NOT NULL,
                     PRIMARY KEY (CharacterId, Episode, Difficulty)
                 );
+                CREATE TABLE IF NOT EXISTS DungeonSecretProgress (
+                    CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                    Episode INTEGER NOT NULL CHECK (Episode BETWEEN 0 AND 3),
+                    ClearMask INTEGER NOT NULL DEFAULT 0 CHECK (ClearMask BETWEEN 0 AND 255),
+                    BestRatings INTEGER NOT NULL DEFAULT 0 CHECK (BestRatings BETWEEN 0 AND 255),
+                    BestScore INTEGER NOT NULL DEFAULT 0 CHECK (BestScore >= 0),
+                    BestElapsedMinutes INTEGER NULL CHECK (BestElapsedMinutes IS NULL OR BestElapsedMinutes >= 0),
+                    ClearedAt TEXT NOT NULL,
+                    UpdatedAt TEXT NOT NULL,
+                    PRIMARY KEY (CharacterId, Episode)
+                );
                 CREATE TABLE IF NOT EXISTS DungeonStagePerformance (
                     CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
                     Episode INTEGER NOT NULL CHECK (Episode BETWEEN 0 AND 19),
@@ -9531,6 +9542,7 @@ public sealed partial class DatabaseService
         long accountId,
         long characterId,
         string sessionId,
+        byte hdIndex,
         byte episode,
         byte dungeon,
         byte difficulty,
@@ -9545,7 +9557,10 @@ public sealed partial class DatabaseService
         byte clearRating = 0)
     {
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrWhiteSpace(sessionId)
-            || episode >= 20 || dungeon >= 3 || difficulty >= 3
+            || hdIndex > 1
+            || (hdIndex == 0 && episode >= 20)
+            || (hdIndex == 1 && episode >= 4)
+            || dungeon >= 3 || difficulty >= 3
             || (superBoss && dungeon != 2)
             || clearRating > 5
             || score < 0 || elapsedMinutes < 0 || experienceReward < 0
@@ -9735,24 +9750,43 @@ public sealed partial class DatabaseService
             var ratingClearMask = 0xFF & ~ratingFieldMask;
             await using var progress = connection.CreateCommand();
             progress.Transaction = transaction;
-            progress.CommandText = """
-                INSERT INTO DungeonProgress(
-                    CharacterId, Episode, Difficulty, ClearMask, BestRatings, BestScore,
-                    BestElapsedMinutes, ClearedAt, UpdatedAt)
-                VALUES($characterId, $episode, $difficulty, $clearMask, $bestRatings, $score, $elapsed, $now, $now)
-                ON CONFLICT(CharacterId, Episode, Difficulty) DO UPDATE SET
-                    ClearMask = DungeonProgress.ClearMask | excluded.ClearMask,
-                    BestRatings = (DungeonProgress.BestRatings & $ratingClearMask)
-                        | MAX(
-                            DungeonProgress.BestRatings & $ratingFieldMask,
-                            excluded.BestRatings & $ratingFieldMask),
-                    BestScore = MAX(DungeonProgress.BestScore, excluded.BestScore),
-                    BestElapsedMinutes = CASE
-                        WHEN DungeonProgress.BestElapsedMinutes IS NULL THEN excluded.BestElapsedMinutes
-                        ELSE MIN(DungeonProgress.BestElapsedMinutes, excluded.BestElapsedMinutes)
-                    END,
-                    UpdatedAt = excluded.UpdatedAt
-                """;
+            progress.CommandText = hdIndex == 0
+                ? """
+                    INSERT INTO DungeonProgress(
+                        CharacterId, Episode, Difficulty, ClearMask, BestRatings, BestScore,
+                        BestElapsedMinutes, ClearedAt, UpdatedAt)
+                    VALUES($characterId, $episode, $difficulty, $clearMask, $bestRatings, $score, $elapsed, $now, $now)
+                    ON CONFLICT(CharacterId, Episode, Difficulty) DO UPDATE SET
+                        ClearMask = DungeonProgress.ClearMask | excluded.ClearMask,
+                        BestRatings = (DungeonProgress.BestRatings & $ratingClearMask)
+                            | MAX(
+                                DungeonProgress.BestRatings & $ratingFieldMask,
+                                excluded.BestRatings & $ratingFieldMask),
+                        BestScore = MAX(DungeonProgress.BestScore, excluded.BestScore),
+                        BestElapsedMinutes = CASE
+                            WHEN DungeonProgress.BestElapsedMinutes IS NULL THEN excluded.BestElapsedMinutes
+                            ELSE MIN(DungeonProgress.BestElapsedMinutes, excluded.BestElapsedMinutes)
+                        END,
+                        UpdatedAt = excluded.UpdatedAt
+                    """
+                : """
+                    INSERT INTO DungeonSecretProgress(
+                        CharacterId, Episode, ClearMask, BestRatings, BestScore,
+                        BestElapsedMinutes, ClearedAt, UpdatedAt)
+                    VALUES($characterId, $episode, $clearMask, $bestRatings, $score, $elapsed, $now, $now)
+                    ON CONFLICT(CharacterId, Episode) DO UPDATE SET
+                        ClearMask = DungeonSecretProgress.ClearMask | excluded.ClearMask,
+                        BestRatings = (DungeonSecretProgress.BestRatings & $ratingClearMask)
+                            | MAX(
+                                DungeonSecretProgress.BestRatings & $ratingFieldMask,
+                                excluded.BestRatings & $ratingFieldMask),
+                        BestScore = MAX(DungeonSecretProgress.BestScore, excluded.BestScore),
+                        BestElapsedMinutes = CASE
+                            WHEN DungeonSecretProgress.BestElapsedMinutes IS NULL THEN excluded.BestElapsedMinutes
+                            ELSE MIN(DungeonSecretProgress.BestElapsedMinutes, excluded.BestElapsedMinutes)
+                        END,
+                        UpdatedAt = excluded.UpdatedAt
+                    """;
             progress.Parameters.AddWithValue("$characterId", characterId);
             progress.Parameters.AddWithValue("$episode", episode);
             progress.Parameters.AddWithValue("$difficulty", difficulty);
@@ -9765,6 +9799,8 @@ public sealed partial class DatabaseService
             progress.Parameters.AddWithValue("$now", now);
             await progress.ExecuteNonQueryAsync(cancellationToken);
 
+            if (hdIndex == 0)
+            {
             await using var performance = connection.CreateCommand();
             performance.Transaction = transaction;
             performance.CommandText = """
@@ -9788,6 +9824,7 @@ public sealed partial class DatabaseService
             performance.Parameters.AddWithValue("$elapsed", elapsedMinutes);
             performance.Parameters.AddWithValue("$now", now);
             await performance.ExecuteNonQueryAsync(cancellationToken);
+            }
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -9872,6 +9909,33 @@ public sealed partial class DatabaseService
             if (episode is < 0 or >= 20 || difficulty is < 0 or >= 3)
                 continue;
             ratings[episode * 3 + difficulty] = checked((byte)bestRatings);
+        }
+        return ratings;
+    }
+
+    public async Task<byte[]> GetDungeonSecretBestRatingsAsync(
+        long characterId,
+        CancellationToken cancellationToken = default)
+    {
+        var ratings = new byte[4];
+        if (characterId <= 0)
+            return ratings;
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT Episode, BestRatings
+            FROM DungeonSecretProgress
+            WHERE CharacterId = $characterId
+            """;
+        command.Parameters.AddWithValue("$characterId", characterId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var episode = reader.GetInt32(0);
+            var bestRatings = reader.GetInt32(1);
+            if (episode is < 0 or >= 4)
+                continue;
+            ratings[episode] = checked((byte)bestRatings);
         }
         return ratings;
     }

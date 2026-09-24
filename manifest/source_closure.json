@@ -48,8 +48,8 @@
     },
     {
       "path": "managed-host/ChannelReentryChecks.cs",
-      "size": 11618,
-      "sha256": "F01D2C33A9D76E0E1EF1D5B8306EE8CA3495379FB15DDF1DC73FD6EC71A89BA4"
+      "size": 11610,
+      "sha256": "6917E25413D55FF4BE63720007BF6FD6EF8BD7DFF6DC347A67CE5177AA303237"
     },
     {
       "path": "managed-host/CompatibilityChecks.cs",
@@ -58,8 +58,8 @@
     },
     {
       "path": "managed-host/DungeonSaveChecks.cs",
-      "size": 13886,
-      "sha256": "05508293519C4309F8A3DF7A62D883BF7C057B2D06E943543817A1DF6BADCBD0"
+      "size": 16051,
+      "sha256": "1D238E9EEB9FAB64947DD0CF0C070A2E1AB7E263F8AF8FBFB61BA9EDB8C74924"
     },
     {
       "path": "managed-host/InventoryQuickbarChecks.cs",
@@ -68,8 +68,8 @@
     },
     {
       "path": "managed-host/LauncherProfileChecks.cs",
-      "size": 10214,
-      "sha256": "320F84388BA6966F18EF180016E3FE8AE8864157F46AC8053592E6EC2B88EF56"
+      "size": 10227,
+      "sha256": "8ADC9A0B8EBE30547E383B4BEC63CAD582F5C3F55E89E0A7EF019295991289E7"
     },
     {
       "path": "managed-host/MigrationChecks.cs",
@@ -83,8 +83,8 @@
     },
     {
       "path": "managed-host/PetRevivalVillageChecks.cs",
-      "size": 25264,
-      "sha256": "1370D324B3E1A315B622CD40F71A0C65F29528C462D27AA3E81850287CC011EC"
+      "size": 25767,
+      "sha256": "E0ADEF4D0D2E715CDCB3ED3A740C42F58E2A24E292A58E0382A7A96555E7AB87"
     },
     {
       "path": "managed-host/Program.cs",
@@ -103,8 +103,8 @@
     },
     {
       "path": "managed-host/VillagePositionChecks.cs",
-      "size": 17959,
-      "sha256": "4CC791CE004D8FED325F541616C482723F9EF70E7918223204EA3D0BE92D26C8"
+      "size": 17992,
+      "sha256": "2C1A54BD15D8133444A8C41E5E5727728B92C7B0123FA39A09D551F5CA78DD9A"
     },
     {
       "path": "managed/Compatibility/Net6.cs",
@@ -298,8 +298,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 576680,
-      "sha256": "29A7DDE38ECBFDEA5BBD86D4D293A7AB5F61DE701E217CBC3FD0D6C95578E58D"
+      "size": 580055,
+      "sha256": "6EFE021AF1E01345A05D1797AB201E02ADBAEE16DCAEC197AF37E932A1D77353"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -383,8 +383,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 935696,
-      "sha256": "CBFCBD02CDEA86FC611BC59490E2574008766A338684E63FC2657A5BE4926BFA"
+      "size": 936506,
+      "sha256": "8B5E1EFF444308ABB59DEF9F7474E0B649ADCB963DDE071554214DB6745E13F2"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

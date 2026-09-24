@@ -189,6 +189,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private const int C355VillagePrerequisiteLength = sizeof(ulong);
     private const ulong C355VillagePrerequisiteLow44Mask = (1UL << 44) - 1UL;
     private const int C355DungeonRatingsFrameOffset = 0x88;
+    private const int C355DungeonRatingsLength = DungeonEpisodeCount * DungeonDifficultyCount;
+    private const int C355SecretRatingsFrameOffset = 0xC4;
+    private const int C355SecretRatingsLength = 4;
+    private const int C355FrontierRatingsFrameOffset = 0xC8;
+    private const int C355FrontierRatingsLength = 23;
     private const int C355PartnerNameFrameOffset = 0xDF;
     private const int C355PartnerNameLength = 17;
     private const int C355RingSuffixFrameOffset = 0xF0;
@@ -2155,6 +2160,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     ? new byte[60]
                     : await _database.GetDungeonBestRatingsAsync(session.Character.Id, token);
                 var dungeonBestRatings = BuildClientDungeonBestRatings(persistedDungeonBestRatings);
+                var dungeonSecretBestRatings = session.Character is null
+                    ? new byte[C355SecretRatingsLength]
+                    : await _database.GetDungeonSecretBestRatingsAsync(session.Character.Id, token);
                 var coupleRelation = session.Character is null
                     ? null
                     : await _database.GetActiveCoupleRelationAsync(session.Character.Id, token);
@@ -2164,6 +2172,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     session,
                     dungeonClearMasks,
                     dungeonBestRatings,
+                    dungeonSecretBestRatings,
                     coupleRelation);
 
             case 0xC358: // ENTER_OZVILL one-way notification
@@ -7290,6 +7299,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         session.AccountId,
                         rewardCharacterId,
                         session.SessionId,
+                        endBattle.HdIndex,
                         rewardEpisode,
                         rewardDungeon,
                         rewardDifficulty,
@@ -13637,6 +13647,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         ConnectionSession session,
         byte[] dungeonClearMasks,
         byte[] dungeonBestRatings,
+        byte[] dungeonSecretBestRatings,
         CoupleRelationRecord? coupleRelation)
     {
         var loadNecessity = BuildNativeFrame(
@@ -13646,6 +13657,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.Character,
                 dungeonClearMasks,
                 dungeonBestRatings,
+                dungeonSecretBestRatings,
                 coupleRelation),
             session);
         // The C476 notification is the client's inventory initialization gate.
@@ -15436,6 +15448,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         CharacterRecord? character,
         byte[] dungeonClearMasks,
         byte[] dungeonBestRatings,
+        byte[] dungeonSecretBestRatings,
         CoupleRelationRecord? coupleRelation)
     {
         var payload = new byte[C355FrameLength - NativeHeaderLength];
@@ -15496,13 +15509,16 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         dungeonClearMasks.AsSpan(0, Math.Min(dungeonClearMasks.Length, 60))
             .CopyTo(payload.AsSpan(0x3C - 8, 60));
         // The separate full-frame +0x80..+0x87 village prerequisite QWORD
-        // is applied with the other all-open carriers after every profile
-        // field has been serialized.
-        // The final C355 normalizer below owns full-frame +0x88..<+0xDF.
-        // Keep the persisted rating input explicit here: the current private
-        // all-open policy deliberately replaces the whole bounded region with
-        // the exact reference implementation final 0x55 fill at the final send boundary.
-        _ = dungeonBestRatings;
+        // is applied after every profile field has been serialized. The score
+        // board is a different cached domain: +0x88..+0xC3 contains the
+        // 20-episode x 3-difficulty ordinary table, and +0xC4..+0xC7 contains
+        // four secret-episode bytes. Each byte packs four two-bit best ranks
+        // (0=none, 1=B, 2=A, 3=S). +0xC8..+0xDE is a separate 23-row frontier
+        // table and remains zero until that progression domain is persisted.
+        dungeonBestRatings.AsSpan(0, Math.Min(dungeonBestRatings.Length, C355DungeonRatingsLength))
+            .CopyTo(payload.AsSpan(C355DungeonRatingsFrameOffset - NativeHeaderLength, C355DungeonRatingsLength));
+        dungeonSecretBestRatings.AsSpan(0, Math.Min(dungeonSecretBestRatings.Length, C355SecretRatingsLength))
+            .CopyTo(payload.AsSpan(C355SecretRatingsFrameOffset - NativeHeaderLength, C355SecretRatingsLength));
         // The retail C355 consumer restores the partner name from frame+0xDF
         // and the short ring suffix from frame+0xF0. The native emotion-page
         // gate is name-derived: an empty slot blocks the ring lookup entirely.
@@ -15515,11 +15531,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         payload[C355RevivalCountFrameOffset - NativeHeaderLength] =
             character?.RevivalUseCount ?? 0;
 
-        // reference implementation's final all-open byte policy was not produced by the low-44
-        // prerequisite mask alone. Its final C355 also published the complete
-        // ordinary dungeon table as 0x0F and the complete +0x88..<0xDF progression
-        // region as packed state 1 (0x55). Keep those independent carriers coherent here;
-        // the final writer repeats this normalization before checksum.
+        // Keep access carriers independent from the cached score-board ranks.
+        // The final writer repeats the idempotent access normalization before checksum.
         NormalizeC355VillageAccessPayload(payload);
         return payload;
     }
@@ -15555,14 +15568,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             payload.Slice(prerequisiteOffset, C355VillagePrerequisiteLength),
             prerequisites | C355VillagePrerequisiteLow44Mask);
 
-        // Full-frame +0x88..+0xDE is the independent reference implementation progression
-        // domain. Although an earlier constructor block writes 0xFF, the
-        // unlock helper is the last writer and replaces it with packed state 1
-        // (0x55). Match those final bytes and stop before +0xDF, the partner-
-        // name boundary.
-        payload.Slice(
-            C355DungeonRatingsFrameOffset - NativeHeaderLength,
-            C355PartnerNameFrameOffset - C355DungeonRatingsFrameOffset).Fill(0x55);
+        // Do not normalize +0x88..<+0xDF. Those bytes are the score-board
+        // cache consumed by the ordinary, secret, and frontier "view credits"
+        // pages. Replacing them with packed state 1 fabricates a B rank for
+        // every slot and destroys the persisted best result. Access remains
+        // carried by +0x3C..+0x77 and the independent prerequisite QWORD.
     }
 
     private static void WriteC355CoupleState(
