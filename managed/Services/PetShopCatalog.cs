@@ -246,11 +246,12 @@ internal static class ShopCatalog
                 offset,
                 0,
                 2,
-                14,
+                null,
                 34,
                 InventorySection.Pet,
                 "pi._D7",
                 index,
+                cashPriceField: 14,
                 petModelStageField: 21,
                 petUpgradeStageField: 22,
                 petGrowthClassField: 24,
@@ -415,7 +416,7 @@ internal static class ShopCatalog
         for (var index = 0; index < count; index++)
         {
             var offset = headerFields + index * recordFields;
-            AddItem(result, fields, offset, 0, 1, 8, null, InventorySection.GameItem, "SP._D34", index, iconPathField: 3);
+            AddItem(result, fields, offset, 0, 1, null, null, InventorySection.GameItem, "SP._D34", index, iconPathField: 3, cashPriceField: 8);
         }
     }
 

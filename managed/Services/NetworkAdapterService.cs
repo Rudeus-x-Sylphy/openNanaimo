@@ -2869,10 +2869,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     _log($"{channel}:{remote} invalid cash inventory mode={cashInventoryMode}; expected 1 or 10");
                     return null;
                 }
-                var cashInventoryRequestValue = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2, 2));
+                var cashInventoryPage = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2, 2));
                 await RefreshSessionCharacterAsync(session, token);
-                var cashInventoryPayload = BuildCashInventoryPayload((byte)cashInventoryMode, session.Character);
-                _log($"{channel}:{remote} 恢复现金/游戏库存分页：mode={cashInventoryMode} requestValue={cashInventoryRequestValue} responseCount={cashInventoryPayload[3]}");
+                var cashInventoryPayload = BuildCashInventoryPayload((byte)cashInventoryMode, cashInventoryPage, session.Character);
+                _log($"{channel}:{remote} 恢复现金/游戏库存分页：mode={cashInventoryMode} page={cashInventoryPage} responseCount={cashInventoryPayload[3]}");
                 return BuildNativeFrame(
                     frame,
                     0xC474,
@@ -17052,16 +17052,23 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // The C474 consumer ignores frame+8/+9, then reads mode and byte count.
         => [0, 0, requestMode, 0];
 
-    private static byte[] BuildCashInventoryPayload(byte requestMode, CharacterRecord? character)
+    // sub_813BC0 displays the whole C474 list, but hit testing has only 14 slots.
+    internal const int CashInventoryPageSize = 14;
+
+    internal static byte[] BuildCashInventoryPayload(byte requestMode, ushort page, CharacterRecord? character)
     {
-        if (requestMode != 1 || character is null)
+        if (requestMode != 1 || page is 0 or > byte.MaxValue || character is null)
             return BuildEmptyCashInventoryPayload(requestMode);
 
+        // C473 pages are one-based. The client replaces this list on every reply;
+        // it does not slice C474 locally. Sort before expanding duplicate instances.
         var itemCodes = character.CashInboxItems
             .Where(item => item.Quantity > 0
                 && ShopCatalog.TryGet(item.ItemCode, out _))
+            .OrderBy(item => item.ItemCode)
             .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
-            .Take(byte.MaxValue)
+            .Skip((page - 1) * CashInventoryPageSize)
+            .Take(CashInventoryPageSize)
             .ToArray();
         if (itemCodes.Length == 0)
             return BuildEmptyCashInventoryPayload(requestMode);

@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 174,
+  "count": 175,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -73,8 +73,8 @@
     },
     {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 29742,
-      "sha256": "91FDE372D9306E3A80AE4CE246E9AD5D58FEAD2C3C377A6669470E8C05103674"
+      "size": 29797,
+      "sha256": "9161CCCB86710AB0AE26A2CEE39C56A573142E4BEA7714BD40DB31E680618CE0"
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
@@ -88,8 +88,13 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 7124,
-      "sha256": "CF9372EAF450BA5B334B2F42D9F31E6561BC01246FF094A6FE5859DB5407772E"
+      "size": 7270,
+      "sha256": "7A5E41F4A49E433192A4C69D5277D44A2252D0F68ED987454D47065C5CF8DF3F"
+    },
+    {
+      "path": "managed-host/ShopCurrencyPaginationChecks.cs",
+      "size": 10216,
+      "sha256": "F0CC905A6F06A39F2278C0726CA5A72A1E5D178D3356F77496D60305CA3B3233"
     },
     {
       "path": "managed-host/ShopDungeonChecks.cs",
@@ -378,8 +383,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 933038,
-      "sha256": "429F49F60B9381494F9CCA0E2629CCAE3920D90C584FC105648D11A5B0C98A9C"
+      "size": 933489,
+      "sha256": "D3F93149FEF10A2A01EB289162E78E1992609451BEE34C7428FD5062DA86FE46"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -393,8 +398,8 @@
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
-      "size": 37481,
-      "sha256": "1B0EF59CE9D289CD5641D15B7E9E3618FA4E110E716714AF21C0D957CA68196D"
+      "size": 37541,
+      "sha256": "7F7455DEC52BF0CF72E483366F62B89CC5AF0F2A618241CEABB4254FAFF33C53"
     },
     {
       "path": "managed/Services/ProtocolInspector.cs",

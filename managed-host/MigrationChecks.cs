@@ -13,6 +13,7 @@ internal static class MigrationChecks
         await CompatibilityChecks.RunAsync();
 #endif
         await ChannelReentryChecks.RunAsync();
+        await ShopCurrencyPaginationChecks.RunAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var token = timeout.Token;
         InventoryQuickbarChecks.Run();
