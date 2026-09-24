@@ -92,8 +92,9 @@ static unsigned stage_damage_player_d00f_damage(const struct stage_damage_damage
     unsigned owner=(unsigned)req[0x0A]|((unsigned)req[0x0B]<<8),source=(unsigned)req[0x0C]|((unsigned)req[0x0D]<<8);
     if(kind==10u)return stage_damage_damage_projectile_lookup(ctx,owner,source,out);
     stage_damage_damage_lookup_clear(out);stage_damage_damage_lookup_context(ctx,out);
-    if(out){out->kind=kind;out->owner=owner;out->source=source;out->resource="<collision-policy>";}
-    if(kind==20u||kind==60u||kind==80u){if(out){out->status=STAGE_DAMAGE_DAMAGE_COLLISION_FIXED;out->policy_damage=STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;}return STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;}
+    if(out){out->kind=kind;out->owner=owner;out->source=source;out->resource=kind==20u?"<ordinary-collision-policy>":"<non-damaging-scene-event>";}
+    if(kind==20u){if(out){out->status=STAGE_DAMAGE_DAMAGE_COLLISION_FIXED;out->policy_damage=STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;}return STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;}
+    /* Fixed-scene kinds 60/80 are metadata-only compatibility events. */
     if(out)out->status=STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND;return 0u;
 }
 static struct stage_damage_damage_application stage_damage_apply_actor_damage(unsigned current_hp,unsigned policy_damage){

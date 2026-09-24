@@ -31,8 +31,9 @@ static unsigned combat_economy_player_d00f_damage(const unsigned char*req,unsign
     unsigned owner=(unsigned char)req[0x0A]|((unsigned char)req[0x0B]<<8);
     unsigned source=(unsigned char)req[0x0C]|((unsigned char)req[0x0D]<<8);
     if(kind==10u){combat_economy_pon_lookup(owner,source,out);return out&&out->status==COMBAT_ECONOMY_PON_LOOKUP_RESOURCE_EXACT?out->base:COMBAT_ECONOMY_PON_INCOMING_FALLBACK_DAMAGE;}
-    if(out){memset(out,0,sizeof(*out));out->owner=owner;out->source=source;out->resource="<collision-policy>";}
-    return COMBAT_ECONOMY_COLLISION_PLAYER_DAMAGE;
+    if(out){memset(out,0,sizeof(*out));out->owner=owner;out->source=source;out->resource=kind==20u?"<ordinary-collision-policy>":"<non-damaging-scene-event>";}
+    if(kind==20u)return COMBAT_ECONOMY_COLLISION_PLAYER_DAMAGE;
+    return 0u;
 }
 static unsigned combat_economy_monster_max_hp(struct hp_sync_context*ctx,unsigned selector){
     struct hp_sync_target_state*s=hp_sync_state_for(ctx,selector);return (s&&s->initialized&&s->max_hp>0)?(unsigned)s->max_hp:0u;

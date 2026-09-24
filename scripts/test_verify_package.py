@@ -60,6 +60,12 @@ class VerifyPackageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verifier.scan_public_text(self.root)
 
+    def test_local_evidence_is_outside_public_text_surface(self):
+        evidence = self.root / 'knowledge/evidence/runtime/private-run.txt'
+        evidence.parent.mkdir(parents=True)
+        evidence.write_text(chr(67) + ':' + chr(92) + 'Users' + chr(92) + 'local-user', 'utf-8')
+        verifier.scan_public_text(self.root)
+
     def test_private_address(self):
         (self.root / 'README.md').write_text('192.' + '168.' + '4.5', 'utf-8')
         with self.assertRaises(ValueError):

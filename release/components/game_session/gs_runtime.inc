@@ -1,16 +1,15 @@
 #define boss_ctx (*multiplayer_shared_boss_context())
-/* SCENE_INJURY fixed-scene injury closure.
- * Static: sub_670E10 callsite 0x671E7A reads collision object+0x1A0 and
- * 0x671E80 passes that authored kind to D00F builder sub_6E9FB0 through
- * 0x671E88 -> thunk 0x40DD7D.  The SCENE_INJURY_OBSERVATION live log contains this full
- * collision carrier for kinds 60 and 80 beside fixed obj/d_* resources;
- * SCENE_INJURY_OBSERVATION only echoed them, so the client played its local red-hit effect
- * without an authoritative HP settlement.  Kinds 30/50 were not observed;
- * kind70 used the zero-tail small carrier during Boss/meat and remains echo.
- * This adapter policy therefore adds only observed full-scene kinds 60/80.
- * D00F has no damage field; reuse the existing explicit ceil(5% max HP),
- * min1/cap500 policy and the already-closed D010/36 actor/HP/score frame. */
-static int scene_injury_fixed_scene_d00f_kind(unsigned kind){return kind==60u||kind==80u;}
+/* SCENE_INJURY D00F routing.
+ * Static: sub_670E10 reads collision object+0x1A0 and serializes that authored
+ * class to D00F WORD+0x08.  Runtime evidence places kinds 60/80 beside fixed
+ * obj/d_* scene resources, but D00F carries no numeric damage field and does
+ * not prove an authoritative HP loss.  Repeated ambient scene contacts made
+ * the former fixed-100 policy look like random HP loss.  Only kind10 enters
+ * the direct projectile injury route here; fixed-scene kinds 60/80 retain the
+ * request-driven compatibility echo and never mutate the authoritative HP
+ * ledger.  Kind20 remains a separate ordinary-contact policy below. */
+static int scene_injury_direct_projectile_d00f_kind(unsigned kind){return kind==10u;}
+static int scene_injury_fixed_scene_echo_kind(unsigned kind){return kind==60u||kind==80u;}
 #define score_ctx (*multiplayer_shared_score_context())
 /* COLLISION_DAMAGE ordinary-collision double damage.
    The ordinary D00F kind20 contact settled only the player's HP; the collided
@@ -113,18 +112,18 @@ static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,un
     printf("  S0xD010 INJURY_RESOURCE injury actor=%u hp=%u damage=%u terminal=%d score=%u meta=%u kind=%u len=36 t=%lds\n",local_uid,hp,damage,terminal,battle_score,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),(unsigned char)p[0x1D],sec());fflush(0);
 }
 
-/* SCENE_INJURY request-driven player injury settlement for D00F kinds 10, 20, 60 and 80.
- * The request carries collision/source metadata, not a numeric damage value.
- * All routes share the authoritative combat HP ledger, battle epoch, meat
- * invulnerability, flying shield and death latch.  A full D010/36 is emitted
- * only when damage is applied; its BYTE+0x1D mirrors the request kind. */
+/* Request-driven player injury settlement for D00F kind10 and the separately
+ * classified ordinary kind20 contact route.  Fixed-scene kinds 60/80 must not
+ * call this function.  The accepted request carries source metadata rather
+ * than final numeric damage; applied routes share the authoritative combat HP
+ * ledger, battle epoch, immunity gates and death latch. */
 static int player_collision_apply_player_d00f_injury(SOCKET c,int port,const unsigned char*req,unsigned request_kind,unsigned injury_now,
         unsigned dungeon_room_epoch,unsigned battle_epoch,int injury_armed,unsigned injury_room_epoch,unsigned injury_battle_epoch,
         unsigned*combat_hp,int*injury_dead,unsigned max_hp,unsigned battle_score,const struct stage_damage_damage_context*damage_ctx,const struct skill_effect_cleanup_context*skill_cleanup_ctx){
     unsigned source_field_140=(unsigned char)req[0x0A]|((unsigned char)req[0x0B]<<8);
     unsigned collision_index=(unsigned char)req[0x0C]|((unsigned char)req[0x0D]<<8);
     unsigned source_field_14=(unsigned char)req[0x0E]|((unsigned char)req[0x0F]<<8);
-    unsigned raw_damage,damage,applied,wire_damage;struct stage_damage_damage_lookup resolved;struct stage_damage_damage_application damage_app;const char *route=request_kind==10u?"kind10":request_kind==20u?"ordinary-kind20":"fixed-scene";
+    unsigned raw_damage,damage,applied,wire_damage;struct stage_damage_damage_lookup resolved;struct stage_damage_damage_application damage_app;const char *route=request_kind==10u?"kind10":request_kind==20u?"ordinary-kind20":"unsupported";
 #if TEAMPLAY_FEATURE_MEAT_LIFECYCLE_COMPLETION
     if(skill_effect_cleanup_meat_invulnerable(skill_cleanup_ctx,dungeon_room_epoch,battle_epoch,injury_now)){
         printf("  [INJURY_SCENE] suppress route=%s kind=%u reason=meat-invulnerability actor=%u hp=%u meat_code=%u generation=%u elapsed_ms=%u no-D010 t=%lds\n",route,request_kind,multiplayer_current_uid(),*combat_hp,skill_cleanup_ctx->code,skill_cleanup_ctx->generation,(unsigned)(injury_now-skill_cleanup_ctx->armed_tick),sec());
@@ -648,7 +647,7 @@ static void gs_thread(void* arg){
 #if TEAMPLAY_FEATURE_CF9D_PROJECTILE_COMPLETION
                         skill_effect_cleanup_force_send(&skill_cleanup_ctx,c,dungeon_room_epoch,boss_ctx.battle_epoch,tickms(),"CF7F-epoch",0xCF7F);skill_effect_cleanup_reset(&skill_cleanup_ctx,dungeon_room_epoch,boss_ctx.battle_epoch,"CF7F-prebegin");
 #endif
-                        boss_hp_sync_begin_game_domain(&boss_ctx,current_stage,current_hd,current_dungeon,current_stage_index,current_difficulty,current_slot); stage_damage_damage_begin(&incoming_damage_ctx,current_hd,current_stage,current_dungeon,current_stage_index,current_difficulty,dungeon_room_epoch,boss_ctx.battle_epoch); battle_score_begin(&score_ctx,boss_ctx.battle_epoch); flight_items_coin_begin(dungeon_room_epoch,boss_ctx.battle_epoch);flight_items_cf80_set_hints(current_slot,multiplayer_current_uid()); teamplay_score_begin(boss_ctx.battle_epoch); meat_collision_reset(dungeon_room_epoch,boss_ctx.battle_epoch); meat_activated_room_epoch=meat_activated_battle_epoch=meat_residual_until_tick=0u; projectile_activation_reset(&projectile_ctx,dungeon_room_epoch,boss_ctx.battle_epoch,"CF7F"); reset_pending_d00e(); settlement_sent=0; pending_super_cf87=0; aux_retire_sent=0;aux_retire_epoch=boss_ctx.battle_epoch;boss_final_retire_sent=0;teamplay_boss_final_hans_reset_current(); power_ctx.battle_epoch=boss_ctx.battle_epoch;combat_hp=pet_crafting_pet_effective_hp_current();item_effects_flight_reset_current(dungeon_room_epoch,boss_ctx.battle_epoch,"CF7F");injury_room_epoch=dungeon_room_epoch;injury_battle_epoch=boss_ctx.battle_epoch;injury_armed=1;injury_dead=0;death_latched=0;retry_acknowledged=0;death_battle_epoch=boss_ctx.battle_epoch;lifesteal_remainder=0u;printf("  [INJURY_ITEMS] arm room=%u battle=%u actor=%u hp=%u max=%u policy=kind10-all-stage-exact-slot-PON-positive-else200 collision=100 legacy_nominal=%u\n",injury_room_epoch,injury_battle_epoch,multiplayer_current_uid(),combat_hp,pet_crafting_pet_effective_hp_max(),item_effects_injury_policy_damage(pet_crafting_pet_effective_hp_max()));fflush(0);
+                        boss_hp_sync_begin_game_domain(&boss_ctx,current_stage,current_hd,current_dungeon,current_stage_index,current_difficulty,current_slot); stage_damage_damage_begin(&incoming_damage_ctx,current_hd,current_stage,current_dungeon,current_stage_index,current_difficulty,dungeon_room_epoch,boss_ctx.battle_epoch); battle_score_begin(&score_ctx,boss_ctx.battle_epoch); flight_items_coin_begin(dungeon_room_epoch,boss_ctx.battle_epoch);flight_items_cf80_set_hints(current_slot,multiplayer_current_uid()); teamplay_score_begin(boss_ctx.battle_epoch); meat_collision_reset(dungeon_room_epoch,boss_ctx.battle_epoch); meat_activated_room_epoch=meat_activated_battle_epoch=meat_residual_until_tick=0u; projectile_activation_reset(&projectile_ctx,dungeon_room_epoch,boss_ctx.battle_epoch,"CF7F"); reset_pending_d00e(); settlement_sent=0; pending_super_cf87=0; aux_retire_sent=0;aux_retire_epoch=boss_ctx.battle_epoch;boss_final_retire_sent=0;teamplay_boss_final_hans_reset_current(); power_ctx.battle_epoch=boss_ctx.battle_epoch;combat_hp=pet_crafting_pet_effective_hp_current();item_effects_flight_reset_current(dungeon_room_epoch,boss_ctx.battle_epoch,"CF7F");injury_room_epoch=dungeon_room_epoch;injury_battle_epoch=boss_ctx.battle_epoch;injury_armed=1;injury_dead=0;death_latched=0;retry_acknowledged=0;death_battle_epoch=boss_ctx.battle_epoch;lifesteal_remainder=0u;printf("  [INJURY_ITEMS] arm room=%u battle=%u actor=%u hp=%u max=%u policy=kind10-stage-PON-positive-else200 ordinary-kind20-collision=100 fixed-scene60-80=echo legacy_nominal=%u\n",injury_room_epoch,injury_battle_epoch,multiplayer_current_uid(),combat_hp,pet_crafting_pet_effective_hp_max(),item_effects_injury_policy_damage(pet_crafting_pet_effective_hp_max()));fflush(0);
 #if TEAMPLAY_FEATURE_SHARED_HP
                         teamplay_shared_begin_battle(current_hd,current_stage,current_dungeon,current_stage_index,current_difficulty,dungeon_room_epoch,boss_ctx.battle_epoch);
 #else
@@ -744,12 +743,14 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                     } else if(type==0xD00F && len==0x1C){if(retry_acknowledged&&death_latched){death_latched=0;retry_acknowledged=0;printf("  [DEATH_INVENTORY] retry resumed combat -> clear death latch battle=%u\n",boss_ctx.battle_epoch);fflush(0);}
                         unsigned request_kind=(unsigned char)buf[off+8] | ((unsigned char)buf[off+9]<<8);
                         d00f_total++;
-                        if(request_kind==10u||scene_injury_fixed_scene_d00f_kind(request_kind)){
+                        if(scene_injury_direct_projectile_d00f_kind(request_kind)){
                             unsigned injury_now=tickms();
                             player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,injury_now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
                         } else {
                             int send_nonlocal_echo=1;
-                            if(request_kind==20u||request_kind==40u){
+                            if(scene_injury_fixed_scene_echo_kind(request_kind)){
+                                printf("  [INJURY_SCENE] fixed-scene kind=%u -> echo-only/no-authoritative-HP t=%lds\n",request_kind,sec());fflush(0);
+                            }else if(request_kind==20u||request_kind==40u){
                                 unsigned w08=(unsigned char)buf[off+0x08]|((unsigned char)buf[off+0x09]<<8);
                                 unsigned w0a=(unsigned char)buf[off+0x0A]|((unsigned char)buf[off+0x0B]<<8);
                                 unsigned d0c=(unsigned char)buf[off+0x0C]|((unsigned char)buf[off+0x0D]<<8)|((unsigned char)buf[off+0x0E]<<16)|((unsigned char)buf[off+0x0F]<<24);

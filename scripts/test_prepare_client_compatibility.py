@@ -44,11 +44,14 @@ def synthetic_pack():
     return bytes(data)
 
 
-def synthetic_pe(furniture=compat.FURNITURE_OLD):
+def synthetic_pe(furniture=compat.FURNITURE_OLD,
+                 revival_hook=compat.REVIVAL_HUD_HOOK_OLD,
+                 revival_cave=compat.REVIVAL_HUD_CAVE_OLD):
     sections = [
         (0x10000, 0x3000, 0x400),
+        (0x2E0000, 0x4000, 0x3400),
     ]
-    data = bytearray(0x3400)
+    data = bytearray(0x7400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -61,7 +64,11 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD):
         struct.pack_into('<IIII', data, table + index * 40 + 8,
                          raw_size, rva, raw_size, raw_offset)
     furniture_offset = 0x400 + (compat.FURNITURE_CALL_VA - 0x00410000)
+    revival_hook_offset = 0x3400 + (compat.REVIVAL_HUD_HOOK_VA - 0x006E0000)
+    revival_cave_offset = 0x3400 + (compat.REVIVAL_HUD_CAVE_VA - 0x006E0000)
     data[furniture_offset:furniture_offset + len(furniture)] = furniture
+    data[revival_hook_offset:revival_hook_offset + len(revival_hook)] = revival_hook
+    data[revival_cave_offset:revival_cave_offset + len(revival_cave)] = revival_cave
     return bytes(data), furniture_offset
 
 
@@ -96,6 +103,26 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(compat.CompatibilityError, 'separately reviewed VA mapping'):
             compat.patch_furniture_getter(data)
 
+    def test_revival_hud_refresh_uses_authoritative_manager_and_is_idempotent(self):
+        data, _ = synthetic_pe()
+        output, report = compat.patch_revival_hud_refresh(data)
+        hook, cave = compat._revival_hud_patch_bytes()
+        hook_offset = compat._va_offset(output, compat.REVIVAL_HUD_HOOK_VA, len(hook))
+        cave_offset = compat._va_offset(output, compat.REVIVAL_HUD_CAVE_VA, len(cave))
+        self.assertEqual(output[hook_offset:hook_offset + len(hook)], hook)
+        self.assertEqual(output[cave_offset:cave_offset + len(cave)], cave)
+        self.assertIn(struct.pack('<I', 0x00D869D4), cave)
+        self.assertIn(struct.pack('<I', compat.REVIVAL_COUNT_FORMAT_VA), cave)
+        self.assertFalse(report['hash_gate_used'])
+        again, second = compat.patch_revival_hud_refresh(output)
+        self.assertEqual(again, output)
+        self.assertEqual(second['status'], 'already_patched')
+
+    def test_unknown_revival_hud_site_is_refused(self):
+        data, _ = synthetic_pe(revival_hook=b'BADHOOK')
+        with self.assertRaisesRegex(compat.CompatibilityError, 'revival HUD draw entry differs'):
+            compat.patch_revival_hud_refresh(data)
+
     def test_village_patch_is_structural_and_idempotent(self):
         data = synthetic_pack()
         output, report = compat.patch_village_pack(data)
@@ -118,7 +145,7 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
             make_client_tree(root)
             before = (root / 'game.exe').read_bytes()
             report = compat.prepare(root, out, furniture=True, dungeon7=True,
-                                    dry_run=True, apply=True)
+                                    dry_run=True, apply=True, revival_display=True)
             self.assertTrue(report['verification']['all_pass'])
             self.assertFalse(out.exists())
             self.assertEqual((root / 'game.exe').read_bytes(), before)
@@ -132,7 +159,7 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
             original_game = (root / 'game.exe').read_bytes()
             original_pack = (root / 'Village_map_image/Village_map_image.pack').read_bytes()
             report = compat.prepare(root, out, furniture=True, dungeon7=True,
-                                    overwrite=True, apply=True)
+                                    overwrite=True, apply=True, revival_display=True)
             self.assertTrue(report['verification']['all_pass'])
             patched = (root / 'game.exe').read_bytes()
             self.assertNotEqual(patched, original_game)
@@ -144,7 +171,7 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
             self.assertIn(original_game, [p.read_bytes() for p in (out / 'backups').rglob('game.exe')])
             self.assertIn(original_pack, [p.read_bytes() for p in (out / 'backups').rglob('Village_map_image.pack')])
             second = compat.prepare(root, out, furniture=True, dungeon7=True,
-                                    overwrite=True, apply=True)
+                                    overwrite=True, apply=True, revival_display=True)
             self.assertTrue(second['verification']['all_pass'])
             self.assertTrue(all(row['status'] == 'unchanged' for row in second['apply_results']))
 

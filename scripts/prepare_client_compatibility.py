@@ -19,6 +19,14 @@ ROUTE = [8, 7, 6, 11, 16, 17, 18, 19, 14, 9, 4, 3, 2, 1, 0, 5, 10, 15, 20, 21, 2
 FURNITURE_CALL_VA = 0x0041235F
 FURNITURE_OLD = bytes.fromhex('E99CC31B00')
 FURNITURE_NEW = bytes.fromhex('E97CCC1B00')
+REVIVAL_HUD_HOOK_VA = 0x006E2F90
+REVIVAL_HUD_HOOK_OLD = bytes.fromhex('558BEC51894DFC')
+REVIVAL_HUD_CAVE_VA = 0x006E30A0
+REVIVAL_HUD_CAVE_SPAN = 64
+REVIVAL_HUD_CAVE_OLD = bytes([0xCC]) * REVIVAL_HUD_CAVE_SPAN
+REVIVAL_COUNT_GETTER_VA = 0x004011B3
+REVIVAL_COUNT_FORMAT_VA = 0x00C6AED8
+REVIVAL_FORMATTER_VA = 0x00B47637
 CLIENT_COMPAT_RESOURCE_STEM = bytes.fromhex('7171667864').decode('ascii')
 ALIAS_SPECS = (
     (Path('flying/hd0_ep22_dg01_st01.sstg'), Path('flying/hd0_ep22_dg00_st01.sstg'),
@@ -229,6 +237,50 @@ def patch_furniture_getter(data: bytes) -> tuple[bytes, dict]:
                        'the furniture call site differs; this unpacking needs a separately reviewed VA mapping')
 
 
+def _rel32(source_next_va: int, target_va: int) -> bytes:
+    displacement = target_va - source_next_va
+    require(-(1 << 31) <= displacement < (1 << 31), 'relative branch is out of PE32 range')
+    return struct.pack('<i', displacement)
+
+
+def _revival_hud_patch_bytes() -> tuple[bytes, bytes]:
+    hook = b'\xE9' + _rel32(REVIVAL_HUD_HOOK_VA + 5, REVIVAL_HUD_CAVE_VA) + b'\x90\x90'
+    stub = bytearray(REVIVAL_HUD_HOOK_OLD)
+    stub += b'\x8B\x0D' + struct.pack('<I', 0x00D869D4)  # mov ecx,[profile manager]
+    call_va = REVIVAL_HUD_CAVE_VA + len(stub)
+    stub += b'\xE8' + _rel32(call_va + 5, REVIVAL_COUNT_GETTER_VA)
+    stub += b'\x50'  # push current revival count
+    stub += b'\x68' + struct.pack('<I', REVIVAL_COUNT_FORMAT_VA)
+    stub += b'\x6A\x08'
+    stub += b'\x8B\x55\xFC\x81\xC2\x24\x81\x00\x00\x52'
+    call_va = REVIVAL_HUD_CAVE_VA + len(stub)
+    stub += b'\xE8' + _rel32(call_va + 5, REVIVAL_FORMATTER_VA)
+    stub += b'\x83\xC4\x10'
+    jump_va = REVIVAL_HUD_CAVE_VA + len(stub)
+    stub += b'\xE9' + _rel32(jump_va + 5, REVIVAL_HUD_HOOK_VA + len(REVIVAL_HUD_HOOK_OLD))
+    require(len(stub) <= REVIVAL_HUD_CAVE_SPAN, 'revival HUD trampoline exceeds reviewed code cave')
+    return hook, bytes(stub).ljust(REVIVAL_HUD_CAVE_SPAN, b'\xCC')
+
+
+def patch_revival_hud_refresh(data: bytes) -> tuple[bytes, dict]:
+    hook, cave = _revival_hud_patch_bytes()
+    output, cave_row = _patch_site(
+        data, REVIVAL_HUD_CAVE_VA, REVIVAL_HUD_CAVE_OLD, cave,
+        'patch_revival_hud_refresh_cave',
+        'the revival HUD code cave differs; this unpacking needs a separately reviewed VA mapping')
+    output, hook_row = _patch_site(
+        output, REVIVAL_HUD_HOOK_VA, REVIVAL_HUD_HOOK_OLD, hook,
+        'patch_revival_hud_refresh_hook',
+        'the revival HUD draw entry differs; this unpacking needs a separately reviewed VA mapping')
+    return output, {
+        'operation': 'patch_revival_hud_refresh',
+        'changed': bool(cave_row['changed'] or hook_row['changed']),
+        'status': 'patched' if cave_row['changed'] or hook_row['changed'] else 'already_patched',
+        'hook': hook_row,
+        'cave': cave_row,
+        'hash_gate_used': False,
+    }
+
 
 def _safe_relative(path: Path) -> Path:
     require(not path.is_absolute() and '..' not in path.parts and path.parts,
@@ -236,10 +288,10 @@ def _safe_relative(path: Path) -> Path:
     return path
 
 
-def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool):
+def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival_display: bool):
     files: dict[Path, bytes] = {}
     operations = []
-    if furniture:
+    if furniture or revival_display:
         source = source_root / 'game.exe'
         require(source.is_file(), 'source game.exe is missing')
         original = source.read_bytes()
@@ -247,8 +299,11 @@ def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool):
         if furniture:
             data, row = patch_furniture_getter(data)
             operations.append(row)
+        if revival_display:
+            data, row = patch_revival_hud_refresh(data)
+            operations.append(row)
         files[Path('game.exe')] = data
-        operations.append({'operation': 'derive_client_furniture_compatibility', 'source': 'game.exe',
+        operations.append({'operation': 'derive_client_executable_compatibility', 'source': 'game.exe',
                            'input_sha256': sha256(original), 'output_sha256': sha256(data),
                            'changed': data != original, 'hash_gate_used': False})
     if dungeon7:
@@ -345,13 +400,23 @@ def _check(name: str, ok: bool, detail: str):
     return {'name': name, 'ok': bool(ok), 'detail': detail}
 
 
-def _verify_client_bytes(data: bytes, furniture: bool):
+def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool):
     checks = []
     if furniture:
         offset = _va_offset(data, FURNITURE_CALL_VA, len(FURNITURE_NEW))
         actual = data[offset:offset + len(FURNITURE_NEW)]
         checks.append(_check('furniture_index_getter', actual == FURNITURE_NEW,
                              f'VA=0x{FURNITURE_CALL_VA:08X} actual={actual.hex().upper()}'))
+    if revival_display:
+        hook, cave = _revival_hud_patch_bytes()
+        hook_offset = _va_offset(data, REVIVAL_HUD_HOOK_VA, len(hook))
+        cave_offset = _va_offset(data, REVIVAL_HUD_CAVE_VA, len(cave))
+        actual_hook = data[hook_offset:hook_offset + len(hook)]
+        actual_cave = data[cave_offset:cave_offset + len(cave)]
+        checks.append(_check('revival_hud_refresh_hook', actual_hook == hook,
+                             f'VA=0x{REVIVAL_HUD_HOOK_VA:08X} actual={actual_hook.hex().upper()}'))
+        checks.append(_check('revival_hud_refresh_cave', actual_cave == cave,
+                             f'VA=0x{REVIVAL_HUD_CAVE_VA:08X} sha256={sha256(actual_cave)}'))
     return checks
 
 
@@ -378,7 +443,7 @@ def _verify_village_bytes(data: bytes):
 
 
 def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
-                 furniture: bool, dungeon7: bool):
+                 furniture: bool, dungeon7: bool, revival_display: bool):
     def read(relative: Path) -> bytes:
         if files is not None and relative in files:
             return files[relative]
@@ -387,8 +452,8 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
         return path.read_bytes()
 
     checks = []
-    if furniture:
-        checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture))
+    if furniture or revival_display:
+        checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture, revival_display))
     if dungeon7:
         checks.extend(_verify_village_bytes(read(Path('Village_map_image/Village_map_image.pack'))))
         for source_rel, target_rel, role in ALIAS_SPECS:
@@ -401,17 +466,17 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
 
 def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: bool,
             overwrite: bool = False, dry_run: bool = False,
-            apply: bool = False) -> dict:
+            apply: bool = False, revival_display: bool = False) -> dict:
     source_root = source_root.resolve()
     output_root = output_root.resolve()
     require(source_root.is_dir(), 'source client root does not exist')
     require(output_root != source_root, 'output root must be separate from the source client root')
-    files, operations = _collect_outputs(source_root, furniture, dungeon7)
+    files, operations = _collect_outputs(source_root, furniture, dungeon7, revival_display)
     require(files, 'no compatibility operation selected')
     report = {'schema_version': 2, 'source_root': str(source_root), 'output_root': str(output_root),
               'hash_gate_used': False, 'dry_run': bool(dry_run), 'apply_requested': bool(apply),
               'operations': operations, 'planned_files': [relative.as_posix() for relative in files]}
-    report['planned_verification'] = _verify_data(source_root, files, furniture, dungeon7)
+    report['planned_verification'] = _verify_data(source_root, files, furniture, dungeon7, revival_display)
     require(report['planned_verification']['all_pass'], 'derived compatibility verification failed')
     if dry_run:
         report['overlay_writes'] = []
@@ -422,7 +487,7 @@ def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: boo
     output_root.mkdir(parents=True, exist_ok=True)
     report['overlay_writes'] = _write_overlay(output_root, files, overwrite)
     report['apply_results'] = _apply_outputs(source_root, output_root, files) if apply else []
-    report['verification'] = _verify_data(source_root, None if apply else files, furniture, dungeon7)
+    report['verification'] = _verify_data(source_root, None if apply else files, furniture, dungeon7, revival_display)
     require(report['verification']['all_pass'], 'post-write compatibility verification failed')
     report_path = output_root / 'nanaimo_compatibility_report.json'
     _atomic_write(report_path, (json.dumps(report, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
@@ -436,7 +501,10 @@ def main(argv=None) -> int:
     parser.add_argument('--output-root', type=Path, required=True, help='separate local overlay/output directory')
     parser.add_argument('--furniture', action='store_true', help='derive the furniture Index-getter repair')
     parser.add_argument('--dungeon7', action='store_true', help='derive P03 roads and SSTG/PON aliases')
-    parser.add_argument('--all', action='store_true', help='derive furniture and dungeon7 compatibility')
+    parser.add_argument('--revival-display', action='store_true',
+                        help='refresh the ready-room revival counter from the authoritative native manager')
+    parser.add_argument('--all', action='store_true',
+                        help='derive furniture, revival-display and dungeon7 compatibility')
     parser.add_argument('--overwrite', action='store_true', help='replace differing named files in the overlay')
     parser.add_argument('--dry-run', action='store_true', help='validate and report without writing any file')
     parser.add_argument('--apply', action='store_true',
@@ -444,11 +512,12 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     furniture = args.furniture or args.all
     dungeon7 = args.dungeon7 or args.all
-    if not furniture and not dungeon7:
-        parser.error('select --furniture, --dungeon7 or --all')
+    revival_display = args.revival_display or args.all
+    if not furniture and not dungeon7 and not revival_display:
+        parser.error('select --furniture, --revival-display, --dungeon7 or --all')
     try:
         report = prepare(args.source_root, args.output_root, furniture, dungeon7,
-                         args.overwrite, args.dry_run, args.apply)
+                         args.overwrite, args.dry_run, args.apply, revival_display)
         print('CLIENT_COMPATIBILITY_READY', json.dumps(report, ensure_ascii=False))
         return 0
     except (CompatibilityError, OSError, struct.error) as exc:

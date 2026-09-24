@@ -9,15 +9,15 @@
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
       "size": 18286080,
-      "sha256": "4D20DF02FC426AB94C35F2C3E540DAC625A58C2DB674FB65F96DB976155E059F"
+      "sha256": "58672D90AE49816398D76FD347AB621828B09ACD399FBED91AD68CF0AA9DE1B5"
     },
     "adapter/nanaimo_adapter_testports.exe": {
       "size": 18286080,
-      "sha256": "42164D98EEFA94974967EB33ABF718F465DEB63D481FEB13170E3E25BBA66BDA"
+      "sha256": "8C20CB4C827915C730BC03ACE4D713EB0283410E784240B790DC030381353113"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 18292736,
-      "sha256": "9B1AB9F60DE91C0AF9527A2403AA52F6347B51205BF37AA59E7F88DE75670FDA"
+      "size": 18293760,
+      "sha256": "8BD8BA24FA540A91510CD33A50FF23869557AEA4B7D733CFDAE414260E848FC5"
     }
   },
   "files": [
@@ -568,8 +568,8 @@
     },
     {
       "path": "release/components/combat_economy/combat_economy_policy.inc",
-      "size": 4388,
-      "sha256": "6FEE2C681FF7C09F318885CF2833EA11A08B2BB66331445CE0D86CC4E10F0DA2"
+      "size": 4462,
+      "sha256": "BEAC844EAF6F458AE5DA677E21E66EB77488BA98DA3881C96112955A62091F65"
     },
     {
       "path": "release/components/combat_economy/incoming_pon_attack_data.inc",
@@ -633,8 +633,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 128352,
-      "sha256": "82D963F6CA5BA0199F8EB1A37685B4BF022D9FDEDF803297AA6A3208BD2BAB51"
+      "size": 128484,
+      "sha256": "4FA1A37638314D53A62F6DC3D6F5ADF6BB219C22264EB40D2CECD3F5567D6610"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
@@ -828,8 +828,8 @@
     },
     {
       "path": "release/components/stage_damage/damage_runtime.inc",
-      "size": 8075,
-      "sha256": "26E8C9E63CF7D64336161366735A995DA7255635732D2D4CC0F46494F5168043"
+      "size": 8175,
+      "sha256": "7F128F2CD06C65F8D3CC68221EB656076F852685A36370BE61929B70D1B753B0"
     },
     {
       "path": "release/components/stage_damage/stage_damage_catalog.inc",

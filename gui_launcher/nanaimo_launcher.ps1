@@ -553,7 +553,7 @@ function Ensure-ClientCompatibility {
     if(-not(Test-Path -LiteralPath $ClientCompatibilityTool -PathType Leaf)){throw "Client compatibility tool missing: $ClientCompatibilityTool"}
     if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
     $runtime=Get-ClientCompatibilityPython
-    $arguments=@($runtime.Prefix)+@($ClientCompatibilityTool,'--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--furniture','--dungeon7','--overwrite','--apply')
+    $arguments=@($runtime.Prefix)+@($ClientCompatibilityTool,'--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--furniture','--revival-display','--dungeon7','--overwrite','--apply')
     $output=@(& $runtime.Path @arguments 2>&1)
     if($LASTEXITCODE-ne0){throw ("Client compatibility preparation refused:`r`n"+($output-join"`r`n"))}
     if(-not(Test-Path -LiteralPath $ClientCompatibilityReport -PathType Leaf)){throw 'Client compatibility report was not generated.'}

@@ -29,7 +29,7 @@
     "derived_outputs": [
       {
         "path": "game.exe",
-        "operation": "automatic five-byte furniture Index-getter redirect for the reviewed PE site; no emotion patch is derived"
+        "operation": "automatic reviewed-site furniture Index redirect plus ready-room revival HUD refresh from the authoritative native counter; no emotion patch is derived"
       },
       {
         "path": "Village_map_image/Village_map_image.pack",
@@ -84,6 +84,7 @@
     "launcher_selection": {
       "arguments": [
         "--furniture",
+        "--revival-display",
         "--dungeon7",
         "--overwrite",
         "--apply"

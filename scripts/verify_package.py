@@ -18,6 +18,7 @@ from pathlib import Path
 
 TEXT_EXT = {'.ps1', '.py', '.md', '.json', '.ini', '.yaml', '.yml', '.bat', '.c', '.h', '.inc', '.txt', '.csv', '.tsv', '.cs', '.csproj'}
 PUBLIC_DIRS = ('release', 'adapter', 'gui_launcher', 'knowledge', 'docs', 'scripts', 'manifest', 'managed', 'managed-host')
+PRIVATE_TEXT_PREFIXES = ('knowledge/evidence/',)
 ABSOLUTE_HOST_PATH = re.compile(r'(?i)(?<![a-z0-9])[a-z]:[\\/]')
 HOME_PATH = re.compile(r'(?i)/(?:home|Users)/[^/\s<>]+')
 IPV4 = re.compile(r'(?<![\w.])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![\w.])')
@@ -202,6 +203,10 @@ def scan_public_text(root: Path) -> None:
         if '__pycache__' in p.parts or any(part in {'bin', 'obj'} for part in p.parts):
             continue
         rel = p.relative_to(root).as_posix()
+        # Raw investigation evidence is intentionally local/private and is not
+        # part of the distributable public-text surface.
+        if rel.startswith(PRIVATE_TEXT_PREFIXES):
+            continue
         # The inventory describes private local assets, not distributable text.
         if rel == 'manifest/package_files.tsv':
             continue
