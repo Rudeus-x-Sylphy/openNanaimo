@@ -70,6 +70,24 @@ internal static class ShopDungeonChecks
                     && BinaryPrimitives.ReadInt64LittleEndian(response.AsSpan(96)) == hans,
                     $"shop purchase debits only {(useCash ? "Cash" : "gold")}");
             }
+
+            var avatar = catalog.Where(i => i.Category == 10 && i.Section == InventorySection.Clothing && i.PaysWithCash)
+                .OrderBy(i => i.PurchasePrice).First();
+            Check(avatar.CashPrice == avatar.PurchasePrice && avatar.HansPrice == 0,
+                "avatar catalog marks the ava._D1 price as NaNa/Cash");
+            var avatarRequest = new byte[60];
+            avatarRequest[0] = 4;
+            avatarRequest[6] = 1;
+            BinaryPrimitives.WriteUInt32LittleEndian(avatarRequest.AsSpan(20, 4), avatar.ItemCode);
+            var avatarPurchase = await Request(0xC3CD, avatarRequest);
+            cash -= avatar.PurchasePrice;
+            Check(avatarPurchase.Length == 32 && avatarPurchase[8] == 10
+                && BinaryPrimitives.ReadInt64LittleEndian(avatarPurchase.AsSpan(16)) == cash
+                && BinaryPrimitives.ReadInt64LittleEndian(avatarPurchase.AsSpan(24)) == hans
+                && (await db.GetCharacterAsync(account, token))!.Cash == cash
+                && (await db.GetCharacterAsync(account, token))!.Hans == hans,
+                "NaNa avatar purchase debits Cash only");
+
             const uint mysteryKeyBundle = 47_000_004u;
             Check(ShopCatalog.TryGet(mysteryKeyBundle, out var keyItem)
                 && keyItem.PaysWithCash

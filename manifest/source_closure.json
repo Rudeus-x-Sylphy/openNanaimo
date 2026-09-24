@@ -93,8 +93,8 @@
     },
     {
       "path": "managed-host/ShopDungeonChecks.cs",
-      "size": 9810,
-      "sha256": "FD9233E5D5B3743DE80FC7C400468A7D8D08A662B35652C378420D78CE7F6777"
+      "size": 10948,
+      "sha256": "42D40AE1D54F002525ADBDCE781890C530F2DE0ACF2C9DA731E093A6E6C20222"
     },
     {
       "path": "managed-host/VillagePositionChecks.cs",
@@ -293,8 +293,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 576675,
-      "sha256": "D77834B14E3FF6A865C765525D6FAF361201A89ABEA8A46622EE45D33A7A7B7E"
+      "size": 576680,
+      "sha256": "29A7DDE38ECBFDEA5BBD86D4D293A7AB5F61DE701E217CBC3FD0D6C95578E58D"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -378,8 +378,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 933033,
-      "sha256": "734931C9E563E26E7A315782A06E449C3208F980DC442FF9EEB40565A33E7396"
+      "size": 933038,
+      "sha256": "429F49F60B9381494F9CCA0E2629CCAE3920D90C584FC105648D11A5B0C98A9C"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -393,8 +393,8 @@
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
-      "size": 37308,
-      "sha256": "D0A8E1418820FF59D3644C9510056B843AD531E055AEDFD8BE184286BD83651B"
+      "size": 37481,
+      "sha256": "1B0EF59CE9D289CD5641D15B7E9E3618FA4E110E716714AF21C0D957CA68196D"
     },
     {
       "path": "managed/Services/ProtocolInspector.cs",

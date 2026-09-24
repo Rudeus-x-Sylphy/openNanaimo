@@ -4625,7 +4625,7 @@ public sealed partial class DatabaseService
             || items.Any(item => !ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
                 || catalogItem.Category != 10
                 || catalogItem.Section != InventorySection.Clothing
-                || catalogItem.HansPrice != item.UnitPrice)
+                || catalogItem.CashPrice != item.UnitPrice)
             || items.Select(item => item.ItemCode).Distinct().Count() != items.Count)
             return (false, false, "Invalid NaNa avatar purchase parameters.", [], 0, 0);
 
@@ -4663,10 +4663,10 @@ public sealed partial class DatabaseService
             cash = reader.GetInt64(1);
         }
 
-        if (hans < totalPrice)
+        if (cash < totalPrice)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return (false, true, "Insufficient Hans balance.", [], hans, cash);
+            return (false, true, "Insufficient NaNa/Cash balance.", [], hans, cash);
         }
 
         var purchasedItems = new List<(uint ItemCode, ushort NewQuantity)>(items.Count);
@@ -4692,13 +4692,13 @@ public sealed partial class DatabaseService
             debit.Transaction = transaction;
             debit.CommandText = """
                 UPDATE Characters
-                SET Hans = Hans - $totalPrice,
+                SET Cash = Cash - $totalPrice,
                     LastSavedAt = $now
                 WHERE Id = $characterId
                   AND AccountId = $accountId
                   AND IsOnline = 1
                   AND ActiveSessionId = $sessionId
-                  AND Hans >= $totalPrice
+                  AND Cash >= $totalPrice
                   AND EXISTS (
                       SELECT 1 FROM Accounts
                       WHERE Id = $accountId

@@ -4135,7 +4135,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return BuildNativeFrame(
                         frame,
                         0xC3CE,
-                        BuildNanaPurchaseResultPayload(40, 0, session.Character.Hans, session.Character.Cash),
+                        BuildNanaPurchaseResultPayload(40, 0, session.Character.Cash, session.Character.Hans),
                         session);
                 }
 
@@ -4154,12 +4154,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         if (!seenItemCodes.Add(itemCode)
                             || !ShopCatalog.TryGet(10, itemCode, out var catalogItem)
                             || catalogItem.Section != InventorySection.Clothing
-                            || catalogItem.HansPrice == 0)
+                            || catalogItem.CashPrice == 0)
                         {
                             valid = false;
                             break;
                         }
-                        items.Add((itemCode, option, catalogItem.HansPrice));
+                        items.Add((itemCode, option, catalogItem.CashPrice));
                     }
                 }
 
@@ -4170,7 +4170,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return BuildNativeFrame(
                         frame,
                         0xC3CE,
-                        BuildNanaPurchaseResultPayload(40, paymentMode, session.Character?.Hans ?? 0, session.Character?.Cash ?? 0),
+                        BuildNanaPurchaseResultPayload(40, paymentMode, session.Character?.Cash ?? 0, session.Character?.Hans ?? 0),
                         session);
                 }
 
@@ -4190,8 +4190,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     BuildNanaPurchaseResultPayload(
                         resultCode,
                         paymentMode,
-                        session.Character?.Hans ?? purchase.Hans,
-                        session.Character?.Cash ?? purchase.Cash),
+                        session.Character?.Cash ?? purchase.Cash,
+                        session.Character?.Hans ?? purchase.Hans),
                     session);
             }
 
@@ -17672,16 +17672,16 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private static byte[] BuildNanaPurchaseResultPayload(
         byte resultCode,
         byte paymentMode,
-        long hans,
-        long cash)
+        long cash,
+        long hans)
     {
-        // C3CE reads result/payment at frame+8/+9, Hans at frame+16 and
-        // Cash at frame+24. The client treats each balance as a 64-bit value.
+        // C3CE reads result/payment at frame+8/+9, NaNa/Cash at frame+16
+        // and Hans at frame+24. The client treats each balance as a 64-bit value.
         var payload = new byte[NanaPurchaseResponsePayloadLength];
         payload[0] = resultCode;
         payload[1] = paymentMode;
-        BinaryPrimitives.WriteUInt64LittleEndian(payload.AsSpan(8, 8), (ulong)Math.Max(0, hans));
-        BinaryPrimitives.WriteUInt64LittleEndian(payload.AsSpan(16, 8), (ulong)Math.Max(0, cash));
+        BinaryPrimitives.WriteUInt64LittleEndian(payload.AsSpan(8, 8), (ulong)Math.Max(0, cash));
+        BinaryPrimitives.WriteUInt64LittleEndian(payload.AsSpan(16, 8), (ulong)Math.Max(0, hans));
         return payload;
     }
 
