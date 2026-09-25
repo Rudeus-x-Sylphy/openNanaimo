@@ -77,6 +77,7 @@ public sealed partial class NetworkAdapterService
         if (!NativeDungeonEnabled || channel != "WorldAdapter") return false;
         if (opcode == 0xCF09 && frame.Length == 64 && session.OnlineTracked && session.Character is not null)
         {
+            SuspendNonCombatHealthRecovery(session);
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
@@ -175,6 +176,7 @@ public sealed partial class NetworkAdapterService
                 return true;
             }
 
+            var deathTownReturn = opcode == 0xCF1D && session.NativeDungeonDeathLatched;
             if (opcode == 0xCF87)
             {
                 session.NativeDungeonSettlementAwaitingAction = true;
@@ -240,16 +242,30 @@ public sealed partial class NetworkAdapterService
             else await session.NativeDungeon.SendAsync(frame, token);
             if (opcode == 0xCF1D)
             {
+                var battleCurrentMp = checked((int)(session.NativeBattleResources?.CurrentMp
+                    ?? session.NativeCheckpoint?.Get(28)
+                    ?? (uint)Math.Max(0, session.Character?.CurrentMp ?? 0)));
                 await CloseNativeDungeonAsync(
                     session,
-                    ResolveNativeDungeonDisconnectBoundary(session.NativeDungeonNextTransitionAuthorized));
+                    deathTownReturn
+                        ? BattleResourceBoundary.DeathReturn
+                        : ResolveNativeDungeonDisconnectBoundary(session.NativeDungeonNextTransitionAuthorized));
+                if (deathTownReturn)
+                    await ApplyDungeonDeathReturnResourcesAsync(session, battleCurrentMp, token);
             }
             return true;
         }
         if (opcode is 0xC365 or 0xC367 or 0xC354)
         {
-            await CloseNativeDungeonAsync(session, BattleResourceBoundary.TownReturn);
+            var deathTownReturn = session.NativeDungeonDeathLatched;
+            var battleCurrentMp = checked((int)(session.NativeCheckpoint?.Get(28)
+                ?? (uint)Math.Max(0, session.Character?.CurrentMp ?? 0)));
+            await CloseNativeDungeonAsync(
+                session,
+                deathTownReturn ? BattleResourceBoundary.DeathReturn : BattleResourceBoundary.TownReturn);
             await RefreshSessionCharacterAsync(session, token);
+            if (deathTownReturn)
+                await ApplyDungeonDeathReturnResourcesAsync(session, battleCurrentMp, token);
         }
         return false;
     }

@@ -334,6 +334,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private readonly Dictionary<TownInstanceKey, Queue<string>> _villageBotRecentMessages = [];
     private CancellationTokenSource? _cts;
     private Task? _villageBotTask;
+    private Task? _healthRecoveryTask;
     private VillageBotSettings _villageBotSettings = new();
     private AccountLoginPolicy _loginPolicy = AccountLoginPolicy.Disabled;
     private List<AdapterEndpoint> _endpoints = [];
@@ -386,6 +387,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public bool TownSceneActive { get; set; }
         public bool TownMapMarkerInitialized { get; set; }
         public long ApartmentOwnerCharacterId { get; set; }
+        public HealthRecoverySchedule HealthRecovery { get; } = new();
         public byte VillageShopCode { get; set; }
         public int TradeRoomId { get; set; }
         public int PartyId { get; set; }
@@ -1510,6 +1512,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         lock (_villageBotGate)
             _villageBotSettings = villageBotSettings;
         _villageBotTask = Task.Run(() => VillageBotLoopAsync(_cts.Token), CancellationToken.None);
+        _healthRecoveryTask = Task.Run(() => HealthRecoveryLoopAsync(_cts.Token), CancellationToken.None);
         await ReconcileVillageBotsAsync(cancellationToken);
         _log($"直连 TCP 服务已启动：GameAdapter={options.GameAdapterPort}，WorldAdapter={options.WorldAdapterPort}");
     }
@@ -1584,6 +1587,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         foreach (var item in items) item.Listener.Stop();
         if (cts is not null)
         {
+            var healthRecoveryTask = Interlocked.Exchange(ref _healthRecoveryTask, null);
+            if (healthRecoveryTask is not null)
+            {
+                try { await healthRecoveryTask; }
+                catch (OperationCanceledException) { }
+                catch (Exception ex) { _log($"Stopping health recovery failed: {ex.Message}"); }
+            }
             var villageBotTask = Interlocked.Exchange(ref _villageBotTask, null);
             if (villageBotTask is not null)
             {
@@ -3282,12 +3292,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 LeaveVillageShopScene(session, "apartment enter");
                 LeaveApartmentScene(session, "apartment room change");
                 session.ApartmentOwnerCharacterId = apartmentOwner.Id;
-                var apartmentRecovery = await ApplyNonCombatHealthRecoveryAsync(
-                    session,
-                    HealthRecoveryScene.Apartment,
-                    token);
-                if (apartmentRecovery.Changed)
-                    _log($"{channel}:{remote} apartment recovery step: hp={apartmentRecovery.CurrentHp}/{session.Character!.MaxHp} mp={apartmentRecovery.CurrentMp}/{session.Character.MaxMp} restored=({apartmentRecovery.HpRestored},{apartmentRecovery.MpRestored})");
+                ActivateNonCombatHealthRecovery(session, HealthRecoveryScene.Apartment);
+                QueueUserAutoHealing(session, session, "synchronize apartment HP/MP after C38D");
                 var apartmentPlacements = await _database.GetApartmentPlacementsAsync(apartmentOwner.Id, token);
                 _log($"{channel}:{remote} 进入公寓：mode={moveMode} owner={requestedOwner} character={apartmentOwner.Name} objects={apartmentPlacements.Count(item => item.InteriorType >= 2)}；返回完整 C38E 私人房间结构");
                 return BuildNativeFrame(
@@ -3313,14 +3319,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.LastReportedPositionY = roomY;
                 session.Character!.PositionX = roomX;
                 session.Character.PositionY = roomY;
-                var apartmentRefreshRecovery = await ApplyNonCombatHealthRecoveryAsync(
-                    session,
-                    HealthRecoveryScene.Apartment,
-                    token);
-                if (apartmentRefreshRecovery.Changed)
-                    _log($"{channel}:{remote} apartment refresh recovery step: hp={apartmentRefreshRecovery.CurrentHp}/{session.Character!.MaxHp} mp={apartmentRefreshRecovery.CurrentMp}/{session.Character.MaxMp} restored=({apartmentRefreshRecovery.HpRestored},{apartmentRefreshRecovery.MpRestored})");
+                ActivateNonCombatHealthRecovery(session, HealthRecoveryScene.Apartment);
                 var apartmentUserPayload = BuildMiniRoomUserInfoPayload(session.Character, roomX, roomY);
                 QueueApartmentEntitySnapshots(session, apartmentUserPayload);
+                QueueUserAutoHealing(session, session, "synchronize apartment HP/MP after C38F");
                 _log($"{channel}:{remote} 返回公寓角色信息：character={session.Character?.Name} position=({roomX},{roomY})");
                 return BuildNativeFrame(
                     frame,
@@ -4624,12 +4626,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.TownPage = transition.Page;
                 session.Character.CurrentMapId = townId;
                 session.Character.CurrentTownPage = transition.Page;
-                var townEntryRecovery = await ApplyNonCombatHealthRecoveryAsync(
-                    session,
-                    HealthRecoveryScene.Town,
-                    token);
-                if (townEntryRecovery.Changed)
-                    _log($"{channel}:{remote} town entry recovery step: hp={townEntryRecovery.CurrentHp}/{session.Character!.MaxHp} mp={townEntryRecovery.CurrentMp}/{session.Character.MaxMp} restored=({townEntryRecovery.HpRestored},{townEntryRecovery.MpRestored})");
                 // C365 runs while the old village actor/controller is being torn
                 // down. Its X/Y describe transient transport context, not the new
                 // actor's authoritative landing point. Preserve the last legal
@@ -4709,12 +4705,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.Character.CurrentTownPage = effectiveRoomIndex;
                 session.Character.PositionX = positionX;
                 session.Character.PositionY = positionY;
-                var townRecovery = await ApplyNonCombatHealthRecoveryAsync(
-                    session,
-                    HealthRecoveryScene.Town,
-                    token);
-                if (townRecovery.Changed)
-                    _log($"{channel}:{remote} town recovery step: hp={townRecovery.CurrentHp}/{session.Character!.MaxHp} mp={townRecovery.CurrentMp}/{session.Character.MaxMp} restored=({townRecovery.HpRestored},{townRecovery.MpRestored})");
                 _log(entryPosition.Repaired
                     ? $"{channel}:{remote} C367 village-entry sentinel normalized: town={session.TownId} room={effectiveRoomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({positionX},{positionY}); FFFF/FFFF and legacy 03FF/03FF are not persisted"
                     : $"{channel}:{remote} C367 accepted village-entry position: room={effectiveRoomIndex} position=({positionX},{positionY})");
@@ -5121,9 +5111,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                                 : $"{channel}:{remote} Dungeon transition Super-BOSS retained-room reentry unavailable after C36C: room={reentryRoomId} action={reentryAction}");
                         }
 
-                        await RestoreDungeonVitalsAsync(session, false, token);
-                        if (initializedTransitionTownScene)
-                            QueueUserAutoHealing(session, session, "restore HP/MP on dungeon transition bridge");
                         _log(reentryAction == DungeonSettlementAction.ChallengeBoss
                             ? $"{channel}:{remote} Dungeon transition town-page bridge initialized: room={reentryRoomId} action={reentryAction}; previous retained-room reentry restored"
                             : $"{channel}:{remote} Dungeon transition town-page bridge initialized: room={reentryRoomId} action={reentryAction}; waiting for the retail CF09 then CF6C/CF77 request");
@@ -5131,7 +5118,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     }
 
                     var initializedTownScene = !session.TownSceneActive;
-                    await RestoreDungeonVitalsAsync(session, false, token);
                     var saved = await _database.SaveCharacterRuntimeStateAsync(
                         session.AccountId,
                         session.Character.Id,
@@ -5153,8 +5139,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                                 "restore equipped pet after town page completion"));
                             _log($"{channel}:{remote} 城镇页面完成后补发宠物外观：item={GetEquippedPetItemCode(session.Character)}");
                         }
-                        QueueUserAutoHealing(session, session, "restore town HP/MP after C36C");
                     }
+                    ActivateNonCombatHealthRecovery(session, HealthRecoveryScene.Town);
+                    QueueUserAutoHealing(session, session, "synchronize town HP/MP after C36C");
                 }
                 else
                 {
@@ -8478,6 +8465,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     _log($"{channel}:{remote} Rejected dungeon start after member access validation: room={session.DungeonRoomId} episode={startingEpisode} dungeon={startingDungeon} stage={startingStage}");
                     return null;
                 }
+                SuspendNonCombatHealthRecovery(session);
                 await RestoreDungeonVitalsAsync(session, true, token);
                 MarkDungeonRoomStarted(session);
                 await QueueDungeonStartAsync(session, token);
@@ -14322,8 +14310,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var connected = await TrackConnectedAsync(session, remoteIp, token);
         if (connected && session.Character.CurrentHp <= 0)
         {
-            session.Character.CurrentHp = Math.Max(1, session.Character.MaxHp);
-            session.Character.CurrentMp = Math.Max(1, session.Character.MaxMp);
+            var deathReturn = HealthRecoveryPolicy.ResolveDungeonDeathReturn(
+                session.Character,
+                session.Character.CurrentMp);
+            session.Character.CurrentHp = deathReturn.CurrentHp;
+            session.Character.CurrentMp = deathReturn.CurrentMp;
             await _database.SaveCharacterRuntimeStateAsync(
                 session.AccountId,
                 session.Character.Id,
@@ -14466,9 +14457,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 && GetDungeonRoom(session) is not null
                 && !TryGetDungeonTransition(session, out _, out _))
             {
-                session.Character.CurrentHp = Math.Max(1, session.Character.MaxHp);
-                session.Character.CurrentMp = Math.Max(1, session.Character.MaxMp);
-                _log($"Dungeon disconnect restored dead character before persistence: characterId={session.Character.Id} hp={session.Character.CurrentHp}/{session.Character.MaxHp} mp={session.Character.CurrentMp}/{session.Character.MaxMp}");
+                var deathReturn = HealthRecoveryPolicy.ResolveDungeonDeathReturn(
+                    session.Character,
+                    session.Character.CurrentMp);
+                session.Character.CurrentHp = deathReturn.CurrentHp;
+                session.Character.CurrentMp = deathReturn.CurrentMp;
+                _log($"Dungeon disconnect initialized death-return resources before persistence: characterId={session.Character.Id} hp={session.Character.CurrentHp}/{session.Character.MaxHp} mp={session.Character.CurrentMp}/{session.Character.MaxMp}");
             }
             session.OnlineTracked = false;
             RemoveDungeonRoomMember(session);
@@ -14577,47 +14571,114 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             MentorStateChanged?.Invoke();
     }
 
-    private async Task<HealthRecoveryResolution> ApplyNonCombatHealthRecoveryAsync(
+    private async Task HealthRecoveryLoopAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+        while (await timer.WaitForNextTickAsync(token))
+        {
+            var nowUtc = DateTimeOffset.UtcNow;
+            foreach (var presence in _activeWorldSessions.Values.ToArray())
+            {
+                var session = presence.Session;
+                if (!session.HealthRecovery.TryGetActiveScene(out var activeScene)
+                    || !IsNonCombatRecoverySceneActive(session, activeScene)
+                    || !session.HealthRecovery.TryTakeDueTick(nowUtc, out var dueScene))
+                    continue;
+
+                try
+                {
+                    await ApplyNonCombatHealthRecoveryTickAsync(session, presence, dueScene, token);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+                catch (Exception ex)
+                {
+                    _log($"Non-combat health recovery tick failed: session={session.SessionId} scene={dueScene} error={ex.Message}");
+                }
+            }
+        }
+    }
+
+    private bool IsNonCombatRecoverySceneActive(ConnectionSession session, HealthRecoveryScene scene)
+    {
+        if (!session.OnlineTracked
+            || session.Character is null
+            || session.NativeDungeon is not null
+            || session.NativeForwarding
+            || session.NativeCheckpoint is not null
+            || TryGetDungeonTransition(session, out _, out _))
+            return false;
+
+        return scene switch
+        {
+            HealthRecoveryScene.Town => session.TownSceneActive && session.ApartmentOwnerCharacterId == 0,
+            HealthRecoveryScene.Apartment => session.ApartmentOwnerCharacterId > 0,
+            _ => false
+        };
+    }
+
+    private async Task ApplyNonCombatHealthRecoveryTickAsync(
         ConnectionSession session,
+        WorldPresence presence,
         HealthRecoveryScene scene,
         CancellationToken token)
     {
-        if (session.Character is null)
-            return default;
+        var character = session.Character;
+        if (character is null || !IsNonCombatRecoverySceneActive(session, scene))
+            return;
 
-        var battleEpochActive = session.NativeDungeon is not null
-            || session.NativeForwarding
-            || session.NativeCheckpoint is not null
-            || session.DungeonRoomId > 0;
-        var resolution = HealthRecoveryPolicy.Resolve(
-            session.Character,
-            scene,
-            session.OnlineTracked,
-            battleEpochActive);
-        if (!resolution.Changed)
-            return resolution;
-
+        var beforeHp = character.CurrentHp;
+        var beforeMp = character.CurrentMp;
         var persisted = await _database.ApplyHealthRecoveryStepAsync(
             session.AccountId,
-            session.Character.Id,
+            character.Id,
             session.SessionId,
             scene,
             token);
-        if (!persisted.Applied)
-        {
-            await RefreshSessionCharacterAsync(session, token);
-            return default;
-        }
+        if (!persisted.Applied || session.Character is not { } current || current.Id != character.Id)
+            return;
 
-        session.Character.CurrentHp = persisted.CurrentHp;
-        session.Character.CurrentMp = persisted.CurrentMp;
-        await RefreshSessionCharacterAsync(session, token);
+        current.CurrentHp = persisted.CurrentHp;
+        current.CurrentMp = persisted.CurrentMp;
         AccountStateChanged?.Invoke();
-        return resolution with
-        {
-            CurrentHp = persisted.CurrentHp,
-            CurrentMp = persisted.CurrentMp
-        };
+        await SendNativeBroadcastAsync(
+            new PendingNativeBroadcast(
+                presence,
+                0xD8FF,
+                BuildUserHpMpAutoHealingPayload(current),
+                $"{scene.ToString().ToLowerInvariant()} HP/MP recovery tick"),
+            token);
+        _log($"Non-combat recovery tick: scene={scene} character={current.Id} hp={beforeHp}->{current.CurrentHp}/{current.MaxHp} mp={beforeMp}->{current.CurrentMp}/{current.MaxMp}");
+    }
+
+    private static void ActivateNonCombatHealthRecovery(
+        ConnectionSession session,
+        HealthRecoveryScene scene)
+        => session.HealthRecovery.Activate(scene, DateTimeOffset.UtcNow);
+
+    private static void SuspendNonCombatHealthRecovery(ConnectionSession session)
+        => session.HealthRecovery.Suspend();
+
+    private async Task ApplyDungeonDeathReturnResourcesAsync(
+        ConnectionSession session,
+        int battleCurrentMp,
+        CancellationToken token)
+    {
+        if (session.Character is not { } character)
+            return;
+        var resources = HealthRecoveryPolicy.ResolveDungeonDeathReturn(character, battleCurrentMp);
+        character.CurrentHp = resources.CurrentHp;
+        character.CurrentMp = resources.CurrentMp;
+        var saved = await _database.SaveCharacterRuntimeStateAsync(
+            session.AccountId,
+            character.Id,
+            session.SessionId,
+            CreateRuntimeState(character, session.ChannelId),
+            token);
+        if (!saved)
+            await RefreshSessionCharacterAsync(session, token);
+        else
+            AccountStateChanged?.Invoke();
+        _log($"Dungeon death return resources initialized: character={character.Id} hp={character.CurrentHp}/{character.MaxHp} mp={character.CurrentMp}/{character.MaxMp} persisted={saved}");
     }
 
     private async Task RefreshSessionCharacterAsync(ConnectionSession session, CancellationToken token)
