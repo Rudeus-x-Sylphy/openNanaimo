@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 18286080,
-      "sha256": "58672D90AE49816398D76FD347AB621828B09ACD399FBED91AD68CF0AA9DE1B5"
+      "size": 18286592,
+      "sha256": "F9A2687A99C83AF4237129D29452EECB225597E571B66E090C0AEF3C86F69B1E"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 18286080,
-      "sha256": "8C20CB4C827915C730BC03ACE4D713EB0283410E784240B790DC030381353113"
+      "size": 18286592,
+      "sha256": "BDC7B445DAE78854F20B92F85C096CDF5CBFA228E15D6BE104E1AACB1A0008E0"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 18293760,
-      "sha256": "10EA3F9EA700F1D8F5116A55EB99DF9E62DB924E9B261E56702F6C511ADC51B2"
+      "size": 18294272,
+      "sha256": "36807C8C550682854FB1D4CA713F66580E40535B6164DE5BFBD52B77A472A6AC"
     }
   },
   "files": [
@@ -908,8 +908,8 @@
     },
     {
       "path": "release/components/winter_boss/boss_hp_sync_runtime.inc",
-      "size": 48592,
-      "sha256": "A2DB599BAD5FEDB7F687BFE7A312DC4C248B6D161CDF83EF1B41CF228640B858"
+      "size": 49248,
+      "sha256": "9BBC4DA1E504E63EEC3A1D10E4E2652CC386C28BE8E96AAFC7B3F64680024DF5"
     },
     {
       "path": "release/teamplay_common.inc",

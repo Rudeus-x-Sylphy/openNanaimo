@@ -67,7 +67,7 @@ struct boss_hp_sync_context {
 };
 struct boss_hp_sync_result {
     unsigned stage,battle_epoch,request_count,target_ordinal,applied_damage,hp,cumulative_damage,first_terminal,repeated_terminal;
-    unsigned owner_key,source_index,phase_candidate,attack_value,have_attack,basis,mode_index,mode_count,intermediate_terminal,final_terminal;
+    unsigned owner_key,source_index,phase_candidate,attack_value,have_attack,basis,mode_index,mode_count,intermediate_terminal,phase_transition_retire,final_terminal;
     unsigned wire_mode,wire_child,expected_ordinal,target_mismatch,mode_error,profile_kind;
     unsigned absolute_slot,target_type,fallback_used,lookup_miss,invalid_slot,resource_mode_hp,fixed_damage_policy,zero_hp_gate;
 #if TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
@@ -92,6 +92,13 @@ static unsigned boss_hp_sync_get32(const unsigned char*p,unsigned off){return (u
 static void boss_hp_sync_put16(unsigned char*p,unsigned off,unsigned v){p[off]=(unsigned char)v;p[off+1]=(unsigned char)(v>>8);}
 static void boss_hp_sync_put32(unsigned char*p,unsigned off,unsigned v){p[off]=(unsigned char)v;p[off+1]=(unsigned char)(v>>8);p[off+2]=(unsigned char)(v>>16);p[off+3]=(unsigned char)(v>>24);}
 static void boss_hp_sync_zero_result(struct boss_hp_sync_result*r){memset(r,0,sizeof(*r));}
+static int boss_hp_sync_mode_transition_needs_component_retire(const struct boss_hp_sync_context*c,const struct boss_hp_sync_result*r){
+#if TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
+    return c&&r&&c->positive_child_count==1u&&!r->child_first_terminal;
+#else
+    return c&&r;
+#endif
+}
 static const struct boss_component_boss_profile *boss_component_boss_find_profile(unsigned hd,unsigned ep,unsigned dg,unsigned st,unsigned slot){
     unsigned i;if(slot>8u)return 0;
     lumineos_resource_identity(hd,st,&ep,&dg);
@@ -370,7 +377,7 @@ static int boss_hp_sync_apply_d011_attack(struct boss_hp_sync_context*c,const un
         r->applied_damage=component_damage;r->component_hp=c->component_hp[loaded_slot];r->child_hp=c->child_hp[def->child];r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;r->mode_index=c->mode_index;r->mode_count=c->mode_count;
         if(c->component_hp[loaded_slot]==0u&&!c->component_terminal_sent[loaded_slot]){c->component_terminal_sent[loaded_slot]=1u;r->component_first_terminal=1u;}else r->scripted_report_suppressed=1u;
         if(c->child_hp[def->child]==0u&&!c->child_terminal_sent[def->child]){c->child_terminal_sent[def->child]=1u;if(def->child==c->scripted_terminal_child)r->child_first_terminal=1u;}
-        boss_hp_sync_scripted_finish_if_complete(c,r);
+        boss_hp_sync_scripted_finish_if_complete(c,r);if(r->intermediate_terminal&&boss_hp_sync_mode_transition_needs_component_retire(c,r))r->phase_transition_retire=1u;
         return BOSS_HP_SYNC_OK;
     }
 #endif
@@ -419,11 +426,11 @@ aggregate_before=c->hp;
     r->child_hp=c->child_hp[def->child];r->child_max_hp=c->child_max_hp[def->child];
     if(c->positive_child_count>1u&&c->child_max_hp[def->child]>0u&&c->child_hp[def->child]==0u&&!c->child_terminal_sent[def->child]){c->child_terminal_sent[def->child]=1u;r->child_first_terminal=1u;}
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
-    boss_hp_sync_completion_shell_finish_if_complete(c,r);
+    boss_hp_sync_completion_shell_finish_if_complete(c,r);if(r->intermediate_terminal&&boss_hp_sync_mode_transition_needs_component_retire(c,r))r->phase_transition_retire=1u;
 #endif
 #endif
     if(c->hp==0u&&!r->first_terminal&&!r->intermediate_terminal){
-        if(c->mode_index+1u<c->mode_count){c->awaiting_next_mode=1u;r->intermediate_terminal=1u;}
+        if(c->mode_index+1u<c->mode_count){c->awaiting_next_mode=1u;r->intermediate_terminal=1u;if(boss_hp_sync_mode_transition_needs_component_retire(c,r))r->phase_transition_retire=1u;}
         else{c->phase=BOSS_HP_SYNC_PHASE_TERMINAL;c->terminal_response_count=1u;c->final_terminal_seen=1u;r->first_terminal=1u;r->final_terminal=1u;}
     }
     return BOSS_HP_SYNC_OK;
@@ -479,28 +486,28 @@ static int boss_hp_sync_apply_external_damage(struct boss_hp_sync_context*c,unsi
 #endif
 static int boss_hp_sync_encode_d012_payload(unsigned char*frame,unsigned len,const struct boss_hp_sync_result*r){
     if(len!=BOSS_HP_SYNC_D012_LEN)return BOSS_HP_SYNC_BAD_LENGTH;
-    /* SHOP_PURCHASE_BASE static closure: D012 DWORD+0x28 updates the owner/group recording
-       before BYTE+0x19 selects a child. Every matched child then passes WORD+0x1A
-       to sub_6C9B20, which immediately indexes and retires that component plus
-       associated objects. Therefore a recording-only D012 must not select any
-       child. The shipped Boss corpus uses child indexes0..5, so0xFF cannot
-       match an authored child. Only a nonfinal component-first-terminal D012
-       keeps a real child plus its statically valid ordinal. Child-level,
-       intermediate, final, and repeated boundaries use D013 for retirement and
-       keep D012 neutral; final state handling continues after the child loop. */
+    /* D012 DWORD+0x28 updates the owner/group recording before BYTE+0x19
+       selects a child. A matched child then passes WORD+0x1A to the component
+       retirement path. Ordinary recording, child-level D013, final and repeat
+       messages therefore remain neutral. A D011-driven authored mode boundary
+       is different: it addresses the exact component that ended the old mode,
+       with zero recording/reward/marker fields, and leaves settlement gated on
+       the final mode. External aggregate damage has no proven child tuple and
+       keeps the neutral selector. */
+    {unsigned transition_target=r->intermediate_terminal&&r->phase_transition_retire;
     frame[0x18]=0;
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
-    frame[0x19]=(unsigned char)((r->component_first_terminal&&!r->intermediate_terminal&&!r->first_terminal)?r->wire_child:0xFFu);
+    frame[0x19]=(unsigned char)(((r->component_first_terminal&&!r->intermediate_terminal&&!r->first_terminal)||transition_target)?r->wire_child:0xFFu);
 #else
     frame[0x19]=(unsigned char)r->wire_child;
 #endif
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
-    if(r->component_first_terminal&&!r->first_terminal)boss_hp_sync_put16(frame,0x1A,r->target_ordinal);
+    if((r->component_first_terminal&&!r->first_terminal)||transition_target)boss_hp_sync_put16(frame,0x1A,r->target_ordinal);
 #endif
-    if(r->intermediate_terminal){/* hp0/marker0/reward0/object0: exact next topology mode only. */}
+    if(r->intermediate_terminal){/* addressed old-mode retirement; all state/reward fields stay zero */}
     else if(r->first_terminal){frame[0x1A]=0;frame[0x1B]=4;boss_hp_sync_put32(frame,0x1C,BOSS_HP_SYNC_TERMINAL_REWARD);boss_hp_sync_put32(frame,0x20,card_drop_create(1u,r->stage));boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
     else if(r->repeated_terminal){boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
     else boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_NORMAL_MARKER);
-    boss_hp_sync_put32(frame,0x28,r->hp);boss_hp_sync_put32(frame,0x2C,r->cumulative_damage);return BOSS_HP_SYNC_OK;
+    if(!r->intermediate_terminal){boss_hp_sync_put32(frame,0x28,r->hp);boss_hp_sync_put32(frame,0x2C,r->cumulative_damage);}return BOSS_HP_SYNC_OK;}
 }
 #endif
