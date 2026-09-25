@@ -30,7 +30,7 @@ start_nanaimo_launcher.bat
   -> game.exe
 ```
 
-GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色配置、停止当前运行的 adapter 和客户端、校验完整 adapter 运行文件闭包，从使用者自备文件派生并验证家具 Index 重定向及第五村地宫7兼容资源，随后启动完整 adapter、注册角色资料并启动客户端。表情翻页由适配器端有界 C355 情侣字段保障；家具快照由固定 C393 契约提供，点击路径由本地 Index getter 重定向处理。蓝色 **“仅启动适配器”** 用于单独运行 adapter 调试入口。
+GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色配置、停止当前运行的 adapter 和客户端、校验完整 adapter 运行文件闭包，从使用者自备文件派生并验证家具 Index 重定向、准备房复活 HUD、普通结算手动确认、连续关卡 P 弹恢复及第五村地宫7兼容资源，随后启动完整 adapter、注册角色资料并启动客户端。表情翻页由适配器端有界 C355 情侣字段保障；家具快照由固定 C393 契约提供，点击路径由本地 Index getter 重定向处理。蓝色 **“仅启动适配器”** 用于单独运行 adapter 调试入口。
 
 ## 功能范围
 
@@ -78,10 +78,10 @@ GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色
 ```powershell
 python -B scripts/prepare_client_compatibility.py `
   --source-root '<原始客户端目录>' `
-  --output-root '<新建覆盖目录>' --furniture --revival-display --dungeon7 --dry-run
+  --output-root '<新建覆盖目录>' --furniture --revival-display --dungeon-state --dungeon7 --dry-run
 ```
 
-该工具按 PE 节表验证并局部重定向家具 Index getter，同时让准备房复活次数 HUD 每帧从原生权威计数器刷新；再按 `NANA_PACK` 结构生成地宫7道路，并从现有 SSTG/PON 派生兼容别名。表情翻页由适配器端 C355 情侣姓名／戒指边界保障：空关系写入空姓名和零戒指，副本进度写入止于完整帧 `+0xDE`。C393 使用 1020 字节有界快照和 `info=2000` 终态；客户端仅在 `info=6000` 时续页。哈希用于本机诊断和备份识别。仓库仅包含适配工程文件，运行依赖见 [运行依赖](docs/运行依赖.md)。
+该工具按 PE 节表验证并局部重定向家具 Index getter，让准备房复活次数 HUD 每帧从原生权威计数器刷新，禁用普通结算页的本地自动推进分支，并安装连续关卡 P 弹恢复 hook；再按 `NANA_PACK` 结构生成地宫7道路，并从现有 SSTG/PON 派生兼容别名。所有 PE 站点均按旧字节或已派生字节精确匹配，失败即拒绝启动。表情翻页由适配器端 C355 情侣姓名／戒指边界保障：空关系写入空姓名和零戒指，副本进度写入止于完整帧 `+0xDE`。C393 使用 1020 字节有界快照和 `info=2000` 终态；客户端仅在 `info=6000` 时续页。哈希用于本机诊断和备份识别。仓库仅包含适配工程文件，运行依赖见 [运行依赖](docs/运行依赖.md)。
 
 ### 2. adapter 运行目录（已随仓库提供）
 
@@ -150,7 +150,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_adapter.ps1 `
 
 当前源码清单和 reviewed build hashes 位于 `manifest/source_closure.json`。详细命令见 [构建与验证](docs/构建与验证.md)。
 
-当前仓库候选已完成地宫资源继承、结算动作门控、分体目标账本和多阶段 Boss 终结的专项及完整回归；活动清单保持 `runtime_acceptance=false`。候选尚未覆盖父目录，也未替代部署后的原客户端试玩。
+2026年9月25日上一部署候选的原客户端负面验收确认：分体 Boss、普通结算倒计时、P 弹继承、effective HP、死亡评分和死亡返城仍有错误。本仓库候选已对这些边界完成新的静态链、adapter／派生构造和回归验证；活动清单保持 `runtime_acceptance=false`。候选尚未覆盖父目录，也不声称已经通过新版本原客户端试玩。
 
 ## 文档导航
 

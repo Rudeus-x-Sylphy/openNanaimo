@@ -1,7 +1,7 @@
 {
   "version": 1,
   "role": "full Nanaimo adapter",
-  "built_at": "2026-09-25T14:50:47Z",
+  "built_at": "2026-09-25T16:36:17Z",
   "framework": "net6.0/win-x64/self-contained",
   "sdk": "8.0.425",
   "files": [
@@ -327,18 +327,18 @@
     },
     {
       "name": "Nanaimo.Adapter.dll",
-      "size": 276992,
-      "sha256": "ED6D938A81F48CB89E06AAE4DB6DD73D77F15F061AC4D5258CA4E709E54154E6"
+      "size": 281088,
+      "sha256": "E94C32EDD7FAE7DAA11C7A4C793DFD30794B0F6CEFDC728F707C514913512908"
     },
     {
       "name": "Nanaimo.Adapter.exe",
       "size": 151040,
-      "sha256": "EABAA0E9B1EE40B12269E482B5808CDCE89D29F3ECF1831924975D9FD86EF040"
+      "sha256": "9576974D6A10053A3C2DF989F4451CA5AAAF8A50FC3CE8750133CFFDE838BCAF"
     },
     {
       "name": "Nanaimo.Adapter.pdb",
-      "size": 49620,
-      "sha256": "2EC510B6A3D974B7888E0CFBA96057A22C43EC3C0FF457E63B714FAC58455B43"
+      "size": 50068,
+      "sha256": "7A350D086415AAA60CB18F44CF667D8555D69CC614B6587791484489B88B80CB"
     },
     {
       "name": "Nanaimo.Adapter.runtimeconfig.json",
@@ -347,18 +347,18 @@
     },
     {
       "name": "Nanaimo.Gameplay.dll",
-      "size": 4303872,
-      "sha256": "F13D5E9113253F391E773B407053AE0E8A4B013DFB5FA0FFD1FBE46739F36FB3"
+      "size": 4311552,
+      "sha256": "6FDF09316D0703026D37614AC508266FF5F470F99B22040CE90CB18AEC97847F"
     },
     {
       "name": "Nanaimo.Gameplay.pdb",
-      "size": 380180,
-      "sha256": "DE9BE02376C7776E060A4D6070A55119A27340CAC93EACCC641FDB5962A9A59A"
+      "size": 382100,
+      "sha256": "2AC33B9A0C3491B3EA2ACE8F7FCE4F0488A62E3010B3178ACFFCDA51381B0CEF"
     },
     {
       "name": "nanaimo_gameplay_bridge.exe",
-      "size": 18294272,
-      "sha256": "36807C8C550682854FB1D4CA713F66580E40535B6164DE5BFBD52B77A472A6AC"
+      "size": 18295808,
+      "sha256": "1D2089E08715CD9C3D698BE549B36BDF0A43B5A65864B2355896578DF00A5523"
     },
     {
       "name": "netstandard.dll",
