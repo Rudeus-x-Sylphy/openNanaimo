@@ -164,6 +164,8 @@ internal static class DungeonSaveChecks
                 "restored dungeon grade is reflected in room character data");
             var restoredCombatLevel = checked((byte)imported.Get(NativeDungeonState.PetCombatLevelOffset));
             var restoredCf72 = replies.Single(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF72);
+            Check(NetworkAdapterService.PatchNativePetActorFrame(restoredCf72, character, restoredCombatLevel),
+                "managed forwarding normalizes the retained worker combat level");
             Check(imported.Get(NativeDungeonState.PetLevelOffset) == 7
                 && restoredCf72[0x66] == restoredCombatLevel
                 && restoredCf72[0x67] == restoredCombatLevel,

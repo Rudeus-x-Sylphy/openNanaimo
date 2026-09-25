@@ -417,6 +417,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public NativeDungeonPool.Lease? NativeLease { get; set; }
         public NativeDungeonState? NativeCheckpoint { get; set; }
         public BattleResourceSnapshot? PendingBattleResourceSnapshot { get; set; }
+        public BattleResourceSnapshot? NativeBattleResources { get; set; }
         public byte? NativeBattleAttackMode { get; set; }
         public bool NativeForwarding { get; set; }
         public bool NativeDungeonDeathLatched { get; set; }
