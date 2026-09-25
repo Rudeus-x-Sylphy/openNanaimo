@@ -43,8 +43,8 @@
     },
     {
       "path": "managed-host/BattleResourceSnapshotChecks.cs",
-      "size": 3297,
-      "sha256": "3997DDABB50DCA343162E728FE2AB4BF659F5E33E15F36E677029D7E3920F203"
+      "size": 6640,
+      "sha256": "3B688B420D022DA50A021CE2372147B5C41D18D947563BB4995EA8784D04F828"
     },
     {
       "path": "managed-host/CardSynthesisChecks.cs",
@@ -63,18 +63,18 @@
     },
     {
       "path": "managed-host/DungeonRankingChecks.cs",
-      "size": 11348,
-      "sha256": "9E6125D4717B071FCA355B67349803A55D4B035B48EDC8B2134EC84D9ECD888C"
+      "size": 16623,
+      "sha256": "3ABE0B32480E2305B68317673040121F51D775C37F2EEB66DFB894541F753C77"
     },
     {
       "path": "managed-host/DungeonSaveChecks.cs",
-      "size": 21129,
-      "sha256": "F4B8A2A553E002E5DDBAA7333AE67D3C465F5D752229E27C1AEF8A489325E886"
+      "size": 21324,
+      "sha256": "F25B25064F66EEC326E7ED19235ECC26557FC6A1B0838520D7CFFE7CCA748213"
     },
     {
       "path": "managed-host/HealthRecoveryChecks.cs",
-      "size": 10229,
-      "sha256": "46B36D3A7D5443B528B977F7FF4F78E236066B869B696EB9D99F95C9D7BE30BA"
+      "size": 14625,
+      "sha256": "6C4DB020EA303A1F87502A3A664DBA23C3CDB92C06E8E4FF7A0E41E82C5E95FB"
     },
     {
       "path": "managed-host/InventoryQuickbarChecks.cs",
@@ -273,8 +273,8 @@
     },
     {
       "path": "managed/Services/BattleResourceSnapshot.cs",
-      "size": 2636,
-      "sha256": "2332BDF39193C3269266940F4E9EC45BBBC6A9CB04AF21A53D475E880B504956"
+      "size": 4514,
+      "sha256": "69ED6F5F665B5C99E7321162A99D9EB3B9979F9D81C300530E2533C2808FB9EA"
     },
     {
       "path": "managed/Services/CardCatalog.cs",
@@ -358,8 +358,8 @@
     },
     {
       "path": "managed/Services/HealthRecoveryPolicy.cs",
-      "size": 2306,
-      "sha256": "06CD61C6850532868A941F016FDBCF6D2342DA8FE810DB4D314908DC9582DC63"
+      "size": 4715,
+      "sha256": "0FB9CC7D4F34A71A36E4B50BFD27CE3EE88DD6D864C7D2B4BBD477738E0BC5C6"
     },
     {
       "path": "managed/Services/LoginAuthProtocol.cs",
@@ -403,13 +403,13 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 38263,
-      "sha256": "342589D388FF7DA2AE152F5F7598672BC893C4B267E16B3D0426B36F4C33050E"
+      "size": 51140,
+      "sha256": "758800EFD4DE71B86A857A3903F928F0E1DCE9A4C25BC2DF9F05EC36AAEFFF36"
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 945427,
-      "sha256": "DFC4DBF658FCD512FB1D47FFCF7EC5B90B151904E7669A725BA21E3EA1EF3575"
+      "size": 948156,
+      "sha256": "7A5B76ABFE85528124A8FA93FFCB24492297D13A25B76EEBBB93D3360FA59C82"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -573,8 +573,8 @@
     },
     {
       "path": "release/components/combat_attribution/monster_hp_resource_policy.inc",
-      "size": 16413,
-      "sha256": "7A5BE2E4B33B084A02927005C4B888E1111FD2B67AFE5DB12EC8339917C351FA"
+      "size": 16235,
+      "sha256": "4ECD5691B14F76222DFC544B6BDDFCF96235779C7BDE1919926B67378BBD66D3"
     },
     {
       "path": "release/components/combat_attribution/projectile_runtime.inc",
