@@ -78,6 +78,8 @@ public sealed partial class NetworkAdapterService
         if (opcode == 0xCF09 && frame.Length == 64 && session.OnlineTracked && session.Character is not null)
         {
             session.NativeDungeonSettlementAwaitingAction = false;
+            session.NativeDungeonNextTransitionAuthorized = false;
+            session.NativeDungeonTownTransitionAuthorized = false;
             var boundary = session.NativeDungeonDeathLatched ? BattleResourceBoundary.DeathReturn : BattleResourceBoundary.NextDungeon;
             await CloseNativeDungeonAsync(session, boundary);
             session.NativeDungeonDeathLatched = false;
@@ -162,9 +164,22 @@ public sealed partial class NetworkAdapterService
         bool dungeonOpcode = opcode is >= 0xCF00 and <= 0xD03F or 0xC587 or 0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640;
         if (dungeonOpcode)
         {
+            if (ShouldSuppressUnarmedNativeDungeonSettlementLeave(
+                    session.NativeDungeonSettlementAwaitingAction,
+                    session.NativeDungeonNextTransitionAuthorized,
+                    session.NativeDungeonTownTransitionAuthorized,
+                    session.NativeDungeonDeathLatched,
+                    opcode))
+            {
+                _log($"NativeDungeon unarmed settlement leave suppressed: request=0x{opcode:X4} deathLatched={session.NativeDungeonDeathLatched}");
+                return true;
+            }
+
             if (opcode == 0xCF87)
             {
                 session.NativeDungeonSettlementAwaitingAction = true;
+                session.NativeDungeonNextTransitionAuthorized = false;
+                session.NativeDungeonTownTransitionAuthorized = false;
                 if (session.NativeBattleResources is { } resources
                     && session.Character is { } resourceCharacter
                     && BattleResourceSnapshot.TryReadSettlementCurrentMp(
@@ -179,8 +194,40 @@ public sealed partial class NetworkAdapterService
                     _log($"NativeDungeon settlement resources observed: character={resourceCharacter.Id} hp={session.NativeBattleResources.CurrentHp}/{resourceCharacter.MaxHp} mp={session.NativeBattleResources.CurrentMp}/{resourceCharacter.MaxMp} attackMode={session.NativeBattleResources.AttackMode}");
                 }
             }
-            else if (opcode is 0xCF8B or 0xCF73 or 0xCF1D)
+            else if (IsAuthorizedNativeDungeonNextAction(frame, opcode))
+            {
                 session.NativeDungeonSettlementAwaitingAction = false;
+                session.NativeDungeonNextTransitionAuthorized = true;
+                session.NativeDungeonTownTransitionAuthorized = false;
+            }
+            else if (IsNativeDungeonManualTownLeavePrecursor(
+                session.NativeDungeonSettlementAwaitingAction,
+                session.NativeDungeonNextTransitionAuthorized,
+                session.NativeDungeonTownTransitionAuthorized,
+                session.NativeDungeonDeathLatched,
+                opcode))
+            {
+                session.NativeDungeonSettlementAwaitingAction = false;
+                session.NativeDungeonTownTransitionAuthorized = true;
+                _log("NativeDungeon normal-clear CF73 armed an explicit town-return chain; awaiting CF1D");
+            }
+            else if (opcode == 0xCF7F)
+            {
+                session.NativeDungeonNextTransitionAuthorized = false;
+                session.NativeDungeonTownTransitionAuthorized = false;
+            }
+
+            // CF73 is only a notification inside an already-authorized CF8B
+            // rebuild chain. Forwarding it can synthesize a leave response and
+            // race the following CF1D/CF09 transition.
+            if (ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
+                    session.NativeDungeonNextTransitionAuthorized,
+                    session.NativeDungeonTownTransitionAuthorized,
+                    opcode))
+            {
+                _log("NativeDungeon authorized transition CF73 notification suppressed; awaiting CF1D/CF09");
+                return true;
+            }
 
             if (opcode is 0xCF87 or 0xCF8B or 0xD034 or 0xCF93 or 0xCF95 or 0xCF83 or 0xCF9B or 0xCF1D)
             {
@@ -191,7 +238,12 @@ public sealed partial class NetworkAdapterService
                     session.NativeDungeonSettlementAwaitingAction = true;
             }
             else await session.NativeDungeon.SendAsync(frame, token);
-            if (opcode == 0xCF1D) await CloseNativeDungeonAsync(session, BattleResourceBoundary.TownReturn);
+            if (opcode == 0xCF1D)
+            {
+                await CloseNativeDungeonAsync(
+                    session,
+                    ResolveNativeDungeonDisconnectBoundary(session.NativeDungeonNextTransitionAuthorized));
+            }
             return true;
         }
         if (opcode is 0xC365 or 0xC367 or 0xC354)
@@ -249,6 +301,53 @@ public sealed partial class NetworkAdapterService
 
     internal static bool ShouldPersistNativeDungeonSettlement(ushort requestOpcode, bool deathLatched)
         => requestOpcode == 0xCF87 && !deathLatched;
+
+    internal static bool IsAuthorizedNativeDungeonNextAction(ReadOnlySpan<byte> frame, ushort opcode)
+    {
+        if (opcode != 0xCF8B
+            || frame.Length != 12
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) != frame.Length
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) != opcode)
+            return false;
+
+        var mode = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(10, 2));
+        return mode is 1 or 2;
+    }
+
+    internal static bool ShouldSuppressUnarmedNativeDungeonSettlementLeave(
+        bool awaitingAction,
+        bool nextTransitionAuthorized,
+        bool townTransitionAuthorized,
+        bool deathLatched,
+        ushort opcode)
+        => awaitingAction
+            && !nextTransitionAuthorized
+            && !townTransitionAuthorized
+            && (opcode == 0xCF1D || (deathLatched && opcode == 0xCF73));
+
+    internal static bool IsNativeDungeonManualTownLeavePrecursor(
+        bool awaitingAction,
+        bool nextTransitionAuthorized,
+        bool townTransitionAuthorized,
+        bool deathLatched,
+        ushort opcode)
+        => awaitingAction
+            && !nextTransitionAuthorized
+            && !townTransitionAuthorized
+            && !deathLatched
+            && opcode == 0xCF73;
+
+    internal static BattleResourceBoundary ResolveNativeDungeonDisconnectBoundary(
+        bool nextTransitionAuthorized)
+        => nextTransitionAuthorized
+            ? BattleResourceBoundary.NextDungeon
+            : BattleResourceBoundary.TownReturn;
+
+    internal static bool ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
+        bool nextTransitionAuthorized,
+        bool townTransitionAuthorized,
+        ushort opcode)
+        => (nextTransitionAuthorized || townTransitionAuthorized) && opcode == 0xCF73;
 
     internal static bool ShouldForwardNativeDungeonCheckpointFrame(ushort requestOpcode, ushort responseOpcode)
         => requestOpcode != 0xCF87 || responseOpcode == 0xCF88;
@@ -819,6 +918,8 @@ public sealed partial class NetworkAdapterService
         if (session.NativeDungeon is null)
         {
             session.NativeDungeonSettlementAwaitingAction = false;
+            session.NativeDungeonNextTransitionAuthorized = false;
+            session.NativeDungeonTownTransitionAuthorized = false;
             if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleResources = null; session.NativeBattleAttackMode = null; }
             return;
         }
@@ -837,6 +938,8 @@ public sealed partial class NetworkAdapterService
             session.NativeForwarding = false;
             session.NativeDungeonDeathLatched = false;
             session.NativeDungeonSettlementAwaitingAction = false;
+            session.NativeDungeonNextTransitionAuthorized = false;
+            session.NativeDungeonTownTransitionAuthorized = false;
             session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
             await session.NativeDungeon.DisposeAsync(); session.NativeDungeon = null; session.NativeCheckpoint = null;

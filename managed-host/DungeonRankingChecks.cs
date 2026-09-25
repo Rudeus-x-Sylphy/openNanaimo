@@ -89,6 +89,49 @@ internal static class DungeonRankingChecks
                 && !NetworkAdapterService.IsNativeDungeonTransitionFrame(0xCF88),
                 "live settlement frame filter removes unsolicited next-dungeon and return transitions");
 
+            var nextDungeonMode2 = NativeDungeonClient.Frame(0xCF8B, [0, 0, 2, 0]);
+            var nextDungeonMode1 = NativeDungeonClient.Frame(0xCF8B, [1, 0, 1, 0]);
+            var invalidNextDungeonMode = NativeDungeonClient.Frame(0xCF8B, [0, 0, 0, 0]);
+            Check(NetworkAdapterService.IsAuthorizedNativeDungeonNextAction(nextDungeonMode2, 0xCF8B)
+                && NetworkAdapterService.IsAuthorizedNativeDungeonNextAction(nextDungeonMode1, 0xCF8B)
+                && !NetworkAdapterService.IsAuthorizedNativeDungeonNextAction(invalidNextDungeonMode, 0xCF8B)
+                && !NetworkAdapterService.IsAuthorizedNativeDungeonNextAction(nextDungeonMode2, 0xCF73),
+                "only a structurally valid CF8B mode 1/2 arms the next-dungeon transition");
+            Check(NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: true, opcode: 0xCF73)
+                && NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: true, opcode: 0xCF1D)
+                && NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: false, opcode: 0xCF1D)
+                && !NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: false, opcode: 0xCF73)
+                && !NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
+                    awaitingAction: true, nextTransitionAuthorized: true, townTransitionAuthorized: false,
+                    deathLatched: true, opcode: 0xCF1D),
+                "death auto-leave and naked CF1D cannot leave settlement without an authorized action");
+            Check(NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: false, opcode: 0xCF73)
+                && !NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: true, opcode: 0xCF73)
+                && NetworkAdapterService.ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
+                    nextTransitionAuthorized: false, townTransitionAuthorized: true, opcode: 0xCF73)
+                && NetworkAdapterService.ResolveNativeDungeonDisconnectBoundary(nextTransitionAuthorized: false)
+                    == BattleResourceBoundary.TownReturn,
+                "normal-clear CF73 arms the manual town-return chain and CF1D keeps its town boundary");
+            Check(NetworkAdapterService.ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
+                    nextTransitionAuthorized: true, townTransitionAuthorized: false, opcode: 0xCF73)
+                && !NetworkAdapterService.ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
+                    nextTransitionAuthorized: true, townTransitionAuthorized: false, opcode: 0xCF1D)
+                && NetworkAdapterService.ResolveNativeDungeonDisconnectBoundary(nextTransitionAuthorized: true)
+                    == BattleResourceBoundary.NextDungeon,
+                "authorized CF8B rebuild suppresses CF73 and preserves CF1D as next-dungeon rather than town return");
+
             var nativeCf88 = NativeDungeonClient.Frame(0xCF88, new byte[56]);
             BinaryPrimitives.WriteUInt16LittleEndian(nativeCf88.AsSpan(0x08, 2), 1);
             BinaryPrimitives.WriteUInt16LittleEndian(nativeCf88.AsSpan(0x0A, 2), 11);
