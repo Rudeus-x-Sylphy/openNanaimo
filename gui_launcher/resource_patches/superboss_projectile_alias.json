@@ -18,16 +18,11 @@
       "operation": "byte-for-byte copy"
     }
   ],
-  "evidence_roots": [
-    "external-evidence/static/superboss-pon-dependencies-20260913",
-    "external-evidence/runtime/superboss-pon-dependencies-20260913",
-    "external-evidence/validation/superboss-pon-dependencies-20260913"
-  ],
   "original_missing_path": "flying/pon/mis_ep22_dg01_m_196_02.pon",
   "source_path": "flying/pon/mis_ep22_dg01_m_196.pon",
-  "evidence_availability": "Private originals are not included; these labels are sanitized historical attribution, not local paths.",
   "schema_version": 2,
   "launcher_validation": false,
   "derivation_tool": "scripts/prepare_client_compatibility.py --dungeon7",
-  "rollback": "Remove only the derived _02 alias; the launcher does not validate either source or output."
+  "rollback": "Remove only the derived _02 alias; the launcher does not validate either source or output.",
+  "validation_scope": "Derived alias identity and rollback are validated locally; original missing asset equivalence and gameplay acceptance are not claimed."
 }

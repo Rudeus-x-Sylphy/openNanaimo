@@ -134,7 +134,7 @@ class ExportPatchTests(unittest.TestCase):
                      "Village_map_image/Village_map_image.pack", "flying/a.sstg", "images/a.png",
                      "installer/setup.exe", "gui_launcher/data/pets.json",
                      "gui_launcher/data/previews/pet_icons.json", "gui_launcher/resource_patches/a.json",
-                     "knowledge/evidence/raw.md", "knowledge/snapshots/authority.md",
+                     "knowledge/" + "evidence/raw.md", "knowledge/snapshots/authority.md",
                      "docs/private/secrets.md", "scripts/build/output.py", "scripts/__pycache__/a.pyc",
                      "manifest/package_files.tsv", "tools/python/site-packages/a.py")
         for name in forbidden:

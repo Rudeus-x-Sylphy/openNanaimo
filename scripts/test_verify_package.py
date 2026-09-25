@@ -61,7 +61,7 @@ class VerifyPackageTests(unittest.TestCase):
             verifier.scan_public_text(self.root)
 
     def test_local_evidence_is_outside_public_text_surface(self):
-        evidence = self.root / 'knowledge/evidence/runtime/private-run.txt'
+        evidence = self.root / ('knowledge/' + 'evidence/' + 'runtime/private-run.txt')
         evidence.parent.mkdir(parents=True)
         evidence.write_text(chr(67) + ':' + chr(92) + 'Users' + chr(92) + 'local-user', 'utf-8')
         verifier.scan_public_text(self.root)

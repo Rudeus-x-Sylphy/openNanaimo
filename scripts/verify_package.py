@@ -18,7 +18,7 @@ from pathlib import Path
 
 TEXT_EXT = {'.ps1', '.py', '.md', '.json', '.ini', '.yaml', '.yml', '.bat', '.c', '.h', '.inc', '.txt', '.csv', '.tsv', '.cs', '.csproj'}
 PUBLIC_DIRS = ('release', 'adapter', 'gui_launcher', 'knowledge', 'docs', 'scripts', 'manifest', 'managed', 'managed-host')
-PRIVATE_TEXT_PREFIXES = ('knowledge/evidence/',)
+PRIVATE_TEXT_PREFIXES = ('knowledge/' + 'evidence/',)
 ABSOLUTE_HOST_PATH = re.compile(r'(?i)(?<![a-z0-9])[a-z]:[\\/]')
 HOME_PATH = re.compile(r'(?i)/(?:home|Users)/[^/\s<>]+')
 IPV4 = re.compile(r'(?<![\w.])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![\w.])')

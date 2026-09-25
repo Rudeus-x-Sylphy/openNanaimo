@@ -150,6 +150,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_adapter.ps1 `
 
 当前源码清单和 reviewed build hashes 位于 `manifest/source_closure.json`。详细命令见 [构建与验证](docs/构建与验证.md)。
 
+当前仓库候选已完成地宫资源继承、结算动作门控、分体目标账本和多阶段 Boss 终结的专项及完整回归；活动清单保持 `runtime_acceptance=false`。候选尚未覆盖父目录，也未替代部署后的原客户端试玩。
+
 ## 文档导航
 
 | 文档 | 内容 |
