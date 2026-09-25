@@ -23,10 +23,6 @@
 #ifndef NANAIMO_STABLE_MONSTER_HP_RESOURCE_SIM_INC
 #define NANAIMO_STABLE_MONSTER_HP_RESOURCE_SIM_INC
 
-#ifndef TEAMPLAY_FEATURE_D00E_ALREADY_TERMINAL_SCORE_ACK
-#define TEAMPLAY_FEATURE_D00E_ALREADY_TERMINAL_SCORE_ACK 0
-#endif
-
 #define MONSTER_HP_ACTION_NONE 0u
 #define MONSTER_HP_ACTION_SEND_D00E 1u
 #define MONSTER_HP_ACTION_WIRE_OVERFLOW 2u
@@ -304,15 +300,12 @@ static void stable_monster_hp_apply_report(struct hp_sync_context *ctx,
         out->reason=(out->hit.provenance==HP_SYNC_PROV_RUNTIME_BOUND)?
                     MONSTER_HP_REASON_RUNTIME_NONLETHAL:MONSTER_HP_REASON_STATIC_NONLETHAL;
     }else if(rc==HP_SYNC_HIT_ALREADY_TERMINAL){
-#if TEAMPLAY_FEATURE_D00E_ALREADY_TERMINAL_SCORE_ACK
-        /* The first HP-zero transition already retired the selector on the
-         * client.  A later in-flight report is acknowledged with status0 so
-         * it cannot retire another current/preloaded row with the same selector. */
+        /* D00E status200 contains only the selector; it has no stable target-vector
+         * child identity.  The first HP-zero transition retires one matching row.
+         * A later in-flight report for the same selector must be status0, otherwise
+         * another current/preloaded row can be consumed and a split presentation
+         * appears to die as a group. */
         out->action=MONSTER_HP_ACTION_NONE;
-#else
-        /* Optional HP policy selected by the compile-time configuration. */
-        out->action=MONSTER_HP_ACTION_SEND_D00E;
-#endif
         out->reason=MONSTER_HP_REASON_ALREADY_TERMINAL;
     }else if(rc==HP_SYNC_HIT_FALLBACK_ECHO || rc==HP_SYNC_HIT_NO_PROFILE ||
              rc==HP_SYNC_HIT_UNKNOWN_STAGE){

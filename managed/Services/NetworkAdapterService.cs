@@ -527,8 +527,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         GameConnection
     }
 
-    private readonly record struct DungeonNpcKey(uint RuntimeUid, byte TargetIndex);
-
     private sealed class DungeonNpcState(DungeonCombatTemplate template)
     {
         public DungeonCombatTemplate Template { get; } = template;
@@ -597,8 +595,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public Dictionary<long, int> HitScores { get; } = [];
         public Dictionary<long, int> BossBonusScores { get; } = [];
         public Dictionary<long, int> BossHansRewards { get; } = [];
-        public Dictionary<DungeonNpcKey, DungeonNpcState> Npcs { get; } = [];
-        public HashSet<DungeonNpcKey> DefeatedUncataloguedRuntimeUids { get; } = [];
+        public Dictionary<uint, DungeonNpcState> Npcs { get; } = [];
+        public HashSet<uint> DefeatedUncataloguedRuntimeUids { get; } = [];
         public Dictionary<ushort, DungeonBossState> Bosses { get; } = [];
         public HashSet<long> RewardedCharacters { get; } = [];
         public HashSet<long> RewardCommittingCharacters { get; } = [];
@@ -660,7 +658,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public Dictionary<long, int> HitScores => Battle.HitScores;
         public Dictionary<long, int> BossBonusScores => Battle.BossBonusScores;
         public Dictionary<long, int> BossHansRewards => Battle.BossHansRewards;
-        public Dictionary<DungeonNpcKey, DungeonNpcState> Npcs => Battle.Npcs;
+        public Dictionary<uint, DungeonNpcState> Npcs => Battle.Npcs;
         public Dictionary<ushort, DungeonBossState> Bosses => Battle.Bosses;
         public HashSet<long> RewardedCharacters => Battle.RewardedCharacters;
         public Dictionary<long, byte[]> EndGamePayloads => Battle.EndGamePayloads;
@@ -6520,7 +6518,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var targetIndex = payload[6];
                 var flags = payload[7];
                 var npcRuntimeUid = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(8, 4));
-                var npcTargetKey = new DungeonNpcKey(npcRuntimeUid, targetIndex);
+                // D00D +0x10 is the target selector/item UID. The +0x0E byte
+                // is a target-vector slot for the current collision report and may
+                // change across reports for the same target; it is not child identity.
+                var npcTargetKey = npcRuntimeUid;
                 if (string.Equals(channel, "ArenaAdapter", StringComparison.Ordinal))
                 {
                     if (IsEntertainmentSession(channel, session))
@@ -6604,7 +6605,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     var uncataloguedPayload = DungeonProtocol.BuildCollision(
                         uncataloguedScores,
                         npcRuntimeUid,
-                        defeated: true);
+                        defeated: firstRemoval);
                     QueueDungeonBroadcast(
                         session,
                         0xD00E,
@@ -6631,6 +6632,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 int damage;
                 int remainingHp;
                 bool defeated;
+                bool terminalNow;
                 uint normalDropCardCode = 0;
                 lock (_dungeonRoomGate)
                 {
@@ -6676,8 +6678,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             npcState.CurrentHp);
                     npcState.CurrentHp -= damage;
                     defeated = npcState.Defeated;
+                    terminalNow = defeated && !wasDefeated;
                     remainingHp = npcState.CurrentHp;
-                    if (defeated && !wasDefeated)
+                    if (terminalNow)
                     {
                         collisionRoom.HitScores[session.Character.Id] = checked(
                             collisionRoom.HitScores.GetValueOrDefault(session.Character.Id)
@@ -6699,14 +6702,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var collisionResponsePayload = DungeonProtocol.BuildCollision(
                     collisionScores,
                     npcRuntimeUid,
-                    defeated,
+                    terminalNow,
                     normalDropCardCode != 0 ? (byte)30 : (byte)0,
                     normalDropCardCode);
                 QueueDungeonBroadcast(session, 0xD00E, collisionResponsePayload, false, "dungeon NPC collision");
                 var loggedEffectiveAttack = (flags & 0x40) != 0
                     ? checked((int)(baseAttack * 1.5))
                     : baseAttack;
-                _log($"{channel}:{remote} Dungeon projectile collision resolved: room={collisionRoom.Id} map={mapIndex} mode={mode} secondary={secondary} source={collisionSourceCode} targetIndex={targetIndex} flags=0x{flags:X2} runtime={npcRuntimeUid} resource={npcResourceUid} category={combatTemplate.AttackCategory} attackSource={(activeSkillCode == 0 ? "pet" : "skill")} skill={activeSkillCode} grade={activeSkillGrade} attack={baseAttack}->{loggedEffectiveAttack} defense={combatTemplate.Defense}->{effectiveDefense} damage={damage} hp={remainingHp}/{combatTemplate.Hp} defeated={defeated} scoreReward={(defeated ? combatTemplate.Score : 0)} cardDropBonus={cardDropBonusPercent}% sceneDrop={normalDropCardCode} targetLedger={npcTargetKey} scores={string.Join(',', collisionScores)}");
+                _log($"{channel}:{remote} Dungeon projectile collision resolved: room={collisionRoom.Id} map={mapIndex} mode={mode} secondary={secondary} source={collisionSourceCode} targetIndex={targetIndex} flags=0x{flags:X2} runtime={npcRuntimeUid} resource={npcResourceUid} category={combatTemplate.AttackCategory} attackSource={(activeSkillCode == 0 ? "pet" : "skill")} skill={activeSkillCode} grade={activeSkillGrade} attack={baseAttack}->{loggedEffectiveAttack} defense={combatTemplate.Defense}->{effectiveDefense} damage={damage} hp={remainingHp}/{combatTemplate.Hp} defeated={defeated} terminalNow={terminalNow} scoreReward={(terminalNow ? combatTemplate.Score : 0)} cardDropBonus={cardDropBonusPercent}% sceneDrop={normalDropCardCode} targetLedger={npcTargetKey} scores={string.Join(',', collisionScores)}");
                 var collisionFrame = BuildNativeFrame(frame, 0xD00E, collisionResponsePayload, session);
                 if (!QuestMonsterCatalog.TryResolveTarget(
                         collisionRoom.BattleEpisode,
