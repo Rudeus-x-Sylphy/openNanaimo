@@ -78,12 +78,13 @@ public sealed partial class NetworkAdapterService
         if (opcode == 0xCF09 && frame.Length == 64 && session.OnlineTracked && session.Character is not null)
         {
             SuspendNonCombatHealthRecovery(session);
+            var boundary = ResolveNativeDungeonEntryBoundary(
+                session.NativeDungeonDeathLatched,
+                session.NativeDungeonNextTransitionAuthorized,
+                session.PendingBattleResourceSnapshot is not null);
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
-            var boundary = session.NativeDungeonDeathLatched
-                ? BattleResourceBoundary.DeathReturn
-                : BattleResourceBoundary.ConnectionClose;
             await CloseNativeDungeonAsync(session, boundary);
             session.NativeBattleEpoch = checked(session.NativeBattleEpoch + 1);
             var nativeBattleEpoch = session.NativeBattleEpoch;
@@ -192,7 +193,7 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonSettlementAwaitingAction = true;
                 session.NativeDungeonNextTransitionAuthorized = false;
                 session.NativeDungeonTownTransitionAuthorized = false;
-                    session.NativeDungeonPendingPowerRestoreStage = 0;
+                session.NativeDungeonPendingPowerRestoreStage = 0;
                 if (session.NativeBattleResources is { } resources
                     && session.Character is { } resourceCharacter
                     && BattleResourceSnapshot.TryReadSettlementCurrentMp(
@@ -437,6 +438,23 @@ public sealed partial class NetworkAdapterService
         => deathTownReturn
             ? BattleResourceBoundary.DeathReturn
             : ResolveNativeDungeonDisconnectBoundary(nextTransitionAuthorized);
+
+    internal static BattleResourceBoundary ResolveNativeDungeonEntryBoundary(
+        bool deathLatched,
+        bool nextTransitionAuthorized,
+        bool hasPendingBattleSnapshot)
+        => deathLatched
+            ? BattleResourceBoundary.DeathReturn
+            : nextTransitionAuthorized || hasPendingBattleSnapshot
+                ? BattleResourceBoundary.NextDungeon
+                : BattleResourceBoundary.ConnectionClose;
+
+    internal static byte PreserveNativeDungeonPowerRestoreStage(
+        byte pendingStage,
+        BattleResourceBoundary boundary)
+        => BattleResourceSnapshotPolicy.CarriesAcross(boundary)
+            ? BattleResourceSnapshot.NormalizeAttackMode(pendingStage)
+            : (byte)0;
 
     internal static bool ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
         bool nextTransitionAuthorized,
@@ -1102,7 +1120,8 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
-            session.NativeDungeonPendingPowerRestoreStage = 0;
+            session.NativeDungeonPendingPowerRestoreStage = PreserveNativeDungeonPowerRestoreStage(
+                session.NativeDungeonPendingPowerRestoreStage, boundary);
             if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleResources = null; session.NativeBattleAttackMode = null; }
             if (boundary != BattleResourceBoundary.TownReturn) session.NonCombatResourceSnapshot = null;
             return;
@@ -1129,7 +1148,8 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
-            session.NativeDungeonPendingPowerRestoreStage = 0;
+            session.NativeDungeonPendingPowerRestoreStage = PreserveNativeDungeonPowerRestoreStage(
+                session.NativeDungeonPendingPowerRestoreStage, boundary);
             session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
             await session.NativeDungeon.DisposeAsync(); session.NativeDungeon = null; session.NativeCheckpoint = null;

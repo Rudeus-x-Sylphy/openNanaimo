@@ -162,6 +162,23 @@ internal static class DungeonRankingChecks
                 && NetworkAdapterService.ResolveNativeDungeonDisconnectBoundary(nextTransitionAuthorized: true)
                     == BattleResourceBoundary.NextDungeon,
                 "authorized CF8B rebuild suppresses only its CF73 notice and preserves CF1D as next-dungeon");
+            Check(NetworkAdapterService.ResolveNativeDungeonEntryBoundary(
+                    deathLatched: false, nextTransitionAuthorized: true, hasPendingBattleSnapshot: false)
+                    == BattleResourceBoundary.NextDungeon
+                && NetworkAdapterService.ResolveNativeDungeonEntryBoundary(
+                    deathLatched: false, nextTransitionAuthorized: false, hasPendingBattleSnapshot: true)
+                    == BattleResourceBoundary.NextDungeon
+                && NetworkAdapterService.ResolveNativeDungeonEntryBoundary(
+                    deathLatched: false, nextTransitionAuthorized: false, hasPendingBattleSnapshot: false)
+                    == BattleResourceBoundary.ConnectionClose
+                && NetworkAdapterService.ResolveNativeDungeonEntryBoundary(
+                    deathLatched: true, nextTransitionAuthorized: true, hasPendingBattleSnapshot: true)
+                    == BattleResourceBoundary.DeathReturn
+                && NetworkAdapterService.PreserveNativeDungeonPowerRestoreStage(
+                    3, BattleResourceBoundary.NextDungeon) == 3
+                && NetworkAdapterService.PreserveNativeDungeonPowerRestoreStage(
+                    3, BattleResourceBoundary.TownReturn) == 0,
+                "CF09 and worker close preserve inherited resources and power only for an authorized continuation");
 
             var nativeCf88 = NativeDungeonClient.Frame(0xCF88, new byte[56]);
             BinaryPrimitives.WriteUInt16LittleEndian(nativeCf88.AsSpan(0x08, 2), 1);
