@@ -38,13 +38,20 @@ $ExpectedAdapterHash=''
 $ExpectedAdapterSize=0
 $ExpectedBridgeHash=''
 $ExpectedBridgeSize=0
+$ExpectedAdapterDllHash=''
+$ExpectedAdapterDllSize=0
+$CanonicalLauncher=Join-Path $Root 'start_nanaimo_launcher.bat'
+$RuntimeIdentityPath=Join-Path $AdapterData 'runtime_identity.json'
 if(Test-Path -LiteralPath $AdapterManifest){
     $adapterContract=Get-Content -LiteralPath $AdapterManifest -Raw -Encoding UTF8|ConvertFrom-Json
     $adapterRow=@($adapterContract.files|Where-Object name -eq 'Nanaimo.Adapter.exe')[0]
     $bridgeRow=@($adapterContract.files|Where-Object name -eq 'nanaimo_gameplay_bridge.exe')[0]
+    $adapterDllRow=@($adapterContract.files|Where-Object name -eq 'Nanaimo.Adapter.dll')[0]
     if($adapterRow){$ExpectedAdapterHash=[string]$adapterRow.sha256;$ExpectedAdapterSize=[long]$adapterRow.size}
     if($bridgeRow){$ExpectedBridgeHash=[string]$bridgeRow.sha256;$ExpectedBridgeSize=[long]$bridgeRow.size}
+    if($adapterDllRow){$ExpectedAdapterDllHash=[string]$adapterDllRow.sha256;$ExpectedAdapterDllSize=[long]$adapterDllRow.size}
 }
+$ReleaseIdentity=if($ExpectedAdapterDllHash){'Adapter.dll '+$ExpectedAdapterDllHash.Substring(0,[Math]::Min(12,$ExpectedAdapterDllHash.Length))}else{'Adapter.dll UNVERIFIED'}
 $GbK=[Text.Encoding]::GetEncoding(936)
 $KnownDungeonTitles=@{0='修炼中的初级收集者';2='打败大机械熊偶的收集者';23='打败头脑胶囊的收集者'}
 function Get-DungeonTitleIconResource([int]$grade){if($grade-lt0-or$grade-gt42){throw 'dungeon grade must be 0..42'};if($grade-le20){return 2038+$grade};if($grade-le38){return 2394+($grade-21)};return 2412}
@@ -320,7 +327,7 @@ if($SelfTestLaunchModes){
 }
 
 $form=New-Object Windows.Forms.Form
-$form.Text='Nanaimo Korean Flight Shooter Launcher';$form.Size=New-Object Drawing.Size(1120,940);$form.StartPosition='CenterScreen';$form.MinimumSize=New-Object Drawing.Size(1000,870)
+$form.Text="OpenNanaimo Launcher [$ReleaseIdentity]";$form.Size=New-Object Drawing.Size(1120,940);$form.StartPosition='CenterScreen';$form.MinimumSize=New-Object Drawing.Size(1000,870)
 $tabs=New-Object Windows.Forms.TabControl;$tabs.Dock='Fill';$form.Controls.Add($tabs)
 $tabStart=New-Object Windows.Forms.TabPage;$tabStart.Text='启动配置';$tabs.TabPages.Add($tabStart)
 $tabLaunchInfo=New-Object Windows.Forms.TabPage;$tabLaunchInfo.Text='本次启动详情';$tabs.TabPages.Add($tabLaunchInfo)
@@ -328,8 +335,9 @@ $tabResources=New-Object Windows.Forms.TabPage;$tabResources.Text='数值与道�
 $tabPets=New-Object Windows.Forms.TabPage;$tabPets.Text='宠物查表';$tabs.TabPages.Add($tabPets)
 $tabEquip=New-Object Windows.Forms.TabPage;$tabEquip.Text='装扮查表';$tabs.TabPages.Add($tabEquip)
 
-$title=New-Object Windows.Forms.Label;$title.Text='韩国飞行射击游戏 Nanaimo 启动器';$title.Font=New-Object Drawing.Font('Microsoft YaHei UI',16,[Drawing.FontStyle]::Bold);$title.AutoSize=$true;$title.Location=New-Object Drawing.Point(28,24);$tabStart.Controls.Add($title)
-$hint=New-Object Windows.Forms.Label;$hint.Text='等级现由通关结算推进：每次成功 CF88 结算 +100 EXP，下一级需要当前等级×100；此处等级仅在该角色没有进度档时作为初始种子。';$hint.AutoSize=$true;$hint.Location=New-Object Drawing.Point(30,62);$tabStart.Controls.Add($hint)
+$title=New-Object Windows.Forms.Label;$title.Text='OpenNanaimo Launcher';$title.Font=New-Object Drawing.Font('Microsoft YaHei UI',16,[Drawing.FontStyle]::Bold);$title.AutoSize=$true;$title.Location=New-Object Drawing.Point(28,16);$tabStart.Controls.Add($title)
+$releaseLabel=New-Object Windows.Forms.Label;$releaseLabel.Text="Release: $ReleaseIdentity | Canonical entry: start_nanaimo_launcher.bat";$releaseLabel.AutoSize=$true;$releaseLabel.ForeColor=[Drawing.Color]::DarkGreen;$releaseLabel.Location=New-Object Drawing.Point(30,50);$tabStart.Controls.Add($releaseLabel)
+$hint=New-Object Windows.Forms.Label;$hint.Text='等级现由通关结算推进：每次成功 CF88 结算 +100 EXP，下一级需要当前等级×100；此处等级仅在该角色没有进度档时作为初始种子。';$hint.AutoSize=$true;$hint.Location=New-Object Drawing.Point(30,76);$tabStart.Controls.Add($hint)
 
 function Add-Label($parent,$text,$x,$y,$w=150){$l=New-Object Windows.Forms.Label;$l.Text=$text;$l.Location=New-Object Drawing.Point($x,$y);$l.Size=New-Object Drawing.Size($w,25);$parent.Controls.Add($l);return $l}
 
@@ -475,7 +483,7 @@ function Update-LaunchPreview([switch]$ComputeHashes){
         "Pet=$(if($pet){$pet.name+'['+$pet.id+'] age='+$(Selected-PetAge)+'/'+$pet.max_age}else{'<none>'}) | initial_attack_mode=$mode",
         ('Equipment: '+($equipSummary-join '; ')),
         "Profile INI : $ProfileIni","Profile JSON: $ProfileJson",'',
-        '=== Binary validation ===',$adapterState,$bridgeState,
+        '=== Binary validation ===',"Release identity: $ReleaseIdentity","Canonical launcher: $CanonicalLauncher",$adapterState,$bridgeState,
         (Client-State-Line),
         'Client compatibility is prepared from the local user-owned tree at launch: the furniture Index redirect, P03 roads, SSTG alias, and PON fallback. Emotion-page safety uses the adapter''s bounded C355 couple/progression fields; no emotion EXE guard is derived. Fixed C393 is protocol hygiene, not the click-time Index repair.',
         '=== Pre-launch actions ===',
@@ -587,8 +595,42 @@ function Stop-LocalAdapter {
     if((Get-LocalAdapters).Count){throw '适配器进程未能退出，请在任务管理器中关闭后重试。'}
 }
 function Test-AdapterPort([int]$port){$tcp=New-Object Net.Sockets.TcpClient;try{$ar=$tcp.BeginConnect('127.0.0.1',$port,$null,$null);if(-not$ar.AsyncWaitHandle.WaitOne(150)){return $false};$tcp.EndConnect($ar);return $true}catch{return $false}finally{$tcp.Close()}}
+function Get-AdapterListenerOwners {
+    $rows=@()
+    try{$rows=@(Get-NetTCPConnection -State Listen -ErrorAction Stop|Where-Object{$_.LocalPort-in@(11005,11999,12050)})}catch{return @()}
+    return @($rows|ForEach-Object{
+        $pidValue=[int]$_.OwningProcess;$proc=Get-Process -Id $pidValue -ErrorAction SilentlyContinue
+        [pscustomobject]@{Port=[int]$_.LocalPort;Pid=$pidValue;Path=$(if($proc){try{$proc.Path}catch{''}}else{''})}
+    })
+}
+function Assert-AdapterPortsAvailable {
+    $owners=@(Get-AdapterListenerOwners)
+    if(-not$owners.Count){return}
+    $detail=($owners|Sort-Object Port|ForEach-Object{"$($_.Port): PID=$($_.Pid) path=$(if($_.Path){$_.Path}else{'<unknown>'})"})-join"`r`n"
+    throw "Adapter ports are owned by another process; refusing to reuse an old service:`r`n$detail`r`nClose that process, then launch only through $CanonicalLauncher."
+}
+function Assert-StartedAdapterListeners([int]$processId) {
+    $owners=@(Get-AdapterListenerOwners|Where-Object{$_.Port-in@(11005,11999,12050)})
+    $missing=@(11005,11999,12050|Where-Object{$_ -notin @($owners|ForEach-Object{$_.Port})})
+    $foreign=@($owners|Where-Object{$_.Pid-ne$processId})
+    if($missing.Count-or$foreign.Count){
+        $detail=($owners|Sort-Object Port|ForEach-Object{"$($_.Port): PID=$($_.Pid) path=$(if($_.Path){$_.Path}else{'<unknown>'})"})-join'; '
+        throw "Adapter listener ownership validation failed: missing=$($missing-join',') owners=$detail"
+    }
+}
+function Write-RuntimeIdentity([Diagnostics.Process]$proc) {
+    $identity=[ordered]@{
+        observed_at=(Get-Date).ToString('o');canonical_launcher=$CanonicalLauncher;root=$Root
+        adapter_pid=$proc.Id;adapter_path=$Adapter;adapter_size=(Get-Item -LiteralPath $Adapter).Length;adapter_sha256=(Get-FileHash -LiteralPath $Adapter -Algorithm SHA256).Hash
+        adapter_dll_path=(Join-Path $AdapterRuntimeRoot 'Nanaimo.Adapter.dll');adapter_dll_size=(Get-Item -LiteralPath (Join-Path $AdapterRuntimeRoot 'Nanaimo.Adapter.dll')).Length;adapter_dll_sha256=(Get-FileHash -LiteralPath (Join-Path $AdapterRuntimeRoot 'Nanaimo.Adapter.dll') -Algorithm SHA256).Hash
+        bridge_path=$AdapterBridge;bridge_size=(Get-Item -LiteralPath $AdapterBridge).Length;bridge_sha256=(Get-FileHash -LiteralPath $AdapterBridge -Algorithm SHA256).Hash
+        client_path=$Client;ports=@(11005,11999,12050);release_identity=$ReleaseIdentity
+    }
+    $identity|ConvertTo-Json -Depth 4|Set-Content -LiteralPath $RuntimeIdentityPath -Encoding UTF8
+}
 function Start-LocalAdapter {
     Test-AdapterBinary
+    Assert-AdapterPortsAvailable
     foreach($path in @($AdapterData,$AdapterLogs)){if(-not(Test-Path -LiteralPath $path)){New-Item -ItemType Directory -Path $path -Force|Out-Null}}
     Remove-Item -LiteralPath $AdapterStop,$AdapterLog,$AdapterErr -Force -ErrorAction SilentlyContinue
     $args=@('--data',$AdapterData,'--native',$AdapterBridge,'--profile',$ProfileIni,'--login-port','11005','--world-port','12050','--profile-port','11999','--log-directory',$AdapterLogs)
@@ -596,7 +638,7 @@ function Start-LocalAdapter {
     for($i=0;$i-lt100;$i++){
         Start-Sleep -Milliseconds 100
         if($proc.HasExited){$detail=if(Test-Path -LiteralPath $AdapterErr){Get-Content -LiteralPath $AdapterErr -Raw}else{'无错误日志。'};throw "适配器退出，代码 $($proc.ExitCode)：$detail"}
-        if((Test-AdapterPort 11005)-and(Test-AdapterPort 11999)-and(Test-AdapterPort 12050)){return $proc}
+        if((Test-AdapterPort 11005)-and(Test-AdapterPort 11999)-and(Test-AdapterPort 12050)){Assert-StartedAdapterListeners $proc.Id;Write-RuntimeIdentity $proc;return $proc}
     }
     Stop-LocalAdapter
     throw '适配器未在10秒内准备完成；请检查日志。'
@@ -640,7 +682,7 @@ $adapterBtn.add_Click({
         if((Get-LocalAdapters).Count){Stop-LocalAdapter;$adapterBtn.Text='仅启动适配器';$status.Text='适配器已停止。';return}
         Save-Profile
         $proc=Start-LocalAdapter
-        $adapterBtn.Text='停止适配器';$status.Text="完整适配器已启动 PID=$($proc.Id)。`r`n日志: $AdapterLogs"
+        $adapterBtn.Text='Stop adapter';$status.Text="Adapter started PID=$($proc.Id), $ReleaseIdentity.`r`nCanonical entry: $CanonicalLauncher; identity: $RuntimeIdentityPath"
     }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'适配器启动失败')|Out-Null}
 })
 $clientBtn.add_Click({
@@ -655,7 +697,7 @@ $clientBtn.add_Click({
         if($launchModeInfo.Key-eq'network'){Register-ClientProfile $launchModeInfo.AdapterIP}
         if($launchModeInfo.ClientArgs.Count){Start-Process -FilePath $Client -ArgumentList ([string[]]$launchModeInfo.ClientArgs) -WorkingDirectory $Root|Out-Null}else{Start-Process -FilePath $Client -WorkingDirectory $Root|Out-Null}
         $changed=@($compatibility.apply_results|Where-Object{$_.status-eq'applied'}).Count
-        $status.Text="角色配置已保存；客户端兼容覆盖已验证（本次应用 $changed 个文件）；完整适配器已重启并完成注册，Nanaimo 客户端已启动。"
+        $status.Text="Profile saved; compatibility verified ($changed files applied); adapter restarted and client launched.`r`n$ReleaseIdentity; identity: $RuntimeIdentityPath"
     }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'启动 Nanaimo 失败')|Out-Null}
 })
 # Pet lookup tab

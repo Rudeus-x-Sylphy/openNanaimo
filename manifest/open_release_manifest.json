@@ -1071,8 +1071,8 @@
       "sha256": "5930276C765992A27CA85E7FBB07F78CFF56FB427CCBEEA36F31287F90955117"
     },
     "gui_launcher/nanaimo_launcher.ps1": {
-      "size": 95621,
-      "sha256": "D850DFBD65D7779327A152020495B221722BD92A2CC7261CCECAA2B0825CB069"
+      "size": 99213,
+      "sha256": "69720A50EC9026175E0B7AA291E9347A0EDEA6336F78530895D2674784A5BC08"
     },
     "gui_launcher/resource_patches/superboss_projectile_alias.json": {
       "size": 1570,
