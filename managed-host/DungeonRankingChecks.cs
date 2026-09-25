@@ -113,6 +113,22 @@ internal static class DungeonRankingChecks
                     awaitingAction: true, nextTransitionAuthorized: true, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF1D),
                 "death auto-leave and naked CF1D cannot leave settlement without an authorized action");
+            Check(NetworkAdapterService.ShouldSuppressInitialNativeDungeonDeathLeave(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: true, suppressionStage: 0, opcode: 0xCF73)
+                && NetworkAdapterService.ShouldSuppressInitialNativeDungeonDeathLeave(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: true, suppressionStage: 1, opcode: 0xCF1D)
+                && !NetworkAdapterService.ShouldSuppressInitialNativeDungeonDeathLeave(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: true, suppressionStage: 2, opcode: 0xCF73)
+                && NetworkAdapterService.ShouldAuthorizeRetriedNativeDungeonDeathLeave(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: true, suppressionStage: 2, opcode: 0xCF73)
+                && NetworkAdapterService.ShouldAuthorizeRetriedNativeDungeonDeathLeave(
+                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
+                    deathLatched: true, suppressionStage: 2, opcode: 0xCF1D),
+                "first death auto-leave chain is swallowed and a repeated leave can return to town");
             Check(NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: false, opcode: 0xCF73)

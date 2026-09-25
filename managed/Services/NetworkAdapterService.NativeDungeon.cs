@@ -81,6 +81,7 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
+            session.NativeDungeonDeathLeaveSuppressionStage = 0;
             var boundary = session.NativeDungeonDeathLatched ? BattleResourceBoundary.DeathReturn : BattleResourceBoundary.NextDungeon;
             await CloseNativeDungeonAsync(session, boundary);
             session.NativeDungeonDeathLatched = false;
@@ -165,6 +166,33 @@ public sealed partial class NetworkAdapterService
         bool dungeonOpcode = opcode is >= 0xCF00 and <= 0xD03F or 0xC587 or 0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640;
         if (dungeonOpcode)
         {
+            if (ShouldSuppressInitialNativeDungeonDeathLeave(
+                    session.NativeDungeonSettlementAwaitingAction,
+                    session.NativeDungeonNextTransitionAuthorized,
+                    session.NativeDungeonTownTransitionAuthorized,
+                    session.NativeDungeonDeathLatched,
+                    session.NativeDungeonDeathLeaveSuppressionStage,
+                    opcode))
+            {
+                session.NativeDungeonDeathLeaveSuppressionStage = opcode == 0xCF1D
+                    ? (byte)2
+                    : session.NativeDungeonDeathLeaveSuppressionStage == 0 ? (byte)1 : session.NativeDungeonDeathLeaveSuppressionStage;
+                _log($"NativeDungeon initial automatic death leave suppressed: request=0x{opcode:X4} stage={session.NativeDungeonDeathLeaveSuppressionStage}");
+                return true;
+            }
+            if (ShouldAuthorizeRetriedNativeDungeonDeathLeave(
+                    session.NativeDungeonSettlementAwaitingAction,
+                    session.NativeDungeonNextTransitionAuthorized,
+                    session.NativeDungeonTownTransitionAuthorized,
+                    session.NativeDungeonDeathLatched,
+                    session.NativeDungeonDeathLeaveSuppressionStage,
+                    opcode))
+            {
+                session.NativeDungeonSettlementAwaitingAction = false;
+                session.NativeDungeonTownTransitionAuthorized = true;
+                _log($"NativeDungeon repeated death leave authorized as explicit town return: request=0x{opcode:X4}");
+            }
+
             if (ShouldSuppressUnarmedNativeDungeonSettlementLeave(
                     session.NativeDungeonSettlementAwaitingAction,
                     session.NativeDungeonNextTransitionAuthorized,
@@ -182,6 +210,7 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonSettlementAwaitingAction = true;
                 session.NativeDungeonNextTransitionAuthorized = false;
                 session.NativeDungeonTownTransitionAuthorized = false;
+                session.NativeDungeonDeathLeaveSuppressionStage = 0;
                 if (session.NativeBattleResources is { } resources
                     && session.Character is { } resourceCharacter
                     && BattleResourceSnapshot.TryReadSettlementCurrentMp(
@@ -329,6 +358,34 @@ public sealed partial class NetworkAdapterService
         var mode = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(10, 2));
         return mode is 1 or 2;
     }
+
+    internal static bool ShouldSuppressInitialNativeDungeonDeathLeave(
+        bool awaitingAction,
+        bool nextTransitionAuthorized,
+        bool townTransitionAuthorized,
+        bool deathLatched,
+        byte suppressionStage,
+        ushort opcode)
+        => awaitingAction
+            && !nextTransitionAuthorized
+            && !townTransitionAuthorized
+            && deathLatched
+            && suppressionStage < 2
+            && opcode is 0xCF73 or 0xCF1D;
+
+    internal static bool ShouldAuthorizeRetriedNativeDungeonDeathLeave(
+        bool awaitingAction,
+        bool nextTransitionAuthorized,
+        bool townTransitionAuthorized,
+        bool deathLatched,
+        byte suppressionStage,
+        ushort opcode)
+        => awaitingAction
+            && !nextTransitionAuthorized
+            && !townTransitionAuthorized
+            && deathLatched
+            && suppressionStage >= 2
+            && opcode is 0xCF73 or 0xCF1D;
 
     internal static bool ShouldSuppressUnarmedNativeDungeonSettlementLeave(
         bool awaitingAction,
@@ -936,6 +993,7 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
+            session.NativeDungeonDeathLeaveSuppressionStage = 0;
             if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleResources = null; session.NativeBattleAttackMode = null; }
             return;
         }
@@ -956,6 +1014,7 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
+            session.NativeDungeonDeathLeaveSuppressionStage = 0;
             session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
             await session.NativeDungeon.DisposeAsync(); session.NativeDungeon = null; session.NativeCheckpoint = null;

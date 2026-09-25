@@ -426,6 +426,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public bool NativeDungeonSettlementAwaitingAction { get; set; }
         public bool NativeDungeonNextTransitionAuthorized { get; set; }
         public bool NativeDungeonTownTransitionAuthorized { get; set; }
+        public byte NativeDungeonDeathLeaveSuppressionStage { get; set; }
         public bool NativeDungeonSelectionValid { get; set; }
         public byte NativeDungeonHdIndex { get; set; }
         public byte NativeDungeonEpisode { get; set; }
