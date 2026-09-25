@@ -46,8 +46,34 @@ internal static class DungeonRankingChecks
                 "CF16 leaderboard retained the correct top-ten identities");
 
             var ratings = await db.GetDungeonBestRatingsAsync(characters[11].Id);
-            Check(((ratings[2 * 3] >> 2) & 3) == 1,
+            Check(NetworkAdapterService.ExtractPackedDungeonReadyRoomRank(
+                    ratings[2 * 3], dungeon: 1, stage: 0) == 1,
                 "ready-room rank extracts B from the selected dungeon archive slot");
+
+            var nativeSelection = NativeDungeonClient.Frame(0xCF6C, new byte[44]);
+            nativeSelection[0x22] = 0;
+            nativeSelection[0x23] = 2;
+            nativeSelection[0x24] = 1;
+            nativeSelection[0x25] = 0;
+            BinaryPrimitives.WriteUInt16LittleEndian(nativeSelection.AsSpan(0x26, 2), 2);
+            Check(NetworkAdapterService.TryParseNativeDungeonSelectionFrame(
+                    nativeSelection, out var nativeHd, out var nativeEpisode,
+                    out var nativeDungeon, out var nativeStage, out var nativeDifficulty)
+                && nativeHd == 0 && nativeEpisode == 2 && nativeDungeon == 1
+                && nativeStage == 0 && nativeDifficulty == 0,
+                "native CF6C selection is decoded in the same logical difficulty domain as persistence");
+
+            var nativeCf71 = NativeDungeonClient.Frame(0xCF71, new byte[0xB0]);
+            nativeCf71[0xB4] = 1;
+            nativeCf71[0xB5] = 0x7F;
+            Check(NetworkAdapterService.PatchNativeReadyRoomRankFrame(nativeCf71, 0)
+                && nativeCf71[0xB4] == 0 && nativeCf71[0xB5] == 0
+                && HasValidNativeChecksum(nativeCf71),
+                "native CF71 egress clears the retained worker's fabricated B for an unrated stage");
+            Check(NetworkAdapterService.PatchNativeReadyRoomRankFrame(nativeCf71, 3)
+                && nativeCf71[0xB4] == 3 && nativeCf71[0xB5] == 0
+                && HasValidNativeChecksum(nativeCf71),
+                "native CF71 egress publishes an exact S badge and rewrites checksum");
 
             var secretCharacter = characters[11];
             var secretSession = Guid.NewGuid().ToString("N");
@@ -92,6 +118,15 @@ internal static class DungeonRankingChecks
             SqliteConnection.ClearAllPools();
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
+    }
+
+    private static bool HasValidNativeChecksum(ReadOnlySpan<byte> frame)
+    {
+        uint sum = 0;
+        for (var index = 4; index < frame.Length; index++)
+            sum += frame[index];
+        return BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(2, 2))
+            == (ushort)(sum ^ 0x0E0E);
     }
 
     private static string DecodeGbk(ReadOnlySpan<byte> bytes)

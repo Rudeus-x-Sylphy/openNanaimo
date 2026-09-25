@@ -79,6 +79,7 @@ public sealed partial class NetworkAdapterService
         {
             await CloseNativeDungeonAsync(session);
             session.NativeDungeonDeathLatched = false;
+            session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
             await RefreshSessionCharacterAsync(session, token);
             var character = session.Character!;
@@ -104,6 +105,23 @@ public sealed partial class NetworkAdapterService
             return true;
         }
         if (session.NativeDungeon is null) return false;
+        if (opcode == 0xCF6C
+            && TryParseNativeDungeonSelectionFrame(
+                frame,
+                out var nativeHdIndex,
+                out var nativeEpisode,
+                out var nativeDungeon,
+                out var nativeStage,
+                out var nativeLogicalDifficulty))
+        {
+            session.NativeDungeonSelectionValid = true;
+            session.NativeDungeonHdIndex = nativeHdIndex;
+            session.NativeDungeonEpisode = nativeEpisode;
+            session.NativeDungeonDungeon = nativeDungeon;
+            session.NativeDungeonStage = nativeStage;
+            session.NativeDungeonLogicalDifficulty = nativeLogicalDifficulty;
+            _log($"NativeDungeon selected ready-room tuple: character={session.Character?.Id ?? 0} selectors={nativeHdIndex}/{nativeEpisode}/{nativeDungeon}/{nativeStage}/{nativeLogicalDifficulty}");
+        }
         if (opcode == 0x044C && frame.Length == 8 + ShootingSyncPayloadLength)
         {
             session.LastReportedPositionX = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(18, 2));
@@ -151,6 +169,65 @@ public sealed partial class NetworkAdapterService
             await RefreshSessionCharacterAsync(session, token);
         }
         return false;
+    }
+
+    internal static bool TryParseNativeDungeonSelectionFrame(
+        ReadOnlySpan<byte> frame,
+        out byte hdIndex,
+        out byte episode,
+        out byte dungeon,
+        out byte stage,
+        out byte logicalDifficulty)
+    {
+        hdIndex = 0;
+        episode = 0;
+        dungeon = 0;
+        stage = 0;
+        logicalDifficulty = byte.MaxValue;
+        if (frame.Length != 52
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) != frame.Length
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) != 0xCF6C)
+            return false;
+
+        hdIndex = frame[0x22];
+        episode = frame[0x23];
+        dungeon = frame[0x24];
+        stage = frame[0x25];
+        logicalDifficulty = DecodeDungeonLogicalDifficulty(
+            dungeon,
+            stage,
+            BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x26, 2)));
+        var episodeValid = hdIndex == 0
+            ? episode < DungeonEpisodeCount
+            : hdIndex == 1 && episode < 4;
+        return episodeValid
+            && dungeon + stage <= 3
+            && logicalDifficulty < DungeonDifficultyCount;
+    }
+
+    internal static byte ExtractPackedDungeonReadyRoomRank(
+        byte packedRatings,
+        byte dungeon,
+        byte stage)
+    {
+        var archiveSlot = dungeon + stage;
+        return archiveSlot <= 3
+            ? checked((byte)((packedRatings >> (archiveSlot * 2)) & 0x03))
+            : (byte)0;
+    }
+
+    internal static bool PatchNativeReadyRoomRankFrame(byte[] frame, byte readyRoomRank)
+    {
+        if (readyRoomRank > 3
+            || frame.Length != 0xB8
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4, 2)) != frame.Length
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2)) != 0xCF71)
+            return false;
+
+        frame[0xB4] = readyRoomRank;
+        frame[0xB5] = 0;
+        RewriteNativeChecksum(frame);
+        return true;
     }
 
     internal static bool TryParseNativeDungeonContinueFrame(
@@ -424,6 +501,7 @@ public sealed partial class NetworkAdapterService
         byte[] response,
         CancellationToken token)
     {
+        await PatchNativeReadyRoomRankFrameAsync(session, response, token);
         PatchNativePetActorFrame(response, session.Character);
         if (session.Character is { } character
             && TryReadNativeDungeonLocalHp(response, GetSceneEntityId(character), out var currentHp))
@@ -439,6 +517,52 @@ public sealed partial class NetworkAdapterService
         if (!session.NativeForwarding) return;
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(response, "NativeDungeon",
             session.ListenerPort, session.RemoteIp ?? "local", true, false, "retained-native-dungeon"), token);
+    }
+
+    private async Task PatchNativeReadyRoomRankFrameAsync(
+        ConnectionSession session,
+        byte[] frame,
+        CancellationToken token)
+    {
+        if (frame.Length != 0xB8
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2)) != 0xCF71)
+            return;
+
+        var memberUid = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(0x1A, 2));
+        byte readyRoomRank = 0;
+        if (session.NativeDungeonSelectionValid && memberUid != 0)
+        {
+            var characterId = session.Character is not null
+                && session.NativeCheckpoint is not null
+                && session.NativeCheckpoint.Get(4) == memberUid
+                ? session.Character.Id
+                : memberUid;
+            byte packedRatings = 0;
+            if (session.NativeDungeonHdIndex == 0)
+            {
+                var ratings = await _database.GetDungeonBestRatingsAsync(characterId, token);
+                var index = session.NativeDungeonEpisode * DungeonDifficultyCount
+                    + session.NativeDungeonLogicalDifficulty;
+                if ((uint)index < (uint)ratings.Length)
+                    packedRatings = ratings[index];
+            }
+            else if (session.NativeDungeonHdIndex == 1)
+            {
+                var ratings = await _database.GetDungeonSecretBestRatingsAsync(characterId, token);
+                if (session.NativeDungeonEpisode < ratings.Length)
+                    packedRatings = ratings[session.NativeDungeonEpisode];
+            }
+            readyRoomRank = ExtractPackedDungeonReadyRoomRank(
+                packedRatings,
+                session.NativeDungeonDungeon,
+                session.NativeDungeonStage);
+        }
+
+        var previousRank = frame[0xB4];
+        if (PatchNativeReadyRoomRankFrame(frame, readyRoomRank))
+        {
+            _log($"NativeDungeon CF71 ready-room rank normalized: member={memberUid} previous={previousRank} rank={readyRoomRank} tuple={(session.NativeDungeonSelectionValid ? $"{session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{session.NativeDungeonDungeon}/{session.NativeDungeonStage}/{session.NativeDungeonLogicalDifficulty}" : "unknown")}");
+        }
     }
 
     internal static bool PatchNativePetActorFrame(byte[] frame, CharacterRecord? character)
@@ -509,6 +633,7 @@ public sealed partial class NetworkAdapterService
         {
             session.NativeForwarding = false;
             session.NativeDungeonDeathLatched = false;
+            session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
             await session.NativeDungeon.DisposeAsync(); session.NativeDungeon = null; session.NativeCheckpoint = null;
             if (session.NativeLease is not null) { await session.NativeLease.DisposeAsync(); session.NativeLease = null; }

@@ -418,6 +418,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public NativeDungeonState? NativeCheckpoint { get; set; }
         public bool NativeForwarding { get; set; }
         public bool NativeDungeonDeathLatched { get; set; }
+        public bool NativeDungeonSelectionValid { get; set; }
+        public byte NativeDungeonHdIndex { get; set; }
+        public byte NativeDungeonEpisode { get; set; }
+        public byte NativeDungeonDungeon { get; set; }
+        public byte NativeDungeonStage { get; set; }
+        public byte NativeDungeonLogicalDifficulty { get; set; }
     }
 
     private sealed record PendingNativeBroadcast(
@@ -12316,7 +12322,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var ratings = await _database.GetDungeonSecretBestRatingsAsync(character.Id, token);
                 packedRatings = ratings[episode];
             }
-            result[character.Id] = checked((byte)((packedRatings >> (archiveSlot * 2)) & 0x03));
+            result[character.Id] = ExtractPackedDungeonReadyRoomRank(
+                packedRatings, dungeon, stage);
         }
         return result;
     }

@@ -84,7 +84,9 @@ static void send_cf71_member(SOCKET c,unsigned owner_uid,unsigned member_uid,uns
     stable_resource_put16(p,0x7A,(member_uid==multiplayer_current_uid()&&quickbar_entitlement_active())?1u:0u);
 #endif
 #if TEAMPLAY_FEATURE_CF71_ROOM_PHASE
-stable_put32(p,0x3C,0x2000u);p[0x52]=0;p[0xB4]=1;p[0xB5]=0;
+/* Managed egress owns the persisted selected-stage badge.  Keep the native
+   fallback blank rather than fabricating B before that request-bound rewrite. */
+stable_put32(p,0x3C,0x2000u);p[0x52]=0;p[0xB4]=0;p[0xB5]=0;
 #endif
 #if TEAMPLAY_FEATURE_CF71_ORIGINAL_VISUAL_TUPLE
 /* Retained ACTOR_ATTACHMENT_RETRY tuple.  ACTOR_ATTACHMENT_STAGED overrides the fields below after static

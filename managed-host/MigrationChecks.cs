@@ -69,7 +69,22 @@ internal static class MigrationChecks
             Assert(BinaryPrimitives.ReadUInt16LittleEndian(apartmentSnapshot.AsSpan(2, 2)) == 2000,
                 "C393 marks a complete apartment snapshot with final-info 2000");
             await RequestAsync(world, 0xCF09, new byte[56], 0xCF0A, token);
+            var nativeRoomSelection = new byte[44];
+            nativeRoomSelection[26] = 0;
+            nativeRoomSelection[27] = 0;
+            nativeRoomSelection[28] = 1;
+            nativeRoomSelection[29] = 0;
+            BinaryPrimitives.WriteUInt16LittleEndian(nativeRoomSelection.AsSpan(30, 2), 2);
+            await RequestAsync(world, 0xCF6C, nativeRoomSelection, 0xCF6D, token);
             await RequestAsync(world, 0xC587, [], 0xC588, token);
+            var nativeRoomMember = await RequestAsync(world, 0xCF70, new byte[4], 0xCF71, token);
+            var nativeRatings = await database.GetDungeonBestRatingsAsync(character.Id, token);
+            var expectedNativeRank = NetworkAdapterService.ExtractPackedDungeonReadyRoomRank(
+                nativeRatings[0], dungeon: 1, stage: 0);
+            Assert(nativeRoomMember.Length == 0xB0
+                && nativeRoomMember[0xB4 - 8] == expectedNativeRank
+                && nativeRoomMember[0xB5 - 8] == 0,
+                $"Native CF71 selected-stage rank reaches the playable egress expected={expectedNativeRank}");
             await RequestAsync(world, 0xCF1D, [], 0xCF1E, token);
             await RequestAsync(world, 0xC59B, [], 0xC59C, token);
         }

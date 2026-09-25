@@ -17,7 +17,7 @@
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
       "size": 18293760,
-      "sha256": "8BD8BA24FA540A91510CD33A50FF23869557AEA4B7D733CFDAE414260E848FC5"
+      "sha256": "10EA3F9EA700F1D8F5116A55EB99DF9E62DB924E9B261E56702F6C511ADC51B2"
     }
   },
   "files": [
@@ -58,8 +58,8 @@
     },
     {
       "path": "managed-host/DungeonRankingChecks.cs",
-      "size": 6319,
-      "sha256": "9365D6EC38148B7848D4590731F1BC976BAF20A5F645C98EF08FA92E22D7C380"
+      "size": 8293,
+      "sha256": "AAF4DBA11B212C20BFE1058A8D09B42816423CE120A3F61CDD3540A22B1B7F96"
     },
     {
       "path": "managed-host/DungeonSaveChecks.cs",
@@ -78,8 +78,8 @@
     },
     {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 29844,
-      "sha256": "D2047D97E4F958FD523F3AC72348E46B93454C39171AEBB0A88D020639E40839"
+      "size": 30862,
+      "sha256": "4A9705532ED5C10CD4CBF2D9D8F6FA25614E4EC542306E156107ED23770DFCE1"
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
@@ -383,13 +383,13 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 26546,
-      "sha256": "9E13259CB8703358F0DA636433275BC1CA3B17A6DBBF1EE7A9E70EE6A0EF9E9F"
+      "size": 31802,
+      "sha256": "96EFA6C30E054056DFDB05E104CC4FEA986564B93FEAC16AE3FA3363C68B06B4"
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 941200,
-      "sha256": "E4CFFCE899EDFB6C439DED2B02498930B63234F3D2165209D9D280E4F96B1494"
+      "size": 941566,
+      "sha256": "EFF96BDD84EDDDC0CCA85D4F9E0390E4DB2ADCA12984F24B30E8BE07A5F4C839"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -778,8 +778,8 @@
     },
     {
       "path": "release/components/protocol/protocol_state_sync_base.inc",
-      "size": 10038,
-      "sha256": "E9C5A4CAEA60C0FF2B255BCFA51ACCC807AFC23E3F87A51C04552FF76329B34D"
+      "size": 10196,
+      "sha256": "609A7A2A26DF02AB67707B090C8E2322F7C74DC87F9880A0B0A86D807F9FAB9F"
     },
     {
       "path": "release/components/protocol_extensions/protocol_overrides.inc",
