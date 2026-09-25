@@ -69,7 +69,8 @@ public sealed record BattleResourceSnapshot(
     public BattleResourceSnapshot ApplySuccessfulPickup(
         ReadOnlySpan<byte> frame,
         ushort collectorUid,
-        ushort maximumHp)
+        ushort maximumHp,
+        ushort maximumMp)
     {
         if (frame.Length != 24
             || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) != frame.Length
@@ -81,6 +82,7 @@ public sealed record BattleResourceSnapshot(
         {
             1 => WithPowerPickup(),
             2 => this with { CurrentHp = maximumHp },
+            3 => this with { CurrentMp = maximumMp },
             _ => this
         };
     }

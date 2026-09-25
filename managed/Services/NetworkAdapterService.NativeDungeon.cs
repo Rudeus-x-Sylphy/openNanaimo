@@ -810,7 +810,8 @@ public sealed partial class NetworkAdapterService
             var updated = resources.ApplySuccessfulPickup(
                 response,
                 GetSceneEntityId(resourceCharacter),
-                checked((ushort)Math.Clamp(resourceCharacter.MaxHp, 0, ushort.MaxValue)));
+                checked((ushort)Math.Clamp(resourceCharacter.MaxHp, 0, ushort.MaxValue)),
+                checked((ushort)Math.Clamp(resourceCharacter.MaxMp, 0, ushort.MaxValue)));
             if (updated != resources)
             {
                 session.NativeBattleResources = updated;

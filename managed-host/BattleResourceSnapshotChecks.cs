@@ -85,10 +85,26 @@ internal static class BattleResourceSnapshotChecks
         BinaryPrimitives.WriteUInt16LittleEndian(powerPickup.AsSpan(8, 2), 77);
         BinaryPrimitives.WriteUInt16LittleEndian(powerPickup.AsSpan(12, 2), 40);
         BinaryPrimitives.WriteUInt32LittleEndian(powerPickup.AsSpan(16, 4), 1);
-        var powered = new BattleResourceSnapshot(222, 123, 1).ApplySuccessfulPickup(powerPickup, 77, 1000);
+        var powered = new BattleResourceSnapshot(222, 123, 1).ApplySuccessfulPickup(powerPickup, 77, 1000, 500);
         Check(powered.AttackMode == 2, "successful local category40 power pickup advances live attack mode");
-        Check(powered.ApplySuccessfulPickup(powerPickup, 78, 1000) == powered,
+        Check(powered.ApplySuccessfulPickup(powerPickup, 78, 1000, 500) == powered,
             "remote member pickup does not alter local attack mode");
+
+        var hpPickup = BuildFrame(0xD035, 24);
+        BinaryPrimitives.WriteUInt16LittleEndian(hpPickup.AsSpan(8, 2), 77);
+        BinaryPrimitives.WriteUInt16LittleEndian(hpPickup.AsSpan(12, 2), 40);
+        BinaryPrimitives.WriteUInt32LittleEndian(hpPickup.AsSpan(16, 4), 2);
+        var healed = new BattleResourceSnapshot(222, 123, 2).ApplySuccessfulPickup(hpPickup, 77, 1000, 500);
+        Check(healed.CurrentHp == 1000 && healed.CurrentMp == 123 && healed.AttackMode == 2,
+            "successful local category40 HP pickup updates only live HP");
+
+        var mpPickup = BuildFrame(0xD035, 24);
+        BinaryPrimitives.WriteUInt16LittleEndian(mpPickup.AsSpan(8, 2), 77);
+        BinaryPrimitives.WriteUInt16LittleEndian(mpPickup.AsSpan(12, 2), 40);
+        BinaryPrimitives.WriteUInt32LittleEndian(mpPickup.AsSpan(16, 4), 3);
+        var restoredMp = healed.ApplySuccessfulPickup(mpPickup, 77, 1000, 500);
+        Check(restoredMp.CurrentHp == 1000 && restoredMp.CurrentMp == 500 && restoredMp.AttackMode == 2,
+            "successful local category40 MP pickup updates only live MP");
 
         var workerOwnedActor = BuildFrame(0xCF72, 0x74);
         BinaryPrimitives.WriteUInt16LittleEndian(workerOwnedActor.AsSpan(8, 2), 77);
