@@ -158,7 +158,9 @@ public sealed partial class NetworkAdapterService
         if (dungeonOpcode)
         {
             if (opcode is 0xCF87 or 0xCF8B or 0xD034 or 0xCF93 or 0xCF95 or 0xCF83 or 0xCF9B or 0xCF1D)
-                await CommitNativeCheckpointAsync(session, frame, token);
+                await CommitNativeCheckpointAsync(
+                    session, frame, token,
+                    persistSettlementRank: ShouldPersistNativeDungeonSettlement(opcode, session.NativeDungeonDeathLatched));
             else await session.NativeDungeon.SendAsync(frame, token);
             if (opcode == 0xCF1D) await CloseNativeDungeonAsync(session);
             return true;
@@ -214,6 +216,42 @@ public sealed partial class NetworkAdapterService
         return archiveSlot <= 3
             ? checked((byte)((packedRatings >> (archiveSlot * 2)) & 0x03))
             : (byte)0;
+    }
+
+    internal static bool ShouldPersistNativeDungeonSettlement(ushort requestOpcode, bool deathLatched)
+        => requestOpcode == 0xCF87 && !deathLatched;
+
+    internal static bool TryReadNativeDungeonSettlementFrame(
+        ReadOnlySpan<byte> frame,
+        ushort memberUid,
+        out byte rating,
+        out int score)
+    {
+        rating = 0;
+        score = 0;
+        if (memberUid == 0
+            || frame.Length < 0x0C + 0x34
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) != frame.Length
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) != 0xCF88)
+            return false;
+
+        var count = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(8, 2));
+        for (var index = 0; index < count; index++)
+        {
+            var recordOffset = 0x0C + index * 0x34;
+            if (recordOffset + 0x34 > frame.Length)
+                return false;
+            if (BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(recordOffset, 2)) != memberUid)
+                continue;
+            var recordRating = frame[recordOffset + 0x0B];
+            var recordScore = BinaryPrimitives.ReadUInt32LittleEndian(frame.Slice(recordOffset + 0x1C, 4));
+            if (recordRating > DungeonRewardPolicy.ClearRatingS || recordScore > int.MaxValue)
+                return false;
+            rating = recordRating;
+            score = checked((int)recordScore);
+            return true;
+        }
+        return false;
     }
 
     internal static bool PatchNativeReadyRoomRankFrame(byte[] frame, byte readyRoomRank)
@@ -461,10 +499,15 @@ public sealed partial class NetworkAdapterService
         _log($"{channel}: native dungeon paid continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} cf84Aux=(0,0) hans={character.Hans} hansDebited={clientCostField} workerAck=F105 clientResponse=CF84-variant20");
     }
 
-    private async Task CommitNativeCheckpointAsync(ConnectionSession session, byte[]? frame, CancellationToken token)
+    private async Task CommitNativeCheckpointAsync(
+        ConnectionSession session,
+        byte[]? frame,
+        CancellationToken token,
+        bool persistSettlementRank = false)
     {
         if (session.NativeDungeon is null || session.NativeCheckpoint is null || session.Character is null) return;
-        var exchange = await CommitNativeCheckpointCapturedAsync(session, frame, token);
+        var exchange = await CommitNativeCheckpointCapturedAsync(
+            session, frame, token, persistSettlementRank);
         foreach (var response in exchange.Frames)
             await HandleNativeWorkerFrameAsync(session, response, token);
     }
@@ -472,22 +515,45 @@ public sealed partial class NetworkAdapterService
     private async Task<NativeDungeonExchangeResult> CommitNativeCheckpointCapturedAsync(
         ConnectionSession session,
         byte[]? frame,
-        CancellationToken token)
+        CancellationToken token,
+        bool persistSettlementRank = false)
     {
         if (session.NativeDungeon is null || session.NativeCheckpoint is null || session.Character is null)
             throw new InvalidOperationException("Native dungeon checkpoint capture requires an active owned worker session.");
         var exchange = await session.NativeDungeon.ExchangeCapturedAsync(frame, null, token);
         var next = exchange.State;
+        NativeDungeonSettlementRecord? settlement = null;
+        if (persistSettlementRank && session.NativeDungeonSelectionValid)
+        {
+            var memberUid = checked((ushort)Math.Clamp(next.Get(4), 1u, ushort.MaxValue));
+            foreach (var response in exchange.Frames)
+            {
+                if (!TryReadNativeDungeonSettlementFrame(response, memberUid, out var rating, out var score))
+                    continue;
+                settlement = new NativeDungeonSettlementRecord(
+                    session.NativeDungeonHdIndex,
+                    session.NativeDungeonEpisode,
+                    session.NativeDungeonDungeon,
+                    session.NativeDungeonStage,
+                    session.NativeDungeonLogicalDifficulty,
+                    rating,
+                    score);
+                break;
+            }
+        }
         Directory.CreateDirectory(NativeJournalDirectory);
         string journal = Path.Combine(NativeJournalDirectory, session.SessionId + ".json");
         string commitId = Guid.NewGuid().ToString("N");
         var record = new { CommitId = commitId, session.AccountId, CharacterId = session.Character.Id, session.SessionId,
-            Before = Convert.ToBase64String(session.NativeCheckpoint.Bytes), After = Convert.ToBase64String(next.Bytes) };
+            Before = Convert.ToBase64String(session.NativeCheckpoint.Bytes), After = Convert.ToBase64String(next.Bytes),
+            Settlement = settlement };
         await File.WriteAllTextAsync(journal + ".tmp", System.Text.Json.JsonSerializer.Serialize(record), token);
         File.Move(journal + ".tmp", journal, true);
         var applied = await _database.ApplyNativeDungeonDeltaAsync(
             session.AccountId, session.Character.Id, session.SessionId,
-            session.NativeCheckpoint, next, token, commitId);
+            session.NativeCheckpoint, next, token, commitId, settlement: settlement);
+        if (settlement is { } persisted)
+            _log($"NativeDungeon settlement rank persisted: character={session.Character.Id} rating={persisted.Rating} score={persisted.Score} tuple={persisted.HdIndex}/{persisted.Episode}/{persisted.Dungeon}/{persisted.Stage}/{persisted.LogicalDifficulty}");
         session.NativeCheckpoint = next;
         File.Delete(journal);
         await RefreshSessionCharacterAsync(session, token);

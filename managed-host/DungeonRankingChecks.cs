@@ -63,6 +63,25 @@ internal static class DungeonRankingChecks
                 && nativeStage == 0 && nativeDifficulty == 0,
                 "native CF6C selection is decoded in the same logical difficulty domain as persistence");
 
+            Check(NetworkAdapterService.ShouldPersistNativeDungeonSettlement(0xCF87, deathLatched: false)
+                && !NetworkAdapterService.ShouldPersistNativeDungeonSettlement(0xCF87, deathLatched: true)
+                && !NetworkAdapterService.ShouldPersistNativeDungeonSettlement(0xCF15, deathLatched: false),
+                "native personal rank persists only for a non-death CF87 settlement");
+
+            var nativeCf88 = NativeDungeonClient.Frame(0xCF88, new byte[56]);
+            BinaryPrimitives.WriteUInt16LittleEndian(nativeCf88.AsSpan(0x08, 2), 1);
+            BinaryPrimitives.WriteUInt16LittleEndian(nativeCf88.AsSpan(0x0A, 2), 11);
+            BinaryPrimitives.WriteUInt16LittleEndian(nativeCf88.AsSpan(0x0C, 2), 11);
+            nativeCf88[0x0C + 0x0B] = DungeonRewardPolicy.ClearRatingS;
+            BinaryPrimitives.WriteUInt32LittleEndian(nativeCf88.AsSpan(0x0C + 0x1C, 4), 14_478);
+            Check(NetworkAdapterService.TryReadNativeDungeonSettlementFrame(
+                    nativeCf88, 11, out var nativeSettlementRating, out var nativeSettlementScore)
+                && nativeSettlementRating == DungeonRewardPolicy.ClearRatingS
+                && nativeSettlementScore == 14_478
+                && !NetworkAdapterService.TryReadNativeDungeonSettlementFrame(
+                    nativeCf88, 12, out _, out _),
+                "native CF88 parser binds the visible S/score to the local member UID");
+
             var nativeCf71 = NativeDungeonClient.Frame(0xCF71, new byte[0xB0]);
             nativeCf71[0xB4] = 1;
             nativeCf71[0xB5] = 0x7F;

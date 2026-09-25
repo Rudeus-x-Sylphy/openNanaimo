@@ -58,6 +58,47 @@ internal static class DungeonSaveChecks
             Check(secretRatings[3] == 0x83,
                 "secret ratings pack S in slot0 and A in the BOSS slot without lower-result downgrade");
 
+            var nativeCharacter = (await db.GetCharacterAsync(account, token))!;
+            var nativeBefore = NativeDungeonState.Create(
+                nativeCharacter,
+                await db.GetCharacterCardsAsync(nativeCharacter.Id, token),
+                await db.GetCharacterSkillsAsync(nativeCharacter.Id, token));
+            await db.RestoreNativeDungeonProgressAsync(nativeCharacter.Id, nativeBefore, token);
+            var nativeAfter = new NativeDungeonState(nativeBefore.Bytes.ToArray());
+            var nativeApply = await db.ApplyNativeDungeonDeltaAsync(
+                account, nativeCharacter.Id, session, nativeBefore, nativeAfter, token,
+                settlement: new NativeDungeonSettlementRecord(
+                    0, 1, 1, 0, 0, DungeonRewardPolicy.ClearRatingS, 14_478));
+            Check(nativeApply.Applied, "native CF88 settlement commit completed");
+            var nativePersistedRatings = await db.GetDungeonBestRatingsAsync(nativeCharacter.Id, token);
+            Check(NetworkAdapterService.ExtractPackedDungeonReadyRoomRank(
+                    nativePersistedRatings[3], 1, 0) == 3,
+                "native CF88 S persists into the selected ready-room rank ledger");
+            var noManagedNativeLeaderboard = await db.GetDungeonStageLeaderboardAsync(
+                0, 1, 1, 0, 0, cancellationToken: token);
+            Check(noManagedNativeLeaderboard.Count == 0,
+                "native personal-rank persistence leaves the native CF15/CF16 leaderboard domain unchanged");
+
+            var nativeLowerAfter = new NativeDungeonState(nativeAfter.Bytes.ToArray());
+            _ = await db.ApplyNativeDungeonDeltaAsync(
+                account, nativeCharacter.Id, session, nativeAfter, nativeLowerAfter, token,
+                settlement: new NativeDungeonSettlementRecord(
+                    0, 1, 1, 0, 0, DungeonRewardPolicy.ClearRatingB, 1_000));
+            nativePersistedRatings = await db.GetDungeonBestRatingsAsync(nativeCharacter.Id, token);
+            Check(NetworkAdapterService.ExtractPackedDungeonReadyRoomRank(
+                    nativePersistedRatings[3], 1, 0) == 3,
+                "native lower result cannot downgrade a persisted S rank");
+
+            _ = await db.ApplyNativeDungeonDeltaAsync(
+                account, nativeCharacter.Id, session, nativeAfter, nativeLowerAfter, token,
+                settlement: new NativeDungeonSettlementRecord(
+                    1, 1, 0, 0, 0, DungeonRewardPolicy.ClearRatingA, 800));
+            var nativeSecretPersistedRatings = await db.GetDungeonSecretBestRatingsAsync(nativeCharacter.Id, token);
+            Check(nativeSecretPersistedRatings[1] == (DungeonRewardPolicy.ClearRatingA - 2)
+                && NetworkAdapterService.ExtractPackedDungeonReadyRoomRank(
+                    nativePersistedRatings[3], 1, 0) == 3,
+                "native secret CF88 rank persists independently from ordinary S");
+
             var normalLeaderboard = await db.GetDungeonStageLeaderboardAsync(0, 10, 1, 0, 1, cancellationToken: token);
             var secretLeaderboard = await db.GetDungeonStageLeaderboardAsync(1, 3, 0, 0, 0, cancellationToken: token);
             var secretBossLeaderboard = await db.GetDungeonStageLeaderboardAsync(1, 3, 2, 1, 0, cancellationToken: token);

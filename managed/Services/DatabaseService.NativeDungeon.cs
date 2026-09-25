@@ -16,6 +16,15 @@ public readonly record struct NativeDungeonApplyResult(
     uint PetCurrentStageMaximumLevel,
     bool PetLevelOrStageChanged);
 
+public readonly record struct NativeDungeonSettlementRecord(
+    byte HdIndex,
+    byte Episode,
+    byte Dungeon,
+    byte Stage,
+    byte LogicalDifficulty,
+    byte Rating,
+    int Score);
+
 public sealed partial class DatabaseService
 {
     private sealed class LocalShoppingSidecar
@@ -607,7 +616,8 @@ public sealed partial class DatabaseService
     }
 
     public async Task<NativeDungeonApplyResult> ApplyNativeDungeonDeltaAsync(long accountId, long characterId, string sessionId,
-        NativeDungeonState before, NativeDungeonState after, CancellationToken token, string? commitId = null, bool recovering = false)
+        NativeDungeonState before, NativeDungeonState after, CancellationToken token, string? commitId = null,
+        bool recovering = false, NativeDungeonSettlementRecord? settlement = null)
     {
         if (before.Get(4) != after.Get(4) || after.Get(4) != characterId
             || before.Get(68) != after.Get(68)
@@ -794,6 +804,63 @@ public sealed partial class DatabaseService
                 """, ("$episode", index / 3), ("$difficulty", index % 3),
                 ("$mask", clearMasks[index]), ("$now", DateTime.UtcNow.ToString("O")));
         }
+        if (settlement is { } result)
+        {
+            if (result.HdIndex > 1
+                || result.Episode >= (result.HdIndex == 0 ? 20 : 4)
+                || result.Dungeon >= 3
+                || result.Dungeon + result.Stage > 3
+                || result.LogicalDifficulty >= 3
+                || result.Rating > DungeonRewardPolicy.ClearRatingS
+                || result.Score < 0)
+                throw new InvalidDataException("Native dungeon settlement tuple is invalid.");
+
+            // The retained worker's CF88 is the visible result authority on the
+            // playable route. It carries D..S as 1..5; C and lower intentionally
+            // leave the packed ready-room/C355 best-rank field at zero.
+            var clientBestRating = Math.Clamp(result.Rating - 2, 0, 3);
+            var archiveSlot = result.Dungeon + result.Stage;
+            var ratingShift = archiveSlot * 2;
+            var ratingFieldMask = 0x03 << ratingShift;
+            var ratingClearMask = 0xFF & ~ratingFieldMask;
+            var now = DateTime.UtcNow.ToString("O");
+            if (result.HdIndex == 0)
+            {
+                await Execute("""
+                    INSERT INTO DungeonProgress(
+                        CharacterId,Episode,Difficulty,ClearMask,BestRatings,BestScore,ClearedAt,UpdatedAt)
+                    VALUES($id,$episode,$difficulty,$mask,$bestRatings,$score,$now,$now)
+                    ON CONFLICT(CharacterId,Episode,Difficulty) DO UPDATE SET
+                        ClearMask=DungeonProgress.ClearMask|excluded.ClearMask,
+                        BestRatings=(DungeonProgress.BestRatings&$ratingClearMask)
+                            |MAX(DungeonProgress.BestRatings&$ratingFieldMask,
+                                 excluded.BestRatings&$ratingFieldMask),
+                        BestScore=MAX(DungeonProgress.BestScore,excluded.BestScore),
+                        UpdatedAt=excluded.UpdatedAt
+                    """, ("$episode", result.Episode), ("$difficulty", result.LogicalDifficulty),
+                    ("$mask", 1 << archiveSlot), ("$bestRatings", clientBestRating << ratingShift),
+                    ("$ratingFieldMask", ratingFieldMask), ("$ratingClearMask", ratingClearMask),
+                    ("$score", result.Score), ("$now", now));
+            }
+            else
+            {
+                await Execute("""
+                    INSERT INTO DungeonSecretProgress(
+                        CharacterId,Episode,ClearMask,BestRatings,BestScore,ClearedAt,UpdatedAt)
+                    VALUES($id,$episode,$mask,$bestRatings,$score,$now,$now)
+                    ON CONFLICT(CharacterId,Episode) DO UPDATE SET
+                        ClearMask=DungeonSecretProgress.ClearMask|excluded.ClearMask,
+                        BestRatings=(DungeonSecretProgress.BestRatings&$ratingClearMask)
+                            |MAX(DungeonSecretProgress.BestRatings&$ratingFieldMask,
+                                 excluded.BestRatings&$ratingFieldMask),
+                        BestScore=MAX(DungeonSecretProgress.BestScore,excluded.BestScore),
+                        UpdatedAt=excluded.UpdatedAt
+                    """, ("$episode", result.Episode), ("$mask", 1 << archiveSlot),
+                    ("$bestRatings", clientBestRating << ratingShift),
+                    ("$ratingFieldMask", ratingFieldMask), ("$ratingClearMask", ratingClearMask),
+                    ("$score", result.Score), ("$now", now));
+            }
+        }
         await Execute("CREATE TABLE IF NOT EXISTS NativeDungeonProfiles(CharacterId INTEGER PRIMARY KEY REFERENCES Characters(Id), State BLOB NOT NULL)");
         await Execute("INSERT INTO NativeDungeonProfiles VALUES($id,$state) ON CONFLICT(CharacterId) DO UPDATE SET State=$state", ("$state", after.Bytes));
         await transaction.CommitAsync(token);
@@ -937,8 +1004,26 @@ public sealed partial class DatabaseService
                 root.GetProperty("CharacterId").GetInt64(), root.GetProperty("SessionId").GetString()!,
                 new NativeDungeonState(Convert.FromBase64String(root.GetProperty("Before").GetString()!)),
                 new NativeDungeonState(Convert.FromBase64String(root.GetProperty("After").GetString()!)), token,
-                root.GetProperty("CommitId").GetString()!, recovering: true);
+                root.GetProperty("CommitId").GetString()!, recovering: true,
+                settlement: TryReadNativeDungeonSettlementJournal(root));
             File.Delete(path);
         }
+    }
+
+    private static NativeDungeonSettlementRecord? TryReadNativeDungeonSettlementJournal(
+        System.Text.Json.JsonElement root)
+    {
+        if (!root.TryGetProperty("Settlement", out var element)
+            || element.ValueKind is System.Text.Json.JsonValueKind.Null
+                or System.Text.Json.JsonValueKind.Undefined)
+            return null;
+        return new NativeDungeonSettlementRecord(
+            element.GetProperty(nameof(NativeDungeonSettlementRecord.HdIndex)).GetByte(),
+            element.GetProperty(nameof(NativeDungeonSettlementRecord.Episode)).GetByte(),
+            element.GetProperty(nameof(NativeDungeonSettlementRecord.Dungeon)).GetByte(),
+            element.GetProperty(nameof(NativeDungeonSettlementRecord.Stage)).GetByte(),
+            element.GetProperty(nameof(NativeDungeonSettlementRecord.LogicalDifficulty)).GetByte(),
+            element.GetProperty(nameof(NativeDungeonSettlementRecord.Rating)).GetByte(),
+            element.GetProperty(nameof(NativeDungeonSettlementRecord.Score)).GetInt32());
     }
 }
