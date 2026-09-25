@@ -135,18 +135,18 @@ internal static class DungeonRankingChecks
                 && !NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF73)
-                && NetworkAdapterService.ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
-                    nextTransitionAuthorized: false, townTransitionAuthorized: true, opcode: 0xCF73)
+                && !NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
+                    nextTransitionAuthorized: false, opcode: 0xCF73)
                 && NetworkAdapterService.ResolveNativeDungeonDisconnectBoundary(nextTransitionAuthorized: false)
                     == BattleResourceBoundary.TownReturn,
-                "normal-clear CF73 arms the manual town-return chain and CF1D keeps its town boundary");
-            Check(NetworkAdapterService.ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
-                    nextTransitionAuthorized: true, townTransitionAuthorized: false, opcode: 0xCF73)
-                && !NetworkAdapterService.ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
-                    nextTransitionAuthorized: true, townTransitionAuthorized: false, opcode: 0xCF1D)
+                "normal-clear CF73 is forwarded for CF74 and CF1D keeps its town boundary");
+            Check(NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
+                    nextTransitionAuthorized: true, opcode: 0xCF73)
+                && !NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
+                    nextTransitionAuthorized: true, opcode: 0xCF1D)
                 && NetworkAdapterService.ResolveNativeDungeonDisconnectBoundary(nextTransitionAuthorized: true)
                     == BattleResourceBoundary.NextDungeon,
-                "authorized CF8B rebuild suppresses CF73 and preserves CF1D as next-dungeon rather than town return");
+                "authorized CF8B rebuild suppresses only its CF73 notice and preserves CF1D as next-dungeon");
 
             var nativeCf88 = NativeDungeonClient.Frame(0xCF88, new byte[56]);
             BinaryPrimitives.WriteUInt16LittleEndian(nativeCf88.AsSpan(0x08, 2), 1);

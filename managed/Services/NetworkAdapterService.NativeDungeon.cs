@@ -248,15 +248,14 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonTownTransitionAuthorized = false;
             }
 
-            // CF73 is only a notification inside an already-authorized CF8B
-            // rebuild chain. Forwarding it can synthesize a leave response and
-            // race the following CF1D/CF09 transition.
-            if (ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
+            // CF73 is only a transport notification inside an already-authorized
+            // CF8B rebuild chain. A real town-return action must still reach the
+            // worker so the client receives CF74 before its CF1D disconnect.
+            if (ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
                     session.NativeDungeonNextTransitionAuthorized,
-                    session.NativeDungeonTownTransitionAuthorized,
                     opcode))
             {
-                _log("NativeDungeon authorized transition CF73 notification suppressed; awaiting CF1D/CF09");
+                _log("NativeDungeon next-transition CF73 notification suppressed; awaiting CF1D/CF09");
                 return true;
             }
 
@@ -416,11 +415,10 @@ public sealed partial class NetworkAdapterService
             ? BattleResourceBoundary.NextDungeon
             : BattleResourceBoundary.TownReturn;
 
-    internal static bool ShouldSuppressAuthorizedNativeDungeonTransitionNotice(
+    internal static bool ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
         bool nextTransitionAuthorized,
-        bool townTransitionAuthorized,
         ushort opcode)
-        => (nextTransitionAuthorized || townTransitionAuthorized) && opcode == 0xCF73;
+        => nextTransitionAuthorized && opcode == 0xCF73;
 
     internal static bool ShouldForwardNativeDungeonCheckpointFrame(ushort requestOpcode, ushort responseOpcode)
         => requestOpcode != 0xCF87 || responseOpcode == 0xCF88;
