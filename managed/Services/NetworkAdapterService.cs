@@ -420,6 +420,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public NativeDungeonState? NativeCheckpoint { get; set; }
         public BattleResourceSnapshot? PendingBattleResourceSnapshot { get; set; }
         public BattleResourceSnapshot? NativeBattleResources { get; set; }
+        public BattleResourceSnapshot? NonCombatResourceSnapshot { get; set; }
+        public long NativeBattleEpoch { get; set; }
         public byte? NativeBattleAttackMode { get; set; }
         public bool NativeForwarding { get; set; }
         public bool NativeDungeonDeathLatched { get; set; }
@@ -4676,11 +4678,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return BuildNativeFrame(
                         frame,
                         0xC368,
-                        BuildRoomEnterPayload(
+                        BuildRoomEnterPayloadWithResources(
                             session.Character,
                             (byte)roomIndex,
                             transitionPosition.X,
-                            transitionPosition.Y),
+                            transitionPosition.Y,
+                            session.NonCombatResourceSnapshot),
                         session);
                 }
 
@@ -4712,11 +4715,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return BuildNativeFrame(
                     frame,
                     0xC368,
-                    BuildRoomEnterPayload(
+                    BuildRoomEnterPayloadWithResources(
                         session.Character,
                         (byte)effectiveRoomIndex,
                         positionX,
-                        positionY),
+                        positionY,
+                        session.NonCombatResourceSnapshot),
                     session);
             }
 
@@ -12908,7 +12912,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         source.PendingBroadcasts.Add(new PendingNativeBroadcast(
             target,
             0xD8FF,
-            BuildUserHpMpAutoHealingPayload(character),
+            BuildUserHpMpAutoHealingPayloadWithResources(
+                character,
+                targetSession.NonCombatResourceSnapshot),
             reason));
     }
 
@@ -14627,8 +14633,38 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         if (character is null || !IsNonCombatRecoverySceneActive(session, scene))
             return;
 
-        var beforeHp = character.CurrentHp;
-        var beforeMp = character.CurrentMp;
+        if (session.NonCombatResourceSnapshot is { } visibleResources)
+        {
+            var parameters = HealthRecoveryPolicy.GetParameters(scene);
+            var recovered = visibleResources.ApplyNonCombatRecovery(parameters.HpStep, parameters.MpStep);
+            if (recovered == visibleResources)
+                return;
+            var beforeHp = visibleResources.CurrentHp;
+            var beforeMp = visibleResources.CurrentMp;
+            character.CurrentHp = recovered.ProjectCurrentHp(character.MaxHp);
+            character.CurrentMp = recovered.ProjectCurrentMp(character.MaxMp);
+            if (!await _database.SaveCharacterRuntimeStateAsync(
+                    session.AccountId,
+                    character.Id,
+                    session.SessionId,
+                    CreateRuntimeState(character, session.ChannelId),
+                    token))
+                return;
+            session.NonCombatResourceSnapshot = recovered;
+            AccountStateChanged?.Invoke();
+            await SendNativeBroadcastAsync(
+                new PendingNativeBroadcast(
+                    presence,
+                    0xD8FF,
+                    BuildUserHpMpAutoHealingPayloadWithResources(character, recovered),
+                    $"{scene.ToString().ToLowerInvariant()} HP/MP recovery tick"),
+                token);
+            _log($"Non-combat recovery tick: scene={scene} character={character.Id} hp={beforeHp}->{recovered.CurrentHp}/{recovered.MaximumHp} mp={beforeMp}->{recovered.CurrentMp}/{recovered.MaximumMp}");
+            return;
+        }
+
+        var profileBeforeHp = character.CurrentHp;
+        var profileBeforeMp = character.CurrentMp;
         var persisted = await _database.ApplyHealthRecoveryStepAsync(
             session.AccountId,
             character.Id,
@@ -14648,7 +14684,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 BuildUserHpMpAutoHealingPayload(current),
                 $"{scene.ToString().ToLowerInvariant()} HP/MP recovery tick"),
             token);
-        _log($"Non-combat recovery tick: scene={scene} character={current.Id} hp={beforeHp}->{current.CurrentHp}/{current.MaxHp} mp={beforeMp}->{current.CurrentMp}/{current.MaxMp}");
+        _log($"Non-combat recovery tick: scene={scene} character={current.Id} hp={profileBeforeHp}->{current.CurrentHp}/{current.MaxHp} mp={profileBeforeMp}->{current.CurrentMp}/{current.MaxMp}");
     }
 
     private static void ActivateNonCombatHealthRecovery(
@@ -16657,23 +16693,30 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         (ushort)Math.Clamp((Math.Max(1, level) - 1) / 10 + 1, 1, ClientMaximumLevelIcon);
 
     private static byte[] BuildUserHpMpAutoHealingPayload(CharacterRecord character)
+        => BuildUserHpMpAutoHealingPayloadWithResources(character, null);
+
+    internal static byte[] BuildUserHpMpAutoHealingPayloadWithResources(
+        CharacterRecord character,
+        BattleResourceSnapshot? visibleResources)
     {
         // Retail opcode D8FF is USER_HP_MP_AUTO_HEALING in town and
         // EVENT_USER_HP_MP_AUTO_HEALING in a dungeon. Both consumers read
         // max HP/MP and current HP/MP at native frame +0x10..+0x16.
+        var maximumHp = visibleResources?.MaximumHp > 0
+            ? visibleResources.MaximumHp
+            : checked((ushort)Math.Clamp(character.MaxHp, 1, ushort.MaxValue));
+        var maximumMp = visibleResources?.MaximumMp > 0
+            ? visibleResources.MaximumMp
+            : checked((ushort)Math.Clamp(character.MaxMp, 1, ushort.MaxValue));
+        var currentHp = visibleResources?.CurrentHp
+            ?? checked((ushort)Math.Clamp(character.CurrentHp, 0, maximumHp));
+        var currentMp = visibleResources?.CurrentMp
+            ?? checked((ushort)Math.Clamp(character.CurrentMp, 0, maximumMp));
         var payload = new byte[16];
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(8, 2),
-            (ushort)Math.Clamp(character.MaxHp, 1, ushort.MaxValue));
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(10, 2),
-            (ushort)Math.Clamp(character.MaxMp, 1, ushort.MaxValue));
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(12, 2),
-            (ushort)Math.Clamp(character.CurrentHp, 0, Math.Max(0, character.MaxHp)));
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(14, 2),
-            (ushort)Math.Clamp(character.CurrentMp, 0, Math.Max(0, character.MaxMp)));
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(8, 2), maximumHp);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(10, 2), maximumMp);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(12, 2), (ushort)Math.Min(currentHp, maximumHp));
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(14, 2), (ushort)Math.Min(currentMp, maximumMp));
         return payload;
     }
 
@@ -18682,6 +18725,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         byte roomIndex,
         ushort entryPositionX,
         ushort entryPositionY)
+        => BuildRoomEnterPayloadWithResources(
+            character, roomIndex, entryPositionX, entryPositionY, null);
+
+    internal static byte[] BuildRoomEnterPayloadWithResources(
+        CharacterRecord character,
+        byte roomIndex,
+        ushort entryPositionX,
+        ushort entryPositionY,
+        BattleResourceSnapshot? visibleResources)
     {
         // The native C368 frame is 60 bytes. The first 48 bytes carry the
         // result, room index and appearance; the final 12 bytes initialize
@@ -18702,18 +18754,20 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(42, 2),
             entryPositionY);
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(44, 2),
-            (ushort)Math.Clamp(character.MaxHp, 0, ushort.MaxValue));
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(46, 2),
-            (ushort)Math.Clamp(character.MaxMp, 0, ushort.MaxValue));
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(48, 2),
-            (ushort)Math.Clamp(character.CurrentHp, 0, ushort.MaxValue));
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(50, 2),
-            (ushort)Math.Clamp(character.CurrentMp, 0, ushort.MaxValue));
+        var maximumHp = visibleResources?.MaximumHp > 0
+            ? visibleResources.MaximumHp
+            : checked((ushort)Math.Clamp(character.MaxHp, 0, ushort.MaxValue));
+        var maximumMp = visibleResources?.MaximumMp > 0
+            ? visibleResources.MaximumMp
+            : checked((ushort)Math.Clamp(character.MaxMp, 0, ushort.MaxValue));
+        var currentHp = visibleResources?.CurrentHp
+            ?? checked((ushort)Math.Clamp(character.CurrentHp, 0, maximumHp));
+        var currentMp = visibleResources?.CurrentMp
+            ?? checked((ushort)Math.Clamp(character.CurrentMp, 0, maximumMp));
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(44, 2), maximumHp);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(46, 2), maximumMp);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(48, 2), (ushort)Math.Min(currentHp, maximumHp));
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(50, 2), (ushort)Math.Min(currentMp, maximumMp));
         return payload;
     }
 

@@ -84,6 +84,9 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonDeathLeaveSuppressionStage = 0;
             var boundary = session.NativeDungeonDeathLatched ? BattleResourceBoundary.DeathReturn : BattleResourceBoundary.NextDungeon;
             await CloseNativeDungeonAsync(session, boundary);
+            session.NativeBattleEpoch = checked(session.NativeBattleEpoch + 1);
+            var nativeBattleEpoch = session.NativeBattleEpoch;
+            session.NonCombatResourceSnapshot = null;
             session.NativeDungeonDeathLatched = false;
             session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
@@ -91,15 +94,16 @@ public sealed partial class NetworkAdapterService
             var character = session.Character!;
             var state = BattleResourceSnapshotPolicy.CreateNextDungeonState(character,
                 await _database.GetCharacterCardsAsync(character.Id, token),
-                await _database.GetCharacterSkillsAsync(character.Id, token), session.PendingBattleResourceSnapshot);
-            session.NativeBattleResources = BattleResourceSnapshot.Capture(state);
+                await _database.GetCharacterSkillsAsync(character.Id, token), session.PendingBattleResourceSnapshot, nativeBattleEpoch);
+            session.NativeBattleResources = (session.PendingBattleResourceSnapshot?.ForEpoch(nativeBattleEpoch)
+                ?? BattleResourceSnapshot.Capture(state, nativeBattleEpoch));
             session.NativeBattleAttackMode = session.NativeBattleResources.AttackMode;
             session.PendingBattleResourceSnapshot = null;
             await _database.RestoreNativeDungeonProgressAsync(character.Id, state, token);
             if (NativeRooms is not null)
                 session.NativeLease = await NativeRooms.AcquireAsync(session.PartyId > 0 ? $"party:{session.PartyId}" : session.SessionId, token);
             var bridge = new NativeDungeonClient(
-                response => HandleNativeWorkerFrameAsync(session, response, token),
+                response => HandleNativeWorkerFrameAsync(session, response, nativeBattleEpoch, token),
                 session.NativeLease?.Port ?? 52050);
             session.NativeDungeon = bridge;
             await bridge.ConnectAsync(token);
@@ -218,9 +222,10 @@ public sealed partial class NetworkAdapterService
                         checked((ushort)Math.Clamp(resourceCharacter.MaxMp, 0, ushort.MaxValue)),
                         out var currentMp))
                 {
-                    session.NativeBattleResources = resources.WithCurrentMp(
-                        currentMp,
-                        checked((uint)Math.Max(0, resourceCharacter.MaxMp)));
+                    var effectiveMaximumMp = resources.MaximumMp > 0
+                        ? resources.MaximumMp
+                        : checked((ushort)Math.Clamp(resourceCharacter.MaxMp, 0, ushort.MaxValue));
+                    session.NativeBattleResources = resources.FreezeSettlement(currentMp, effectiveMaximumMp);
                     session.NativeBattleAttackMode = session.NativeBattleResources.AttackMode;
                     _log($"NativeDungeon settlement resources observed: character={resourceCharacter.Id} hp={session.NativeBattleResources.CurrentHp}/{resourceCharacter.MaxHp} mp={session.NativeBattleResources.CurrentMp}/{resourceCharacter.MaxMp} attackMode={session.NativeBattleResources.AttackMode}");
                 }
@@ -727,7 +732,7 @@ public sealed partial class NetworkAdapterService
         var exchange = await CommitNativeCheckpointCapturedAsync(
             session, frame, token, persistSettlementRank);
         foreach (var response in exchange.Frames)
-            await HandleNativeWorkerFrameAsync(session, response, token);
+            await HandleNativeWorkerFrameAsync(session, response, session.NativeBattleEpoch, token);
     }
 
     private async Task<NativeDungeonExchangeResult> CommitNativeCheckpointCapturedAsync(
@@ -790,10 +795,16 @@ public sealed partial class NetworkAdapterService
     private async Task HandleNativeWorkerFrameAsync(
         ConnectionSession session,
         byte[] response,
+        long battleEpoch,
         CancellationToken token)
     {
         if (response.Length < 8)
             return;
+        if (battleEpoch != session.NativeBattleEpoch)
+        {
+            _log($"NativeDungeon stale worker frame suppressed: frameEpoch={battleEpoch} activeEpoch={session.NativeBattleEpoch}");
+            return;
+        }
         var responseOpcode = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6, 2));
         if (session.NativeDungeonSettlementAwaitingAction
             && IsNativeDungeonTransitionFrame(responseOpcode))
@@ -802,6 +813,19 @@ public sealed partial class NetworkAdapterService
             return;
         }
         await PatchNativeReadyRoomRankFrameAsync(session, response, token);
+        if (session.NativeBattleResources is { } actorResources
+            && session.Character is { } actorCharacter
+            && TryReadNativeDungeonActorResources(
+                response,
+                GetSceneEntityId(actorCharacter),
+                out var actorMaximumHp,
+                out var actorMaximumMp,
+                out var actorCurrentHp,
+                out var actorCurrentMp))
+        {
+            session.NativeBattleResources = actorResources.ObserveWorkerActor(
+                actorMaximumHp, actorMaximumMp, actorCurrentHp, actorCurrentMp);
+        }
         if (session.NativeBattleResources is { } resources
             && session.Character is { } resourceCharacter)
         {
@@ -826,11 +850,18 @@ public sealed partial class NetworkAdapterService
         if (session.Character is { } character
             && TryReadNativeDungeonLocalHp(response, GetSceneEntityId(character), out var currentHp))
         {
+            if (session.NativeBattleResources is { SettlementFrozen: true })
+            {
+                _log($"NativeDungeon post-settlement local D010 suppressed: character={character.Id} hp={currentHp} epoch={battleEpoch}");
+                return;
+            }
             session.NativeDungeonDeathLatched = currentHp == 0;
             if (session.NativeBattleResources is { } hpResources)
                 session.NativeBattleResources = hpResources.WithCurrentHp(
                     currentHp,
-                    checked((uint)Math.Max(0, character.MaxHp)));
+                    hpResources.MaximumHp > 0
+                        ? hpResources.MaximumHp
+                        : checked((uint)Math.Max(0, character.MaxHp)));
             _log($"NativeDungeon local D010 observed: character={character.Id} hp={currentHp} deathLatched={session.NativeDungeonDeathLatched}");
         }
         if (BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) == 0xF103)
@@ -889,6 +920,43 @@ public sealed partial class NetworkAdapterService
         }
     }
 
+    internal static bool TryReadNativeDungeonActorResources(
+        ReadOnlySpan<byte> frame,
+        ushort localUid,
+        out ushort maximumHp,
+        out ushort maximumMp,
+        out ushort currentHp,
+        out ushort currentMp)
+    {
+        maximumHp = maximumMp = currentHp = currentMp = 0;
+        if (frame.Length < 8)
+            return false;
+        var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2));
+        if (opcode == 0xCF71)
+        {
+            if (frame.Length < 0x52
+                || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x1A, 2)) != localUid)
+                return false;
+            maximumHp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x4A, 2));
+            maximumMp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x4C, 2));
+            currentHp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x4E, 2));
+            currentMp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x50, 2));
+        }
+        else if (opcode == 0xCF72)
+        {
+            if (frame.Length < 0x12
+                || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(8, 2)) != localUid)
+                return false;
+            maximumHp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x0A, 2));
+            maximumMp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x0C, 2));
+            currentHp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x0E, 2));
+            currentMp = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x10, 2));
+        }
+        else
+            return false;
+        return maximumHp > 0 && maximumMp > 0 && currentHp <= maximumHp && currentMp <= maximumMp;
+    }
+
     internal static bool PatchNativeBattleResourceFrame(
         byte[] frame,
         CharacterRecord? character,
@@ -904,6 +972,10 @@ public sealed partial class NetworkAdapterService
                 || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(0x1A, 2)) != localUid
                 || resources is null)
                 return false;
+            if (resources.MaximumHp > 0)
+                BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x4A, 2), resources.MaximumHp);
+            if (resources.MaximumMp > 0)
+                BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x4C, 2), resources.MaximumMp);
             BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x4E, 2), resources.CurrentHp);
             BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x50, 2), resources.CurrentMp);
             RewriteNativeChecksum(frame);
@@ -916,6 +988,10 @@ public sealed partial class NetworkAdapterService
 
         if (resources is { } current)
         {
+            if (current.MaximumHp > 0)
+                BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x0A, 2), current.MaximumHp);
+            if (current.MaximumMp > 0)
+                BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x0C, 2), current.MaximumMp);
             BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x0E, 2), current.CurrentHp);
             BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x10, 2), current.CurrentMp);
             frame[0x66] = current.AttackMode;
@@ -994,14 +1070,20 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonTownTransitionAuthorized = false;
             session.NativeDungeonDeathLeaveSuppressionStage = 0;
             if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleResources = null; session.NativeBattleAttackMode = null; }
+            if (boundary != BattleResourceBoundary.TownReturn) session.NonCombatResourceSnapshot = null;
             return;
         }
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await CommitNativeCheckpointAsync(session, null, timeout.Token);
+            var finalResources = session.NativeBattleResources
+                ?? BattleResourceSnapshot.Capture(session.NativeCheckpoint!, session.NativeBattleEpoch);
             session.PendingBattleResourceSnapshot = BattleResourceSnapshotPolicy.CarriesAcross(boundary)
-                ? session.NativeBattleResources ?? BattleResourceSnapshot.Capture(session.NativeCheckpoint!)
+                ? finalResources
+                : null;
+            session.NonCombatResourceSnapshot = boundary == BattleResourceBoundary.TownReturn
+                ? finalResources with { SettlementFrozen = true, HpAuthority = BattleHpAuthority.Settlement }
                 : null;
             session.NativeBattleAttackMode = session.PendingBattleResourceSnapshot?.AttackMode;
         }

@@ -53,6 +53,8 @@ internal static class BattleResourceSnapshotChecks
         BinaryPrimitives.WriteUInt16LittleEndian(actor.AsSpan(0x10, 2), 500);
         actor[0x66] = actor[0x67] = 1;
         Check(NetworkAdapterService.PatchNativeBattleResourceFrame(actor, character, snapshot)
+            && BinaryPrimitives.ReadUInt16LittleEndian(actor.AsSpan(0x0A, 2)) == 1000
+            && BinaryPrimitives.ReadUInt16LittleEndian(actor.AsSpan(0x0C, 2)) == 500
             && BinaryPrimitives.ReadUInt16LittleEndian(actor.AsSpan(0x0E, 2)) == 333
             && BinaryPrimitives.ReadUInt16LittleEndian(actor.AsSpan(0x10, 2)) == 44
             && actor[0x66] == 3 && actor[0x67] == 3,
@@ -65,6 +67,8 @@ internal static class BattleResourceSnapshotChecks
         BinaryPrimitives.WriteUInt16LittleEndian(ready.AsSpan(0x4E, 2), 1000);
         BinaryPrimitives.WriteUInt16LittleEndian(ready.AsSpan(0x50, 2), 500);
         Check(NetworkAdapterService.PatchNativeBattleResourceFrame(ready, character, snapshot)
+            && BinaryPrimitives.ReadUInt16LittleEndian(ready.AsSpan(0x4A, 2)) == 1000
+            && BinaryPrimitives.ReadUInt16LittleEndian(ready.AsSpan(0x4C, 2)) == 500
             && BinaryPrimitives.ReadUInt16LittleEndian(ready.AsSpan(0x4E, 2)) == 333
             && BinaryPrimitives.ReadUInt16LittleEndian(ready.AsSpan(0x50, 2)) == 44,
             "CF71 after CF8B uses previous battle current HP MP");
@@ -113,7 +117,63 @@ internal static class BattleResourceSnapshotChecks
             && workerOwnedActor[0x66] == 2 && workerOwnedActor[0x67] == 2,
             "valid retained-worker attack mode is not overwritten by profile initial mode");
 
-        Console.WriteLine("BATTLE_RESOURCE_SNAPSHOT_CHECKS_PASS cf87-cf8b-cf70-cf71-cf72 observed-hp-mp-power");
+        var effectiveActor = BuildFrame(0xCF72, 0x74);
+        BinaryPrimitives.WriteUInt16LittleEndian(effectiveActor.AsSpan(8, 2), 77);
+        BinaryPrimitives.WriteUInt16LittleEndian(effectiveActor.AsSpan(0x0A, 2), 22622);
+        BinaryPrimitives.WriteUInt16LittleEndian(effectiveActor.AsSpan(0x0C, 2), 5000);
+        BinaryPrimitives.WriteUInt16LittleEndian(effectiveActor.AsSpan(0x0E, 2), 22622);
+        BinaryPrimitives.WriteUInt16LittleEndian(effectiveActor.AsSpan(0x10, 2), 4900);
+        Check(NetworkAdapterService.TryReadNativeDungeonActorResources(
+                effectiveActor, 77,
+                out var effectiveMaximumHp, out var effectiveMaximumMp,
+                out var effectiveCurrentHp, out var effectiveCurrentMp)
+            && effectiveMaximumHp == 22622 && effectiveMaximumMp == 5000
+            && effectiveCurrentHp == 22622 && effectiveCurrentMp == 4900,
+            "CF72 captures the effective client-visible resource carrier");
+
+        var effective = BattleResourceSnapshot.Capture(workerState, 8)
+            .ObserveWorkerActor(effectiveMaximumHp, effectiveMaximumMp, effectiveCurrentHp, effectiveCurrentMp)
+            .WithCurrentHp(22522, effectiveMaximumHp);
+        var staleActor = effective.ObserveWorkerActor(22622, 5000, 22622, 5000);
+        Check(staleActor.CurrentHp == 22522 && staleActor.MaximumHp == 22622,
+            "out-of-order CF72 cannot overwrite a newer local D010 value");
+
+        var settled = effective.FreezeSettlement(4800, 5000);
+        Check(settled.WithCurrentHp(22022, 22622) == settled
+            && settled.ApplySuccessfulPickup(hpPickup, 77, 1000, 500) == settled,
+            "post-settlement damage and pickup frames cannot overwrite the frozen HP carrier");
+        var nextEpoch = settled.ForEpoch(9);
+        Check(nextEpoch.Epoch == 9 && !nextEpoch.SettlementFrozen
+            && nextEpoch.HpAuthority == BattleHpAuthority.Inherited,
+            "next battle epoch explicitly reopens inherited resources while old epoch remains frozen");
+
+        var townCharacter = new CharacterRecord
+        {
+            Id = 77,
+            Name = "TownCheck",
+            MaxHp = 22222,
+            MaxMp = 5000,
+            CurrentHp = 22222,
+            CurrentMp = 4800
+        };
+        var fullSettlement = settled with { CurrentHp = 22622, CurrentMp = 4800 };
+        var c368Payload = NetworkAdapterService.BuildRoomEnterPayloadWithResources(
+            townCharacter, 0, 400, 96, fullSettlement);
+        var d8ffPayload = NetworkAdapterService.BuildUserHpMpAutoHealingPayloadWithResources(
+            townCharacter, fullSettlement);
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(c368Payload.AsSpan(44, 2)) == 22622
+            && BinaryPrimitives.ReadUInt16LittleEndian(c368Payload.AsSpan(48, 2)) == 22622
+            && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(8, 2)) == 22622
+            && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(12, 2)) == 22622,
+            "settlement and town C368/D8FF publish one effective HP value without a 400-point drop");
+
+        var damagedSettlement = fullSettlement with { CurrentHp = 22022, CurrentMp = 4800 };
+        var recoveredSettlement = damagedSettlement.ApplyNonCombatRecovery(100, 10);
+        Check(recoveredSettlement.CurrentHp == 22122 && recoveredSettlement.CurrentMp == 4810
+            && recoveredSettlement.ProjectCurrentHp(townCharacter.MaxHp) == 22122,
+            "timed recovery advances the effective carrier once and projects only storage-safe values");
+
+        Console.WriteLine("BATTLE_RESOURCE_SNAPSHOT_CHECKS_PASS epoch-frozen effective-hp cf87-cf8b-cf70-cf71-cf72 pickup-recovery-exit");
     }
 
     private static byte[] BuildFrame(ushort opcode, int length)
