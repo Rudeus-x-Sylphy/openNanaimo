@@ -91,10 +91,11 @@ class LauncherContractTests(unittest.TestCase):
     def test_default_mp_is_500_in_launcher_restore_and_adapter(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         self.assertIn("$defaultMpMax=Read-ProfileU16 $ini 'mp_max' 500", text)
-        self.assertIn("Read-ProfileU16 $ini 'mp_current' 500 -AllowZero", text)
+        self.assertNotIn("Read-ProfileU16 $ini 'mp_current'", text)
+        self.assertNotIn('$mpCurrentBox', text)
+        self.assertNotIn('$hpCurrentBox', text)
         restore = text.split('$defaultBtn.add_Click({', 1)[1].split('})', 1)[0]
         self.assertIn('$mpMaxBox.Value=500;', restore)
-        self.assertIn('$mpCurrentBox.Value=500;', restore)
         adapter = (ROOT / 'release/components/adapter_core/profile_resources_runtime.inc').read_text('utf-8')
         self.assertIn('static unsigned g_profile_mp_max=500u;', adapter)
         self.assertIn('static unsigned g_profile_mp_current=500u;', adapter)
@@ -169,7 +170,7 @@ class LauncherContractTests(unittest.TestCase):
                 'gender', 'name_hex', 'dungeon_grade', 'level', 'pet',
                 'initial_attack_mode', 'equip_hair', 'equip_body', 'equip_top',
                 'equip_bottom', 'equip_accessory', 'equip_effect', 'hp_max',
-                'hp_current', 'mp_max', 'mp_current', 'attack', 'defense',
+                'mp_max', 'attack', 'defense',
                 'coin', 'nana_point', 'card_key_gold', 'card_key_mystery',
                 'free_magic_key_expiry', 'quickbar_expiry', 'skill_config',
                 'skill_projectile_route', 'skill_meat_route', 'skill_slot_z',

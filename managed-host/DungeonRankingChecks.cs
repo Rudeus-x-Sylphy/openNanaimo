@@ -157,11 +157,38 @@ internal static class DungeonRankingChecks
                 "normal-clear CF73 is forwarded for CF74 and CF1D keeps its town boundary");
             Check(NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
                     nextTransitionAuthorized: true, opcode: 0xCF73)
-                && !NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
+                && NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionDisconnect(
                     nextTransitionAuthorized: true, opcode: 0xCF1D)
+                && !NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionDisconnect(
+                    nextTransitionAuthorized: false, opcode: 0xCF1D)
                 && NetworkAdapterService.ResolveNativeDungeonDisconnectBoundary(nextTransitionAuthorized: true)
                     == BattleResourceBoundary.NextDungeon,
-                "authorized CF8B rebuild suppresses only its CF73 notice and preserves CF1D as next-dungeon");
+                "authorized CF8B continuation suppresses stray CF73/CF1D so no town-return response is emitted");
+
+            var challengeRequest = NativeDungeonClient.Frame(0xCF8B, new byte[4]);
+            BinaryPrimitives.WriteUInt16LittleEndian(challengeRequest.AsSpan(8, 2), 1);
+            BinaryPrimitives.WriteUInt16LittleEndian(challengeRequest.AsSpan(10, 2), 1);
+            var challengeResponse = NativeDungeonClient.Frame(0xCF8C, new byte[40]);
+            BinaryPrimitives.WriteUInt16LittleEndian(challengeResponse.AsSpan(0x28, 2), 1);
+            BinaryPrimitives.WriteUInt16LittleEndian(challengeResponse.AsSpan(0x2C, 2), 2);
+            BinaryPrimitives.WriteUInt16LittleEndian(challengeResponse.AsSpan(0x2E, 2), 2);
+            Check(NetworkAdapterService.TryResolveNativeDungeonTransition(
+                    2, 0, 0, challengeRequest, challengeResponse,
+                    out var challengeDungeon, out var challengeStage, out var challengeDifficulty)
+                && challengeDungeon == 2 && challengeStage == 1 && challengeDifficulty == 0,
+                "CF8B/CF8C challenge advances the effective tuple to the persistent Super-BOSS slot");
+
+            var nextDungeonRequest = NativeDungeonClient.Frame(0xCF8B, new byte[4]);
+            BinaryPrimitives.WriteUInt16LittleEndian(nextDungeonRequest.AsSpan(8, 2), 0);
+            BinaryPrimitives.WriteUInt16LittleEndian(nextDungeonRequest.AsSpan(10, 2), 2);
+            var nextDungeonResponse = NativeDungeonClient.Frame(0xCF8C, new byte[40]);
+            BinaryPrimitives.WriteUInt16LittleEndian(nextDungeonResponse.AsSpan(0x28, 2), 0);
+            BinaryPrimitives.WriteUInt16LittleEndian(nextDungeonResponse.AsSpan(0x2E, 2), 2);
+            Check(NetworkAdapterService.TryResolveNativeDungeonTransition(
+                    1, 0, 0, nextDungeonRequest, nextDungeonResponse,
+                    out var nextDungeon, out var nextStage, out var nextDifficulty)
+                && nextDungeon == 2 && nextStage == 0 && nextDifficulty == 0,
+                "CF8B/CF8C next-dungeon advances the ordinary dungeon tuple without changing difficulty");
             Check(NetworkAdapterService.ResolveNativeDungeonEntryBoundary(
                     deathLatched: false, nextTransitionAuthorized: true, hasPendingBattleSnapshot: false)
                     == BattleResourceBoundary.NextDungeon

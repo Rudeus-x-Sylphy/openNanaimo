@@ -30,6 +30,9 @@ REVIVAL_FORMATTER_VA = 0x00B47637
 SETTLEMENT_AUTO_GATE_VA = 0x0076F7C7
 SETTLEMENT_AUTO_GATE_OLD = bytes.fromhex('7666')
 SETTLEMENT_AUTO_GATE_NEW = bytes.fromhex('EB66')
+SETTLEMENT_AUTO_ACTION_GATE_VA = 0x0076FA2E
+SETTLEMENT_AUTO_ACTION_GATE_OLD = bytes.fromhex('742F')
+SETTLEMENT_AUTO_ACTION_GATE_NEW = bytes.fromhex('9090')
 POWER_RESTORE_HOOK_VA = 0x006F096A
 POWER_RESTORE_HOOK_OLD = bytes.fromhex('C78590F9FFFF00000000')
 POWER_RESTORE_CAVE_VA = 0x0041FB54
@@ -334,6 +337,11 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
         data, SETTLEMENT_AUTO_GATE_VA, SETTLEMENT_AUTO_GATE_OLD, SETTLEMENT_AUTO_GATE_NEW,
         'patch_settlement_manual_confirmation',
         'the settlement timer gate differs; this unpacking needs a separately reviewed VA mapping')
+    data, action_row = _patch_site(
+        data, SETTLEMENT_AUTO_ACTION_GATE_VA,
+        SETTLEMENT_AUTO_ACTION_GATE_OLD, SETTLEMENT_AUTO_ACTION_GATE_NEW,
+        'patch_settlement_automatic_action',
+        'the settlement automatic action gate differs; this unpacking needs a separately reviewed VA mapping')
     hook, cave = _power_restore_patch_bytes()
     data, cave_row = _patch_site(
         data, POWER_RESTORE_CAVE_VA, POWER_RESTORE_CAVE_OLD, cave,
@@ -345,9 +353,10 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
         'the D035 category40 site differs; this unpacking needs a separately reviewed VA mapping')
     return data, {
         'operation': 'patch_dungeon_state_controls',
-        'changed': timer_row['changed'] or cave_row['changed'] or hook_row['changed'],
-        'status': 'patched' if timer_row['changed'] or cave_row['changed'] or hook_row['changed'] else 'already_patched',
+        'changed': timer_row['changed'] or action_row['changed'] or cave_row['changed'] or hook_row['changed'],
+        'status': 'patched' if timer_row['changed'] or action_row['changed'] or cave_row['changed'] or hook_row['changed'] else 'already_patched',
         'timer': timer_row,
+        'automatic_action': action_row,
         'hook': hook_row,
         'cave': cave_row,
         'hash_gate_used': False,
@@ -494,12 +503,16 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
                              f'VA=0x{REVIVAL_HUD_CAVE_VA:08X} sha256={sha256(actual_cave)}'))
     if dungeon_state:
         timer_offset = _va_offset(data, SETTLEMENT_AUTO_GATE_VA, len(SETTLEMENT_AUTO_GATE_NEW))
+        action_offset = _va_offset(data, SETTLEMENT_AUTO_ACTION_GATE_VA, len(SETTLEMENT_AUTO_ACTION_GATE_NEW))
         hook, cave = _power_restore_patch_bytes()
         hook_offset = _va_offset(data, POWER_RESTORE_HOOK_VA, len(hook))
         cave_offset = _va_offset(data, POWER_RESTORE_CAVE_VA, len(cave))
         checks.append(_check('settlement_manual_confirmation',
                              data[timer_offset:timer_offset + len(SETTLEMENT_AUTO_GATE_NEW)] == SETTLEMENT_AUTO_GATE_NEW,
                              f'VA=0x{SETTLEMENT_AUTO_GATE_VA:08X}'))
+        checks.append(_check('settlement_automatic_action_disabled',
+                             data[action_offset:action_offset + len(SETTLEMENT_AUTO_ACTION_GATE_NEW)] == SETTLEMENT_AUTO_ACTION_GATE_NEW,
+                             f'VA=0x{SETTLEMENT_AUTO_ACTION_GATE_VA:08X}'))
         checks.append(_check('consecutive_stage_power_restore_hook',
                              data[hook_offset:hook_offset + len(hook)] == hook,
                              f'VA=0x{POWER_RESTORE_HOOK_VA:08X}'))

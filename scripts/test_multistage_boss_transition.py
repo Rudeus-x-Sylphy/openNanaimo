@@ -58,8 +58,8 @@ int main(void){
     assert(boss_hp_sync_get32(frame,0x1C)==0u);
     assert(boss_hp_sync_get32(frame,0x20)==0u);
     assert(boss_hp_sync_get32(frame,0x24)==0u);
-    assert(boss_hp_sync_get32(frame,0x28)==0u);
-    assert(boss_hp_sync_get32(frame,0x2C)==0u);
+    assert(boss_hp_sync_get32(frame,0x28)==10000u);
+    assert(boss_hp_sync_get32(frame,0x2C)==15000u);
 
     /* Old-mode reports cannot repeat the transition or settle the battle. */
     assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),15019u,1u,&stale)==BOSS_HP_SYNC_TERMINAL_QUARANTINED);
@@ -69,15 +69,15 @@ int main(void){
     request(req,1u,0u,8u);
     assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),20u,1u,&next)==BOSS_HP_SYNC_OK);
     assert(ctx.mode_index==1u && !ctx.awaiting_next_mode);
-    assert(next.hp==9999u && !next.intermediate_terminal && !next.final_terminal);
+    assert(next.hp==9999u && next.cumulative_damage==15001u && !next.intermediate_terminal && !next.final_terminal);
 
     assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),10018u,1u,&final)==BOSS_HP_SYNC_OK);
     assert(final.first_terminal && final.final_terminal && !final.intermediate_terminal);
     assert(boss_hp_sync_final_terminal_seen(&ctx));
     memset(frame,0,sizeof(frame));
     assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&final)==BOSS_HP_SYNC_OK);
-    assert(frame[0x19]==0xFFu);
-    assert(frame[0x1A]==0u && frame[0x1B]==4u);
+    assert(frame[0x19]==0u);
+    assert(boss_hp_sync_get16(frame,0x1A)==8u);
     assert(boss_hp_sync_get32(frame,0x1C)==BOSS_HP_SYNC_TERMINAL_REWARD);
     assert(boss_hp_sync_get32(frame,0x20)==13000077u);
     assert(boss_hp_sync_get32(frame,0x24)==BOSS_HP_SYNC_TERMINAL_MARKER);
@@ -90,7 +90,7 @@ int main(void){
     memset(frame,0,sizeof(frame));
     assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&external_result)==BOSS_HP_SYNC_OK);
     assert(frame[0x19]==0xFFu && boss_hp_sync_get16(frame,0x1A)==0u);
-    assert(boss_hp_sync_get32(frame,0x28)==0u && boss_hp_sync_get32(frame,0x2C)==0u);
+    assert(boss_hp_sync_get32(frame,0x28)==10000u && boss_hp_sync_get32(frame,0x2C)==15000u);
 
     /* Every current authored nonfinal mode has at least one exact D012-addressable
        positive component. Single-positive-child transitions use addressed D012;
@@ -158,7 +158,7 @@ int main(void){
             runtime,
         )
         self.assertIn(
-            "if(!r->intermediate_terminal){boss_hp_sync_put32(frame,0x28,r->hp)",
+            "boss_hp_sync_put32(frame,0x28,r->hp);boss_hp_sync_put32(frame,0x2C,r->cumulative_damage)",
             runtime,
         )
         retirement = protocol.split(

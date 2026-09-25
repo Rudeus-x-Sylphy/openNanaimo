@@ -245,7 +245,14 @@ public sealed partial class NetworkAdapterService
                     session.NativeDungeonNextTransitionAuthorized,
                     opcode))
             {
-                _log("NativeDungeon next-transition CF73 notification suppressed; awaiting CF1D/CF09");
+                _log("NativeDungeon next-transition CF73 notification suppressed; retained worker remains on the authorized stage");
+                return true;
+            }
+            if (ShouldSuppressNativeDungeonNextTransitionDisconnect(
+                    session.NativeDungeonNextTransitionAuthorized,
+                    opcode))
+            {
+                _log("NativeDungeon next-transition CF1D suppressed; no town-return response is emitted");
                 return true;
             }
 
@@ -373,6 +380,74 @@ public sealed partial class NetworkAdapterService
             && !deathLatched
             && IsAuthorizedNativeDungeonNextAction(frame, opcode);
 
+    internal static bool TryResolveNativeDungeonTransition(
+        byte currentDungeon,
+        byte currentStage,
+        byte currentLogicalDifficulty,
+        ReadOnlySpan<byte> request,
+        ReadOnlySpan<byte> response,
+        out byte nextDungeon,
+        out byte nextStage,
+        out byte nextLogicalDifficulty)
+    {
+        nextDungeon = currentDungeon;
+        nextStage = currentStage;
+        nextLogicalDifficulty = currentLogicalDifficulty;
+        if (!IsAuthorizedNativeDungeonNextAction(request, 0xCF8B)
+            || response.Length != 48
+            || BinaryPrimitives.ReadUInt16LittleEndian(response.Slice(4, 2)) != response.Length
+            || BinaryPrimitives.ReadUInt16LittleEndian(response.Slice(6, 2)) != 0xCF8C)
+            return false;
+
+        var requestedRealStage = BinaryPrimitives.ReadUInt16LittleEndian(request.Slice(8, 2));
+        var mode = BinaryPrimitives.ReadUInt16LittleEndian(request.Slice(10, 2));
+        var responseRealStage = BinaryPrimitives.ReadUInt16LittleEndian(response.Slice(0x28, 2));
+        var responseDungeon = BinaryPrimitives.ReadUInt16LittleEndian(response.Slice(0x2E, 2));
+        if (responseRealStage > 1 || responseDungeon > 2)
+            return false;
+
+        if (mode == 1
+            && currentDungeon == 2
+            && currentStage == 0
+            && requestedRealStage == 1
+            && responseDungeon == 2
+            && responseRealStage == 1)
+        {
+            nextStage = 1;
+            return true;
+        }
+        if (mode == 1
+            && (requestedRealStage == currentStage
+                || (currentDungeon == 2 && currentStage == 1 && requestedRealStage == 0))
+            && responseDungeon == currentDungeon
+            && responseRealStage == currentStage)
+            return true;
+        if (mode == 2
+            && currentStage == 0
+            && currentDungeon < 2
+            && requestedRealStage == 0
+            && responseDungeon == currentDungeon + 1
+            && responseRealStage == 0)
+        {
+            nextDungeon = checked((byte)(currentDungeon + 1));
+            return true;
+        }
+        if (mode == 2
+            && currentDungeon == 2
+            && currentStage == 1
+            && requestedRealStage == 0
+            && currentLogicalDifficulty < 2
+            && responseDungeon == 0
+            && responseRealStage == 0)
+        {
+            nextDungeon = 0;
+            nextStage = 0;
+            nextLogicalDifficulty = checked((byte)(currentLogicalDifficulty + 1));
+            return true;
+        }
+        return false;
+    }
+
     internal static bool ShouldAcknowledgeExplicitNativeDungeonTownLeave(
         bool townTransitionAuthorized,
         ushort opcode)
@@ -460,6 +535,11 @@ public sealed partial class NetworkAdapterService
         bool nextTransitionAuthorized,
         ushort opcode)
         => nextTransitionAuthorized && opcode == 0xCF73;
+
+    internal static bool ShouldSuppressNativeDungeonNextTransitionDisconnect(
+        bool nextTransitionAuthorized,
+        ushort opcode)
+        => nextTransitionAuthorized && opcode == 0xCF1D;
 
     internal static bool ShouldForwardNativeDungeonCheckpointFrame(ushort requestOpcode, ushort responseOpcode)
         => requestOpcode != 0xCF87 || responseOpcode == 0xCF88;
@@ -786,6 +866,30 @@ public sealed partial class NetworkAdapterService
         exchange = new NativeDungeonExchangeResult(
             exchange.State,
             FilterNativeDungeonCheckpointFrames(requestOpcode, exchange.Frames));
+        if (requestOpcode == 0xCF8B
+            && frame is not null
+            && session.NativeDungeonSelectionValid)
+        {
+            foreach (var response in exchange.Frames)
+            {
+                if (!TryResolveNativeDungeonTransition(
+                        session.NativeDungeonDungeon,
+                        session.NativeDungeonStage,
+                        session.NativeDungeonLogicalDifficulty,
+                        frame,
+                        response,
+                        out var nextDungeon,
+                        out var nextStage,
+                        out var nextLogicalDifficulty))
+                    continue;
+                var previousTuple = $"{session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{session.NativeDungeonDungeon}/{session.NativeDungeonStage}/{session.NativeDungeonLogicalDifficulty}";
+                session.NativeDungeonDungeon = nextDungeon;
+                session.NativeDungeonStage = nextStage;
+                session.NativeDungeonLogicalDifficulty = nextLogicalDifficulty;
+                _log($"NativeDungeon effective tuple advanced: old={previousTuple} new={session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{nextDungeon}/{nextStage}/{nextLogicalDifficulty} via=CF8B/CF8C");
+                break;
+            }
+        }
         var next = exchange.State;
         session.NativeBattleResources?.ApplyTo(next);
         NativeDungeonSettlementRecord? settlement = null;
@@ -859,8 +963,13 @@ public sealed partial class NetworkAdapterService
                 out var actorCurrentHp,
                 out var actorCurrentMp))
         {
+            var profileMaximumHp = checked((ushort)Math.Clamp(actorCharacter.MaxHp, 1, ushort.MaxValue));
+            var profileMaximumMp = checked((ushort)Math.Clamp(actorCharacter.MaxMp, 1, ushort.MaxValue));
             session.NativeBattleResources = actorResources.ObserveWorkerActor(
-                actorMaximumHp, actorMaximumMp, actorCurrentHp, actorCurrentMp);
+                profileMaximumHp,
+                profileMaximumMp,
+                checked((ushort)Math.Min(actorCurrentHp, profileMaximumHp)),
+                checked((ushort)Math.Min(actorCurrentMp, profileMaximumMp)));
         }
         if (session.NativeBattleResources is { } resources
             && session.Character is { } resourceCharacter)

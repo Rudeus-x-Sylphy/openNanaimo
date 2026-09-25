@@ -37,7 +37,10 @@ internal static class LauncherProfileChecks
                 "profile re-registration overwrote existing level/experience progression");
             Check(first.DungeonGrade == 39 && second.DungeonGrade == 39,
                 "fixed dungeon grade was not persisted or auto mode did not preserve it");
-            Check(second.MaxHp == 2400 && second.CurrentHp == 2399 && second.MaxMp == 5000 && second.CurrentMp == 4999, "launcher HP/MP not applied");
+            Check(first.CurrentHp == 1800 && first.CurrentMp == 700
+                && second.MaxHp == 2400 && second.CurrentHp == 1800
+                && second.MaxMp == 5000 && second.CurrentMp == 700,
+                "launcher maxima apply while legacy current HP/MP keys cannot overwrite persistent runtime resources");
             Check(second.AttackModifier == 3456 && second.DefenseFlat == 789 && second.InitialAttackMode == 2, "launcher combat values not applied");
             Check(second.SelectedSkill1 == 52_000_001u && second.SkillSlotExpansionExpires == 2_099_123_123u,
                 "launcher X skill did not receive the matching default slot entitlement");
@@ -119,7 +122,7 @@ internal static class LauncherProfileChecks
                 : null;
             Check(listenerCharacter?.DungeonGrade == 23,
                 "11999 profile registration did not persist the fixed dungeon grade");
-            Console.WriteLine("LAUNCHER_PROFILE_CHECKS_PASS level=25-preserved title=39-auto/42-fixed register11999=23 C355=39 CF71=39 native_grade=PASS frontier_reset=PASS hp=2399/2400 mp=4999/5000 attack=3456 defense=789 selina_pet_level=3 accessory_d5=PASS inventory=PASS");
+            Console.WriteLine("LAUNCHER_PROFILE_CHECKS_PASS level=25-preserved title=39-auto/42-fixed register11999=23 C355=39 CF71=39 native_grade=PASS frontier_reset=PASS hp=1800/2400 mp=700/5000 attack=3456 defense=789 selina_pet_level=3 accessory_d5=PASS inventory=PASS");
         }
         finally { SqliteConnection.ClearAllPools(); if (Directory.Exists(root)) Directory.Delete(root, true); }
     }

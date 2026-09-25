@@ -279,10 +279,15 @@ internal static class MigrationChecks
         Assert(second.CurrentMapId == 77 && second.CurrentTownPage == 9
             && second.PositionX == 913 && second.PositionY == 917,
             "Profile reapply preserves last offline location");
-        Assert(second.MaxHp == 2400 && second.CurrentHp == 2300 && second.MaxMp == 700 && second.CurrentMp == 600
+        Assert(second.MaxHp == 2400 && second.CurrentHp == 1800 && second.MaxMp == 700 && second.CurrentMp == 700
             && second.Hans == 12345 && second.Cash == 67890 && second.EquippedPetItemCode == 0
             && second.PetVariant == 0,
-            "Profile reapply applies current resources and clears selected pet without changing location");
+            "Profile reapply changes maxima, preserves runtime resources, and clears selected pet without changing location");
+        var clamped = await db.ImportLocalProfileAsync(Profile("ProfileReapply", 1500, 60, 0,
+            "skill_grade0=2\nskill_grade1=0\nskill_grade2=4\n", 100, 101), token);
+        Assert(clamped.MaxHp == 1500 && clamped.CurrentHp == 1500
+            && clamped.MaxMp == 700 && clamped.CurrentMp == 700,
+            "Profile reapply clamps persistent resources only when a configured maximum is lowered");
         var skills = await db.GetCharacterSkillsAsync(second.Id, token);
         Assert(skills.Count == 2 && skills.Single(x => x.SkillCode == 52000000).Grade == 2
             && skills.Single(x => x.SkillCode == 52000002).Grade == 4,

@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 18287616,
-      "sha256": "BDDC36449D803CE6C5EDB0FBEBB6CD3BDBE6018EED4D2B49EA390C2989C571A3"
+      "size": 18286080,
+      "sha256": "58672D90AE49816398D76FD347AB621828B09ACD399FBED91AD68CF0AA9DE1B5"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 18287616,
-      "sha256": "C27A5FA6CD4C0CB65A2EA69C42D51D6CCB0860B303BD118F13A2AA9CCBD9F3F5"
+      "size": 18286080,
+      "sha256": "8C20CB4C827915C730BC03ACE4D713EB0283410E784240B790DC030381353113"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 18295808,
-      "sha256": "1D2089E08715CD9C3D698BE549B36BDF0A43B5A65864B2355896578DF00A5523"
+      "size": 18293760,
+      "sha256": "10EA3F9EA700F1D8F5116A55EB99DF9E62DB924E9B261E56702F6C511ADC51B2"
     }
   },
   "files": [
@@ -43,8 +43,8 @@
     },
     {
       "path": "managed-host/BattleResourceSnapshotChecks.cs",
-      "size": 12853,
-      "sha256": "1B3D78C4C0C95ECA9C278D351B7BB9418497B2957335F19D3D1BF1BFC0820364"
+      "size": 12889,
+      "sha256": "B44F13B78F05D486D9F5CC2330E3447DD5ED81251498DE303F6204675AE352A6"
     },
     {
       "path": "managed-host/CardSynthesisChecks.cs",
@@ -63,8 +63,8 @@
     },
     {
       "path": "managed-host/DungeonRankingChecks.cs",
-      "size": 19059,
-      "sha256": "A09364BF3547F039B3AE27F8295A1E044138EADCD5765F68D83A9CC22202D86F"
+      "size": 21238,
+      "sha256": "2DD04B861FA2683DEDCBE531A21AC5B0A2C207B8EFE4A2E14642C261B3CC7238"
     },
     {
       "path": "managed-host/DungeonSaveChecks.cs",
@@ -83,13 +83,13 @@
     },
     {
       "path": "managed-host/LauncherProfileChecks.cs",
-      "size": 10811,
-      "sha256": "02E3A8FB3A15916968BDFBC943E5CE19130D206DBD92714223CBA9000165D020"
+      "size": 10983,
+      "sha256": "F360D77B8AC2F0404B1D20CA8C8D3314D3243FCFF8DD8E7FCF637CC285C37BEE"
     },
     {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 30953,
-      "sha256": "6AABF954AE38207F91775F2293A534BEBA15ECB1674CF839492D49C533662C8C"
+      "size": 31382,
+      "sha256": "99555426E21FCE64181B36B664D0FE2A95B460C1B4581D666BF781687C78E53E"
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
@@ -313,8 +313,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
-      "size": 58648,
-      "sha256": "EF1CF4D6DA22F86A4DC90444741C08A7A8F0F4A74AA4463E9943361B78404456"
+      "size": 58974,
+      "sha256": "0EEFF8729D1DEEA964609CA83FFAB0D399A42352AE9E923E425B35B1F4F650E5"
     },
     {
       "path": "managed/Services/DatabaseService.cs",
@@ -403,8 +403,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 57991,
-      "sha256": "3C765495FFD0849058A7B999F7B14FF19FF29DA584085F53D9AEDFAF12002A0C"
+      "size": 62811,
+      "sha256": "47A69049702DA6AB6E450F35F144E7C09F5F692F377C66D2FE6EC2A9117E6737"
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
@@ -913,8 +913,8 @@
     },
     {
       "path": "release/components/winter_boss/boss_hp_sync_runtime.inc",
-      "size": 52266,
-      "sha256": "E0942CF91571EEE8D8BB5E8F9D879A7DF222D1E87950B9DFEE6A296C71B4563D"
+      "size": 53760,
+      "sha256": "1A6CD64C5AEFAFBDF28BBABAFAE5AC50AAE9FC6F5BA9662A0005805F2C49BCE8"
     },
     {
       "path": "release/teamplay_common.inc",

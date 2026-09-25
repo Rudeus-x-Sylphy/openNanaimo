@@ -349,8 +349,8 @@ public sealed partial class DatabaseService
               SkillPoints=65535 WHERE Id=$id
             """, ("$appearance", appearance), ("$gender", Read("gender")), ("$level", level),
             ("$exp", CharacterProgression.ExperienceRequiredForLevel(level)),
-            ("$hpmax", Read("hp_max", 1500)), ("$hp", Read("hp_current", 1500)),
-            ("$mpmax", Read("mp_max", 500)), ("$mp", Read("mp_current", 500)),
+            ("$hpmax", Read("hp_max", 1500)), ("$hp", Read("hp_max", 1500)),
+            ("$mpmax", Read("mp_max", 500)), ("$mp", Read("mp_max", 500)),
             ("$coin", selectedCoin), ("$cash", selectedNana),
             ("$mystery", Read("card_key_mystery", 99)), ("$gold", Read("card_key_gold", 99)),
             ("$attack", Read("attack")), ("$defense", Read("defense")),
@@ -400,6 +400,10 @@ public sealed partial class DatabaseService
                 : selectedSkill1 != 0
                     ? 2_099_123_123u
                     : 0u);
+        var maximumHp = checked((int)Math.Clamp(read("hp_max", (uint)existing.MaxHp), 1u, (uint)ushort.MaxValue));
+        var maximumMp = checked((int)Math.Clamp(read("mp_max", (uint)existing.MaxMp), 1u, (uint)ushort.MaxValue));
+        var currentHp = Math.Min(existing.CurrentHp, maximumHp);
+        var currentMp = Math.Min(existing.CurrentMp, maximumMp);
         await Execute("""
             UPDATE Characters SET Appearance=$appearance, Gender=$gender,
               MaxHp=$hpmax, CurrentHp=$hp, MaxMp=$mpmax, CurrentMp=$mp,
@@ -410,8 +414,8 @@ public sealed partial class DatabaseService
               SkillSlotExpansionExpires=$skill_expiry,
               LastSavedAt=$now WHERE Id=$id
             """, ("$appearance", appearance), ("$gender", read("gender", (uint)existing.Gender)),
-            ("$hpmax", read("hp_max", (uint)existing.MaxHp)), ("$hp", read("hp_current", (uint)existing.CurrentHp)),
-            ("$mpmax", read("mp_max", (uint)existing.MaxMp)), ("$mp", read("mp_current", (uint)existing.CurrentMp)),
+            ("$hpmax", maximumHp), ("$hp", currentHp),
+            ("$mpmax", maximumMp), ("$mp", currentMp),
             ("$coin", selectedCoin), ("$cash", selectedNana),
             ("$mystery", read("card_key_mystery", existing.CardMysteryKeyCount)),
             ("$gold", read("card_key_gold", existing.CardGoldenKeyCount)),
@@ -809,6 +813,8 @@ public sealed partial class DatabaseService
             if (result.HdIndex > 1
                 || result.Episode >= (result.HdIndex == 0 ? 20 : 4)
                 || result.Dungeon >= 3
+                || result.Stage > 1
+                || (result.Stage == 1 && result.Dungeon != 2)
                 || result.Dungeon + result.Stage > 3
                 || result.LogicalDifficulty >= 3
                 || result.Rating > DungeonRewardPolicy.ClearRatingS

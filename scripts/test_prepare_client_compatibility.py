@@ -48,6 +48,7 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
                  revival_hook=compat.REVIVAL_HUD_HOOK_OLD,
                  revival_cave=compat.REVIVAL_HUD_CAVE_OLD,
                  settlement_gate=compat.SETTLEMENT_AUTO_GATE_OLD,
+                 settlement_action_gate=compat.SETTLEMENT_AUTO_ACTION_GATE_OLD,
                  power_hook=compat.POWER_RESTORE_HOOK_OLD,
                  power_cave=compat.POWER_RESTORE_CAVE_OLD):
     sections = [
@@ -75,6 +76,7 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
     put(compat.REVIVAL_HUD_HOOK_VA, revival_hook)
     put(compat.REVIVAL_HUD_CAVE_VA, revival_cave)
     put(compat.SETTLEMENT_AUTO_GATE_VA, settlement_gate)
+    put(compat.SETTLEMENT_AUTO_ACTION_GATE_VA, settlement_action_gate)
     put(compat.POWER_RESTORE_HOOK_VA, power_hook)
     put(compat.POWER_RESTORE_CAVE_VA, power_cave)
     return bytes(data), furniture_offset
@@ -136,9 +138,11 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
         output, report = compat.patch_dungeon_state_controls(data)
         hook, cave = compat._power_restore_patch_bytes()
         timer_offset = compat._va_offset(output, compat.SETTLEMENT_AUTO_GATE_VA, 2)
+        action_offset = compat._va_offset(output, compat.SETTLEMENT_AUTO_ACTION_GATE_VA, 2)
         hook_offset = compat._va_offset(output, compat.POWER_RESTORE_HOOK_VA, len(hook))
         cave_offset = compat._va_offset(output, compat.POWER_RESTORE_CAVE_VA, len(cave))
         self.assertEqual(output[timer_offset:timer_offset + 2], compat.SETTLEMENT_AUTO_GATE_NEW)
+        self.assertEqual(output[action_offset:action_offset + 2], compat.SETTLEMENT_AUTO_ACTION_GATE_NEW)
         self.assertEqual(output[hook_offset:hook_offset + len(hook)], hook)
         self.assertEqual(output[cave_offset:cave_offset + len(cave)], cave)
         self.assertIn(bytes.fromhex('66837A0EFF'), cave)
@@ -151,6 +155,9 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
     def test_unknown_settlement_or_power_site_is_refused(self):
         data, _ = synthetic_pe(settlement_gate=b'XX')
         with self.assertRaisesRegex(compat.CompatibilityError, 'settlement timer gate differs'):
+            compat.patch_dungeon_state_controls(data)
+        data, _ = synthetic_pe(settlement_action_gate=b'XX')
+        with self.assertRaisesRegex(compat.CompatibilityError, 'automatic action gate differs'):
             compat.patch_dungeon_state_controls(data)
         data, _ = synthetic_pe(power_hook=b'BADHOOKBAD')
         with self.assertRaisesRegex(compat.CompatibilityError, 'D035 category40 site differs'):

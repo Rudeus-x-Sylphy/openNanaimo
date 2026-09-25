@@ -148,14 +148,14 @@ internal static class BattleResourceSnapshotChecks
             "CF72 captures the effective client-visible resource carrier");
 
         var effective = BattleResourceSnapshot.Capture(workerState, 8)
-            .ObserveWorkerActor(effectiveMaximumHp, effectiveMaximumMp, effectiveCurrentHp, effectiveCurrentMp)
-            .WithCurrentHp(22522, effectiveMaximumHp);
-        var staleActor = effective.ObserveWorkerActor(22622, 5000, 22622, 5000);
-        Check(staleActor.CurrentHp == 22522 && staleActor.MaximumHp == 22622,
-            "out-of-order CF72 cannot overwrite a newer local D010 value");
+            .ObserveWorkerActor(22222, 5000, Math.Min(effectiveCurrentHp, (ushort)22222), effectiveCurrentMp)
+            .WithCurrentHp(22122, 22222);
+        var staleActor = effective.ObserveWorkerActor(22222, 5000, 22222, 5000);
+        Check(staleActor.CurrentHp == 22122 && staleActor.MaximumHp == 22222,
+            "profile maxima remain authoritative and an out-of-order CF72 cannot overwrite newer local HP");
 
         var settled = effective.FreezeSettlement(4800, 5000);
-        Check(settled.WithCurrentHp(22022, 22622) == settled
+        Check(settled.WithCurrentHp(22022, 22222) == settled
             && settled.ApplySuccessfulPickup(hpPickup, 77, 1000, 500) == settled,
             "post-settlement damage and pickup frames cannot overwrite the frozen HP carrier");
         var nextEpoch = settled.ForEpoch(9);
@@ -172,16 +172,16 @@ internal static class BattleResourceSnapshotChecks
             CurrentHp = 22222,
             CurrentMp = 4800
         };
-        var fullSettlement = settled with { CurrentHp = 22622, CurrentMp = 4800 };
+        var fullSettlement = settled with { MaximumHp = 22222, CurrentHp = 22222, CurrentMp = 4800 };
         var c368Payload = NetworkAdapterService.BuildRoomEnterPayloadWithResources(
             townCharacter, 0, 400, 96, fullSettlement);
         var d8ffPayload = NetworkAdapterService.BuildUserHpMpAutoHealingPayloadWithResources(
             townCharacter, fullSettlement);
-        Check(BinaryPrimitives.ReadUInt16LittleEndian(c368Payload.AsSpan(44, 2)) == 22622
-            && BinaryPrimitives.ReadUInt16LittleEndian(c368Payload.AsSpan(48, 2)) == 22622
-            && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(8, 2)) == 22622
-            && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(12, 2)) == 22622,
-            "settlement and town C368/D8FF publish one effective HP value without a 400-point drop");
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(c368Payload.AsSpan(44, 2)) == 22222
+            && BinaryPrimitives.ReadUInt16LittleEndian(c368Payload.AsSpan(48, 2)) == 22222
+            && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(8, 2)) == 22222
+            && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(12, 2)) == 22222,
+            "settlement and town C368/D8FF publish the configured profile HP maximum consistently");
 
         var damagedSettlement = fullSettlement with { CurrentHp = 22022, CurrentMp = 4800 };
         var recoveredSettlement = damagedSettlement.ApplyNonCombatRecovery(100, 10);

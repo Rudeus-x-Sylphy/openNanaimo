@@ -87,6 +87,8 @@ static void verify_first_normal_split(void){
     assert(final.component_route_collapsed&&final.target_ordinal==2u&&final.applied_damage==3960u);
     assert(final.component_first_terminal&&final.first_terminal&&final.final_terminal&&ctx.hp==0u);
     assert(boss_hp_sync_final_terminal_seen(&ctx));
+    memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&final)==BOSS_HP_SYNC_OK);
+    assert(frame[0x19]==0u&&boss_hp_sync_get16(frame,0x1A)==2u&&boss_hp_sync_get32(frame,0x28)==0u);
 
     boss_hp_sync_init(&ctx);boss_hp_sync_begin_game_domain(&ctx,0u,0u,2u,0u,2u,6u);
     request(req,0u,0u,1u);
@@ -233,7 +235,8 @@ int main(void){verify_first_normal_split();verify_multi_child_split();verify_spl
         self.assertIn("c->component_hp[loaded_slot]-=damage", runtime)
         self.assertIn("r->component_first_terminal=1u", runtime)
         self.assertIn("if(r->child_first_terminal)teamplay_send_d013_boss_child_retire", protocol)
-        self.assertIn("if((r->component_first_terminal&&!r->first_terminal)||transition_target)boss_hp_sync_put16", runtime)
+        self.assertIn("if((r->component_first_terminal&&!r->intermediate_terminal)||transition_target)boss_hp_sync_put16", runtime)
+        self.assertIn("boss_hp_sync_project_multimode_recording(c,r)", runtime)
 
 
 if __name__ == "__main__":
