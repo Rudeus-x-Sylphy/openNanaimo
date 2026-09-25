@@ -46,12 +46,16 @@ def synthetic_pack():
 
 def synthetic_pe(furniture=compat.FURNITURE_OLD,
                  revival_hook=compat.REVIVAL_HUD_HOOK_OLD,
-                 revival_cave=compat.REVIVAL_HUD_CAVE_OLD):
+                 revival_cave=compat.REVIVAL_HUD_CAVE_OLD,
+                 settlement_gate=compat.SETTLEMENT_AUTO_GATE_OLD,
+                 power_hook=compat.POWER_RESTORE_HOOK_OLD,
+                 power_cave=compat.POWER_RESTORE_CAVE_OLD):
     sections = [
-        (0x10000, 0x3000, 0x400),
-        (0x2E0000, 0x4000, 0x3400),
+        (0x10000, 0x11000, 0x400),
+        (0x2E0000, 0x14000, 0x11400),
+        (0x360000, 0x10000, 0x25400),
     ]
-    data = bytearray(0x7400)
+    data = bytearray(0x35400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -63,12 +67,16 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
     for index, (rva, raw_size, raw_offset) in enumerate(sections):
         struct.pack_into('<IIII', data, table + index * 40 + 8,
                          raw_size, rva, raw_size, raw_offset)
-    furniture_offset = 0x400 + (compat.FURNITURE_CALL_VA - 0x00410000)
-    revival_hook_offset = 0x3400 + (compat.REVIVAL_HUD_HOOK_VA - 0x006E0000)
-    revival_cave_offset = 0x3400 + (compat.REVIVAL_HUD_CAVE_VA - 0x006E0000)
-    data[furniture_offset:furniture_offset + len(furniture)] = furniture
-    data[revival_hook_offset:revival_hook_offset + len(revival_hook)] = revival_hook
-    data[revival_cave_offset:revival_cave_offset + len(revival_cave)] = revival_cave
+    def put(va, blob):
+        offset = compat._va_offset(data, va, len(blob))
+        data[offset:offset + len(blob)] = blob
+        return offset
+    furniture_offset = put(compat.FURNITURE_CALL_VA, furniture)
+    put(compat.REVIVAL_HUD_HOOK_VA, revival_hook)
+    put(compat.REVIVAL_HUD_CAVE_VA, revival_cave)
+    put(compat.SETTLEMENT_AUTO_GATE_VA, settlement_gate)
+    put(compat.POWER_RESTORE_HOOK_VA, power_hook)
+    put(compat.POWER_RESTORE_CAVE_VA, power_cave)
     return bytes(data), furniture_offset
 
 
@@ -123,6 +131,31 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(compat.CompatibilityError, 'revival HUD draw entry differs'):
             compat.patch_revival_hud_refresh(data)
 
+    def test_dungeon_state_patch_disables_only_timeout_and_accepts_power_restore_sentinel(self):
+        data, _ = synthetic_pe()
+        output, report = compat.patch_dungeon_state_controls(data)
+        hook, cave = compat._power_restore_patch_bytes()
+        timer_offset = compat._va_offset(output, compat.SETTLEMENT_AUTO_GATE_VA, 2)
+        hook_offset = compat._va_offset(output, compat.POWER_RESTORE_HOOK_VA, len(hook))
+        cave_offset = compat._va_offset(output, compat.POWER_RESTORE_CAVE_VA, len(cave))
+        self.assertEqual(output[timer_offset:timer_offset + 2], compat.SETTLEMENT_AUTO_GATE_NEW)
+        self.assertEqual(output[hook_offset:hook_offset + len(hook)], hook)
+        self.assertEqual(output[cave_offset:cave_offset + len(cave)], cave)
+        self.assertIn(bytes.fromhex('66837A0EFF'), cave)
+        self.assertIn(bytes.fromhex('837A1001'), cave)
+        self.assertFalse(report['hash_gate_used'])
+        again, second = compat.patch_dungeon_state_controls(output)
+        self.assertEqual(again, output)
+        self.assertEqual(second['status'], 'already_patched')
+
+    def test_unknown_settlement_or_power_site_is_refused(self):
+        data, _ = synthetic_pe(settlement_gate=b'XX')
+        with self.assertRaisesRegex(compat.CompatibilityError, 'settlement timer gate differs'):
+            compat.patch_dungeon_state_controls(data)
+        data, _ = synthetic_pe(power_hook=b'BADHOOKBAD')
+        with self.assertRaisesRegex(compat.CompatibilityError, 'D035 category40 site differs'):
+            compat.patch_dungeon_state_controls(data)
+
     def test_village_patch_is_structural_and_idempotent(self):
         data = synthetic_pack()
         output, report = compat.patch_village_pack(data)
@@ -145,7 +178,7 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
             make_client_tree(root)
             before = (root / 'game.exe').read_bytes()
             report = compat.prepare(root, out, furniture=True, dungeon7=True,
-                                    dry_run=True, apply=True, revival_display=True)
+                                    dry_run=True, apply=True, revival_display=True, dungeon_state=True)
             self.assertTrue(report['verification']['all_pass'])
             self.assertFalse(out.exists())
             self.assertEqual((root / 'game.exe').read_bytes(), before)
@@ -159,7 +192,7 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
             original_game = (root / 'game.exe').read_bytes()
             original_pack = (root / 'Village_map_image/Village_map_image.pack').read_bytes()
             report = compat.prepare(root, out, furniture=True, dungeon7=True,
-                                    overwrite=True, apply=True, revival_display=True)
+                                    overwrite=True, apply=True, revival_display=True, dungeon_state=True)
             self.assertTrue(report['verification']['all_pass'])
             patched = (root / 'game.exe').read_bytes()
             self.assertNotEqual(patched, original_game)
@@ -171,7 +204,7 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
             self.assertIn(original_game, [p.read_bytes() for p in (out / 'backups').rglob('game.exe')])
             self.assertIn(original_pack, [p.read_bytes() for p in (out / 'backups').rglob('Village_map_image.pack')])
             second = compat.prepare(root, out, furniture=True, dungeon7=True,
-                                    overwrite=True, apply=True, revival_display=True)
+                                    overwrite=True, apply=True, revival_display=True, dungeon_state=True)
             self.assertTrue(second['verification']['all_pass'])
             self.assertTrue(all(row['status'] == 'unchanged' for row in second['apply_results']))
 

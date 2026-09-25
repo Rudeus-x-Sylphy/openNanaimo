@@ -423,12 +423,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public BattleResourceSnapshot? NonCombatResourceSnapshot { get; set; }
         public long NativeBattleEpoch { get; set; }
         public byte? NativeBattleAttackMode { get; set; }
+        public byte NativeDungeonPendingPowerRestoreStage { get; set; }
         public bool NativeForwarding { get; set; }
         public bool NativeDungeonDeathLatched { get; set; }
         public bool NativeDungeonSettlementAwaitingAction { get; set; }
         public bool NativeDungeonNextTransitionAuthorized { get; set; }
         public bool NativeDungeonTownTransitionAuthorized { get; set; }
-        public byte NativeDungeonDeathLeaveSuppressionStage { get; set; }
         public bool NativeDungeonSelectionValid { get; set; }
         public byte NativeDungeonHdIndex { get; set; }
         public byte NativeDungeonEpisode { get; set; }

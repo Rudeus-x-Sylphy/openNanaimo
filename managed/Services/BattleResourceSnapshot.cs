@@ -1,4 +1,4 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
 using OpenNanaimo.Adapter.Models;
 
 namespace OpenNanaimo.Adapter.Services;
@@ -29,13 +29,16 @@ public sealed record BattleResourceSnapshot(
     public BattleHpAuthority HpAuthority { get; init; } = BattleHpAuthority.Seed;
     public bool SettlementFrozen { get; init; }
 
-    public static BattleResourceSnapshot Capture(NativeDungeonState state, long epoch = 0)
+    public static BattleResourceSnapshot Capture(
+        NativeDungeonState state,
+        long epoch = 0,
+        uint powerStage = 0)
     {
         ArgumentNullException.ThrowIfNull(state);
         return new BattleResourceSnapshot(
             checked((ushort)Math.Min(state.Get(20), ushort.MaxValue)),
             checked((ushort)Math.Min(state.Get(28), ushort.MaxValue)),
-            NormalizeAttackMode(state.Get(NativeDungeonState.PetCombatLevelOffset)))
+            NormalizeAttackMode(powerStage))
         {
             MaximumHp = checked((ushort)Math.Min(state.Get(16), ushort.MaxValue)),
             MaximumMp = checked((ushort)Math.Min(state.Get(24), ushort.MaxValue)),
@@ -124,13 +127,10 @@ public sealed record BattleResourceSnapshot(
             state.Bytes.AsSpan(20, 4), Math.Min(CurrentHp, maxHp));
         BinaryPrimitives.WriteUInt32LittleEndian(
             state.Bytes.AsSpan(28, 4), Math.Min(CurrentMp, maxMp));
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            state.Bytes.AsSpan(NativeDungeonState.PetCombatLevelOffset, 4),
-            NormalizeAttackMode(AttackMode));
     }
 
     public static byte NormalizeAttackMode(uint value)
-        => (byte)Math.Clamp(value, 1u, 3u);
+        => (byte)Math.Clamp(value, 0u, 3u);
 
     public static bool TryReadSettlementCurrentMp(
         ReadOnlySpan<byte> frame,

@@ -96,8 +96,19 @@ internal static class DungeonRankingChecks
                 && NetworkAdapterService.IsAuthorizedNativeDungeonNextAction(nextDungeonMode1, 0xCF8B)
                 && !NetworkAdapterService.IsAuthorizedNativeDungeonNextAction(invalidNextDungeonMode, 0xCF8B)
                 && !NetworkAdapterService.IsAuthorizedNativeDungeonNextAction(nextDungeonMode2, 0xCF73),
-                "only a structurally valid CF8B mode 1/2 arms the next-dungeon transition");
-            Check(NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
+                "only a structurally valid CF8B mode 1/2 has a valid transition shape");
+            Check(NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
+                    awaitingAction: true, deathLatched: false, nextDungeonMode2, 0xCF8B)
+                && NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
+                    awaitingAction: true, deathLatched: false, nextDungeonMode1, 0xCF8B)
+                && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
+                    awaitingAction: false, deathLatched: false, nextDungeonMode1, 0xCF8B)
+                && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
+                    awaitingAction: true, deathLatched: true, nextDungeonMode1, 0xCF8B)
+                && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
+                    awaitingAction: true, deathLatched: false, invalidNextDungeonMode, 0xCF8B),
+                "ordinary stage-to-stage and third-stage-to-superboss require a live non-death settlement action");
+            Check(!NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF73)
                 && NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
@@ -112,27 +123,31 @@ internal static class DungeonRankingChecks
                 && !NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
                     awaitingAction: true, nextTransitionAuthorized: true, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF1D),
-                "death auto-leave and naked CF1D cannot leave settlement without an authorized action");
-            Check(NetworkAdapterService.ShouldSuppressInitialNativeDungeonDeathLeave(
+                "death CF73 is actionable while a naked CF1D still cannot bypass settlement intent");
+            Check(NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
-                    deathLatched: true, suppressionStage: 0, opcode: 0xCF73)
-                && NetworkAdapterService.ShouldSuppressInitialNativeDungeonDeathLeave(
+                    deathLatched: true, opcode: 0xCF73)
+                && !NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
-                    deathLatched: true, suppressionStage: 1, opcode: 0xCF1D)
-                && !NetworkAdapterService.ShouldSuppressInitialNativeDungeonDeathLeave(
-                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
-                    deathLatched: true, suppressionStage: 2, opcode: 0xCF73)
-                && NetworkAdapterService.ShouldAuthorizeRetriedNativeDungeonDeathLeave(
-                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
-                    deathLatched: true, suppressionStage: 2, opcode: 0xCF73)
-                && NetworkAdapterService.ShouldAuthorizeRetriedNativeDungeonDeathLeave(
-                    awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
-                    deathLatched: true, suppressionStage: 2, opcode: 0xCF1D),
-                "first death auto-leave chain is swallowed and a repeated leave can return to town");
+                    deathLatched: true, opcode: 0xCF73),
+                "the first death CF73 is the explicit town action and is never held for a nonexistent retry");
+            var townAck = NetworkAdapterService.BuildNativeTownLeaveAckPayload(77);
+            Check(NetworkAdapterService.ShouldAcknowledgeExplicitNativeDungeonTownLeave(true, 0xCF73)
+                && !NetworkAdapterService.ShouldAcknowledgeExplicitNativeDungeonTownLeave(false, 0xCF73)
+                && !NetworkAdapterService.ShouldAcknowledgeExplicitNativeDungeonTownLeave(true, 0xCF1D)
+                && townAck.Length == 4
+                && BinaryPrimitives.ReadUInt16LittleEndian(townAck.AsSpan(0, 2)) == 77
+                && NetworkAdapterService.ResolveNativeDungeonReturnBoundary(true, false)
+                    == BattleResourceBoundary.DeathReturn
+                && NetworkAdapterService.ResolveNativeDungeonReturnBoundary(false, true)
+                    == BattleResourceBoundary.NextDungeon
+                && NetworkAdapterService.ResolveNativeDungeonReturnBoundary(false, false)
+                    == BattleResourceBoundary.TownReturn,
+                "explicit death CF73 receives CF74 and its only CF1D closes the worker with DeathReturn");
             Check(NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: false, opcode: 0xCF73)
-                && !NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
+                && NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF73)
                 && !NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
