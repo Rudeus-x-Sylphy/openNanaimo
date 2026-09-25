@@ -230,30 +230,16 @@ public sealed partial class NetworkAdapterService
             {
                 session.NativeDungeonSettlementAwaitingAction = false;
                 session.NativeDungeonTownTransitionAuthorized = true;
-                _log("NativeDungeon normal-clear CF73 armed an explicit town-return chain; awaiting CF1D");
+                // A CF73 leave request outranks a pending CF8B continuation:
+                // the ready-room town button is available before CF7F, so the
+                // next-stage carry ends here and CF1D closes with TownReturn.
+                session.NativeDungeonNextTransitionAuthorized = false;
+                _log("NativeDungeon CF73 armed an explicit town-return chain; awaiting CF1D");
             }
             else if (opcode == 0xCF7F)
             {
                 session.NativeDungeonNextTransitionAuthorized = false;
                 session.NativeDungeonTownTransitionAuthorized = false;
-            }
-
-            // CF73 is only a transport notification inside an already-authorized
-            // CF8B rebuild chain. A real town-return action must still reach the
-            // worker so the client receives CF74 before its CF1D disconnect.
-            if (ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
-                    session.NativeDungeonNextTransitionAuthorized,
-                    opcode))
-            {
-                _log("NativeDungeon next-transition CF73 notification suppressed; retained worker remains on the authorized stage");
-                return true;
-            }
-            if (ShouldSuppressNativeDungeonNextTransitionDisconnect(
-                    session.NativeDungeonNextTransitionAuthorized,
-                    opcode))
-            {
-                _log("NativeDungeon next-transition CF1D suppressed; no town-return response is emitted");
-                return true;
             }
 
             if (opcode is 0xCF87 or 0xCF8B or 0xD034 or 0xCF93 or 0xCF95 or 0xCF83 or 0xCF9B or 0xCF1D)
@@ -490,15 +476,17 @@ public sealed partial class NetworkAdapterService
             && !townTransitionAuthorized
             && opcode == 0xCF1D;
 
+    // The ready-room town button is available at every point of the room
+    // lifecycle: straight after the settlement, after a CF8B continuation was
+    // accepted, or on a death settlement. Each of those states arms the
+    // town-return chain so the following CF1D completes the village return.
     internal static bool IsNativeDungeonManualTownLeavePrecursor(
         bool awaitingAction,
         bool nextTransitionAuthorized,
         bool townTransitionAuthorized,
         bool deathLatched,
         ushort opcode)
-        => awaitingAction
-            && !nextTransitionAuthorized
-            && !townTransitionAuthorized
+        => !townTransitionAuthorized
             && opcode == 0xCF73;
 
     internal static BattleResourceBoundary ResolveNativeDungeonDisconnectBoundary(
@@ -531,16 +519,6 @@ public sealed partial class NetworkAdapterService
             ? BattleResourceSnapshot.NormalizeAttackMode(pendingStage)
             : (byte)0;
 
-    internal static bool ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
-        bool nextTransitionAuthorized,
-        ushort opcode)
-        => nextTransitionAuthorized && opcode == 0xCF73;
-
-    internal static bool ShouldSuppressNativeDungeonNextTransitionDisconnect(
-        bool nextTransitionAuthorized,
-        ushort opcode)
-        => nextTransitionAuthorized && opcode == 0xCF1D;
-
     internal static bool ShouldForwardNativeDungeonCheckpointFrame(ushort requestOpcode, ushort responseOpcode)
         => requestOpcode != 0xCF87 || responseOpcode == 0xCF88;
 
@@ -553,6 +531,9 @@ public sealed partial class NetworkAdapterService
                     requestOpcode,
                     BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2))))
             .ToArray();
+
+    internal static bool ShouldWithholdNativeDungeonStageRecordAnswer(ushort responseOpcode)
+        => responseOpcode == 0xCF16;
 
     internal static bool IsNativeDungeonTransitionFrame(ushort opcode)
         => opcode is 0xCF09 or 0xCF1D or 0xCF1E
@@ -828,6 +809,8 @@ public sealed partial class NetworkAdapterService
             throw new InvalidDataException("Native paid-continue runtime synchronization failed after the committed payment.");
 
         session.NativeCheckpoint = exchange.State;
+        session.NativeBattleResources = RestoreNativeDungeonContinueResources(
+            session.NativeBattleResources, exchange.State);
         session.NativeDungeonDeathLatched = false;
         var continuePayload = BuildDungeonContinueApplyPayload(character, variant: 20);
         var response = BuildNativeFrame(frame, 0xCF84, continuePayload, session);
@@ -891,6 +874,12 @@ public sealed partial class NetworkAdapterService
             }
         }
         var next = exchange.State;
+        session.NativeBattleResources = MergeNativeDungeonRevivalResources(
+            session.NativeBattleResources, session.NativeCheckpoint, next,
+            requestOpcode, session.NativeDungeonDeathLatched);
+        session.NativeBattleResources = MergeNativeDungeonQuickItemResources(
+            session.NativeBattleResources, frame, exchange.Frames,
+            GetSceneEntityId(session.Character));
         session.NativeBattleResources?.ApplyTo(next);
         NativeDungeonSettlementRecord? settlement = null;
         if (persistSettlementRank && session.NativeDungeonSelectionValid)
@@ -950,6 +939,17 @@ public sealed partial class NetworkAdapterService
             && IsNativeDungeonTransitionFrame(responseOpcode))
         {
             _log($"NativeDungeon unsolicited settlement transition suppressed: response=0x{responseOpcode:X4}");
+            return;
+        }
+        // CF16 answers the client's END_GAME_INFO request with the stage record
+        // and the client reads that answer as the end of the result screen: it
+        // plays the walk-out escort and then issues REQ_FLYSHOOTING_RESETTING by
+        // itself. The result screen is driven by the player's own continue/return
+        // request, so the stage-record answer is held back here. The ranking
+        // payload builder stays in place for the self-tests.
+        if (ShouldWithholdNativeDungeonStageRecordAnswer(responseOpcode))
+        {
+            _log("NativeDungeon CF16 stage-record answer held: result screen waits for the player's transition request");
             return;
         }
         await PatchNativeReadyRoomRankFrameAsync(session, response, token);

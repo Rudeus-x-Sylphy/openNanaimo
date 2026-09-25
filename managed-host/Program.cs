@@ -55,6 +55,7 @@ if (args.Contains("--card-synthesis-self-test"))
 if (args.Contains("--inventory-quickbar-self-test"))
 {
     InventoryQuickbarChecks.Run();
+    await InventoryQuickbarChecks.RunReindexCollisionAsync();
     return;
 }
 if (args.Contains("--apartment-protocol-self-test"))

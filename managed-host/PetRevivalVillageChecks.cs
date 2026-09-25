@@ -7,9 +7,110 @@ internal static class PetRevivalVillageChecks
 {
     internal static async Task RunAsync()
     {
+        CheckNativeRevivalResourceRegression();
         CheckVillageAndPetCarriers();
         await CheckStorageTransactionsAsync();
         Console.WriteLine("PET_REVIVAL_VILLAGE_CHECKS_PASS village pet c355-emotion-boundary action3 action4 revival identity0 cf71 native-state cf83 backpack-item");
+    }
+
+    private static void CheckNativeRevivalResourceRegression()
+    {
+        var character = new CharacterRecord
+        {
+            Id = 77, Name = "RevivalTest", MaxHp = 2000, CurrentHp = 0, MaxMp = 800,
+            CurrentMp = 100, RevivalUseCount = 33, Hans = 5000
+        };
+        var before = NativeDungeonState.Create(character, [], []);
+        var dead = BattleResourceSnapshot.Capture(before, epoch: 7, powerStage: 2)
+            .WithCurrentHp(0, 2000);
+        var revived = new NativeDungeonState(before.Bytes.ToArray());
+        BinaryPrimitives.WriteUInt32LittleEndian(revived.Bytes.AsSpan(20), 2000);
+        BinaryPrimitives.WriteUInt32LittleEndian(revived.Bytes.AsSpan(28), 800);
+        BinaryPrimitives.WriteUInt32LittleEndian(revived.Bytes.AsSpan(60), 32);
+        var resources = NetworkAdapterService.MergeNativeDungeonRevivalResources(
+            dead, before, revived, 0xCF95, deathLatched: true)!;
+        resources.ApplyTo(revived);
+        Check(revived.Get(20) == 2000 && revived.Get(28) == 800,
+            "CF95 verified debit restores HP/MP before the dead snapshot can overwrite checkpoint");
+        Check(revived.Get(60) == 32 && revived.GetBalance(32) == 5000,
+            "revival checkpoint charges exactly one use and no Hans");
+        Check(resources.Epoch == 7 && resources.AttackMode == 2
+            && !resources.SettlementFrozen,
+            "revival stays in the same battle epoch and preserves Power");
+        var later = new NativeDungeonState(revived.Bytes.ToArray());
+        resources.ApplyTo(later);
+        Check(later.Get(20) == 2000 && later.Get(28) == 800,
+            "post-revival checkpoint cannot resurrect the stale death snapshot");
+        foreach (var opcode in new ushort[] { 0, 0xCF87, 0xCF8B, 0xCF93 })
+            Check(NetworkAdapterService.MergeNativeDungeonRevivalResources(
+                    dead, before, revived, opcode, true) == dead,
+                $"non-revival 0x{opcode:X4} checkpoint cannot heal local death HP");
+        Check(NetworkAdapterService.MergeNativeDungeonRevivalResources(
+                dead, before, revived, 0xCF95, false) == dead,
+            "unsolicited CF95 without the local death latch cannot restore resources");
+        Check(NetworkAdapterService.MergeNativeDungeonRevivalResources(
+                dead, revived, revived, 0xCF95, true) == dead,
+            "duplicate worker CF95 without a debit cannot restore resources");
+        var rejected = new NativeDungeonState(revived.Bytes.ToArray());
+        BinaryPrimitives.WriteUInt32LittleEndian(rejected.Bytes.AsSpan(20), 0);
+        Check(NetworkAdapterService.MergeNativeDungeonRevivalResources(
+                dead, before, rejected, 0xCF95, true) == dead,
+            "worker zero-HP result cannot masquerade as a successful revival");
+        var frozen = dead.FreezeSettlement(100, 800);
+        Check(!NetworkAdapterService.MergeNativeDungeonRevivalResources(
+                frozen, before, revived, 0xCF95, true)!.SettlementFrozen,
+            "verified revival clears stale settlement freeze");
+        var paid = new NativeDungeonState(before.Bytes.ToArray());
+        BinaryPrimitives.WriteUInt32LittleEndian(paid.Bytes.AsSpan(20), 1000);
+        BinaryPrimitives.WriteUInt32LittleEndian(paid.Bytes.AsSpan(28), 400);
+        BinaryPrimitives.WriteInt64LittleEndian(paid.Bytes.AsSpan(32), 4050);
+        var paidResources = NetworkAdapterService.RestoreNativeDungeonContinueResources(dead, paid)!;
+        paidResources.ApplyTo(paid);
+        Check(paid.Get(20) == 1000 && paid.Get(28) == 400
+            && paid.Get(60) == 33 && paid.GetBalance(32) == 4050,
+            "verified F105 paid restore persists HP/MP without debiting revival uses again");
+        Check(paidResources.Epoch == 7 && paidResources.AttackMode == 2,
+            "paid continue preserves epoch and Power");
+        var secondDeath = resources.WithCurrentHp(0, 2000);
+        var secondRevived = new NativeDungeonState(revived.Bytes.ToArray());
+        BinaryPrimitives.WriteUInt32LittleEndian(secondRevived.Bytes.AsSpan(60), 31);
+        var secondResources = NetworkAdapterService.MergeNativeDungeonRevivalResources(
+            secondDeath, revived, secondRevived, 0xCF95, true)!;
+        secondResources.ApplyTo(secondRevived);
+        Check(secondRevived.Get(20) == 2000 && secondRevived.Get(60) == 31,
+            "second death/revival cycle uses the new snapshot and consumes exactly once");
+        Check(NetworkAdapterService.RestoreNativeDungeonContinueResources(null, paid) is null,
+            "legacy absent resource snapshot remains absent");
+        var configuredDead = dead with { MaximumHp = 22222, MaximumMp = 5000 };
+        var overCapWorker = new NativeDungeonState(revived.Bytes.ToArray());
+        BinaryPrimitives.WriteUInt32LittleEndian(overCapWorker.Bytes.AsSpan(16), 22622);
+        BinaryPrimitives.WriteUInt32LittleEndian(overCapWorker.Bytes.AsSpan(20), 22622);
+        BinaryPrimitives.WriteUInt32LittleEndian(overCapWorker.Bytes.AsSpan(24), 5400);
+        BinaryPrimitives.WriteUInt32LittleEndian(overCapWorker.Bytes.AsSpan(28), 5400);
+        var cappedRevival = NetworkAdapterService.MergeNativeDungeonRevivalResources(
+            configuredDead, before, overCapWorker, 0xCF95, true)!;
+        Check(cappedRevival.CurrentHp == 22222 && cappedRevival.CurrentMp == 5000
+            && cappedRevival.MaximumHp == 22222 && cappedRevival.MaximumMp == 5000,
+            "CF95 worker effective maxima cannot exceed configured snapshot HP/MP caps");
+        cappedRevival.ApplyTo(overCapWorker);
+        Check(overCapWorker.Get(20) == 22222 && overCapWorker.Get(28) == 5000,
+            "revival checkpoint keeps configured caps even when worker state maxima are larger");
+        var overCapPaid = new NativeDungeonState(overCapWorker.Bytes.ToArray());
+        BinaryPrimitives.WriteUInt32LittleEndian(overCapPaid.Bytes.AsSpan(20), uint.MaxValue);
+        BinaryPrimitives.WriteUInt32LittleEndian(overCapPaid.Bytes.AsSpan(28), uint.MaxValue);
+        var cappedPaid = NetworkAdapterService.RestoreNativeDungeonContinueResources(
+            configuredDead, overCapPaid)!;
+        Check(cappedPaid.CurrentHp == 22222 && cappedPaid.CurrentMp == 5000,
+            "continue restore clamps uint resources to configured maxima not merely ushort range");
+        var afterRevivalDamage = cappedRevival.WithCurrentHp(22522, cappedRevival.MaximumHp);
+        Check(afterRevivalDamage.CurrentHp == 22222 && afterRevivalDamage.MaximumHp == 22222,
+            "subsequent worker D010 above configured cap cannot overflow the revived snapshot");
+        Check(afterRevivalDamage.WithCurrentHp(21000, afterRevivalDamage.MaximumHp).CurrentHp == 21000,
+            "subsequent in-range D010 still updates revived snapshot HP");
+        var zeroCaps = configuredDead with { MaximumHp = 0, MaximumMp = 0 };
+        var cappedZero = NetworkAdapterService.RestoreNativeDungeonContinueResources(zeroCaps, overCapPaid)!;
+        Check(cappedZero.CurrentHp == 0 && cappedZero.CurrentMp == 0,
+            "continue restore never invents worker-derived maxima for a zero-cap snapshot");
     }
 
     private static void CheckVillageAndPetCarriers()
@@ -399,6 +500,35 @@ internal static class PetRevivalVillageChecks
                 && paidContinue.CurrentHp == 1000
                 && paidContinue.CurrentMp == 250,
                 "second-cycle CF83 mode0 deducts Hans, preserves revival uses and restores the variant20 HP/MP values");
+
+            // Exercise the native checkpoint database path, not just the separate
+            // managed ConsumeRevivalRetry transaction above.
+            var nativeBefore = NativeDungeonState.Create((await database.GetCharacterAsync(accountId))!, [], []);
+            var nativeDead = BattleResourceSnapshot.Capture(nativeBefore, epoch: 9, powerStage: 2)
+                .WithCurrentHp(0, 2000);
+            var nativeAfter = new NativeDungeonState(nativeBefore.Bytes.ToArray());
+            BinaryPrimitives.WriteUInt32LittleEndian(nativeAfter.Bytes.AsSpan(20), 2000);
+            BinaryPrimitives.WriteUInt32LittleEndian(nativeAfter.Bytes.AsSpan(28), 800);
+            BinaryPrimitives.WriteUInt32LittleEndian(nativeAfter.Bytes.AsSpan(60), 30);
+            var restored = NetworkAdapterService.MergeNativeDungeonRevivalResources(
+                nativeDead, nativeBefore, nativeAfter, 0xCF95, true)!;
+            restored.ApplyTo(nativeAfter);
+            var commitId = Guid.NewGuid().ToString("N");
+            var applied = await database.ApplyNativeDungeonDeltaAsync(
+                accountId, characterId, sessionId, nativeBefore, nativeAfter, default, commitId);
+            var persisted = (await database.GetCharacterAsync(accountId))!;
+            Check(applied.Applied && persisted.CurrentHp == 2000 && persisted.CurrentMp == 800
+                && persisted.RevivalUseCount == 30 && persisted.Hans == 4050,
+                "native CF95 checkpoint persists restored HP/MP, exactly one use and unchanged Hans");
+            var nativeDuplicate = await database.ApplyNativeDungeonDeltaAsync(
+                accountId, characterId, sessionId, nativeBefore, nativeAfter, default, commitId);
+            Check(!nativeDuplicate.Applied && (await database.GetCharacterAsync(accountId))!.RevivalUseCount == 30,
+                "native revival journal replay is idempotent");
+            var clientApply = NetworkAdapterService.BuildRevivalApplyPayload(persisted);
+            Check(BinaryPrimitives.ReadUInt16LittleEndian(clientApply) == 60
+                && BinaryPrimitives.ReadUInt16LittleEndian(clientApply.AsSpan(4)) == 2000
+                && BinaryPrimitives.ReadUInt16LittleEndian(clientApply.AsSpan(6)) == 800,
+                "native checkpoint reload constructs CF84 variant60 with restored HP/MP");
         }
         finally
         {

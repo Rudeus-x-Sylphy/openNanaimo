@@ -150,20 +150,24 @@ internal static class DungeonRankingChecks
                 && NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF73)
-                && !NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
-                    nextTransitionAuthorized: false, opcode: 0xCF73)
+                && NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
+                    awaitingAction: false, nextTransitionAuthorized: true, townTransitionAuthorized: false,
+                    deathLatched: false, opcode: 0xCF73)
                 && NetworkAdapterService.ResolveNativeDungeonDisconnectBoundary(nextTransitionAuthorized: false)
                     == BattleResourceBoundary.TownReturn,
                 "normal-clear CF73 is forwarded for CF74 and CF1D keeps its town boundary");
-            Check(NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionLeaveNotice(
-                    nextTransitionAuthorized: true, opcode: 0xCF73)
-                && NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionDisconnect(
-                    nextTransitionAuthorized: true, opcode: 0xCF1D)
-                && !NetworkAdapterService.ShouldSuppressNativeDungeonNextTransitionDisconnect(
-                    nextTransitionAuthorized: false, opcode: 0xCF1D)
+            Check(NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
+                    awaitingAction: false, nextTransitionAuthorized: true, townTransitionAuthorized: false,
+                    deathLatched: false, opcode: 0xCF73)
+                && !NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
+                    awaitingAction: false, nextTransitionAuthorized: false, townTransitionAuthorized: true,
+                    deathLatched: false, opcode: 0xCF73)
+                && !NetworkAdapterService.IsNativeDungeonManualTownLeavePrecursor(
+                    awaitingAction: false, nextTransitionAuthorized: true, townTransitionAuthorized: false,
+                    deathLatched: false, opcode: 0xCF1D)
                 && NetworkAdapterService.ResolveNativeDungeonDisconnectBoundary(nextTransitionAuthorized: true)
                     == BattleResourceBoundary.NextDungeon,
-                "authorized CF8B continuation suppresses stray CF73/CF1D so no town-return response is emitted");
+                "a ready-room CF73 outranks a pending CF8B continuation while an unaccompanied continuation still carries");
 
             var challengeRequest = NativeDungeonClient.Frame(0xCF8B, new byte[4]);
             BinaryPrimitives.WriteUInt16LittleEndian(challengeRequest.AsSpan(8, 2), 1);
@@ -261,6 +265,10 @@ internal static class DungeonRankingChecks
                 && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(24, 2)) == 1
                 && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(26, 2)) == 1,
                 "CF16 first record uses name/score/level/icon at the proven offsets");
+            Check(NetworkAdapterService.ShouldWithholdNativeDungeonStageRecordAnswer(0xCF16)
+                && !NetworkAdapterService.ShouldWithholdNativeDungeonStageRecordAnswer(0xCF88)
+                && !NetworkAdapterService.ShouldWithholdNativeDungeonStageRecordAnswer(0xCF8C),
+                "the CF16 stage-record answer stays withheld so the result screen waits for the player's own transition request");
 
             var characterForCf71 = characters[11];
             var blank = DungeonProtocol.BuildRoomMember(

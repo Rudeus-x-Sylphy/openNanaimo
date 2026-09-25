@@ -135,7 +135,15 @@ static void stable_monster_hp_configure_strict(struct hp_sync_context *ctx){
     /* Ordinary static/runtime rows only recommend terminal at HP zero.
      * Unknown, missing-attack, and report-only domains remain fail-open. */
     ctx->compat_echo_each_report=0u;
-    ctx->fallback_echo_each_report=1u;
+    /* Selectors outside the active stage profile keep one terminal per target:
+     * a status200 on the first crossing to zero and a status0 acknowledgement for
+     * later in-flight reports of the same selector. This is the domain the client
+     * preloads split-form rows into (for example the three forms of a dungeon-1
+     * balloon), where a repeated status200 retires one same-selector row per
+     * report and truncates the authored form chain of the whole group. The
+     * ordinary arithmetic below produces exactly that sequence: one terminal at
+     * zero, then HP_SYNC_HIT_ALREADY_TERMINAL. */
+    ctx->fallback_echo_each_report=0u;
     ctx->echo_on_missing_attack=1u;
 }
 

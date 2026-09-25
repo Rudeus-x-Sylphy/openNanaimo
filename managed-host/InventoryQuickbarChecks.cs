@@ -4,8 +4,83 @@ using OpenNanaimo.Adapter.Services;
 
 internal static class InventoryQuickbarChecks
 {
+    internal static async Task RunReindexCollisionAsync()
+    {
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var state = NativeDungeonState.Create(new CharacterRecord
+        {
+            Name = "Binding", Items = [new CharacterItemRecord { ItemCode = 14000001, Quantity = 1 }],
+            QuickSlots = [new CharacterQuickSlotRecord { Slot = 0, ItemCode = 14000001, InventoryIndex = 0 }]
+        }, [], []);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE CharacterItems(CharacterId INTEGER,ItemCode INTEGER,Quantity INTEGER);
+            CREATE TABLE CharacterQuickSlots(CharacterId INTEGER,Slot INTEGER,ItemCode INTEGER,InventoryIndex INTEGER,UpdatedAt TEXT,
+                PRIMARY KEY(CharacterId,Slot),UNIQUE(CharacterId,InventoryIndex));
+            INSERT INTO CharacterItems VALUES(1,14000001,1);
+            INSERT INTO CharacterQuickSlots VALUES(1,0,14000001,1,'before'),(1,1,14000001,0,'before'),(2,0,14000001,0,'other');
+            """;
+        await command.ExecuteNonQueryAsync();
+        await using (var transaction = connection.BeginTransaction())
+        {
+            await DatabaseService.RestoreNativeQuickSlotBindingsAsync(connection, transaction, 1, state, default);
+            await transaction.RollbackAsync();
+        }
+        command.CommandText = "SELECT COUNT(*) FROM CharacterQuickSlots WHERE CharacterId=1";
+        Check(Convert.ToInt32(await command.ExecuteScalarAsync()) == 2,
+            "quickbar identity replacement rolls back atomically with its checkpoint");
+        await using (var transaction = connection.BeginTransaction())
+        {
+            await DatabaseService.RestoreNativeQuickSlotBindingsAsync(connection, transaction, 1, state, default);
+            await transaction.CommitAsync();
+        }
+        command.CommandText = "SELECT COUNT(*) FROM CharacterQuickSlots WHERE CharacterId=1 AND Slot=0 AND InventoryIndex=0 AND ItemCode=14000001";
+        Check(Convert.ToInt32(await command.ExecuteScalarAsync()) == 1,
+            "surviving earlier slot can occupy a later removed slot's old unique inventory index");
+        command.CommandText = "SELECT COUNT(*) FROM CharacterQuickSlots WHERE CharacterId=1";
+        Check(Convert.ToInt32(await command.ExecuteScalarAsync()) == 1,
+            "consumed duplicate item does not leave a stale quickbar identity");
+        command.CommandText = "SELECT COUNT(*) FROM CharacterQuickSlots WHERE CharacterId=2 AND UpdatedAt='other'";
+        Check(Convert.ToInt32(await command.ExecuteScalarAsync()) == 1,
+            "quickbar reindex never changes another character");
+    }
+
     internal static void Run()
     {
+        var injured = new BattleResourceSnapshot(11917, 800, 2)
+        { MaximumHp = 22222, MaximumMp = 5000, Epoch = 7 };
+        var request = NativeDungeonClient.Frame(0xCF93, new byte[4]);
+        BinaryPrimitives.WriteUInt32LittleEndian(request.AsSpan(8), 1);
+        var response = NativeDungeonClient.Frame(0xCF94, new byte[16]);
+        BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(8), 77);
+        BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(10), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(response.AsSpan(12), 14002486);
+        BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(16), 32767);
+        BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(18), 4000);
+        var healed = NetworkAdapterService.MergeNativeDungeonQuickItemResources(injured, request, [response], 77)!;
+        Check(healed.CurrentHp == 22222 && healed.CurrentMp == 4800
+            && healed.Epoch == 7 && healed.AttackMode == 2,
+            "captured potion delta preserves healed configured HP/MP before checkpoint projection");
+        var paddedRequest = request.ToArray();
+        BinaryPrimitives.WriteUInt16LittleEndian(paddedRequest.AsSpan(10), 0xABCD);
+        Check(NetworkAdapterService.MergeNativeDungeonQuickItemResources(injured, paddedRequest, [response], 77) == healed,
+            "CF93 consumes only the slot WORD and ignores unused request tail bytes");
+        var unchanged = NetworkAdapterService.MergeNativeDungeonQuickItemResources(injured, request, [response], 78);
+        Check(unchanged == injured, "remote potion reply cannot heal the local snapshot");
+        var wrongSlot = response.ToArray();
+        BinaryPrimitives.WriteUInt16LittleEndian(wrongSlot.AsSpan(10), 2);
+        Check(NetworkAdapterService.MergeNativeDungeonQuickItemResources(injured, request, [wrongSlot], 77) == injured,
+            "potion reply must match the request-bound quickbar slot");
+        var failed = response.ToArray();
+        BinaryPrimitives.WriteUInt32LittleEndian(failed.AsSpan(12), 0);
+        Check(NetworkAdapterService.MergeNativeDungeonQuickItemResources(injured, request, [failed], 77) == injured,
+            "failed or duplicate consumed potion response cannot heal");
+        Check(NetworkAdapterService.MergeNativeDungeonQuickItemResources(injured, null, [response], 77) == injured,
+            "unsolicited potion reply cannot heal an ordinary checkpoint");
+        var frozen = injured.FreezeSettlement(800, 5000);
+        Check(NetworkAdapterService.MergeNativeDungeonQuickItemResources(frozen, request, [response], 77) == frozen,
+            "potion recovery cannot change a frozen settlement");
         const uint repeatedCode = 14_000_001u;
         const uint addedCode = 21_000_001u;
         var character = new CharacterRecord
@@ -139,11 +214,30 @@ internal static class InventoryQuickbarChecks
         Check(filteredNative.Get(228) == 2 && filteredNative.Get(4000 + 2 * 4) == addedCode,
             "non-native C430 rows do not shift native quick-slot identity mapping");
 
-        var reindexed = DatabaseService.ReindexQuickSlotIdentities(
-            [21_000_001u],
-            [new CharacterQuickSlotRecord { Slot = 2, ItemCode = 21_000_001u, InventoryIndex = 1 }]);
-        Check(reindexed.Count == 1 && reindexed[0].InventoryIndex == 0,
-            "dungeon checkpoint shifts a surviving quick-slot identity after an earlier item is consumed");
+        var survivor = NativeDungeonState.Create(new CharacterRecord
+        {
+            Name = "Survivor", Items = [new CharacterItemRecord { ItemCode = 21000001u, Quantity = 2 }],
+            QuickSlots = [new CharacterQuickSlotRecord { Slot = 2, ItemCode = 21000001u, InventoryIndex = 1 }]
+        }, [], []);
+        BinaryPrimitives.WriteUInt32LittleEndian(survivor.Bytes.AsSpan(4004), 0);
+        var reindexed = DatabaseService.RestoreNativeQuickSlotBindings([21000001u], survivor);
+        Check(reindexed.Count == 1 && reindexed[0].Slot == 2 && reindexed[0].InventoryIndex == 0,
+            "inventory compression preserves the same surviving handle and hotkey slot");
+        var six = NativeDungeonState.Create(new CharacterRecord
+        {
+            Name = "SixKeys", Items = [new CharacterItemRecord { ItemCode = 14002486, Quantity = 6 }],
+            QuickSlots = Enumerable.Range(0, 6).Select(i => new CharacterQuickSlotRecord
+            { Slot = (byte)i, ItemCode = 14002486, InventoryIndex = (byte)i }).ToList()
+        }, [], []);
+        BinaryPrimitives.WriteUInt32LittleEndian(six.Bytes.AsSpan(232), 0);
+        BinaryPrimitives.WriteUInt32LittleEndian(six.Bytes.AsSpan(236), 0);
+        BinaryPrimitives.WriteUInt32LittleEndian(six.Bytes.AsSpan(4008), 0);
+        var fixedSlots = DatabaseService.RestoreNativeQuickSlotBindings(
+            Enumerable.Repeat(14002486u, 5).ToArray(), six);
+        Check(fixedSlots.Select(x => x.Slot).SequenceEqual(new byte[] { 0, 2, 3, 4, 5 }),
+            "using key2 clears only key2; keys1/3/4/5/6 do not move or refill it");
+        Check(fixedSlots.Select(x => x.InventoryIndex).SequenceEqual(new byte[] { 0, 1, 2, 3, 4 }),
+            "remaining exact handles map to compact inventory indices without replacing bindings");
         var rebuilt = new CharacterRecord
         {
             Name = "Reindexed",

@@ -793,10 +793,10 @@ public sealed partial class DatabaseService
         }
         // CharacterItems stores aggregate quantities, while C430/C47D and the
         // native dungeon quickbar address expanded inventory identities. Rebuild
-        // every surviving quick-slot identity after applying the aggregate delta;
+        // the exact surviving native slot/instance bindings after the aggregate delta;
         // otherwise deleting an earlier item shifts later rows left and leaves a
         // stale InventoryIndex that fails the next NativeDungeonState import.
-        await ReindexCharacterQuickSlotsAsync(connection, transaction, characterId, token);
+        await RestoreNativeQuickSlotBindingsAsync(connection, transaction, characterId, after, token);
         var clearMasks = NativeClearMasks(after);
         for (int index = 0; index < clearMasks.Length; index++)
         {
@@ -892,37 +892,46 @@ public sealed partial class DatabaseService
         BinaryPrimitives.WriteUInt32LittleEndian(state.Bytes.AsSpan(5112), 1);
     }
 
-    internal static IReadOnlyList<CharacterQuickSlotRecord> ReindexQuickSlotIdentities(
-        IReadOnlyList<uint> itemCodes,
-        IReadOnlyList<CharacterQuickSlotRecord> quickSlots)
+    internal static IReadOnlyList<CharacterQuickSlotRecord> RestoreNativeQuickSlotBindings(
+        IReadOnlyList<uint> itemCodes, NativeDungeonState state)
     {
-        var result = new List<CharacterQuickSlotRecord>(quickSlots.Count);
-        var usedIndexes = new HashSet<int>();
-        foreach (var quickSlot in quickSlots.OrderBy(slot => slot.Slot))
+        // Native instance handles survive consumption with holes. C430 expands
+        // the current inventory in code order; only that storage index changes.
+        // Never choose a replacement instance by code or move a hotkey slot.
+        var handlesByCode = new Dictionary<uint, Queue<uint>>();
+        for (uint handle = 1; handle <= 255; handle++)
         {
-            var candidate = Enumerable.Range(0, itemCodes.Count)
-                .Where(index => !usedIndexes.Contains(index) && itemCodes[index] == quickSlot.ItemCode)
-                .OrderBy(index => Math.Abs(index - quickSlot.InventoryIndex))
-                .ThenBy(index => index)
-                .FirstOrDefault(-1);
-            if (candidate < 0)
-                continue;
-            usedIndexes.Add(candidate);
+            var code = state.Get(4000 + checked((int)handle) * 4);
+            if (code == 0) continue;
+            if (!handlesByCode.TryGetValue(code, out var handles))
+                handlesByCode[code] = handles = new Queue<uint>();
+            handles.Enqueue(handle);
+        }
+        var indexByHandle = new Dictionary<uint, byte>();
+        for (var index = 0; index < itemCodes.Count; index++)
+            if (handlesByCode.TryGetValue(itemCodes[index], out var handles) && handles.Count > 0)
+                indexByHandle.Add(handles.Dequeue(), checked((byte)index));
+        var result = new List<CharacterQuickSlotRecord>(6);
+        var usedHandles = new HashSet<uint>();
+        for (byte slot = 0; slot < 6; slot++)
+        {
+            var code = state.Get(224 + slot * 8);
+            var handle = state.Get(228 + slot * 8);
+            if (code == 0 && handle == 0) continue;
+            if (handle is 0 or > 255 || code == 0
+                || state.Get(4000 + checked((int)handle) * 4) != code
+                || !indexByHandle.TryGetValue(handle, out var inventoryIndex)
+                || !usedHandles.Add(handle))
+                throw new InvalidDataException("Native quick-slot binding does not identify a surviving inventory instance.");
             result.Add(new CharacterQuickSlotRecord
-            {
-                Slot = quickSlot.Slot,
-                ItemCode = itemCodes[candidate],
-                InventoryIndex = checked((byte)candidate)
-            });
+            { Slot = slot, ItemCode = code, InventoryIndex = inventoryIndex });
         }
         return result;
     }
 
-    private static async Task ReindexCharacterQuickSlotsAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        long characterId,
-        CancellationToken token)
+    internal static async Task RestoreNativeQuickSlotBindingsAsync(
+        SqliteConnection connection, SqliteTransaction transaction, long characterId,
+        NativeDungeonState state, CancellationToken token)
     {
         var itemCodes = new List<uint>();
         await using (var items = connection.CreateCommand())
@@ -944,42 +953,29 @@ public sealed partial class DatabaseService
             }
         }
 
-        var quickSlots = new List<CharacterQuickSlotRecord>();
-        await using (var slots = connection.CreateCommand())
+        var reindexed = RestoreNativeQuickSlotBindings(itemCodes, state);
+        // InventoryIndex is unique per character. A surviving slot may move to
+        // an index still occupied by a later slot that will move or disappear.
+        // Replace the tiny (<=6 rows) set inside the caller's transaction rather
+        // than updating row-by-row and violating an intermediate unique key.
+        await using (var clear = connection.CreateCommand())
         {
-            slots.Transaction = transaction;
-            slots.CommandText = "SELECT Slot, ItemCode, InventoryIndex FROM CharacterQuickSlots WHERE CharacterId=$id ORDER BY Slot";
-            slots.Parameters.AddWithValue("$id", characterId);
-            await using var reader = await slots.ExecuteReaderAsync(token);
-            while (await reader.ReadAsync(token))
-                quickSlots.Add(new CharacterQuickSlotRecord
-                {
-                    Slot = checked((byte)reader.GetInt32(0)),
-                    ItemCode = checked((uint)reader.GetInt64(1)),
-                    InventoryIndex = checked((byte)reader.GetInt32(2))
-                });
+            clear.Transaction = transaction;
+            clear.CommandText = "DELETE FROM CharacterQuickSlots WHERE CharacterId=$id";
+            clear.Parameters.AddWithValue("$id", characterId);
+            await clear.ExecuteNonQueryAsync(token);
         }
-
-        var reindexed = ReindexQuickSlotIdentities(itemCodes, quickSlots)
-            .ToDictionary(slot => slot.Slot);
-        foreach (var quickSlot in quickSlots)
+        foreach (var replacement in reindexed)
         {
-            await using var update = connection.CreateCommand();
-            update.Transaction = transaction;
-            update.Parameters.AddWithValue("$id", characterId);
-            update.Parameters.AddWithValue("$slot", quickSlot.Slot);
-            if (!reindexed.TryGetValue(quickSlot.Slot, out var replacement))
-            {
-                update.CommandText = "DELETE FROM CharacterQuickSlots WHERE CharacterId=$id AND Slot=$slot";
-            }
-            else
-            {
-                update.CommandText = "UPDATE CharacterQuickSlots SET ItemCode=$code, InventoryIndex=$index, UpdatedAt=$now WHERE CharacterId=$id AND Slot=$slot";
-                update.Parameters.AddWithValue("$code", replacement.ItemCode);
-                update.Parameters.AddWithValue("$index", replacement.InventoryIndex);
-                update.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
-            }
-            await update.ExecuteNonQueryAsync(token);
+            await using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = "INSERT INTO CharacterQuickSlots(CharacterId,Slot,ItemCode,InventoryIndex,UpdatedAt) VALUES($id,$slot,$code,$index,$now)";
+            insert.Parameters.AddWithValue("$id", characterId);
+            insert.Parameters.AddWithValue("$slot", replacement.Slot);
+            insert.Parameters.AddWithValue("$code", replacement.ItemCode);
+            insert.Parameters.AddWithValue("$index", replacement.InventoryIndex);
+            insert.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            await insert.ExecuteNonQueryAsync(token);
         }
     }
 
