@@ -43,8 +43,8 @@
     },
     {
       "path": "managed-host/BattleResourceSnapshotChecks.cs",
-      "size": 6640,
-      "sha256": "3B688B420D022DA50A021CE2372147B5C41D18D947563BB4995EA8784D04F828"
+      "size": 7748,
+      "sha256": "3BD593C25DB65A28E29BC0CB3D1F5E33783BCD8219522C55917EAE2E12746A20"
     },
     {
       "path": "managed-host/CardSynthesisChecks.cs",
@@ -63,8 +63,8 @@
     },
     {
       "path": "managed-host/DungeonRankingChecks.cs",
-      "size": 16623,
-      "sha256": "3ABE0B32480E2305B68317673040121F51D775C37F2EEB66DFB894541F753C77"
+      "size": 16503,
+      "sha256": "228313D8CF968A173837FFB6F8AEA7CD916463E7185B39901B734681FAD4D43C"
     },
     {
       "path": "managed-host/DungeonSaveChecks.cs",
@@ -273,8 +273,8 @@
     },
     {
       "path": "managed/Services/BattleResourceSnapshot.cs",
-      "size": 4514,
-      "sha256": "69ED6F5F665B5C99E7321162A99D9EB3B9979F9D81C300530E2533C2808FB9EA"
+      "size": 4595,
+      "sha256": "C030D2977870D10C70D62E7B787F06E4F5999112476A67F5051DD7B1BEC1FE38"
     },
     {
       "path": "managed/Services/CardCatalog.cs",
@@ -403,8 +403,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 51140,
-      "sha256": "758800EFD4DE71B86A857A3903F928F0E1DCE9A4C25BC2DF9F05EC36AAEFFF36"
+      "size": 51115,
+      "sha256": "9537E73FCDC74A2FA4A1409339CD225743151D0B081B1A202404C3CCC711790A"
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
