@@ -15,6 +15,8 @@ internal static class MigrationChecks
         await ChannelReentryChecks.RunAsync();
         await ShopCurrencyPaginationChecks.RunAsync();
         await DungeonRankingChecks.RunAsync();
+        BattleResourceSnapshotChecks.Run();
+        await HealthRecoveryChecks.RunAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var token = timeout.Token;
         InventoryQuickbarChecks.Run();

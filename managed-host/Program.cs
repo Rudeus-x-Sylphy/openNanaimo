@@ -17,6 +17,16 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--health-recovery-self-test"))
+    {
+        await HealthRecoveryChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--battle-resource-snapshot-self-test"))
+    {
+        BattleResourceSnapshotChecks.Run();
+        return;
+    }
     if (args.Contains("--dungeon-ranking-self-test"))
     {
         await DungeonRankingChecks.RunAsync();

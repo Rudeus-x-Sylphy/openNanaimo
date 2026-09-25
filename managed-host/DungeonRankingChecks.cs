@@ -67,6 +67,27 @@ internal static class DungeonRankingChecks
                 && !NetworkAdapterService.ShouldPersistNativeDungeonSettlement(0xCF87, deathLatched: true)
                 && !NetworkAdapterService.ShouldPersistNativeDungeonSettlement(0xCF15, deathLatched: false),
                 "native personal rank persists only for a non-death CF87 settlement");
+            Check(NetworkAdapterService.ShouldForwardNativeDungeonCheckpointFrame(0xCF87, 0xCF88)
+                && !NetworkAdapterService.ShouldForwardNativeDungeonCheckpointFrame(0xCF87, 0xCF78)
+                && !NetworkAdapterService.ShouldForwardNativeDungeonCheckpointFrame(0xCF87, 0xCF8C)
+                && !NetworkAdapterService.ShouldForwardNativeDungeonCheckpointFrame(0xCF87, 0xCF1E)
+                && NetworkAdapterService.ShouldForwardNativeDungeonCheckpointFrame(0xCF8B, 0xCF8C),
+                "settlement forwards CF88 only and requires explicit client transition requests");
+            var filteredSettlementFrames = NetworkAdapterService.FilterNativeDungeonCheckpointFrames(
+                0xCF87,
+                [
+                    NativeDungeonClient.Frame(0xCF78, []),
+                    NativeDungeonClient.Frame(0xCF88, new byte[56]),
+                    NativeDungeonClient.Frame(0xCF8C, new byte[4]),
+                    NativeDungeonClient.Frame(0xCF1E, new byte[4])
+                ]);
+            Check(filteredSettlementFrames.Count == 1
+                && BinaryPrimitives.ReadUInt16LittleEndian(filteredSettlementFrames[0].AsSpan(6, 2)) == 0xCF88
+                && NetworkAdapterService.IsNativeDungeonTransitionFrame(0xCF78)
+                && NetworkAdapterService.IsNativeDungeonTransitionFrame(0xCF8C)
+                && NetworkAdapterService.IsNativeDungeonTransitionFrame(0xCF1E)
+                && !NetworkAdapterService.IsNativeDungeonTransitionFrame(0xCF88),
+                "live settlement frame filter removes unsolicited next-dungeon and return transitions");
 
             var nativeCf88 = NativeDungeonClient.Frame(0xCF88, new byte[56]);
             BinaryPrimitives.WriteUInt16LittleEndian(nativeCf88.AsSpan(0x08, 2), 1);

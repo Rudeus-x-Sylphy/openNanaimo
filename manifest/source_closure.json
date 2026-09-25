@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 176,
+  "count": 180,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -42,6 +42,11 @@
       "sha256": "B11008639C4BF008F1E538BFC9A9C881485C2BBAF30BA6F5F7EC5AAA562B38B6"
     },
     {
+      "path": "managed-host/BattleResourceSnapshotChecks.cs",
+      "size": 3297,
+      "sha256": "3997DDABB50DCA343162E728FE2AB4BF659F5E33E15F36E677029D7E3920F203"
+    },
+    {
       "path": "managed-host/CardSynthesisChecks.cs",
       "size": 18801,
       "sha256": "BA9205A4CE51533F4D8682070D9BD3F5CEB7E9ADE8541FCE7F9B6FD0174164B9"
@@ -58,13 +63,18 @@
     },
     {
       "path": "managed-host/DungeonRankingChecks.cs",
-      "size": 9732,
-      "sha256": "BA5D43F8886422A63976F0E41760711646C3E9757C9F43EC16F3F8211DD3341B"
+      "size": 11348,
+      "sha256": "9E6125D4717B071FCA355B67349803A55D4B035B48EDC8B2134EC84D9ECD888C"
     },
     {
       "path": "managed-host/DungeonSaveChecks.cs",
       "size": 21129,
       "sha256": "F4B8A2A553E002E5DDBAA7333AE67D3C465F5D752229E27C1AEF8A489325E886"
+    },
+    {
+      "path": "managed-host/HealthRecoveryChecks.cs",
+      "size": 10229,
+      "sha256": "46B36D3A7D5443B528B977F7FF4F78E236066B869B696EB9D99F95C9D7BE30BA"
     },
     {
       "path": "managed-host/InventoryQuickbarChecks.cs",
@@ -78,8 +88,8 @@
     },
     {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 30862,
-      "sha256": "4A9705532ED5C10CD4CBF2D9D8F6FA25614E4EC542306E156107ED23770DFCE1"
+      "size": 30953,
+      "sha256": "6AABF954AE38207F91775F2293A534BEBA15ECB1674CF839492D49C533662C8C"
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
@@ -93,8 +103,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 7399,
-      "sha256": "FEB1ECC4A57C2DBA9CCF68AFE9308DF60551005F7EB2695412714A16806E5E6A"
+      "size": 7663,
+      "sha256": "47C3B557282B808FB6B0C84B511529A3D68C73D085A34C73D4B2262D21EF288B"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -262,6 +272,11 @@
       "sha256": "934E8AE05BEF36C90AE4F4C6A964D6E69AA1A4637EF4F423DFD4F7714D9CECA6"
     },
     {
+      "path": "managed/Services/BattleResourceSnapshot.cs",
+      "size": 2636,
+      "sha256": "2332BDF39193C3269266940F4E9EC45BBBC6A9CB04AF21A53D475E880B504956"
+    },
+    {
       "path": "managed/Services/CardCatalog.cs",
       "size": 13251,
       "sha256": "AD58BEFAC07346F2C1776F2E2FE6EC918F9262A30B6C0979E182AEFCB9F38CCC"
@@ -303,8 +318,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 584346,
-      "sha256": "EC0F35AF251E71A1ADAEF171E3E4FE132152384AC277B7F557D1A1DA8F04AD12"
+      "size": 586086,
+      "sha256": "979FBF3F2D42E686419D878D862F50DD949C9269E56A1658F25F6B3B57D2E587"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -340,6 +355,11 @@
       "path": "managed/Services/GmRuntimeControl.cs",
       "size": 4202,
       "sha256": "C66876385489DA2E01B0341561D407F1963E28238E8325D5748681C2312342C5"
+    },
+    {
+      "path": "managed/Services/HealthRecoveryPolicy.cs",
+      "size": 2306,
+      "sha256": "06CD61C6850532868A941F016FDBCF6D2342DA8FE810DB4D314908DC9582DC63"
     },
     {
       "path": "managed/Services/LoginAuthProtocol.cs",
@@ -383,13 +403,13 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 34807,
-      "sha256": "682330A6AF6B77112BF7CE517FC90B6CBF333BAA5A64E4B04082A366AB0C5612"
+      "size": 38263,
+      "sha256": "342589D388FF7DA2AE152F5F7598672BC893C4B267E16B3D0426B36F4C33050E"
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 941566,
-      "sha256": "EFF96BDD84EDDDC0CCA85D4F9E0390E4DB2ADCA12984F24B30E8BE07A5F4C839"
+      "size": 945427,
+      "sha256": "DFC4DBF658FCD512FB1D47FFCF7EC5B90B151904E7669A725BA21E3EA1EF3575"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

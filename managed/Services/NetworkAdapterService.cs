@@ -416,8 +416,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public NativeDungeonClient? NativeDungeon { get; set; }
         public NativeDungeonPool.Lease? NativeLease { get; set; }
         public NativeDungeonState? NativeCheckpoint { get; set; }
+        public BattleResourceSnapshot? PendingBattleResourceSnapshot { get; set; }
+        public byte? NativeBattleAttackMode { get; set; }
         public bool NativeForwarding { get; set; }
         public bool NativeDungeonDeathLatched { get; set; }
+        public bool NativeDungeonSettlementAwaitingAction { get; set; }
         public bool NativeDungeonSelectionValid { get; set; }
         public byte NativeDungeonHdIndex { get; set; }
         public byte NativeDungeonEpisode { get; set; }
@@ -524,6 +527,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         GameConnection
     }
 
+    private readonly record struct DungeonNpcKey(uint RuntimeUid, byte TargetIndex);
+
     private sealed class DungeonNpcState(DungeonCombatTemplate template)
     {
         public DungeonCombatTemplate Template { get; } = template;
@@ -592,8 +597,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public Dictionary<long, int> HitScores { get; } = [];
         public Dictionary<long, int> BossBonusScores { get; } = [];
         public Dictionary<long, int> BossHansRewards { get; } = [];
-        public Dictionary<uint, DungeonNpcState> Npcs { get; } = [];
-        public HashSet<uint> DefeatedUncataloguedRuntimeUids { get; } = [];
+        public Dictionary<DungeonNpcKey, DungeonNpcState> Npcs { get; } = [];
+        public HashSet<DungeonNpcKey> DefeatedUncataloguedRuntimeUids { get; } = [];
         public Dictionary<ushort, DungeonBossState> Bosses { get; } = [];
         public HashSet<long> RewardedCharacters { get; } = [];
         public HashSet<long> RewardCommittingCharacters { get; } = [];
@@ -655,7 +660,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public Dictionary<long, int> HitScores => Battle.HitScores;
         public Dictionary<long, int> BossBonusScores => Battle.BossBonusScores;
         public Dictionary<long, int> BossHansRewards => Battle.BossHansRewards;
-        public Dictionary<uint, DungeonNpcState> Npcs => Battle.Npcs;
+        public Dictionary<DungeonNpcKey, DungeonNpcState> Npcs => Battle.Npcs;
         public Dictionary<ushort, DungeonBossState> Bosses => Battle.Bosses;
         public HashSet<long> RewardedCharacters => Battle.RewardedCharacters;
         public Dictionary<long, byte[]> EndGamePayloads => Battle.EndGamePayloads;
@@ -3276,6 +3281,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 LeaveVillageShopScene(session, "apartment enter");
                 LeaveApartmentScene(session, "apartment room change");
                 session.ApartmentOwnerCharacterId = apartmentOwner.Id;
+                var apartmentRecovery = await ApplyNonCombatHealthRecoveryAsync(
+                    session,
+                    HealthRecoveryScene.Apartment,
+                    token);
+                if (apartmentRecovery.Changed)
+                    _log($"{channel}:{remote} apartment recovery step: hp={apartmentRecovery.CurrentHp}/{session.Character!.MaxHp} mp={apartmentRecovery.CurrentMp}/{session.Character.MaxMp} restored=({apartmentRecovery.HpRestored},{apartmentRecovery.MpRestored})");
                 var apartmentPlacements = await _database.GetApartmentPlacementsAsync(apartmentOwner.Id, token);
                 _log($"{channel}:{remote} 进入公寓：mode={moveMode} owner={requestedOwner} character={apartmentOwner.Name} objects={apartmentPlacements.Count(item => item.InteriorType >= 2)}；返回完整 C38E 私人房间结构");
                 return BuildNativeFrame(
@@ -3301,6 +3312,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.LastReportedPositionY = roomY;
                 session.Character!.PositionX = roomX;
                 session.Character.PositionY = roomY;
+                var apartmentRefreshRecovery = await ApplyNonCombatHealthRecoveryAsync(
+                    session,
+                    HealthRecoveryScene.Apartment,
+                    token);
+                if (apartmentRefreshRecovery.Changed)
+                    _log($"{channel}:{remote} apartment refresh recovery step: hp={apartmentRefreshRecovery.CurrentHp}/{session.Character!.MaxHp} mp={apartmentRefreshRecovery.CurrentMp}/{session.Character.MaxMp} restored=({apartmentRefreshRecovery.HpRestored},{apartmentRefreshRecovery.MpRestored})");
                 var apartmentUserPayload = BuildMiniRoomUserInfoPayload(session.Character, roomX, roomY);
                 QueueApartmentEntitySnapshots(session, apartmentUserPayload);
                 _log($"{channel}:{remote} 返回公寓角色信息：character={session.Character?.Name} position=({roomX},{roomY})");
@@ -4606,6 +4623,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.TownPage = transition.Page;
                 session.Character.CurrentMapId = townId;
                 session.Character.CurrentTownPage = transition.Page;
+                var townEntryRecovery = await ApplyNonCombatHealthRecoveryAsync(
+                    session,
+                    HealthRecoveryScene.Town,
+                    token);
+                if (townEntryRecovery.Changed)
+                    _log($"{channel}:{remote} town entry recovery step: hp={townEntryRecovery.CurrentHp}/{session.Character!.MaxHp} mp={townEntryRecovery.CurrentMp}/{session.Character.MaxMp} restored=({townEntryRecovery.HpRestored},{townEntryRecovery.MpRestored})");
                 // C365 runs while the old village actor/controller is being torn
                 // down. Its X/Y describe transient transport context, not the new
                 // actor's authoritative landing point. Preserve the last legal
@@ -4685,6 +4708,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 session.Character.CurrentTownPage = effectiveRoomIndex;
                 session.Character.PositionX = positionX;
                 session.Character.PositionY = positionY;
+                var townRecovery = await ApplyNonCombatHealthRecoveryAsync(
+                    session,
+                    HealthRecoveryScene.Town,
+                    token);
+                if (townRecovery.Changed)
+                    _log($"{channel}:{remote} town recovery step: hp={townRecovery.CurrentHp}/{session.Character!.MaxHp} mp={townRecovery.CurrentMp}/{session.Character.MaxMp} restored=({townRecovery.HpRestored},{townRecovery.MpRestored})");
                 _log(entryPosition.Repaired
                     ? $"{channel}:{remote} C367 village-entry sentinel normalized: town={session.TownId} room={effectiveRoomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({positionX},{positionY}); FFFF/FFFF and legacy 03FF/03FF are not persisted"
                     : $"{channel}:{remote} C367 accepted village-entry position: room={effectiveRoomIndex} position=({positionX},{positionY})");
@@ -6491,6 +6520,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var targetIndex = payload[6];
                 var flags = payload[7];
                 var npcRuntimeUid = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(8, 4));
+                var npcTargetKey = new DungeonNpcKey(npcRuntimeUid, targetIndex);
                 if (string.Equals(channel, "ArenaAdapter", StringComparison.Ordinal))
                 {
                     if (IsEntertainmentSession(channel, session))
@@ -6567,7 +6597,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         // after the preallocated SMMO component range have no static MMO
                         // tuple. D00E uses that live UID directly with removal marker 200.
                         firstRemoval = collisionBattle.DefeatedUncataloguedRuntimeUids.Add(
-                            npcRuntimeUid);
+                            npcTargetKey);
                         uncataloguedScores = BuildDungeonCollisionScoresLocked(collisionRoom);
                     }
 
@@ -6624,10 +6654,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         ? checked((int)(baseAttack * 1.5))
                         : baseAttack;
 
-                    if (!collisionRoom.Npcs.TryGetValue(npcRuntimeUid, out var npcState))
+                    if (!collisionRoom.Npcs.TryGetValue(npcTargetKey, out var npcState))
                     {
                         npcState = new DungeonNpcState(combatTemplate);
-                        collisionRoom.Npcs.Add(npcRuntimeUid, npcState);
+                        collisionRoom.Npcs.Add(npcTargetKey, npcState);
                     }
 
                     if (npcState.Template != combatTemplate)
@@ -6676,7 +6706,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var loggedEffectiveAttack = (flags & 0x40) != 0
                     ? checked((int)(baseAttack * 1.5))
                     : baseAttack;
-                _log($"{channel}:{remote} Dungeon projectile collision resolved: room={collisionRoom.Id} map={mapIndex} mode={mode} secondary={secondary} source={collisionSourceCode} targetIndex={targetIndex} flags=0x{flags:X2} runtime={npcRuntimeUid} resource={npcResourceUid} category={combatTemplate.AttackCategory} attackSource={(activeSkillCode == 0 ? "pet" : "skill")} skill={activeSkillCode} grade={activeSkillGrade} attack={baseAttack}->{loggedEffectiveAttack} defense={combatTemplate.Defense}->{effectiveDefense} damage={damage} hp={remainingHp}/{combatTemplate.Hp} defeated={defeated} scoreReward={(defeated ? combatTemplate.Score : 0)} cardDropBonus={cardDropBonusPercent}% sceneDrop={normalDropCardCode} scores={string.Join(',', collisionScores)}");
+                _log($"{channel}:{remote} Dungeon projectile collision resolved: room={collisionRoom.Id} map={mapIndex} mode={mode} secondary={secondary} source={collisionSourceCode} targetIndex={targetIndex} flags=0x{flags:X2} runtime={npcRuntimeUid} resource={npcResourceUid} category={combatTemplate.AttackCategory} attackSource={(activeSkillCode == 0 ? "pet" : "skill")} skill={activeSkillCode} grade={activeSkillGrade} attack={baseAttack}->{loggedEffectiveAttack} defense={combatTemplate.Defense}->{effectiveDefense} damage={damage} hp={remainingHp}/{combatTemplate.Hp} defeated={defeated} scoreReward={(defeated ? combatTemplate.Score : 0)} cardDropBonus={cardDropBonusPercent}% sceneDrop={normalDropCardCode} targetLedger={npcTargetKey} scores={string.Join(',', collisionScores)}");
                 var collisionFrame = BuildNativeFrame(frame, 0xD00E, collisionResponsePayload, session);
                 if (!QuestMonsterCatalog.TryResolveTarget(
                         collisionRoom.BattleEpisode,
@@ -14541,6 +14571,49 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             MentorStateChanged?.Invoke();
     }
 
+    private async Task<HealthRecoveryResolution> ApplyNonCombatHealthRecoveryAsync(
+        ConnectionSession session,
+        HealthRecoveryScene scene,
+        CancellationToken token)
+    {
+        if (session.Character is null)
+            return default;
+
+        var battleEpochActive = session.NativeDungeon is not null
+            || session.NativeForwarding
+            || session.NativeCheckpoint is not null
+            || session.DungeonRoomId > 0;
+        var resolution = HealthRecoveryPolicy.Resolve(
+            session.Character,
+            scene,
+            session.OnlineTracked,
+            battleEpochActive);
+        if (!resolution.Changed)
+            return resolution;
+
+        var persisted = await _database.ApplyHealthRecoveryStepAsync(
+            session.AccountId,
+            session.Character.Id,
+            session.SessionId,
+            scene,
+            token);
+        if (!persisted.Applied)
+        {
+            await RefreshSessionCharacterAsync(session, token);
+            return default;
+        }
+
+        session.Character.CurrentHp = persisted.CurrentHp;
+        session.Character.CurrentMp = persisted.CurrentMp;
+        await RefreshSessionCharacterAsync(session, token);
+        AccountStateChanged?.Invoke();
+        return resolution with
+        {
+            CurrentHp = persisted.CurrentHp,
+            CurrentMp = persisted.CurrentMp
+        };
+    }
+
     private async Task RefreshSessionCharacterAsync(ConnectionSession session, CancellationToken token)
     {
         if (session.AccountId <= 0)
@@ -18536,7 +18609,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             equippedPetItemCode);
     }
 
-    private static byte[] BuildRoomEnterPayload(
+    internal static byte[] BuildRoomEnterPayload(
         CharacterRecord character,
         byte roomIndex,
         ushort entryPositionX,

@@ -8649,6 +8649,41 @@ public sealed partial class DatabaseService
         return true;
     }
 
+    internal async Task<HealthRecoveryPersistenceResult> ApplyHealthRecoveryStepAsync(
+        long accountId,
+        long characterId,
+        string sessionId,
+        HealthRecoveryScene scene,
+        CancellationToken cancellationToken = default)
+    {
+        var parameters = HealthRecoveryPolicy.GetParameters(scene);
+        var now = DateTime.UtcNow.ToString("O");
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE Characters
+            SET CurrentHp = MIN(MaxHp, MAX(0, CurrentHp) + $hpStep),
+                CurrentMp = MIN(MaxMp, MAX(0, CurrentMp) + $mpStep),
+                LastSavedAt = $now
+            WHERE Id = $characterId
+              AND AccountId = $accountId
+              AND IsOnline = 1
+              AND ActiveSessionId = $sessionId
+              AND (CurrentHp < MaxHp OR CurrentMp < MaxMp)
+            RETURNING CurrentHp, CurrentMp
+            """;
+        command.Parameters.AddWithValue("$hpStep", parameters.HpStep);
+        command.Parameters.AddWithValue("$mpStep", parameters.MpStep);
+        command.Parameters.AddWithValue("$now", now);
+        command.Parameters.AddWithValue("$characterId", characterId);
+        command.Parameters.AddWithValue("$accountId", accountId);
+        command.Parameters.AddWithValue("$sessionId", sessionId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken)
+            ? new HealthRecoveryPersistenceResult(true, reader.GetInt32(0), reader.GetInt32(1))
+            : new HealthRecoveryPersistenceResult(false, 0, 0);
+    }
+
     public async Task<bool> SaveCharacterRuntimeStateAsync(
         long accountId,
         long characterId,

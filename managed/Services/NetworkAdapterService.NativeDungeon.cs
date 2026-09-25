@@ -77,15 +77,19 @@ public sealed partial class NetworkAdapterService
         if (!NativeDungeonEnabled || channel != "WorldAdapter") return false;
         if (opcode == 0xCF09 && frame.Length == 64 && session.OnlineTracked && session.Character is not null)
         {
-            await CloseNativeDungeonAsync(session);
+            session.NativeDungeonSettlementAwaitingAction = false;
+            var boundary = session.NativeDungeonDeathLatched ? BattleResourceBoundary.DeathReturn : BattleResourceBoundary.NextDungeon;
+            await CloseNativeDungeonAsync(session, boundary);
             session.NativeDungeonDeathLatched = false;
             session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
             await RefreshSessionCharacterAsync(session, token);
             var character = session.Character!;
-            var state = NativeDungeonState.Create(character,
+            var state = BattleResourceSnapshotPolicy.CreateNextDungeonState(character,
                 await _database.GetCharacterCardsAsync(character.Id, token),
-                await _database.GetCharacterSkillsAsync(character.Id, token));
+                await _database.GetCharacterSkillsAsync(character.Id, token), session.PendingBattleResourceSnapshot);
+            session.NativeBattleAttackMode = session.PendingBattleResourceSnapshot?.AttackMode;
+            session.PendingBattleResourceSnapshot = null;
             await _database.RestoreNativeDungeonProgressAsync(character.Id, state, token);
             if (NativeRooms is not null)
                 session.NativeLease = await NativeRooms.AcquireAsync(session.PartyId > 0 ? $"party:{session.PartyId}" : session.SessionId, token);
@@ -152,22 +156,31 @@ public sealed partial class NetworkAdapterService
             ((opcode == 0xC37A && frame.Length == 8 + ShopMoveRequestPayloadLength) ||
              (opcode == 0xC3AB && frame.Length == 8 + VillageShopEnterRequestPayloadLength &&
               BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(8)) is 110u or 120u or 130u or 140u or 150u));
-        if (enteringShop) await CloseNativeDungeonAsync(session);
+        if (enteringShop) await CloseNativeDungeonAsync(session, BattleResourceBoundary.TownReturn);
         if (session.NativeDungeon is null) return false;
         bool dungeonOpcode = opcode is >= 0xCF00 and <= 0xD03F or 0xC587 or 0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640;
         if (dungeonOpcode)
         {
+            if (opcode == 0xCF87)
+                session.NativeDungeonSettlementAwaitingAction = true;
+            else if (opcode is 0xCF8B or 0xCF73 or 0xCF1D)
+                session.NativeDungeonSettlementAwaitingAction = false;
+
             if (opcode is 0xCF87 or 0xCF8B or 0xD034 or 0xCF93 or 0xCF95 or 0xCF83 or 0xCF9B or 0xCF1D)
+            {
                 await CommitNativeCheckpointAsync(
                     session, frame, token,
                     persistSettlementRank: ShouldPersistNativeDungeonSettlement(opcode, session.NativeDungeonDeathLatched));
+                if (opcode == 0xCF87)
+                    session.NativeDungeonSettlementAwaitingAction = true;
+            }
             else await session.NativeDungeon.SendAsync(frame, token);
-            if (opcode == 0xCF1D) await CloseNativeDungeonAsync(session);
+            if (opcode == 0xCF1D) await CloseNativeDungeonAsync(session, BattleResourceBoundary.TownReturn);
             return true;
         }
         if (opcode is 0xC365 or 0xC367 or 0xC354)
         {
-            await CloseNativeDungeonAsync(session);
+            await CloseNativeDungeonAsync(session, BattleResourceBoundary.TownReturn);
             await RefreshSessionCharacterAsync(session, token);
         }
         return false;
@@ -220,6 +233,25 @@ public sealed partial class NetworkAdapterService
 
     internal static bool ShouldPersistNativeDungeonSettlement(ushort requestOpcode, bool deathLatched)
         => requestOpcode == 0xCF87 && !deathLatched;
+
+    internal static bool ShouldForwardNativeDungeonCheckpointFrame(ushort requestOpcode, ushort responseOpcode)
+        => requestOpcode != 0xCF87 || responseOpcode == 0xCF88;
+
+    internal static IReadOnlyList<byte[]> FilterNativeDungeonCheckpointFrames(
+        ushort requestOpcode,
+        IReadOnlyList<byte[]> frames)
+        => frames.Where(frame =>
+                frame.Length >= 8
+                && ShouldForwardNativeDungeonCheckpointFrame(
+                    requestOpcode,
+                    BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2))))
+            .ToArray();
+
+    internal static bool IsNativeDungeonTransitionFrame(ushort opcode)
+        => opcode is 0xCF09 or 0xCF1D or 0xCF1E
+            or 0xCF6C or 0xCF6D or 0xCF6E
+            or 0xCF73 or 0xCF74 or 0xCF75 or 0xCF76 or 0xCF77 or 0xCF78
+            or 0xCF7F or 0xCF80 or 0xCF8B or 0xCF8C;
 
     internal static bool TryReadNativeDungeonSettlementFrame(
         ReadOnlySpan<byte> frame,
@@ -521,6 +553,12 @@ public sealed partial class NetworkAdapterService
         if (session.NativeDungeon is null || session.NativeCheckpoint is null || session.Character is null)
             throw new InvalidOperationException("Native dungeon checkpoint capture requires an active owned worker session.");
         var exchange = await session.NativeDungeon.ExchangeCapturedAsync(frame, null, token);
+        var requestOpcode = frame is { Length: >= 8 }
+            ? BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2))
+            : (ushort)0;
+        exchange = new NativeDungeonExchangeResult(
+            exchange.State,
+            FilterNativeDungeonCheckpointFrames(requestOpcode, exchange.Frames));
         var next = exchange.State;
         NativeDungeonSettlementRecord? settlement = null;
         if (persistSettlementRank && session.NativeDungeonSelectionValid)
@@ -567,8 +605,17 @@ public sealed partial class NetworkAdapterService
         byte[] response,
         CancellationToken token)
     {
+        if (response.Length < 8)
+            return;
+        var responseOpcode = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6, 2));
+        if (session.NativeDungeonSettlementAwaitingAction
+            && IsNativeDungeonTransitionFrame(responseOpcode))
+        {
+            _log($"NativeDungeon unsolicited settlement transition suppressed: response=0x{responseOpcode:X4}");
+            return;
+        }
         await PatchNativeReadyRoomRankFrameAsync(session, response, token);
-        PatchNativePetActorFrame(response, session.Character);
+        PatchNativePetActorFrame(response, session.Character, session.NativeBattleAttackMode);
         if (session.Character is { } character
             && TryReadNativeDungeonLocalHp(response, GetSceneEntityId(character), out var currentHp))
         {
@@ -631,7 +678,7 @@ public sealed partial class NetworkAdapterService
         }
     }
 
-    internal static bool PatchNativePetActorFrame(byte[] frame, CharacterRecord? character)
+    internal static bool PatchNativePetActorFrame(byte[] frame, CharacterRecord? character, byte? battleAttackMode = null)
     {
         if (character is null
             || frame.Length < 0x68
@@ -643,7 +690,7 @@ public sealed partial class NetworkAdapterService
         // CF72 +0x66/+0x67 is the independent PET combat/attack-mode level
         // used by automatic and homing launchers.  Growth level remains in
         // C44C/C379 and CF88; do not overwrite this gate with PetState.Level.
-        frame[0x66] = checked((byte)Math.Clamp(character.InitialAttackMode + 1, 1, 3));
+        frame[0x66] = battleAttackMode is { } mode ? BattleResourceSnapshot.NormalizeAttackMode(mode) : checked((byte)Math.Clamp(character.InitialAttackMode + 1, 1, 3));
         frame[0x67] = frame[0x66];
         RewriteNativeChecksum(frame);
         return true;
@@ -687,18 +734,27 @@ public sealed partial class NetworkAdapterService
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(2, 2), (ushort)(sum ^ 0x0E0E));
     }
 
-    private async Task CloseNativeDungeonAsync(ConnectionSession session)
+    private async Task CloseNativeDungeonAsync(ConnectionSession session, BattleResourceBoundary boundary = BattleResourceBoundary.ConnectionClose)
     {
-        if (session.NativeDungeon is null) return;
+        if (session.NativeDungeon is null)
+        {
+            session.NativeDungeonSettlementAwaitingAction = false;
+            if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleAttackMode = null; }
+            return;
+        }
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await CommitNativeCheckpointAsync(session, null, timeout.Token);
+            session.PendingBattleResourceSnapshot = BattleResourceSnapshotPolicy.Capture(session.NativeCheckpoint, boundary);
+            session.NativeBattleAttackMode = session.PendingBattleResourceSnapshot?.AttackMode;
         }
         finally
         {
+            if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleAttackMode = null; }
             session.NativeForwarding = false;
             session.NativeDungeonDeathLatched = false;
+            session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
             await session.NativeDungeon.DisposeAsync(); session.NativeDungeon = null; session.NativeCheckpoint = null;
