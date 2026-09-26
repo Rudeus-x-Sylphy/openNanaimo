@@ -320,6 +320,25 @@ internal static class InventoryLifecycleChecks
                 await RejectUnchanged(async () => (await db.UseInventoryExpansionAsync(account, character, session, ticket.ItemCode, now)).Success,
                     "exhausted ticket replay");
             }
+            foreach (byte rawType in new byte[] { 1, 6 })
+            {
+                var ticket = tickets.Single(t => t.InventoryExpansionType == rawType);
+                await ResetItems();
+                await Seed(ticket.ItemCode, 1);
+                await Execute($"UPDATE Characters SET {columns[rawType]}=2000010100 WHERE Id={character}");
+                var beforeRenewal = await Read();
+                if (rawType == 1)
+                    Check(NetworkAdapterService.BuildPetInventoryPayload(beforeRenewal)[1] == 0,
+                        "persisted expired PET entitlement cannot suppress the client's renewal C480");
+                var renewed = await db.UseInventoryExpansionAsync(account, character, session, ticket.ItemCode, now);
+                Check(renewed.Success && renewed.RemainingQuantity == 0
+                    && renewed.Expiration == SkillSlotExpansionTime.Encode(now.AddDays(ticket.DurationDays)),
+                    $"expired raw{rawType} renews from now, not from stale expiration");
+                var reloaded = await Read();
+                Check((uint)typeof(CharacterRecord).GetProperty(columns[rawType])!.GetValue(reloaded)! == renewed.Expiration
+                    && reloaded.Items.All(item => item.ItemCode != ticket.ItemCode),
+                    $"expired raw{rawType} renewal survives DB reopen with ticket gone");
+            }
             var notTicket = ShopCatalog.All.First(i => i.Section == InventorySection.GameItem && i.Category != 44 && i.InventoryExpansionType == 0);
             await Seed(notTicket.ItemCode, 1);
             await RejectUnchanged(async () => (await db.UseInventoryExpansionAsync(account, character, session, notTicket.ItemCode, now)).Success,

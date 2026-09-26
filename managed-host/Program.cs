@@ -17,6 +17,26 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--apartment-housing-self-test"))
+    {
+        await ApartmentHousingChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--apartment-inventory-self-test"))
+    {
+        await ApartmentInventoryChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--apartment-shop-self-test"))
+    {
+        await ApartmentShopChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--apartment-recommendation-self-test"))
+    {
+        await ApartmentRecommendationChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--inventory-lifecycle-self-test"))
     {
         await InventoryLifecycleChecks.RunAsync();
@@ -25,6 +45,8 @@ static async Task RunAsync(string[] args)
     if (args.Contains("--inventory-vitals-self-test"))
     {
         InventoryVitalsChecks.Run();
+        AvatarInventoryIdentityChecks.Run();
+        await AvatarResourceChecks.RunAsync();
         return;
     }
     if (args.Contains("--inventory-protocol-self-test"))

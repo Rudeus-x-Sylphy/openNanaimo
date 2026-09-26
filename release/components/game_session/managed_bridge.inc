@@ -24,6 +24,8 @@ static int managed_bridge_resources_valid(const unsigned char*p){
         }
     }
     pet_crafting_pet_effect_sums_for_gems(gems,&a,&pct,&h,&m);
+    {unsigned equip[5],ah,am;for(i=0u;i<5u;i++)equip[i]=managed_get(p,112u+i*4u);
+     avatar_resource_bonuses(equip,managed_get(p,132),managed_get(p,8),&ah,&am);h+=ah;m+=am;}
     hm+=h;if(hm>65535u)hm=65535u;mm+=m;if(mm>65535u)mm=65535u;
     return managed_get(p,20)<=hm&&managed_get(p,28)<=mm;
 }

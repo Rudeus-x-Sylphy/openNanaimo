@@ -50,7 +50,8 @@ internal static class ShopDungeonChecks
             var malformedShop = await Request(0xC37A);
             Check(malformedShop.Length == 0 && Get("NativeDungeon") is not null, "malformed shop entry leaves native session intact");
             var shop = await Request(0xC37A, new byte[4]);
-            Check(shop.Length == 24 && BinaryPrimitives.ReadInt64LittleEndian(shop.AsSpan(8)) == hans
+            Check(shop.Length == 32 && BinaryPrimitives.ReadInt64LittleEndian(shop.AsSpan(24)) == 0
+                && BinaryPrimitives.ReadInt64LittleEndian(shop.AsSpan(8)) == hans
                 && BinaryPrimitives.ReadInt64LittleEndian(shop.AsSpan(16)) == cash && Get("NativeDungeon") is null,
                 "shop commits native earnings and closes the native session");
 

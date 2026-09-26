@@ -55,8 +55,9 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0x10000, 0x11000, 0x400),
         (0x2E0000, 0x14000, 0x11400),
         (0x360000, 0x10000, 0x25400),
+        (0x400000, 0x30000, 0x35400),
     ]
-    data = bytearray(0x35400)
+    data = bytearray(0x65400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -79,6 +80,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
     put(compat.SETTLEMENT_AUTO_ACTION_GATE_VA, settlement_action_gate)
     put(compat.POWER_RESTORE_HOOK_VA, power_hook)
     put(compat.POWER_RESTORE_CAVE_VA, power_cave)
+    put(compat.GIFT_PREVIEW_HOOK_VA, compat.GIFT_PREVIEW_HOOK_OLD)
+    put(compat.GIFT_PREVIEW_CAVE_VA, compat.GIFT_PREVIEW_CAVE_OLD)
     return bytes(data), furniture_offset
 
 

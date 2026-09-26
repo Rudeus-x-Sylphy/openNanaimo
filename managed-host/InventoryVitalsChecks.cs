@@ -195,7 +195,59 @@ internal static class InventoryVitalsChecks
             && unequippedState.Get(144) == 0 && unequippedState.Get(148) == 0
             && unequippedState.Get(20) == 22222 && unequippedState.Get(28) == 5000,
             "Native Create honors explicit unequip despite PetVariant and ApplyTo drops only over-cap resources");
+        CheckAvatarEquipment(hpGem);
         Console.WriteLine("INVENTORY_VITALS_CHECKS_PASS base-effective selected-gems gift-refresh no-refill town next-epoch frame-gates");
+    }
+
+    private static void CheckAvatarEquipment(uint hpGem)
+    {
+        var character = MakeCharacter(hpGem);
+        character.Level = 25;
+        character.Experience = CharacterProgression.ExperienceRequiredForLevel(25);
+        character.EquippedPetItemCode = 15009205;
+        character.Items[0].ItemCode = 15009205;
+        BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(8), 10110337); // GM top HP+200%, MP+300%
+        var bonuses = AvatarEquipmentCatalog.GetResourceBonuses(character.Appearance, 25);
+        Check(bonuses == (8000, 1020), "avatar percent basis is level table 4000/340, not GUI maxima");
+        var live = NetworkAdapterService.ResolveInventoryVitals(character);
+        Check(live.MaximumHp == 30622 && live.MaximumMp == 6020
+            && live.CurrentHp == 19000 && live.CurrentMp == 1200,
+            "base + avatar + selected gems, absolute current preserved");
+        for (int i = 0; i < 4; i++)
+        {
+            var state = NativeDungeonState.Create(character, [], []);
+            live.ApplyTo(state);
+            live = BattleResourceSnapshot.Capture(state, i + 1);
+            Check(state.Get(16) == 22222 && state.Get(24) == 5000
+                && live.MaximumHp == 30622 && live.MaximumMp == 6020 && live.CurrentHp == 19000,
+                "avatar resources survive bridge snapshots without double counting");
+        }
+        var full = live with { CurrentHp = live.MaximumHp, CurrentMp = live.MaximumMp };
+        character.Appearance.AsSpan().Clear();
+        var naked = NetworkAdapterService.ResolveInventoryVitals(character, full);
+        Check(naked.CurrentHp == 22622 && naked.CurrentMp == 5000, "unequip clamps only over-cap current");
+        BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(8), 10110337);
+        var restored = NetworkAdapterService.ResolveInventoryVitals(character, naked);
+        Check(restored.MaximumHp == 30622 && restored.CurrentHp == 22622 && restored.CurrentMp == 5000,
+            "re-equipping never heals or replaces GUI base");
+        var giftRefresh = MakeCharacter(hpGem);
+        giftRefresh.Level = 25; giftRefresh.EquippedPetItemCode = 15009205;
+        giftRefresh.Items[0].ItemCode = 15009205;
+        character.Appearance.CopyTo(giftRefresh.Appearance, 0);
+        Check(NetworkAdapterService.PreserveInventoryVitalsOnRefresh(character, giftRefresh, restored)!.CurrentHp == 22622,
+            "gift/inventory-only refresh preserves avatar-effective current");
+        character.Appearance.AsSpan().Clear();
+        BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(8), 10110062);
+        Check(AvatarEquipmentCatalog.GetResourceBonuses(character.Appearance, 25) == (930, 155),
+            "flat apparel effects use numeric resource columns, not descriptions");
+        character.MaxHp = 65000; character.MaxMp = 65000;
+        BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(8), 10110337);
+        var saturated = NetworkAdapterService.ResolveInventoryVitals(character);
+        Check(saturated.MaximumHp == 65535 && saturated.MaximumMp == 65535, "avatar sums saturate uint16");
+        character.Appearance.AsSpan().Clear();
+        character.Items.Add(new CharacterItemRecord { ItemCode = 10110337, Quantity = 3 });
+        Check(AvatarEquipmentCatalog.GetResourceBonuses(character.Appearance, 25) == (0, 0),
+            "owned but unequipped clothing gives no bonus");
     }
 
     private static int FixedBonus(ShopCatalogItem item, byte type)

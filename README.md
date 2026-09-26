@@ -43,7 +43,8 @@ GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色
 - 村庄移动、聊天、表情、好友、师徒、情侣。
 - 玩家组队、玩家交易、卡片交易所。
 - 天空竞技场、娱乐房间和相关大厅流程。
-- 公寓、家具、室内商店和愿望清单。
+- 单身公寓、按实例同步的家具选取状态、每日推荐、唯一街区住宅、房屋外观与招牌文字、装饰商店金币及购物券结算。
+- 公寓使用规则与状态保存说明见 [单身公寓](docs/单身公寓.md)。
 - 地宫房间、多人同步、伤害、首领、掉落、结算、复活和关卡进度。
 
 源码与自动检查覆盖上述功能；原客户端可见验收范围单独记录在 [知识库](knowledge/知识库索引.md) 和 [完整 adapter 与客户端兼容说明](docs/完整适配器与客户端兼容说明.md)。
@@ -78,7 +79,7 @@ GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色
 ```powershell
 python -B scripts/prepare_client_compatibility.py `
   --source-root '<原始客户端目录>' `
-  --output-root '<新建覆盖目录>' --furniture --revival-display --dungeon-state --dungeon7 --dry-run
+  --output-root '<新建覆盖目录>' --furniture --revival-display --dungeon-state --inventory-gift-display --dungeon7 --dry-run
 ```
 
 兼容工具依据已登记的 PE 布局重定向家具 Index getter，让准备房复活次数 HUD 每帧从权威计数器刷新，关闭普通结算页的本地自动推进分支，安装连续关卡 P 弹恢复兼容逻辑，并按 `NANA_PACK` 结构生成地宫7道路与 SSTG/PON 兼容别名。站点校验、派生结果复核和 SHA-256 备份识别在同一流程完成。表情翻页由适配器端 C355 情侣姓名／戒指边界保障：空关系写入空姓名和零戒指，副本进度写入止于完整消息 `+0xDE`。C393 使用 1020 字节有界快照和 `info=2000` 终态；`info=6000` 表示继续分页。仓库提供适配工程文件，运行依赖见 [运行依赖](docs/运行依赖.md)。

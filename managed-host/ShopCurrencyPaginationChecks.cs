@@ -47,21 +47,21 @@ internal static class ShopCurrencyPaginationChecks
                 BinaryPrimitives.WriteUInt32LittleEndian(request.AsSpan(4), code);
                 return await Request(0xC431, request);
             }
-            var pets = ShopCatalog.All.Where(i => i.Section == InventorySection.Pet && i.IsPurchasable).ToArray();
-            Check(pets.Length > 0 && pets.All(i => i.PaysWithCash && i.HansPrice == 0), "all priced PET rows use Cash");
+            ShopCurrencyResourceChecks.Run();
             foreach (var (code, price) in new[] { (18_000_001u, 480u), (18_000_002u, 200u) })
                 Check(ShopCatalog.TryGet(code, out var gem) && gem.PaysWithCash && gem.CashPrice == price && gem.HansPrice == 0,
                     $"special gem {code} resource currency/price");
             // Explicit code/price oracles, not a test that trusts PaysWithCash to choose its expectation.
-            var cashCodes = new[] { pets.OrderBy(i => i.ItemCode).First().ItemCode, 18_000_001u, 18_000_002u, 14_002_486u };
+            var cashCodes = new[] { 15_009_263u, 18_000_001u, 18_000_002u, 14_002_486u };
+            var hansPrices = new Dictionary<uint, uint> { [15_001_011] = 100, [17_000_004] = 1000, [14_000_001] = 24 };
             await Execute($"UPDATE Characters SET Hans=12345678, Cash=87654321 WHERE Id={characterId}");
             long hans = 12345678, cash = 87654321;
             foreach (byte mode in new byte[] { 0, 2, 3, 4 })
-            foreach (uint code in cashCodes.Append(14_000_001u))
+            foreach (uint code in cashCodes.Concat(hansPrices.Keys))
             {
                 Check(ShopCatalog.TryGet(code, out var item), "purchase catalog row");
                 var result = await Buy(code, mode);
-                if (code == 14_000_001u) hans -= 2 * 24; else cash -= 2 * item.CashPrice;
+                if (hansPrices.TryGetValue(code, out var goldPrice)) hans -= 2 * goldPrice; else cash -= 2 * item.CashPrice;
                 var saved = (await db.GetCharacterAsync(account))!;
                 Check(result.Length == 104 && result[8] == 10 && result[9] == mode
                     && BinaryPrimitives.ReadInt64LittleEndian(result.AsSpan(88)) == cash
@@ -81,6 +81,36 @@ internal static class ShopCurrencyPaginationChecks
             }
             var reopened = (await new DatabaseService(root).GetCharacterAsync(account))!;
             Check(reopened.Hans == hans && reopened.Cash == 0, "currency persists on database reopen");
+
+            // Native gold requests use mode0. Cash must never cover an exhausted Hans wallet.
+            await Execute($"UPDATE Characters SET Hans=0,Cash=987654 WHERE Id={characterId}");
+            foreach (uint code in new[] { 15_001_011u, 17_000_004u })
+            {
+                var before = (await db.GetCharacterAsync(account))!;
+                var result = await Buy(code, 0);
+                var after = (await db.GetCharacterAsync(account))!;
+                Check(result[8] == 40 && after.Hans == 0 && after.Cash == 987654
+                    && after.CashInboxItems.Sum(i => i.Quantity) == before.CashInboxItems.Sum(i => i.Quantity),
+                    $"Hans insufficient does not spend Cash or grant item {code}");
+            }
+            // Exact-balance purchases, category spoofing, non-sale rows, and reopen persistence.
+            foreach (var (code, price) in hansPrices.Where(p => p.Key != 14_000_001))
+            {
+                await Execute($"UPDATE Characters SET Hans={2 * price},Cash=987654 WHERE Id={characterId}");
+                var result = await Buy(code, 0);
+                var after = (await new DatabaseService(root).GetCharacterAsync(account))!;
+                Check(result[8] == 10 && after.Hans == 0 && after.Cash == 987654,
+                    $"native gold mode0 exact balance persists {code}");
+                Check(BinaryPrimitives.ReadInt64LittleEndian(result.AsSpan(88)) == 987654
+                    && BinaryPrimitives.ReadInt64LittleEndian(result.AsSpan(96)) == 0,
+                    "gold C432 returns Cash then Hans without swapping response offsets");
+            }
+            var rejected = new byte[8]; rejected[0] = 0; rejected[1] = 17;
+            BinaryPrimitives.WriteUInt16LittleEndian(rejected.AsSpan(2), 1);
+            BinaryPrimitives.WriteUInt32LittleEndian(rejected.AsSpan(4), 15_001_011);
+            Check((await Request(0xC431, rejected))[8] == 40, "C431 rejects a spoofed pet category");
+            var nonSaleGem = ShopCatalog.All.First(i => i.Source == "PA._D9" && !i.IsPurchasable);
+            Check((await Buy(nonSaleGem.ItemCode, 0))[8] == 40, "zero-price PA remains non-sale");
 
             async Task<byte[]> Page(ushort page, ushort mode = 1)
             {

@@ -59,8 +59,39 @@ internal static class InventoryProtocolChecks
             && BinaryPrimitives.ReadUInt32LittleEndian(appearance.AsSpan(32))==0
             && BinaryPrimitives.ReadUInt32LittleEndian(appearance.AsSpan(36))==0,
             "C47F targets the allocated actor and carries zero wings, GM effect and pet without C368 rebuild");
+        CheckExpansionExpiryProjection();
         await CheckDispatchAsync();
         Console.WriteLine("INVENTORY_PROTOCOL_CHECKS_PASS");
+    }
+
+    private static void CheckExpansionExpiryProjection()
+    {
+        var boundary = new DateTime(2026, 9, 26, 12, 0, 0);
+        uint expiry = SkillSlotExpansionTime.Encode(boundary);
+        Check(NetworkAdapterService.GetActiveInventoryExpansionExpiration(expiry, boundary.AddTicks(-1)) == expiry,
+            "PET expansion is active immediately before its encoded expiry hour");
+        Check(NetworkAdapterService.GetActiveInventoryExpansionExpiration(expiry, boundary) == 0
+            && NetworkAdapterService.GetActiveInventoryExpansionExpiration(expiry, boundary.AddTicks(1)) == 0,
+            "PET expansion expires at the boundary, not one request or one hour later");
+        Check(NetworkAdapterService.GetActiveInventoryExpansionExpiration(0, boundary) == 0
+            && NetworkAdapterService.GetActiveInventoryExpansionExpiration(2099133123, boundary) == 0,
+            "zero and malformed future dates cannot enable the native PET gate");
+        foreach (bool ownsPet in new[] { false, true })
+        {
+            var stale = new CharacterRecord { PetInventoryExpansionExpires = 2000010100,
+                Items = ownsPet ? [new() { ItemCode = 15000001, Quantity = 1 }] : [] };
+            var payload = NetworkAdapterService.BuildPetInventoryPayload(stale);
+            Check(payload[1] == 0 && (payload.Length == 4
+                    || BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(2020)) == 0),
+                $"expired PET list clears local gate on reopen (ownedPet={ownsPet})");
+            Check(stale.PetInventoryExpansionExpires == 2000010100,
+                "wire normalization does not mutate persisted expiration history");
+        }
+        var active = new CharacterRecord { PetInventoryExpansionExpires = 2099123123 };
+        var activePayload = NetworkAdapterService.BuildPetInventoryPayload(active);
+        Check(activePayload[1] == 4 && activePayload.Length == 2024
+            && BinaryPrimitives.ReadUInt32LittleEndian(activePayload.AsSpan(2020)) == 2099123123,
+            "valid existing PET entitlement is preserved even with no owned pets");
     }
 
     private static uint[] ReadCodes(byte[] payload)
@@ -104,10 +135,10 @@ internal static class InventoryProtocolChecks
             await seed.ExecuteNonQueryAsync();
             Set(session, "Character", (await database.GetCharacterAsync(accountId))!);
             ushort control = 1;
-            async Task<byte[]?> Dispatch(ushort opcode, byte[] payload)
+            async Task<byte[]?> Dispatch(ushort opcode, byte[] payload, ushort? replayControl = null)
             {
                 var frame = NativeDungeonClient.Frame(opcode,payload);
-                BinaryPrimitives.WriteUInt16LittleEndian(frame, control++);
+                BinaryPrimitives.WriteUInt16LittleEndian(frame, replayControl ?? control++);
                 return await (Task<byte[]?>)dispatch.Invoke(service,
                     [frame,opcode,"WorldAdapter","127.0.0.1:30000","127.0.0.1",session,CancellationToken.None])!;
             }
@@ -200,6 +231,7 @@ internal static class InventoryProtocolChecks
                 ushort identity=BinaryPrimitives.ReadUInt16LittleEndian(inventory.AsSpan(16+row*8));
                 var expand=new byte[4];expand[0]=NetworkAdapterService.InventoryExpansionWireAction(rawType);
                 BinaryPrimitives.WriteUInt16LittleEndian(expand.AsSpan(2),identity);
+                ushort expansionControl = control;
                 var expanded=(await Dispatch(0xC480,expand))!;
                 Check(expanded[8]==0 && expanded[10]==expand[0] && expanded[11]==identity
                     && BinaryPrimitives.ReadUInt32LittleEndian(expanded.AsSpan(12))==tickets[^1].ItemCode,
@@ -207,6 +239,31 @@ internal static class InventoryProtocolChecks
                 var persisted=(await database.GetCharacterAsync(accountId))!;
                 Check(persisted.Items.Single(x=>x.ItemCode==tickets[^1].ItemCode).Quantity==1,
                     $"expansion raw{rawType} consumes one of two equal tickets");
+                var transportReplay = (await Dispatch(0xC480, expand, expansionControl))!;
+                Check(transportReplay.AsSpan(8).SequenceEqual(expanded.AsSpan(8))
+                    && (await database.GetCharacterAsync(accountId))!.Items.Single(x => x.ItemCode == tickets[^1].ItemCode).Quantity == 1,
+                    $"expansion raw{rawType} exact transport replay returns cached result without consuming survivor");
+                var reopenedTickets = (await Dispatch(0xC42F, []))!;
+                var survivorRows = Enumerable.Range(0, BinaryPrimitives.ReadUInt16LittleEndian(reopenedTickets.AsSpan(10)))
+                    .Where(i => BinaryPrimitives.ReadUInt32LittleEndian(reopenedTickets.AsSpan(12 + i * 8)) == tickets[^1].ItemCode).ToArray();
+                Check(survivorRows.Length == 1
+                    && BinaryPrimitives.ReadUInt16LittleEndian(reopenedTickets.AsSpan(16 + survivorRows[0] * 8)) != identity,
+                    $"expansion raw{rawType} reopening C430 cannot resurrect the consumed instance");
+                uint committedExpiry = BinaryPrimitives.ReadUInt32LittleEndian(expanded.AsSpan(16));
+                if (rawType == 1)
+                {
+                    var reopenedPet = (await Dispatch(0xC44B, []))!;
+                    Check(reopenedPet[9] == 4 && BinaryPrimitives.ReadUInt32LittleEndian(reopenedPet.AsSpan(2028)) == committedExpiry,
+                        "successful PET use restores exactly the committed entitlement on request-driven reopen");
+                }
+                if (rawType == 6)
+                {
+                    var reopenedBox = (await Dispatch(0xC378, []))!;
+                    var reopenedSkills = (await Dispatch(0xC3E7, [40, 0, 3, 1]))!;
+                    Check(BinaryPrimitives.ReadUInt32LittleEndian(reopenedBox.AsSpan(316)) == committedExpiry
+                        && BinaryPrimitives.ReadUInt32LittleEndian(reopenedSkills.AsSpan(132)) == committedExpiry,
+                        "skill success survives native follow-up C378 and mode40 C3E7 without inventing 2099 expiry");
+                }
                 var duplicate=(await Dispatch(0xC480,expand))!;
                 Check(duplicate[8]==1,"new transport request with a consumed expansion identity is refused");
             }

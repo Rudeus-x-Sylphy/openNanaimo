@@ -33,8 +33,15 @@ public sealed class NativeDungeonState
     internal (ushort Hp, ushort Mp) GetEffectiveResourceMaximums()
     {
         var pet = Get(68);
+        var appearance = new byte[36];
+        ReadOnlySpan<int> offsets = [0, 4, 8, 12, 20];
+        for (int i = 0; i < offsets.Length; i++)
+            BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(offsets[i], 4), Get(112 + i * 4));
+        BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(24, 4), Get(132));
         var resources = NetworkAdapterService.ResolveInventoryVitals(new CharacterRecord
         {
+            Level = checked((int)Math.Min(Get(8), 99)),
+            Appearance = appearance,
             MaxHp = checked((int)Math.Min(Get(16), ushort.MaxValue)),
             MaxMp = checked((int)Math.Min(Get(24), ushort.MaxValue)),
             EquippedPetItemCode = pet,

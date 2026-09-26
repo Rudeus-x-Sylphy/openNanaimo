@@ -17,8 +17,9 @@ public sealed partial class NetworkAdapterService
     {
         ArgumentNullException.ThrowIfNull(character);
         var (hpBonus, mpBonus) = GetSelectedPetResourceBonuses(character);
-        var maximumHp = (ushort)Math.Clamp((long)character.MaxHp + hpBonus, 1, ushort.MaxValue);
-        var maximumMp = (ushort)Math.Clamp((long)character.MaxMp + mpBonus, 0, ushort.MaxValue);
+        var (avatarHp, avatarMp) = AvatarEquipmentCatalog.GetResourceBonuses(character.Appearance, character.Level);
+        var maximumHp = (ushort)Math.Clamp((long)character.MaxHp + hpBonus + avatarHp, 1, ushort.MaxValue);
+        var maximumMp = (ushort)Math.Clamp((long)character.MaxMp + mpBonus + avatarMp, 0, ushort.MaxValue);
         return (current ?? new BattleResourceSnapshot(0, 0, 0)) with
         {
             MaximumHp = maximumHp,

@@ -91,7 +91,8 @@ public sealed partial class DatabaseService
                 SELECT item.Quantity, character.CurrentHp, character.CurrentMp,
                        character.MaxHp, character.MaxMp, character.EquippedPetItemCode,
                        COALESCE(pet.Quantity, 0), COALESCE(pet.PetAccessory0, 0),
-                       COALESCE(pet.PetAccessory1, 0), COALESCE(pet.PetAccessory2, 0)
+                       COALESCE(pet.PetAccessory1, 0), COALESCE(pet.PetAccessory2, 0),
+                       character.Level, character.Appearance
                 FROM CharacterItems AS item
                 INNER JOIN Characters AS character ON character.Id = item.CharacterId
                 INNER JOIN Accounts AS account ON account.Id = character.AccountId
@@ -117,6 +118,7 @@ public sealed partial class DatabaseService
                 // effective maxima must NEVER be saved into the base MaxHp/MaxMp.
                 var resources = NetworkAdapterService.ResolveInventoryVitals(new CharacterRecord
                 {
+                    Level = reader.GetInt32(10), Appearance = (byte[])reader.GetValue(11),
                     CurrentHp = authoritativeCurrentHp ?? reader.GetInt32(1),
                     CurrentMp = authoritativeCurrentMp ?? reader.GetInt32(2),
                     MaxHp = reader.GetInt32(3), MaxMp = reader.GetInt32(4),
@@ -200,7 +202,8 @@ public sealed partial class DatabaseService
         command.Transaction = transaction;
         command.CommandText = """
             SELECT c.MaxHp, c.MaxMp, c.EquippedPetItemCode, COALESCE(p.Quantity, 0),
-                   COALESCE(p.PetAccessory0, 0), COALESCE(p.PetAccessory1, 0), COALESCE(p.PetAccessory2, 0)
+                   COALESCE(p.PetAccessory0, 0), COALESCE(p.PetAccessory1, 0), COALESCE(p.PetAccessory2, 0),
+                   c.Level, c.Appearance
             FROM Characters AS c
             LEFT JOIN CharacterItems AS p ON p.CharacterId = c.Id
                 AND p.ItemCode = c.EquippedPetItemCode AND p.Quantity > 0
@@ -212,6 +215,7 @@ public sealed partial class DatabaseService
             return null;
         var resources = NetworkAdapterService.ResolveInventoryVitals(new CharacterRecord
         {
+            Level = reader.GetInt32(7), Appearance = (byte[])reader.GetValue(8),
             MaxHp = reader.GetInt32(0), MaxMp = reader.GetInt32(1),
             EquippedPetItemCode = checked((uint)reader.GetInt64(2)),
             Items = [new CharacterItemRecord

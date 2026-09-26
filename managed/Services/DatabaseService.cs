@@ -483,6 +483,8 @@ public sealed partial class DatabaseService
         }
 
         await MigrateLegacyAdapterSettingsAsync(connection, cancellationToken);
+        await InitializeApartmentRecommendationsAsync(connection, cancellationToken);
+        await InitializeApartmentHousingAsync(connection, cancellationToken);
         await MigrateQuickSlotIdentitySchemaAsync(connection, cancellationToken);
         await MigrateDungeonProgressToOfficialLayoutAsync(connection, cancellationToken);
         await MigrateDungeonStagePerformanceAsync(connection, cancellationToken);
@@ -732,12 +734,18 @@ public sealed partial class DatabaseService
                     Agility = MAX(0, Agility),
                     Intelligence = MAX(0, Intelligence),
                     Luck = MAX(0, Luck),
-                    MaxHp = MAX(
-                        MAX(0, MaxHp),
-                        1440 + MAX(0, Vitality) * 12 + (MIN(99, MAX(1, Level)) - 1) * 8),
-                    MaxMp = MAX(
-                        MAX(0, MaxMp),
-                        50 + MAX(0, Intelligence) * 10 + (MIN(99, MAX(1, Level)) - 1) * 5),
+                    MaxHp = CASE
+                        WHEN LastSavedAt IS NULL OR MaxHp <= 200 THEN MAX(
+                            MAX(0, MaxHp),
+                            1440 + MAX(0, Vitality) * 12 + (MIN(99, MAX(1, Level)) - 1) * 8)
+                        ELSE MIN(65535, MaxHp)
+                    END,
+                    MaxMp = CASE
+                        WHEN LastSavedAt IS NULL OR MaxMp < 0 THEN MAX(
+                            MAX(0, MaxMp),
+                            50 + MAX(0, Intelligence) * 10 + (MIN(99, MAX(1, Level)) - 1) * 5)
+                        ELSE MIN(65535, MaxMp)
+                    END,
                     CurrentHp = CASE
                         WHEN LastSavedAt IS NULL THEN MAX(
                             MAX(0, MaxHp),
@@ -811,6 +819,7 @@ public sealed partial class DatabaseService
         }
 
         await ClampPersistedEffectiveInventoryResourcesAsync(connection, cancellationToken);
+        await RepairApartmentInventoryPlacementsAsync(cancellationToken: cancellationToken);
     }
 
     public async Task<int> GetWebAdminPortAsync(
@@ -5389,6 +5398,11 @@ public sealed partial class DatabaseService
         var inventoryBefore = claimedItem.IsGameInventoryItem
             ? await GetGameInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken)
             : null;
+        var furnitureBefore = claimedItem.Section == InventorySection.Furniture
+            ? await GetInteriorInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken)
+            : null;
+        if (furnitureBefore is { Count: >= 84 })
+            return (false, "Furniture inventory is full.", checked((ushort)inboxQuantity), checked((ushort)inventoryQuantity));
         var newInboxQuantity = checked((ushort)(inboxQuantity - 1));
         var newInventoryQuantity = checked((ushort)(inventoryQuantity + 1));
         var now = DateTime.UtcNow.ToString("O");
@@ -5431,6 +5445,9 @@ public sealed partial class DatabaseService
             return (false, "The claimed item would move an equipped quick item beyond the inventory projection.",
                 checked((ushort)inboxQuantity), checked((ushort)inventoryQuantity));
         }
+        if (furnitureBefore is not null && !await RemapApartmentPlacementsAfterInsertionAsync(
+            connection, transaction, characterId, furnitureBefore, cancellationToken))
+            return (false, "Furniture placement capacity reached.", checked((ushort)inboxQuantity), checked((ushort)inventoryQuantity));
         await transaction.CommitAsync(cancellationToken);
         return (true, string.Empty, newInboxQuantity, newInventoryQuantity);
     }

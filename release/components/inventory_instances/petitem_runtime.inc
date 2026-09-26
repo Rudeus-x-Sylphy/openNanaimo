@@ -1,3 +1,4 @@
+#include "avatar_resource_runtime.inc"
 #ifndef NANAIMO_INVENTORY_INSTANCES_PETITEM_RUNTIME_INC
 #define NANAIMO_INVENTORY_INSTANCES_PETITEM_RUNTIME_INC
 #ifndef TEAMPLAY_FEATURE_DUPLICATE_EXACT_PET_GEMS
@@ -80,6 +81,9 @@ static unsigned pet_crafting_pet_adjust_attack(unsigned base){unsigned flat,pct,
 static void pet_crafting_pet_effective_resources(unsigned*hp_max,unsigned*hp_current,unsigned*mp_max,unsigned*mp_current){
     unsigned a,p,h,m,hm,mm,hc,mc;
     pet_crafting_pet_effect_sums(&a,&p,&h,&m);
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+    {unsigned ah,am;avatar_resource_bonuses(g_stable_equip,g_stable_effect,g_stable_level,&ah,&am);h+=ah;m+=am;}
+#endif
     hm=g_profile_hp_max+h;if(hm>65535u||hm<g_profile_hp_max)hm=65535u;
     mm=g_profile_mp_max+m;if(mm>65535u||mm<g_profile_mp_max)mm=65535u;
 #ifdef NANAIMO_GAMEPLAY_BRIDGE

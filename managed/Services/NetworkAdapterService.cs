@@ -2816,7 +2816,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     starterFurnitureGranted = starterResult.Granted;
                 }
                 await RefreshSessionCharacterAsync(session, token);
-                var interiorInventoryPayload = BuildInteriorInventoryPayload((byte)interiorInventoryMode, session.Character);
+                if (interiorInventoryMode != 30)
+                    await _database.RepairApartmentInventoryPlacementsAsync(session.Character!.Id, token);
+                var interiorInventoryPayload = interiorInventoryMode == 30
+                    ? BuildApartmentExteriorInventoryPayload(await _database.GetApartmentExteriorStateAsync(session.Character!.Id, token))
+                    : BuildPlacedInteriorInventoryPayload((byte)interiorInventoryMode, session.Character!,
+                        await _database.GetApartmentPlacementsAsync(session.Character!.Id, token));
                 _log($"{channel}:{remote} 恢复家装库存：mode={interiorInventoryMode} count={interiorInventoryPayload[3]} starterGranted={starterFurnitureGranted}");
                 if (starterFurnitureGranted)
                     AccountStateChanged?.Invoke();
@@ -2842,12 +2847,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
                 var itemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
                 var slot = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(6, 2));
-                var deleteResult = await _database.DeleteInventoryItemAsync(
+                var deleteResult = await _database.DeleteInteriorInventoryItemAsync(
                     session.AccountId,
                     session.Character.Id,
                     session.SessionId,
                     itemCode,
-                    InventorySection.Furniture,
+                    slot,
                     token);
                 if (deleteResult.Success)
                 {
@@ -3281,15 +3286,18 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var moveMode = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(0, 2));
                 CharacterRecord? apartmentOwner;
                 string requestedOwner;
-                // Mode 1 is the "My Room" command. Mode 3 is emitted when
-                // the player clicks the local house created by C36D; that
-                // request intentionally carries no owner identity because
-                // frame+84 == 100 already marked the house as this session's.
-                if (moveMode is 1 or 3)
+                // Street entries resolve the persistent owner identified by the current page's marker.
+                if (moveMode == 1)
                 {
                     await RefreshSessionCharacterAsync(session, token);
                     apartmentOwner = session.Character;
                     requestedOwner = session.Username;
+                }
+                else if (moveMode == 3)
+                {
+                    apartmentOwner = await ResolveStreetApartmentOwnerAsync(session,
+                        BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2)), token);
+                    requestedOwner = apartmentOwner?.Name ?? string.Empty;
                 }
                 else if (moveMode == 2
                     && TryDecodeGbkIdentity(
@@ -3304,12 +3312,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     }
                     else
                     {
-                        var ownerAccountId = long.TryParse(requestedOwner, out var numericAccountId)
-                            ? numericAccountId
-                            : await _database.GetAccountIdByUsernameAsync(requestedOwner, token) ?? 0;
-                        apartmentOwner = ownerAccountId > 0
-                            ? await _database.GetCharacterAsync(ownerAccountId, token)
-                            : null;
+                        apartmentOwner = await _database.FindApartmentOwnerAsync(requestedOwner, token);
                     }
                 }
                 else
@@ -3341,11 +3344,18 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 QueueUserAutoHealing(session, session, "synchronize apartment HP/MP after C38D");
                 var apartmentPlacements = await _database.GetApartmentPlacementsAsync(apartmentOwner.Id, token);
                 _log($"{channel}:{remote} 进入公寓：mode={moveMode} owner={requestedOwner} character={apartmentOwner.Name} objects={apartmentPlacements.Count(item => item.InteriorType >= 2)}；返回完整 C38E 私人房间结构");
-                return BuildNativeFrame(
-                    frame,
-                    0xC38E,
-                    BuildMiniRoomMovePayload(apartmentOwner, true, apartmentPlacements),
-                    session);
+                var roomEntry = BuildMiniRoomMovePayload(apartmentOwner, true, apartmentPlacements);
+                var streetHouse = await _database.GetOwnedApartmentHouseAsync(apartmentOwner.Id, token);
+                roomEntry[1] = streetHouse is null ? (byte)30 : (byte)10;
+                if (streetHouse is not null)
+                {
+                    roomEntry[24] = streetHouse.Town;
+                    roomEntry[26] = streetHouse.Page;
+                    roomEntry[27] = streetHouse.Slot;
+                }
+                var roomPoints = await _database.GetApartmentRecommendationPointsAsync(apartmentOwner.Id, token);
+                BinaryPrimitives.WriteUInt64LittleEndian(roomEntry.AsSpan(56, 8), checked((ulong)roomPoints));
+                return BuildNativeFrame(frame, 0xC38E, roomEntry, session);
             }
 
             case 0xC38F: // REQ_MINIROOM_USER_INFO -> ANS_MINIROOM_USER_INFO
@@ -3429,16 +3439,16 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return BuildNativeFrame(frame, 0xC406, catalogPayload, session);
             }
 
-            case 0xC398: // REQ_RECOMMEND_COUNT -> ANS_RECOMMEND_COUNT
-                if (!session.OnlineTracked || session.Character is null)
-                    return null;
-                if (payload.Length != ApartmentRecommendCountRequestPayloadLength)
-                {
-                    _log($"{channel}:{remote} apartment recommend-count request length invalid: expected {ApartmentRecommendCountRequestPayloadLength}, actual {payload.Length}; no response");
-                    return null;
-                }
-                // No recommendation records exist yet, so the persisted room count is zero.
-                return BuildNativeFrame(frame, 0xC399, BuildApartmentRecommendCountPayload(0), session);
+            case 0xC396:
+                return await HandleApartmentRecommendAsync(frame, payload, session, token);
+            case 0xC398:
+                return await HandleApartmentRecommendCountAsync(frame, payload, session, token);
+            case 0xC36E:
+            case 0xC407:
+            case 0xC40D:
+            case 0xC414:
+            case 0xC425:
+                return await HandleApartmentHousingAsync(frame, opcode, payload, session, token);
 
             case 0xC417: // REQ_MY_INTERIORITEM_WISHLIST -> ANS_MY_INTERIORITEM_WISHLIST
             {
@@ -4051,7 +4061,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
                 await RefreshSessionCharacterAsync(session, token);
-                return BuildNativeFrame(frame, 0xC37B, BuildShopMovePayload(session.Character), session);
+                return BuildNativeFrame(frame, 0xC37B, await BuildApartmentBalancesAsync(session.Character!, token), session);
 
             case 0xC3AB: // REQ_MOVE_SHOP -> ANS_MOVE_SHOP for physical village shops
             {
@@ -4299,88 +4309,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     session);
             }
 
-            case 0xC40B: // REQ_BUY_INTERIORITEM
-            {
-                if (!session.OnlineTracked || session.Character is null)
-                    return null;
-                if (payload.Length != InteriorPurchaseRequestPayloadLength)
-                {
-                    _log($"{channel}:{remote} 装饰商店购买请求长度无效：期望 {InteriorPurchaseRequestPayloadLength}，实际 {payload.Length}；返回失败结果");
-                    return BuildNativeFrame(
-                        frame,
-                        0xC40C,
-                        BuildInteriorPurchaseResultPayload(40, 0, [], session.Character.Cash, session.Character.Hans),
-                        session);
-                }
-
-                // The C40B constructor stores quantities in payload+8..+47
-                // and the matching item codes in payload+48..+207. Bytes
-                // +4..+6 are transient client flags and are not item data.
-                var paymentModeValue = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
-                var itemCount = payload[7];
-                var requestedItems = new List<(uint ItemCode, ushort Quantity, uint UnitPrice)>(itemCount);
-                var seenItemCodes = new HashSet<uint>();
-                var requestIsValid = paymentModeValue == 4
-                    && itemCount is > 0 and <= InteriorPurchaseRequestCapacity;
-                if (requestIsValid)
-                {
-                    for (var index = 0; index < itemCount; index++)
-                    {
-                        var quantity = payload[8 + index];
-                        var itemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(48 + index * sizeof(uint), sizeof(uint)));
-                        if (quantity == 0
-                            || !seenItemCodes.Add(itemCode)
-                            || !ShopCatalog.TryGet(itemCode, out var catalogItem)
-                            || catalogItem.Section != InventorySection.Furniture
-                            || catalogItem.Category != 11
-                            || catalogItem.HansPrice == 0)
-                        {
-                            requestIsValid = false;
-                            break;
-                        }
-                        requestedItems.Add((itemCode, quantity, catalogItem.HansPrice));
-                    }
-                }
-
-                if (!requestIsValid)
-                {
-                    await RefreshSessionCharacterAsync(session, token);
-                    _log($"{channel}:{remote} 装饰商店购买请求无效：mode={paymentModeValue} count={itemCount}；返回协议失败结果");
-                    return BuildNativeFrame(
-                        frame,
-                        0xC40C,
-                        BuildInteriorPurchaseResultPayload(
-                            40,
-                            paymentModeValue <= byte.MaxValue ? (byte)paymentModeValue : (byte)0,
-                            [],
-                            session.Character?.Cash ?? 0,
-                            session.Character?.Hans ?? 0),
-                        session);
-                }
-
-                var purchase = await _database.PurchaseInteriorItemsAsync(
-                    session.AccountId,
-                    session.Character.Id,
-                    session.SessionId,
-                    checked((byte)paymentModeValue),
-                    requestedItems,
-                    token);
-                await RefreshSessionCharacterAsync(session, token);
-                var resultCode = purchase.Success ? (byte)10 : purchase.InsufficientBalance ? (byte)50 : (byte)40;
-                _log($"{channel}:{remote} 装饰商店购买：mode={paymentModeValue} count={itemCount} items={string.Join(',', requestedItems.Select(item => $"{item.ItemCode}x{item.Quantity}"))} totalPrice={requestedItems.Sum(item => (long)item.Quantity * item.UnitPrice)} result={resultCode} hans={purchase.Hans} cash={purchase.Cash} error={purchase.Error}");
-                if (purchase.Success)
-                    AccountStateChanged?.Invoke();
-                return BuildNativeFrame(
-                    frame,
-                    0xC40C,
-                    BuildInteriorPurchaseResultPayload(
-                        resultCode,
-                        checked((byte)paymentModeValue),
-                        purchase.Success ? purchase.Items : [],
-                        purchase.Cash,
-                        purchase.Hans),
-                    session);
-            }
+            case 0xC40B:
+                return await HandleApartmentShopPurchaseAsync(frame, payload, session, token);
 
             case 0xC46F: // REQ_BUY_TOKENITEM
             {
@@ -5121,7 +5051,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         if (initializedTransitionTownScene)
                         {
                             session.TownSceneActive = true;
-                            QueueTownEntitySnapshots(session);
+                            await QueueTownEntitySnapshotsAsync(session, token);
                             if (GetEquippedPetItemCode(session.Character) != 0
                                 && _activeWorldSessions.TryGetValue(session.SessionId, out var transitionSelfTarget))
                             {
@@ -5182,7 +5112,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     if (initializedTownScene)
                     {
                         session.TownSceneActive = true;
-                        QueueTownEntitySnapshots(session);
+                        await QueueTownEntitySnapshotsAsync(session, token);
                         if (GetEquippedPetItemCode(session.Character) != 0
                             && _activeWorldSessions.TryGetValue(session.SessionId, out var townSelfTarget))
                         {
@@ -10872,7 +10802,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private void QueueTownDisconnectNotification(ConnectionSession session)
         => LeaveTownScene(session, "town connection leave");
 
-    private void QueueTownEntitySnapshots(ConnectionSession source)
+    private async Task QueueTownEntitySnapshotsAsync(ConnectionSession source, CancellationToken token)
     {
         if (source.Character is null
             || !_activeWorldSessions.TryGetValue(source.SessionId, out var sourcePresence))
@@ -10880,11 +10810,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         if (!source.TownMapMarkerInitialized)
         {
-            source.PendingBroadcasts.Add(new PendingNativeBroadcast(
-                sourcePresence,
-                0xC36D,
-                BuildTownMapMarkerPayload(source.Character),
-                "initialize local town map gender marker"));
+            await QueueApartmentHousePageAsync(source, includePeers: false, token);
             source.TownMapMarkerInitialized = true;
         }
 
@@ -17258,36 +17184,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     private static byte[] BuildAvatarInventoryPayload(CharacterRecord? character)
     {
-        // The client consumes 12-byte entries: item, equipped flag, slot and
-        // expiration. Appearance+4 is the base body resource, not clothing.
-        ReadOnlySpan<int> appearanceOffsets = [0, 8, 12, 16, 20, 24];
-        var items = new List<(uint ItemCode, ushort Equipped, ushort Slot)>(AvatarInventoryCapacity);
-        if (character is not null)
-        {
-            var appearance = BuildStoredAppearance(character);
-            for (ushort slot = 0; slot < appearanceOffsets.Length; slot++)
-            {
-                var itemCode = BinaryPrimitives.ReadUInt32LittleEndian(
-                    appearance.AsSpan(appearanceOffsets[slot], sizeof(uint)));
-                if (itemCode != 0 && items.All(item => item.ItemCode != itemCode))
-                    items.Add((itemCode, 1, slot));
-            }
-        }
-
-        if (character is not null)
-        {
-            foreach (var ownedItem in character.Items)
-            {
-                if (items.Count >= AvatarInventoryCapacity)
-                    break;
-                if (ownedItem.Quantity == 0
-                    || items.Any(item => item.ItemCode == ownedItem.ItemCode)
-                    || !ShopCatalog.TryGet(ownedItem.ItemCode, out var catalogItem)
-                    || catalogItem.Section != InventorySection.Clothing)
-                    continue;
-                items.Add((ownedItem.ItemCode, 0, checked((ushort)items.Count)));
-            }
-        }
+        var items = GetAvatarInventoryRows(character);
 
         var expansionExpiration = character?.AvatarInventoryExpansionExpires ?? 0;
         var payload = new byte[expansionExpiration != 0
@@ -17464,7 +17361,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         if (equippedPetItemCode != 0 && !petItems.Contains(equippedPetItemCode))
             equippedPetItemCode = 0;
         var hasPet = petItems.Length > 0;
-        var expansionExpiration = character?.PetInventoryExpansionExpires ?? 0;
+        var expansionExpiration = GetActiveInventoryExpansionExpiration(character?.PetInventoryExpansionExpires ?? 0);
         // Current C44C contract: mode4 enables expansion; frame+2028
         // is its expiry. Selection compares header+11 with each record handle.
         var payload = new byte[hasPet || expansionExpiration != 0 ? 2024 : 4];
@@ -17784,25 +17681,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             return payload;
 
         payload[1] = 1; // frame+9: box data loaded
-        ReadOnlySpan<int> appearanceOffsets = [0, 8, 12, 16, 20, 24];
-        var appearance = BuildStoredAppearance(character);
-        var itemCount = 0;
-        foreach (var appearanceOffset in appearanceOffsets)
-        {
-            if (appearanceOffset > appearance.Length - sizeof(uint))
-                continue;
-            var itemCode = BinaryPrimitives.ReadUInt32LittleEndian(
-                appearance.AsSpan(appearanceOffset, sizeof(uint)));
-            if (itemCode == 0)
-                continue;
-
-            var record = payload.AsSpan(4 + itemCount * 12, 12);
-            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(0, 4), itemCode);
-            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4, 4), (uint)itemCount);
-            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(8, 4), PermanentItemExpiration);
-            itemCount++;
-        }
-        payload[3] = (byte)itemCount; // frame+11
+        WriteEquippedAvatarIdentityRecords(payload, character);
 
         BuildStoredAppearance(character).CopyTo(payload, 124);
 
@@ -18519,7 +18398,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         var encodedName = Encoding.GetEncoding(936).GetBytes(owner.Name);
         var ownerNameLength = Math.Min(encodedName.Length, 15);
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), (ushort)ownerNameLength);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), GetCharacterUid(owner));
         encodedName.AsSpan(0, ownerNameLength).CopyTo(payload.AsSpan(4, 16));
 
         // A private room contains one local host entity. The following three
@@ -18832,29 +18711,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
-    private static byte[] BuildTownMapMarkerPayload(CharacterRecord character)
-    {
-        // C36D is the client's CHouse/map-marker snapshot. The original
-        // handler selects qz_village_icon_sex.im3 from frame+83:
-        // 1 -> male frame 0, 0 -> female frame 1. Without this packet the
-        // CHouse gender member remains uninitialized and visibly alternates
-        // between male and female across launches.
-        var payload = new byte[TownMapMarkerPayloadLength];
-        WriteFixedGbk(payload.AsSpan(0, 16), character.Name);
-
-        // frame+24/+28 are the exterior and banner codes. Zero asks the
-        // client to keep its built-in default house exterior and no banner.
-        // frame+32..+77 is the optional banner text and stays NUL-filled.
-        // frame+81 is a CHouse slot inside the current map, not the town-page
-        // number. The client creates these slots from zero upward and silently
-        // ignores a snapshot whose slot was not created by the map resource.
-        payload[73] = 0;
-        payload[75] = (byte)Math.Clamp(character.Gender, 0, 1); // frame+83
-        payload[76] = 100; // frame+84: this marker belongs to the local user
-        payload[77] = 0;   // frame+85: unlocked/default interaction state
-        return payload;
-    }
-
     private static ushort GetSceneEntityId(CharacterRecord character)
         => WireIdentityAllocator.GetSceneEntityId(character.Id);
 
@@ -19102,7 +18958,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640 or 0xC351 or 0xC353 or 0xC354 or 0xC358 or 0xC365 or 0xC367 or 0xC369 or 0xC36C or 0xC376 or 0xC387 or 0xC388 or 0xC578 or 0xC57D or 0xC57F or 0xC581 or 0xC583 or 0xC584 or 0xC585 or 0xC586 or 0xC587 or 0xCB21 or 0xCB22 or 0xCB23 or 0xCF09 or 0xCF0F or 0xCF15 or 0xCF1D or 0xCF6C or 0xCF6E or 0xCF70 or 0xCF73 or 0xCF75 or 0xCF77 or 0xCF7B or 0xCF7D or 0xCF7F or 0xCF87 or 0xCF8B or 0xCF8D or 0xCF93 or 0xCF95 or 0xCF99 or 0xCF9B or 0xD00D or 0xD00F or 0xD011 or 0xD034
             or 0xCFD1 or 0xCFD3 or 0xCFD5 or 0xCFD9 or 0xCFEB
             or 0xC378 or 0xC37A or 0xC3CB or 0xC3CD or 0xC3CF or 0xC3D1 or 0xC3D4 or 0xC3D6 or 0xC3D8 or 0xC3E7 or 0xC3E9 or 0xC3ED or 0xC3EF or 0xC3F3 or 0xC3FB or 0xC3FF or 0xC401 or 0xC431 or 0xC433 or 0xC469 or 0xC46B or 0xC46D or 0xC46F or 0xC47A or 0xC480 or 0xC491
-            or 0xC38D or 0xC38F or 0xC392 or 0xC398 or 0xC3AB or 0xC3AD or 0xC405 or 0xC409 or 0xC40B or 0xC40F or 0xC411 or 0xC417 or 0xC419 or 0xC41B or 0xC423 or 0xC42D or 0xC437 or 0xC439 or 0xC43B or 0xC42F or 0xC44B or 0xC44D or 0xC44F or 0xC451 or 0xC453 or 0xC473 or 0xC475 or 0xC47D or 0xC4AF or 0xC4B1 or 0xC4B3 or 0xC4B7 or 0xC4B8 or 0xC4BA or 0xC4BC or 0xC4BE or 0xC4BF or 0xC4E0 or 0xC4E1 or 0xC4E3 or 0xC4E5 or 0xC4E7 or 0xC4EA or 0xC595 or 0xC597 or 0xC599 or 0xC59B or 0xC59E or 0xC5AA or 0xC5B0 or 0xC5B2 or 0xC5B4 or 0xC5B6
+            or 0xC36E or 0xC396 or 0xC407 or 0xC40D or 0xC414 or 0xC425 or 0xC38D or 0xC38F or 0xC392 or 0xC398 or 0xC3AB or 0xC3AD or 0xC405 or 0xC409 or 0xC40B or 0xC40F or 0xC411 or 0xC417 or 0xC419 or 0xC41B or 0xC423 or 0xC42D or 0xC437 or 0xC439 or 0xC43B or 0xC42F or 0xC44B or 0xC44D or 0xC44F or 0xC451 or 0xC453 or 0xC473 or 0xC475 or 0xC47D or 0xC4AF or 0xC4B1 or 0xC4B3 or 0xC4B7 or 0xC4B8 or 0xC4BA or 0xC4BC or 0xC4BE or 0xC4BF or 0xC4E0 or 0xC4E1 or 0xC4E3 or 0xC4E5 or 0xC4E7 or 0xC4EA or 0xC595 or 0xC597 or 0xC599 or 0xC59B or 0xC59E or 0xC5AA or 0xC5B0 or 0xC5B2 or 0xC5B4 or 0xC5B6
             or 0xEB29 or 0xEB8F => "WorldAdapter",
         _ => null
     };

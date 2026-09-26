@@ -31,14 +31,29 @@ internal static class LauncherProfileChecks
                 $"hp_max={hp}\nhp_current={hp - 1}\nmp_max={mp}\nmp_current={mp - 1}\nattack=3456\ndefense=789\ncoin=0\nnana_point=0\n" +
                 "card_key_gold=7\ncard_key_mystery=8\nquickbar_expiry=2099123123\nfree_magic_key_expiry=2099123123\nskill_slot_x=52000001\nskill_grade0=5\nskill_grade1=5\n";
             var first = await database.ImportLocalProfileAsync(Profile(25, 1800, 700, "39"), root);
+            var initialAvatarBonus = AvatarEquipmentCatalog.GetResourceBonuses(first.Appearance, first.Level);
+            Check(first.MaxHp == 1800 && first.MaxMp == 700
+                && first.CurrentHp == 1800 + initialAvatarBonus.Hp
+                && first.CurrentMp == 700 + initialAvatarBonus.Mp,
+                "new profile initializes effective resources without folding avatar bonuses into GUI base");
+            // Reapply must preserve a deliberately injured ledger. Initial full HP/MP
+            // now include AVATA effects, so assuming that full == base tests the wrong contract.
+            await using (var injury = new SqliteConnection($"Data Source={database.DatabasePath}"))
+            {
+                await injury.OpenAsync();
+                await using var seed = injury.CreateCommand();
+                seed.CommandText = "UPDATE Characters SET CurrentHp=1800,CurrentMp=700 WHERE Id=$id";
+                seed.Parameters.AddWithValue("$id", first.Id);
+                await seed.ExecuteNonQueryAsync();
+            }
             var second = await database.ImportLocalProfileAsync(Profile(60, 2400, 5000, "auto"), root);
             Check(first.Id == second.Id, "profile reapply changes character identity");
             Check(second.Level == 25 && second.Experience == CharacterProgression.ExperienceRequiredForLevel(25),
                 "profile re-registration overwrote existing level/experience progression");
             Check(first.DungeonGrade == 39 && second.DungeonGrade == 39,
                 "fixed dungeon grade was not persisted or auto mode did not preserve it");
-            Check(first.CurrentHp == 1800 && first.CurrentMp == 700
-                && second.MaxHp == 2400 && second.CurrentHp == 1800
+            Console.WriteLine($"LAUNCHER_RESOURCE_FIXTURE first={first.CurrentHp}/{first.MaxHp},{first.CurrentMp}/{first.MaxMp} second={second.CurrentHp}/{second.MaxHp},{second.CurrentMp}/{second.MaxMp}");
+            Check(second.MaxHp == 2400 && second.CurrentHp == 1800
                 && second.MaxMp == 5000 && second.CurrentMp == 700,
                 "launcher maxima apply while legacy current HP/MP keys cannot overwrite persistent runtime resources");
             Check(second.AttackModifier == 3456 && second.DefenseFlat == 789 && second.InitialAttackMode == 2, "launcher combat values not applied");
@@ -122,6 +137,25 @@ internal static class LauncherProfileChecks
                 : null;
             Check(listenerCharacter?.DungeonGrade == 23,
                 "11999 profile registration did not persist the fixed dungeon grade");
+            // A profile with no expiry must not revoke a historical/paid entitlement.
+            // The live player's 2099 value alone cannot prove how that value originated.
+            await using (var entitlement = new SqliteConnection($"Data Source={database.DatabasePath}"))
+            {
+                await entitlement.OpenAsync();
+                await using var seed = entitlement.CreateCommand();
+                seed.CommandText = "UPDATE Characters SET SkillSlotExpansionExpires=2099123123, PetInventoryExpansionExpires=2027032503 WHERE Id=$id";
+                seed.Parameters.AddWithValue("$id", second.Id);
+                await seed.ExecuteNonQueryAsync();
+            }
+            var retained = await database.ImportLocalProfileAsync(Profile(25, 22222, 5000, "auto"), root);
+            Check(retained.SkillSlotExpansionExpires == 2099123123 && retained.PetInventoryExpansionExpires == 2027032503,
+                "profile omission preserves explicit DB skill/PET entitlements instead of guessing provenance and clearing them");
+            var revoked = await database.ImportLocalProfileAsync(
+                Profile(25, 22222, 5000, "auto") + "\nskill_slot_expiry=0\n", root);
+            Check(revoked.SkillSlotExpansionExpires == 0 && revoked.SelectedSkill1 == retained.SelectedSkill1
+                && revoked.PetInventoryExpansionExpires == retained.PetInventoryExpansionExpires,
+                "explicit profile skill expiry zero is honored independently of X selection and PET entitlement");
+            Console.WriteLine("LAUNCHER_EXPANSION_PROFILE_CHECKS_PASS omission-preserves-ledger explicit-zero-revokes-skill-only");
             var hpGem = ShopCatalog.All.First(item => item.Category == 17
                 && item.PetAccessoryEffects.Where(effect => effect.Enabled && effect.Type == 2)
                     .Sum(effect => effect.FixedValue) == 400).ItemCode;
@@ -134,8 +168,11 @@ internal static class LauncherProfileChecks
                 await seed.ExecuteNonQueryAsync();
             }
             var withGem = await database.ImportLocalProfileAsync(Profile(25,22222,5000,"auto"),root);
+            Console.WriteLine($"LAUNCHER_GEM_FIXTURE current={withGem.CurrentHp} base={withGem.MaxHp} effective={NetworkAdapterService.ResolveInventoryVitals(withGem).MaximumHp} pet={withGem.EquippedPetItemCode} gems={string.Join(",", withGem.Items.Where(i => i.ItemCode == withGem.EquippedPetItemCode).Select(i => i.PetAccessory0))}");
+            var avatarHp = AvatarEquipmentCatalog.GetResourceBonuses(withGem.Appearance, withGem.Level).Hp;
             Check(withGem.MaxHp==22222 && withGem.CurrentHp==22550
-                && NetworkAdapterService.ResolveInventoryVitals(withGem).MaximumHp==22622,
+                && NetworkAdapterService.GetSelectedPetResourceBonuses(withGem).Hp == 400
+                && NetworkAdapterService.ResolveInventoryVitals(withGem).MaximumHp==22222 + avatarHp + 400,
                 "profile reapply preserves absolute current above base and does not double selected gem capacity");
             Console.WriteLine("LAUNCHER_PROFILE_CHECKS_PASS level=25-preserved title=39-auto/42-fixed register11999=23 C355=39 CF71=39 native_grade=PASS frontier_reset=PASS hp=1800/2400 mp=700/5000 attack=3456 defense=789 selina_pet_level=3 accessory_d5=PASS inventory=PASS");
         }

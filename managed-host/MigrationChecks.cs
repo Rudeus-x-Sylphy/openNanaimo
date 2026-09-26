@@ -17,6 +17,10 @@ internal static class MigrationChecks
         await DungeonRankingChecks.RunAsync();
         BattleResourceSnapshotChecks.Run();
         await HealthRecoveryChecks.RunAsync();
+        await ApartmentInventoryChecks.RunAsync();
+        await ApartmentRecommendationChecks.RunAsync();
+        await ApartmentShopChecks.RunAsync();
+        await ApartmentHousingChecks.RunAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var token = timeout.Token;
         InventoryQuickbarChecks.Run();
@@ -279,14 +283,18 @@ internal static class MigrationChecks
         Assert(second.CurrentMapId == 77 && second.CurrentTownPage == 9
             && second.PositionX == 913 && second.PositionY == 917,
             "Profile reapply preserves last offline location");
-        Assert(second.MaxHp == 2400 && second.CurrentHp == 1800 && second.MaxMp == 700 && second.CurrentMp == 700
+        // The worn GM top at level25 contributes HP8000/MP1020. Changing the
+        // GUI base must preserve absolute effective current, not clip it to base.
+        Assert(first.CurrentHp == 9800 && first.CurrentMp == 1720,
+            "Profile fixture initializes full apparel-effective resources");
+        Assert(second.MaxHp == 2400 && second.CurrentHp == 9800 && second.MaxMp == 700 && second.CurrentMp == 1720
             && second.Hans == 12345 && second.Cash == 67890 && second.EquippedPetItemCode == 0
             && second.PetVariant == 0,
             "Profile reapply changes maxima, preserves runtime resources, and clears selected pet without changing location");
         var clamped = await db.ImportLocalProfileAsync(Profile("ProfileReapply", 1500, 60, 0,
             "skill_grade0=2\nskill_grade1=0\nskill_grade2=4\n", 100, 101), token);
-        Assert(clamped.MaxHp == 1500 && clamped.CurrentHp == 1500
-            && clamped.MaxMp == 700 && clamped.CurrentMp == 700,
+        Assert(clamped.MaxHp == 1500 && clamped.CurrentHp == 9500
+            && clamped.MaxMp == 700 && clamped.CurrentMp == 1720,
             "Profile reapply clamps persistent resources only when a configured maximum is lowered");
         var skills = await db.GetCharacterSkillsAsync(second.Id, token);
         Assert(skills.Count == 2 && skills.Single(x => x.SkillCode == 52000000).Grade == 2

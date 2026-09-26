@@ -55,7 +55,7 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("$ClientCompatibilityTool=Join-Path $Root 'scripts\\prepare_client_compatibility.py'", text)
         self.assertIn("$ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay'", text)
         self.assertIn('function Ensure-ClientCompatibility', text)
-        self.assertIn("'--furniture','--revival-display','--dungeon-state','--dungeon7','--overwrite','--apply'", text)
+        self.assertIn("'--furniture','--revival-display','--dungeon-state','--inventory-gift-display','--dungeon7','--overwrite','--apply'", text)
         self.assertNotIn("'--emotion'", text)
         self.assertIn('Fixed C393 is protocol hygiene, not the click-time Index repair.', text)
         self.assertNotIn("'--all','--overwrite','--apply'", text)

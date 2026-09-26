@@ -35,6 +35,9 @@ static DWORD __attribute__((stdcall)) fixed_clock(void){return 123400u;}
 static unsigned word(const unsigned char*p,unsigned o){return p[o]|((unsigned)p[o+1]<<8);}
 static int standalone(void){
     struct pet_crafting_pet_item_row*r;
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+    memset(g_stable_equip,0,sizeof(g_stable_equip));g_stable_effect=0u;
+#endif
     memcpy(g_stable_name,"TEST",5);g_stable_name_len=4;g_account_name[0]=0;
     g_stable_pet=PET;g_profile_hp_max=22222u;g_profile_hp_current=22222u;
     g_profile_mp_max=500u;g_profile_mp_current=500u;
@@ -146,6 +149,28 @@ static int carriers(void){
     CHECK(g_profile_hp_max==22222u&&g_profile_mp_max==500u);
     return 0;
 }
+static int avatar(void){
+    unsigned char state[MANAGED_STATE_SIZE];unsigned i;
+    seed(state,PET,30000u,1400u);
+    managed_put(state,8,25u);managed_put(state,12,30000u);
+    managed_put(state,120,10110337u); /* GM top: HP+200%, MP+300% */
+    for(i=0u;i<4u;i++){
+        CHECK(managed_bridge_import(state));
+        CHECK(pet_crafting_pet_effective_hp_max()==30622u);
+        CHECK(pet_crafting_pet_effective_mp_max()==1580u);
+        CHECK(pet_crafting_pet_effective_hp_current()==30000u);
+        CHECK(pet_crafting_pet_effective_mp_current()==1400u);
+        managed_bridge_snapshot(1,1);
+        CHECK(managed_get(captured+8,16)==22222u&&managed_get(captured+8,24)==500u);
+        CHECK(managed_get(captured+8,120)==10110337u);
+        memcpy(state,captured+8,MANAGED_STATE_SIZE);
+    }
+    managed_put(state,120,0u);CHECK(!managed_bridge_import(state)); /* no stale apparel allowance */
+    managed_put(state,20,22222u);managed_put(state,28,500u);CHECK(managed_bridge_import(state));
+    managed_put(state,120,10110337u);CHECK(managed_bridge_import(state));
+    CHECK(pet_crafting_pet_effective_hp_current()==22222u&&pet_crafting_pet_effective_mp_current()==500u);
+    return 0;
+}
 #endif
 int main(int argc,char**argv){
     pSd=capture_send;pT=fixed_clock;g_multi_current=0;
@@ -163,6 +188,7 @@ int main(int argc,char**argv){
         case 6:return saturation();
         case 7:return carriers();
         case 8:return standalone();
+        case 9:return avatar();
     }
     return 2;
 #endif
@@ -221,6 +247,9 @@ class InventoryVitalsBridgeTests(unittest.TestCase):
 
     def test_worker_resource_helper_uses_absolute_current(self):
         self.run_case(8)
+
+    def test_avatar_percent_and_gems_survive_roundtrip_without_healing(self):
+        self.run_case(9)
 
     def test_standalone_historical_full_rule_is_unchanged(self):
         self.run_case(0, standalone=True)

@@ -55,6 +55,8 @@ public sealed class ShopCatalogItem
     // including microphones (42) and card keys (47), share C430 identities.
     public bool IsGameInventoryItem => Section == InventorySection.GameItem && Category != 41;
     public bool IsShoppingCoupon => Category == 41;
+    public byte ShoppingCouponDomain { get; init; } = byte.MaxValue;
+    public uint ShoppingCouponValue { get; init; }
 
     public bool IsPurchasable => HansPrice > 0 || CashPrice > 0;
     public bool PaysWithCash => CashPrice > 0 && HansPrice == 0;
@@ -154,8 +156,62 @@ internal static class ShopCatalog
         LoadInventoryExpansionItems(result);
         LoadMiscItems(result);
         LoadFaceCoupons(result);
+        LoadShoppingCoupons(result);
         LoadCardSynthesisRewards(result);
         return result;
+    }
+
+    private static void LoadShoppingCoupons(Dictionary<uint, ShopCatalogItem> result)
+    {
+        // Coupon codes are contiguous within each domain; denominations are not linear.
+        AddCoupons(0, 41_000_001,
+        [
+            300, 500, 700, 1000, 1200, 1300, 1500, 2000, 2500, 3000, 400, 1800,
+            1100, 5000, 600, 800, 900, 1400, 1600, 1700, 1900, 2200, 2400, 2600,
+            2800, 3200, 2100, 2300, 2700, 2900, 3100, 3300, 3400, 3500, 3600, 3700,
+            3800, 3900, 4000, 4100, 4200, 4300, 4400, 4500, 4600, 4700, 4800, 4900,
+            5100, 5200, 5300, 5400, 5500, 5600, 5700, 5800, 5900, 6000, 6100, 6200,
+            6300, 6400, 6500, 6600, 6700, 6800, 6900, 7000, 7100, 7200, 7300, 7400,
+            7500, 7600, 7700, 7800, 7900, 8000, 8500, 9000, 8100, 8200, 8300, 8400,
+            8600, 8700, 8800, 8900, 9100, 9200, 9300, 9400, 9500, 9600, 9700, 9800,
+            9900, 10000, 10100, 10200, 10300, 10400, 10500, 10600, 10700, 10800, 11000, 11100,
+            11200, 11400, 11600, 11800, 12000, 12200, 12400, 12500, 12600, 12800, 13000, 13200,
+            15000
+        ]);
+        AddCoupons(1, 41_000_501,
+        [
+            1000, 1300, 1600, 1900, 2500, 2800, 4000, 3200, 3500, 2300, 3700, 3900,
+            3000, 6000, 1100, 1200, 1400, 1500, 1700, 1800, 2000, 2100, 2200, 2400,
+            2600, 3400, 3600, 3800, 2700, 2900, 3100, 3300, 4100, 4200, 4300, 4400,
+            4500, 4600, 4700, 4800, 4900, 5000, 5100, 5200, 5300, 5400, 5500, 5600,
+            5700, 5800, 5900, 6100, 6200, 6300, 6400, 6500, 6600, 6700, 6800, 6900,
+            7000, 7100, 7200, 7300, 7400, 7500, 7600, 7700, 7800, 7900, 8000, 8100,
+            8200, 8300, 8400, 8500, 8600, 8700, 8800, 8900, 9000, 9100, 9200, 9300,
+            9400, 9500, 9600, 9700, 9800, 9900, 10000, 10100, 10200, 10300, 10500, 10800,
+            12000, 10400, 10600, 10700, 10900, 11000, 11100, 11200, 11300, 11400, 11500, 11600,
+            11700, 11800, 11900, 12100, 12200, 12300, 12400, 12500, 12600, 12700, 12800, 12900,
+            13000, 13100, 13200, 13300, 13400, 13500, 13600, 13700, 13800, 14000, 14200, 14300,
+            14400, 14600, 14800, 15000, 15200, 15400, 15500, 15600, 15700, 15800, 15900, 18000
+        ]);
+
+        void AddCoupons(byte domain, uint firstCode, uint[] denominations)
+        {
+            for (var index = 0; index < denominations.Length; index++)
+            {
+                var code = firstCode + checked((uint)index);
+                if (!result.TryAdd(code, new ShopCatalogItem
+                {
+                    Category = 41,
+                    ItemCode = code,
+                    Name = domain == 1 ? "Furniture shopping coupon" : "Clothing shopping coupon",
+                    Section = InventorySection.GameItem,
+                    ShoppingCouponDomain = domain,
+                    ShoppingCouponValue = denominations[index],
+                    Source = "token._D15"
+                }))
+                    throw new InvalidDataException($"Duplicate shopping coupon {code}.");
+            }
+        }
     }
 
     private static void LoadCardSynthesisRewards(Dictionary<uint, ShopCatalogItem> result)
@@ -208,7 +264,9 @@ internal static class ShopCatalog
 
     private static void LoadInteriors(Dictionary<uint, ShopCatalogItem> result)
     {
-        const int headerFields = 3;
+        // Client 9CD0E0: four header fields; record+0x20 = field6 Hans,
+        // record+0x28 = field7 Cash (60E600 -> 8C4550 -> 8C48A0).
+        const int headerFields = 4;
         const int recordFields = 20;
         var fields = ReadFixedCatalog(InteriorResourceName, "INTERIOR", headerFields, recordFields, out var count);
         for (var index = 0; index < count; index++)
@@ -218,15 +276,16 @@ internal static class ShopCatalog
                 result,
                 fields,
                 offset,
+                0,
                 1,
-                2,
-                8,
                 6,
+                5,
                 InventorySection.Furniture,
                 "inter._D3",
                 index,
-                iconPathField: 14,
-                interiorTypeField: 3);
+                iconPathField: 13,
+                interiorTypeField: 2,
+                cashPriceField: 7);
         }
     }
 
@@ -251,7 +310,7 @@ internal static class ShopCatalog
                 offset,
                 0,
                 2,
-                null,
+                13, // 9EB1B0 -> 9F40E0: Hans; field14 remains Cash.
                 34,
                 InventorySection.Pet,
                 "pi._D7",
@@ -314,8 +373,10 @@ internal static class ShopCatalog
         {
             var offset = headerFields + index * recordFields;
             AddItem(
-                result, fields, offset, 0, 1, null, null,
+                result, fields, offset, 0, 1, 19, null,
                 InventorySection.GameItem, "PA._D9", index,
+                // 960B90: field19 -> +0x1A0 Hans, field20 -> +0x1A4 Cash.
+                cashPriceField: 20,
                 iconPathField: 22,
                 petAccessoryEffectsFirstField: 6);
         }
