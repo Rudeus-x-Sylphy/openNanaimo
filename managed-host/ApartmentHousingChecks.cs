@@ -66,6 +66,7 @@ internal static class ApartmentHousingChecks
                 _characters.Add(character);
                 _sessions.Add(sessionId);
             }
+            await Sql("UPDATE Characters SET Hans=100000");
             await CheckPurchasesAsync();
             await CheckExteriorsAsync();
             await CheckStreetIdentityAsync();
@@ -84,7 +85,7 @@ internal static class ApartmentHousingChecks
 
         private void CheckPolicyAndBanner()
         {
-            Check(ApartmentHousingPolicy.PurchaseRecommendationPoints == 1, "house price is one recommendation point");
+            Check(ApartmentLandPrices.TryGet(0, 7, out var price) && price.PurchaseHans == 9800 && price.RecommendationPoints == 200, "page seven costs 9800 Hans and 200 recommendation points");
             Check(ApartmentHousingPolicy.IsHouseSlot(0, 7, 0) && ApartmentHousingPolicy.IsHouseSlot(0, 7, 4)
                 && !ApartmentHousingPolicy.IsHouseSlot(0, 7, 5), "town zero page seven has slots zero through four");
             Check(!ApartmentHousingPolicy.IsHouseSlot(0, 0, 0) && !ApartmentHousingPolicy.IsHouseSlot(5, 7, 0)
@@ -129,22 +130,22 @@ internal static class ApartmentHousingChecks
 
         private async Task CheckPurchasesAsync()
         {
-            Check(await Purchase(0, 0, 7, 0) == 20, "zero-point character without profile cannot buy a house");
+            Check(await Purchase(0, 0, 7, 0) == 30, "zero-point character without profile cannot buy a house");
             await Points(0, 0);
-            Check(await Purchase(0, 0, 7, 0) == 20 && (await _db.GetApartmentHousesAsync(0, 7)).Count == 0,
-                "zero-point profile returns twenty and does not reserve address");
-            await Points(0, 1);
+            Check(await Purchase(0, 0, 7, 0) == 30 && (await _db.GetApartmentHousesAsync(0, 7)).Count == 0,
+                "zero-point profile returns thirty and does not reserve address");
+            await Points(0, 200);
             var before = (await _db.GetCharacterByIdAsync(_characters[0].Id))!;
             Check(await Purchase(0, 0, 7, 0) == 10 && await Balance(0) == 0,
-                "house purchase returns ten and debits exactly one point");
+                "house purchase returns ten and debits page recommendation price");
             var after = (await _db.GetCharacterByIdAsync(_characters[0].Id))!;
-            Check(before.Hans == after.Hans && before.Cash == after.Cash,
-                "house purchase does not debit Hans or Cash");
+            Check(before.Hans - after.Hans == 9800 && before.Cash == after.Cash,
+                "house purchase debits fourteen days of Hans and preserves Cash");
             await Points(0, 5);
             Check(await Purchase(0, 0, 7, 1) != 10 && await Balance(0) == 5,
                 "same character cannot purchase a second address or lose more points");
-            await Points(1, 1);
-            Check(await Purchase(1, 0, 7, 0) != 10 && await Balance(1) == 1,
+            await Points(1, 200);
+            Check(await Purchase(1, 0, 7, 0) != 10 && await Balance(1) == 200,
                 "another character on another channel cannot buy the occupied slot");
             Check(await Purchase(1, 0, 7, 1) == 10, "another character can buy a different slot");
             Check(await _db.GetOwnedApartmentHouseAsync(_characters[0].Id) is { Town: 0, Page: 7, Slot: 0 }
@@ -176,7 +177,7 @@ internal static class ApartmentHousingChecks
             Check(await _db.PurchaseApartmentHouseAsync(_characters[1].AccountId, _characters[6].Id,
                     _sessions[6], 0, 7, 4) != 10,
                 "housing purchase binds the account to the character");
-            await Points(2, 2);
+            await Points(2, 400);
             using (var start = new ManualResetEventSlim(false))
             {
                 var jobs = new ushort[] { 2, 3 }.Select(slot => Task.Run(async () =>
@@ -185,10 +186,11 @@ internal static class ApartmentHousingChecks
                 })).ToArray();
                 start.Set();
                 var results = await Task.WhenAll(jobs);
-                Check(results.Count(x => x == 10) == 1 && await Balance(2) == 1,
+                Check(results.Count(x => x == 10) == 1 && await Balance(2) == 200
+                    && (await _db.GetCharacterByIdAsync(_characters[2].Id))!.Hans == 90200,
                     "concurrent purchases by one character commit exactly one house and debit");
             }
-            await Points(3, 1); await Points(4, 1);
+            await Points(3, 300); await Points(4, 300);
             using (var start = new ManualResetEventSlim(false))
             {
                 var jobs = new[] { 3, 4 }.Select(who => Task.Run(async () =>
@@ -197,7 +199,9 @@ internal static class ApartmentHousingChecks
                 })).ToArray();
                 start.Set();
                 var results = await Task.WhenAll(jobs);
-                Check(results.Count(x => x == 10) == 1 && await Balance(3) + await Balance(4) == 1
+                Check(results.Count(x => x == 10) == 1 && await Balance(3) + await Balance(4) == 300
+                    && (await _db.GetCharacterByIdAsync(_characters[3].Id))!.Hans
+                       + (await _db.GetCharacterByIdAsync(_characters[4].Id))!.Hans == 186000
                     && (await _db.GetApartmentHousesAsync(0, 8)).Count == 1,
                     "concurrent buyers of one slot debit only its winner");
             }
@@ -385,7 +389,7 @@ internal static class ApartmentHousingChecks
             }
             await Points(0, 0x100000005L);
             var entry = await Move(visitor, 3, ownerUid);
-            Check(entry[0] == 10 && entry[1] == 10 && U16(entry, 2) == ownerUid
+            Check(entry[0] == 10 && entry[1] == 30 && U16(entry, 2) == ownerUid
                 && ReadText(entry.AsSpan(4, 16)) == _characters[0].Name
                 && entry[24] == house.Town && entry[25] == 0 && entry[26] == house.Page && entry[27] == house.Slot
                 && BinaryPrimitives.ReadUInt64LittleEndian(entry.AsSpan(56)) == (ulong)await Balance(0)
@@ -400,14 +404,14 @@ internal static class ApartmentHousingChecks
             await Sql($"UPDATE Accounts SET ActiveSessionId='{_sessions[5]}' WHERE Id={_characters[5].AccountId}; "
                 + $"UPDATE Characters SET ActiveSessionId='{_sessions[5]}' WHERE Id={_characters[5].Id}");
             var noHouseEntry = await Move(noHouseSession, 1);
-            Check(noHouseEntry[0] == 10 && noHouseEntry[1] == 30
+            Check(noHouseEntry[0] == 10 && noHouseEntry[1] == 20
                 && U16(noHouseEntry, 2) == WireIdentityAllocator.GetCharacterUid(_characters[5].Id)
                 && noHouseEntry.AsSpan(24, 4).ToArray().All(value => value == 0)
                 && BinaryPrimitives.ReadUInt64LittleEndian(noHouseEntry.AsSpan(56)) == 0,
-                "C38E house-less apartment has type thirty and no fabricated street address");
+                "C38E own address-less apartment retains decoration permissions without a fabricated street address");
             var highHouse = (await _db.GetOwnedApartmentHouseAsync(_characters[2].Id))!;
             var namedEntry = await Move(visitor, 2, name: _characters[2].Name);
-            Check(namedEntry[0] == 10 && namedEntry[1] == 10 && U16(namedEntry, 2) == highUid
+            Check(namedEntry[0] == 10 && namedEntry[1] == 30 && U16(namedEntry, 2) == highUid
                 && namedEntry[27] == highHouse.Slot
                 && BinaryPrimitives.ReadUInt64LittleEndian(namedEntry.AsSpan(56)) == (ulong)await Balance(2),
                 "C38E named visit uses allocated WireUID for large database IDs and the target balance");

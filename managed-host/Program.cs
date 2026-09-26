@@ -17,6 +17,31 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--inventory-gameitem-self-test"))
+    {
+        await InventoryGameItemChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--shop-currency-routing-self-test"))
+    {
+        await ShopCurrencyRoutingChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--apartment-gameplay-self-test"))
+    {
+        await ApartmentGameplayChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--apartment-launcher-self-test"))
+    {
+        await ApartmentLauncherChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--apartment-lease-self-test"))
+    {
+        await ApartmentLeaseChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--apartment-housing-self-test"))
     {
         await ApartmentHousingChecks.RunAsync();

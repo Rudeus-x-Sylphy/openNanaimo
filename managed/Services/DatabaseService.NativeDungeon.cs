@@ -362,6 +362,7 @@ public sealed partial class DatabaseService
         await ApplyLocalSidecarsAsync(connection, transaction, result.CharacterId, sidecars, token);
         await ReplaceLocalProfileSkillsAsync(connection, transaction, result.CharacterId, values, token);
         await ApplyLauncherDungeonGradeAsync(connection, transaction, result.CharacterId, dungeonGrade, token);
+        await ApplyApartmentLauncherPointsAsync(connection, transaction, result.CharacterId, values, token);
         var initialMaximum = await GetEffectiveInventoryResourceMaximaAsync(connection, transaction, result.CharacterId, token);
         if (initialMaximum is { } initial)
             await Execute("UPDATE Characters SET CurrentHp=$hp, CurrentMp=$mp WHERE Id=$id", ("$hp", initial.Hp), ("$mp", initial.Mp));
@@ -431,6 +432,7 @@ public sealed partial class DatabaseService
         await ApplyLocalSidecarsAsync(connection, transaction, existing.Id, sidecars, token);
         await ReplaceLocalProfileSkillsAsync(connection, transaction, existing.Id, values, token);
         await ApplyLauncherDungeonGradeAsync(connection, transaction, existing.Id, dungeonGrade, token);
+        await ApplyApartmentLauncherPointsAsync(connection, transaction, existing.Id, values, token);
         var effectiveMaximum = await GetEffectiveInventoryResourceMaximaAsync(connection, transaction, existing.Id, token);
         if (effectiveMaximum is { } maximum)
             await Execute("UPDATE Characters SET CurrentHp=MIN(CurrentHp,$hp), CurrentMp=MIN(CurrentMp,$mp) WHERE Id=$id",

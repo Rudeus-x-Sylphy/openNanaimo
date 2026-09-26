@@ -16,6 +16,7 @@ RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
     'scripts/verify_client_baseline.py',
     'scripts/prepare_client_compatibility.py',
+    'scripts/apartment_exterior_panel.py',
     'gui_launcher/nanaimo_launcher.ps1',
     'gui_launcher/client_connect.ps1',
     'gui_launcher/inventory_admin_gui.ps1',

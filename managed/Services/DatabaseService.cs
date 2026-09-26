@@ -4403,7 +4403,11 @@ public sealed partial class DatabaseService
         bool payWithCash = false,
         CancellationToken cancellationToken = default)
     {
-        if (accountId <= 0 || quantity == 0 || unitPrice == 0)
+        if (accountId <= 0 || quantity == 0 || unitPrice == 0
+            || !ShopCatalog.TryGet(itemCode, out var catalogItem)
+            || !catalogItem.IsPurchasable
+            || unitPrice != catalogItem.PurchasePrice
+            || payWithCash != catalogItem.PaysWithCash)
             return (false, false, "商城购买参数无效。", 0, 0, 0);
 
         var totalPrice = checked((long)quantity * unitPrice);
@@ -4792,7 +4796,12 @@ public sealed partial class DatabaseService
     {
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId))
             return (false, false, "商城会话无效。", 0, 0, 0);
-        if (paymentMode is not (0 or 2 or 3 or 4) || quantity == 0 || unitPrice == 0)
+        // A payment mode cannot override the currency or price of the catalog product.
+        if (paymentMode is not (0 or 2 or 3 or 4) || quantity == 0 || unitPrice == 0
+            || !ShopCatalog.TryGet(itemCode, out var catalogItem)
+            || !catalogItem.IsPurchasable
+            || unitPrice != catalogItem.PurchasePrice
+            || payWithCash != catalogItem.PaysWithCash)
             return (false, false, "商城付款参数无效。", 0, 0, 0);
 
         var totalPrice = checked((long)quantity * unitPrice);
@@ -5177,7 +5186,10 @@ public sealed partial class DatabaseService
             || recipientCharacterName.Any(char.IsControl)
             || quantity == 0
             || unitPrice == 0
-            || !ShopCatalog.TryGet(itemCode, out _)
+            || !ShopCatalog.TryGet(itemCode, out var catalogItem)
+            || !catalogItem.IsPurchasable
+            || unitPrice != catalogItem.PurchasePrice
+            || payWithCash != catalogItem.PaysWithCash
             || requiredRecipientGender is < 0 or > 1)
             return (false, true, false, false, false, "商城赠送参数无效。", 0, 0, 0);
 
@@ -6434,11 +6446,12 @@ public sealed partial class DatabaseService
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId))
             return (false, false);
 
+        // Starter grants depend on catalog identity, not on the retail price.
         foreach (var itemCode in ApartmentStarterItemCodes)
         {
             if (!ShopCatalog.TryGet(itemCode, out var item)
                 || item.Section != InventorySection.Furniture
-                || item.HansPrice != 0
+                || item.Source != "inter._D3"
                 || item.InteriorType > 4)
                 throw new InvalidDataException($"Apartment starter item {itemCode} does not match inter._D3.");
         }

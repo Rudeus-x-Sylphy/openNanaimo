@@ -560,7 +560,7 @@ internal static class ShopCatalog
         {
             var offset = headerFields + index * recordFields;
             AddItem(
-                result, fields, offset, 0, 2, null, 3,
+                result, fields, offset, 0, 2, 5, 3,
                 InventorySection.GameItem, "IE._D23", index,
                 iconPathField: 1, cashPriceField: 6,
                 inventoryExpansionTypeField: 7);

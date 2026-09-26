@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 210,
+  "count": 220,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -37,14 +37,39 @@
       "sha256": "34768DC26781037772AAE2B84CBE381A02136A6DD8B34977CFB73F9D92547D26"
     },
     {
+      "path": "managed-host/ApartmentCatalogChecks.cs",
+      "size": 12453,
+      "sha256": "3CFE5BA122485C605C2D6A1BA66CF6A23ADB0F69593202D2F635777F27A1C112"
+    },
+    {
+      "path": "managed-host/ApartmentGameplayChecks.cs",
+      "size": 20867,
+      "sha256": "1C6C81A69AD7A6F78947D11C41C343D482CC74485D542D0EE8217263D4BDE206"
+    },
+    {
       "path": "managed-host/ApartmentHousingChecks.cs",
-      "size": 32399,
-      "sha256": "C2C7F847D9AC15401FD6116D07A3D77A87D12E719BAFD481EFA4DEC7A9840941"
+      "size": 32876,
+      "sha256": "96C49B223E29538587980AC9C07B6E0536737071833CA0458C6D0DE7241A9593"
     },
     {
       "path": "managed-host/ApartmentInventoryChecks.cs",
-      "size": 30857,
-      "sha256": "1C2F4DE956A3D3F2E295C0244473C6506FBCEAD761FE0C6855FED2B6B314CD05"
+      "size": 30906,
+      "sha256": "D61A893079E123A38835673A4DD2326AA3D8876F715D82DDB59DA84A4CF37260"
+    },
+    {
+      "path": "managed-host/ApartmentLandPriceChecks.cs",
+      "size": 7267,
+      "sha256": "7F6D62A181225D6F6B5495A1F8E409FBE17401C1ED5FDC278EFC8772D39C9810"
+    },
+    {
+      "path": "managed-host/ApartmentLauncherChecks.cs",
+      "size": 2994,
+      "sha256": "73332786544592F1AACDAB60BD6AEB2224A5402EDF86881175480F01FD4CA574"
+    },
+    {
+      "path": "managed-host/ApartmentLeaseChecks.cs",
+      "size": 24892,
+      "sha256": "F1B931D3EFAFACFADB40A2D4DA2C664A01235C19036F919CFD19BC01F6F84270"
     },
     {
       "path": "managed-host/ApartmentProtocolChecks.cs",
@@ -107,6 +132,11 @@
       "sha256": "6C4DB020EA303A1F87502A3A664DBA23C3CDB92C06E8E4FF7A0E41E82C5E95FB"
     },
     {
+      "path": "managed-host/InventoryGameItemChecks.cs",
+      "size": 19948,
+      "sha256": "033874A0A37908834237838095B2603CE7A3F47E885C39E6F9264A255099ADE2"
+    },
+    {
       "path": "managed-host/InventoryLifecycleChecks.cs",
       "size": 33485,
       "sha256": "9956012371A920D88E0AA84B292E1C36CA80B84740792A4710A17886D18A17DB"
@@ -148,8 +178,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 8753,
-      "sha256": "9C859863157BF4B5FD407C20CA101805FDCE28339597B651D016C05C6ABF40F0"
+      "size": 9427,
+      "sha256": "87875E7462F6900272EE584521791A0E118B01A483718A7CB7F997C054E3D52A"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -160,6 +190,11 @@
       "path": "managed-host/ShopCurrencyResourceChecks.cs",
       "size": 3625,
       "sha256": "F150E60F7812753A5B53F95EFEFB9B856478F68A143831B6C6B6EB4EE2A7CC4C"
+    },
+    {
+      "path": "managed-host/ShopCurrencyRoutingChecks.cs",
+      "size": 21463,
+      "sha256": "097CCA67E36184E13CBED03DE66A19ED83B671512F8DC50917D3F1FEE2A0907C"
     },
     {
       "path": "managed-host/ShopDungeonChecks.cs",
@@ -318,8 +353,13 @@
     },
     {
       "path": "managed/Services/ApartmentHousingPolicy.cs",
-      "size": 3826,
-      "sha256": "80AC32BE9BEA519A5196FC2023601C327DBA0B14068A4B75DA6BF40F9426114B"
+      "size": 4088,
+      "sha256": "927E5432956A05D9AB77EE5B701D7F668C91866A6A2E7271934076FD31600BF9"
+    },
+    {
+      "path": "managed/Services/ApartmentLandPrices.cs",
+      "size": 3433,
+      "sha256": "A3B50E298678C81442FFDE2ECC18E5C3989D924AF8D36BF54941553E9CD30668"
     },
     {
       "path": "managed/Services/ArenaProtocol.cs",
@@ -358,13 +398,18 @@
     },
     {
       "path": "managed/Services/DatabaseService.ApartmentHousing.cs",
-      "size": 12638,
-      "sha256": "0311D671FC4CDA844B05A3E9AEF05D8A6F482E650CAD20E84040EFDFCF1ACC3A"
+      "size": 18297,
+      "sha256": "F7CC3B4B3F7B4BA30B31452FAAD6BA853978B8ABEEBCAB389343A09C66C2CA56"
     },
     {
       "path": "managed/Services/DatabaseService.ApartmentInventory.cs",
       "size": 17612,
       "sha256": "480AE35F3EAE44CC365BD54CBD3BC0EDD51BA8EBCEC233A031A1C2ABB2CD9F18"
+    },
+    {
+      "path": "managed/Services/DatabaseService.ApartmentLauncher.cs",
+      "size": 2158,
+      "sha256": "6EA4AFAA42779B4B14C2CCD7B24C7A7D2F515C9BBFE6FD6CB635B70ADEECA42B"
     },
     {
       "path": "managed/Services/DatabaseService.ApartmentRecommendations.cs",
@@ -392,19 +437,24 @@
       "sha256": "247B2AE9B449FD51EE4A8FE6A4A29750FD7C18EB2450091E3ABFE022029CDA0A"
     },
     {
+      "path": "managed/Services/DatabaseService.InventoryCoupons.cs",
+      "size": 8302,
+      "sha256": "614216A7C9C76F382FA1D972F269144AB95614A6CCBD76B8229D26819A0CB462"
+    },
+    {
       "path": "managed/Services/DatabaseService.LocalAccounts.cs",
       "size": 3397,
       "sha256": "D0CBE075FDC859695EA009A22AC10BB5857BCA9D9BBB628E28B36A51469FEF1F"
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
-      "size": 59930,
-      "sha256": "7A6EBE175D1A946EF410B0DB0E4BAF1C4433A4D0B073F525107A42551B637787"
+      "size": 60141,
+      "sha256": "1E329315185B305207A9AE793EC048A8407FF72E1865DF0BEA1C271645147644"
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 587179,
-      "sha256": "C694F89D22272988E446684548A9E53D700AC86E4A0633612E3503742ACB3B3F"
+      "size": 587952,
+      "sha256": "C62D971213D287E967FC71EBF880E07DA355E89626A993624C03CBDB7B6BD08A"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -478,8 +528,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.ApartmentHousing.cs",
-      "size": 8808,
-      "sha256": "434751C8188BD50CFD978525434E41DD062DE33577088D309D0F1AE1A113EBEC"
+      "size": 10802,
+      "sha256": "45E5C9BDFAF94BDB068012DD6090773579D5663804AC3E52DD886D99A13A21CE"
     },
     {
       "path": "managed/Services/NetworkAdapterService.ApartmentInventory.cs",
@@ -543,8 +593,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 947018,
-      "sha256": "2F00AF2755CFE59E2E859DC23284B7BEDFEB871088F387992D4FD2FC5854F088"
+      "size": 947375,
+      "sha256": "9D830492F1A97CE527B8A6D23436A76D79596E5B2C24DB1D0A9140138217213E"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -558,8 +608,8 @@
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
-      "size": 41394,
-      "sha256": "3BDE95022BA6896E6F5871E971AAC99543CE9E955EF7D7763F02466871D07FD7"
+      "size": 41391,
+      "sha256": "49B48B672EC859273A41EFFF805788A57634309F142CD655BCCD66028726DC39"
     },
     {
       "path": "managed/Services/ProtocolInspector.cs",

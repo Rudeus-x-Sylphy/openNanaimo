@@ -56,8 +56,14 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0x2E0000, 0x14000, 0x11400),
         (0x360000, 0x10000, 0x25400),
         (0x400000, 0x30000, 0x35400),
+        (0x110000, 0x4000, 0x65400),
+        (0x830000, 0x10000, 0x69400),
+        (0x130000, 0x10000, 0x79400),
+        (0x190000, 0x60000, 0x89400),
+        (0x1000, 0xF000, 0xE9400),
+        (0x840000, 0x10000, 0xF8400),
     ]
-    data = bytearray(0x65400)
+    data = bytearray(0x108400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -74,6 +80,17 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         data[offset:offset + len(blob)] = blob
         return offset
     furniture_offset = put(compat.FURNITURE_CALL_VA, furniture)
+    put(compat.LAND_PURCHASE_VTABLE_VA, compat.LAND_PURCHASE_VTABLE_OLD)
+    put(compat.LAND_PURCHASE_CAVE_VA, compat.LAND_PURCHASE_CAVE_OLD)
+    put(compat.LAND_BALANCE_YIELD_VA, compat.LAND_BALANCE_YIELD_OLD)
+    put(compat.APARTMENT_EXTERIOR_CALL_VA, compat.APARTMENT_EXTERIOR_CALL_OLD)
+    put(compat.APARTMENT_EXTERIOR_CAVE_VA, compat.APARTMENT_EXTERIOR_CAVE_OLD)
+    for _, va, old, _ in compat.APARTMENT_EXTERIOR_LAYOUT_SITES:
+        put(va, old)
+    for _, va, old, _ in compat._apartment_decoration_patch_sites():
+        put(va, old)
+    for _, va, old, _ in compat.exterior_panel.patch_sites():
+        put(va, old)
     put(compat.REVIVAL_HUD_HOOK_VA, revival_hook)
     put(compat.REVIVAL_HUD_CAVE_VA, revival_cave)
     put(compat.SETTLEMENT_AUTO_GATE_VA, settlement_gate)

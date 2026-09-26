@@ -6,6 +6,32 @@ namespace OpenNanaimo.Adapter.Services;
 
 public sealed partial class NetworkAdapterService
 {
+    // Ownership and a street address are independent room properties.
+    internal static byte GetApartmentRoomType(bool isOwner, bool hasStreetAddress)
+        => isOwner ? (hasStreetAddress ? (byte)10 : (byte)20)
+            : (hasStreetAddress ? (byte)30 : (byte)40);
+    internal static uint EncodeApartmentHouseTime(DateTimeOffset time)
+    {
+        var utc = time.UtcDateTime;
+        return checked((uint)(utc.Year * 1_000_000L + utc.Month * 10_000L + utc.Day * 100L + utc.Hour));
+    }
+
+    internal static void ApplyApartmentHouseState(Span<byte> roomEntry, bool isOwner,
+        ApartmentHouse? house, DateTimeOffset now)
+    {
+        var activeHouse = house is not null && house.ExpiresAt > now ? house : null;
+        roomEntry[1] = GetApartmentRoomType(isOwner, activeHouse is not null);
+        roomEntry.Slice(24, 4).Clear();
+        roomEntry.Slice(32, 8).Clear();
+        if (activeHouse is null) return;
+        roomEntry[24] = activeHouse.Town;
+        roomEntry[26] = activeHouse.Page;
+        roomEntry[27] = activeHouse.Slot;
+        // Both calendar values use UTC so remaining days are independent of the host time zone.
+        BinaryPrimitives.WriteUInt32LittleEndian(roomEntry.Slice(32, 4), EncodeApartmentHouseTime(activeHouse.ExpiresAt));
+        BinaryPrimitives.WriteUInt32LittleEndian(roomEntry.Slice(36, 4), EncodeApartmentHouseTime(now));
+    }
+
     private async Task<byte[]?> HandleApartmentHousingAsync(byte[] frame, ushort opcode, byte[] payload,
         ConnectionSession session, CancellationToken token)
     {
@@ -25,13 +51,23 @@ public sealed partial class NetworkAdapterService
                     AccountStateChanged?.Invoke();
                     await QueueApartmentHousePageAsync(session, includePeers: true, token);
                 }
-                return BuildNativeFrame(frame, 0xC36F, ApartmentDword(result), session);
+                var purchaseReply = BuildNativeFrame(frame, 0xC36F, ApartmentDword(result), session);
+                if (result != 10) return purchaseReply;
+                await RefreshSessionCharacterAsync(session, token);
+                return CombineNativeFrames(purchaseReply, BuildNativeFrame(frame, 0xC37B,
+                    await BuildApartmentBalancesAsync(session.Character!, token), session));
             }
             case 0xC407:
-                return payload.Length == 4
-                    ? BuildNativeFrame(frame, 0xC408, ApartmentHousingPolicy.Catalog(
+            {
+                if (payload.Length != 4) return null;
+                await RefreshSessionCharacterAsync(session, token);
+                return CombineNativeFrames(
+                    BuildNativeFrame(frame, 0xC408, ApartmentHousingPolicy.Catalog(
                         BinaryPrimitives.ReadUInt16LittleEndian(payload),
-                        BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2))), session) : null;
+                        BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2))), session),
+                    BuildNativeFrame(frame, 0xC37B,
+                        await BuildApartmentBalancesAsync(session.Character!, token), session));
+            }
             case 0xC425:
                 return payload.Length == 0
                     ? BuildNativeFrame(frame, 0xC426, BuildApartmentExteriorInfoPayload(

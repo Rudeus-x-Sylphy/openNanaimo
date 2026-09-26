@@ -2309,7 +2309,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var inventorySlot = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(66, 2));
                 await RefreshInventoryCharacterAsync(session, token);
                 var gameItems = GetGameInventoryItemCodes(session.Character);
-                if (!TryResolveSessionInventoryIdentity(session, inventorySlot, out _, out var faceCouponCode)
+                if (!TryResolveSessionInventoryIdentity(session, inventorySlot, out var faceCouponOrdinal, out var faceCouponCode)
                     || !ShopCatalog.TryGet(faceCouponCode, out var faceCoupon)
                     || faceCoupon.Category != 45)
                 {
@@ -2323,6 +2323,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     session.SessionId,
                     faceCoupon.ItemCode,
                     requestedAppearance,
+                    faceCouponOrdinal,
                     token);
                 if (!use.Success)
                 {
@@ -2931,6 +2932,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
                 var itemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
                 var slot = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(4, 2));
+                await RefreshInventoryCharacterAsync(session, token);
                 var validIdentity = TryResolveSessionInventoryIdentity(session, slot, out var storageIndex, out var ownedCode)
                     && ownedCode == itemCode;
                 var deleteResult = validIdentity
@@ -3346,13 +3348,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 _log($"{channel}:{remote} 进入公寓：mode={moveMode} owner={requestedOwner} character={apartmentOwner.Name} objects={apartmentPlacements.Count(item => item.InteriorType >= 2)}；返回完整 C38E 私人房间结构");
                 var roomEntry = BuildMiniRoomMovePayload(apartmentOwner, true, apartmentPlacements);
                 var streetHouse = await _database.GetOwnedApartmentHouseAsync(apartmentOwner.Id, token);
-                roomEntry[1] = streetHouse is null ? (byte)30 : (byte)10;
-                if (streetHouse is not null)
-                {
-                    roomEntry[24] = streetHouse.Town;
-                    roomEntry[26] = streetHouse.Page;
-                    roomEntry[27] = streetHouse.Slot;
-                }
+                ApplyApartmentHouseState(roomEntry, apartmentOwner.Id == session.Character!.Id,
+                    streetHouse, DateTimeOffset.UtcNow);
                 var roomPoints = await _database.GetApartmentRecommendationPointsAsync(apartmentOwner.Id, token);
                 BinaryPrimitives.WriteUInt64LittleEndian(roomEntry.AsSpan(56, 8), checked((ulong)roomPoints));
                 return BuildNativeFrame(frame, 0xC38E, roomEntry, session);
@@ -4329,7 +4326,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var itemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
                 var catalogItemFound = ShopCatalog.TryGet(itemCode, out var catalogItem)
                     && IsSupportedSpecialShopCategory(catalogItem.Category);
-                if (paymentMode != 4 || quantity == 0 || !catalogItemFound || !catalogItem.IsPurchasable)
+                // C46F uses the same payment choices as C431, but stores the mode as a WORD.
+                // Validate before narrowing so high-byte values cannot alias a supported mode.
+                if (paymentMode > byte.MaxValue
+                    || !IsNativeShopPaymentMode((byte)paymentMode)
+                    || quantity == 0 || !catalogItemFound || !catalogItem.IsPurchasable)
                 {
                     await RefreshSessionCharacterAsync(session, token);
                     _log($"{channel}:{remote} 特殊商城购买请求不在客户端目录：mode={paymentMode} quantity={quantity} item={itemCode}；返回协议失败结果");
@@ -15979,7 +15980,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     pageSkills[index].SkillCode);
                 payload[116 + index] = pageSkills[index].Grade;
             }
-            var skillSlotExpiration = character.SkillSlotExpansionExpires;
+            var skillSlotExpiration = GetActiveInventoryExpansionExpiration(character.SkillSlotExpansionExpires, currentTime);
             BinaryPrimitives.WriteUInt32LittleEndian(
                 payload.AsSpan(124, 4),
                 skillSlotExpiration);
@@ -17761,7 +17762,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             character.QuickSlotExpansionExpires);
         BinaryPrimitives.WriteUInt32LittleEndian(
             payload.AsSpan(308, 4),
-            character.SkillSlotExpansionExpires);
+            GetActiveInventoryExpansionExpiration(character.SkillSlotExpansionExpires, currentTime));
         BinaryPrimitives.WriteUInt32LittleEndian(
             payload.AsSpan(312, 4),
             SkillSlotExpansionTime.Encode(currentTime ?? DateTime.Now));

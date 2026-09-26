@@ -18,6 +18,7 @@ internal static class ApartmentInventoryChecks
     public static async Task RunAsync()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        await ApartmentCatalogChecks.RunAsync();
         CheckBuilders();
         await CheckLifecycleAsync();
         Console.WriteLine("APARTMENT_INVENTORY_CHECKS_PASS selection=instance surfaces=PASS removal=atomic insertion=atomic repair=idempotent dispatch=PASS");

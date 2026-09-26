@@ -6,8 +6,13 @@ internal readonly record struct ApartmentExteriorItem(uint Code, byte Index, uin
 
 internal static class ApartmentHousingPolicy
 {
-    // A street address is permanent and unique across all channels.
-    internal const long PurchaseRecommendationPoints = 1;
+    internal const int LeaseDays = 14;
+    internal static readonly TimeSpan LeaseDuration = TimeSpan.FromDays(LeaseDays);
+
+    internal static uint GetRemainingSeconds(DateTimeOffset expiresAt, DateTimeOffset now)
+        => expiresAt <= now ? 0 : (uint)Math.Min(uint.MaxValue, Math.Ceiling((expiresAt - now).TotalSeconds));
+
+    // A leased street address is unique across all channels.
     private static readonly Dictionary<int, byte> HouseSlots = new()
     {
         [10002] = 8,

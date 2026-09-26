@@ -6,6 +6,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 class LauncherContractTests(unittest.TestCase):
+    def test_apartment_exterior_is_applied_during_normal_launch(self):
+        text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
+        self.assertIn("'--land-purchase','--apartment-exterior','--dungeon7'", text)
+
     def test_adapter_artifacts_and_process_contract(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         native_build = (ROOT / 'scripts/build_adapter.ps1').read_text('utf-8-sig')
@@ -45,6 +49,20 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn('function Write-RuntimeIdentity', text)
         self.assertIn('Assert-AdapterPortsAvailable', text.split('function Start-LocalAdapter', 1)[1])
         self.assertIn('Write-RuntimeIdentity $proc', text)
+    def test_apartment_points_are_a_persistent_launcher_setting(self):
+        launcher = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
+        for expected in ("'apartment_recommendation_points' 1000", "$apartmentPointsBox=New-ResourceNumeric",
+                         'apartment_recommendation_points=[uint32][decimal]$apartmentPointsBox.Value',
+                         '"apartment_recommendation_points=$($resources.apartment_recommendation_points)"',
+                         'apartment_recommendation_points=$resources.apartment_recommendation_points',
+                         '$apartmentPointsBox.Value=1000'):
+            self.assertIn(expected, launcher)
+        database = (ROOT / 'managed/Services/DatabaseService.ApartmentLauncher.cs').read_text('utf-8-sig')
+        self.assertIn('DefaultApartmentRecommendationPoints = 1000', database)
+        self.assertIn('ConfiguredPoints=$points', database)
+        profile = (ROOT / 'managed/Services/DatabaseService.NativeDungeon.cs').read_text('utf-8-sig')
+        self.assertEqual(profile.count('await ApplyApartmentLauncherPointsAsync('), 2)
+
     def test_connection_parameter_uses_adapter_name(self):
         text = (ROOT / 'gui_launcher/client_connect.ps1').read_text('utf-8-sig')
         self.assertTrue(text.startswith('param([Parameter(Position=0)][string]$AdapterIP,'))
@@ -55,7 +73,7 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("$ClientCompatibilityTool=Join-Path $Root 'scripts\\prepare_client_compatibility.py'", text)
         self.assertIn("$ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay'", text)
         self.assertIn('function Ensure-ClientCompatibility', text)
-        self.assertIn("'--furniture','--revival-display','--dungeon-state','--inventory-gift-display','--dungeon7','--overwrite','--apply'", text)
+        self.assertIn("'--furniture','--revival-display','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--dungeon7','--overwrite','--apply'", text)
         self.assertNotIn("'--emotion'", text)
         self.assertIn('Fixed C393 is protocol hygiene, not the click-time Index repair.', text)
         self.assertNotIn("'--all','--overwrite','--apply'", text)

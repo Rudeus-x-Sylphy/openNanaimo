@@ -29,7 +29,7 @@
     "derived_outputs": [
       {
         "path": "game.exe",
-        "operation": "automatic reviewed-site furniture Index redirect, ready-room revival HUD refresh, manual stage confirmation, consecutive-stage power-form restoration, and scoped gift-refresh preview HP/MP preservation"
+        "operation": "automatic reviewed-site furniture Index redirect, ready-room revival HUD refresh, manual stage confirmation, consecutive-stage power-form restoration, scoped gift-refresh preview HP/MP preservation, street-house purchase confirmation and owned-house exterior decoration input and constructor-derived hit geometry, repeat exterior inventory rebuild and body-preview image getter, scoped exterior HUD/input ownership and teardown, native exterior shop button and preview resource types, initialized save payload and save feedback, banner icon getter stack correction with reviewed previous-recipe migration, bounded exterior Korean-to-GBK literals, request-bound native save-success notice"
       },
       {
         "path": "Village_map_image/Village_map_image.pack",
@@ -102,7 +102,10 @@
       "ring_suffix": "WORD full-frame +0xF0",
       "revival_count": "BYTE full-frame +0xF2",
       "fail_closed": "without a catalog-backed couple ring and nonempty partner name, name and ring remain zero so the native name gate blocks lookup"
-    }
+    },
+    "support_files": [
+      "scripts/apartment_exterior_panel.py"
+    ]
   },
   "provided_in_repository": [
     {
