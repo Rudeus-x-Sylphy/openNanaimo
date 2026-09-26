@@ -85,6 +85,7 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
+            var townResources = session.NonCombatResourceSnapshot;
             await CloseNativeDungeonAsync(session, boundary);
             session.NativeBattleEpoch = checked(session.NativeBattleEpoch + 1);
             var nativeBattleEpoch = session.NativeBattleEpoch;
@@ -103,6 +104,8 @@ public sealed partial class NetworkAdapterService
                     state,
                     nativeBattleEpoch,
                     checked((uint)Math.Clamp((int)character.InitialAttackMode, 0, 3)));
+            session.NativeBattleResources = ResolveInventoryVitals(character,
+                inheritedResources ?? townResources ?? session.NativeBattleResources).ForEpoch(nativeBattleEpoch);
             session.NativeBattleAttackMode = session.NativeBattleResources.AttackMode;
             session.PendingBattleResourceSnapshot = null;
             await _database.RestoreNativeDungeonProgressAsync(character.Id, state, token);
@@ -198,7 +201,7 @@ public sealed partial class NetworkAdapterService
                     && session.Character is { } resourceCharacter
                     && BattleResourceSnapshot.TryReadSettlementCurrentMp(
                         frame,
-                        checked((ushort)Math.Clamp(resourceCharacter.MaxMp, 0, ushort.MaxValue)),
+                        ResolveInventoryVitals(resourceCharacter, resources).MaximumMp,
                         out var currentMp))
                 {
                     var effectiveMaximumMp = resources.MaximumMp > 0
@@ -963,13 +966,7 @@ public sealed partial class NetworkAdapterService
                 out var actorCurrentHp,
                 out var actorCurrentMp))
         {
-            var profileMaximumHp = checked((ushort)Math.Clamp(actorCharacter.MaxHp, 1, ushort.MaxValue));
-            var profileMaximumMp = checked((ushort)Math.Clamp(actorCharacter.MaxMp, 1, ushort.MaxValue));
-            session.NativeBattleResources = actorResources.ObserveWorkerActor(
-                profileMaximumHp,
-                profileMaximumMp,
-                checked((ushort)Math.Min(actorCurrentHp, profileMaximumHp)),
-                checked((ushort)Math.Min(actorCurrentMp, profileMaximumMp)));
+            session.NativeBattleResources = ObserveInventoryActorVitals(actorCharacter, actorResources);
         }
         if (session.NativeBattleResources is { } resources
             && session.Character is { } resourceCharacter)
@@ -1226,6 +1223,9 @@ public sealed partial class NetworkAdapterService
     {
         if (session.NativeDungeon is null)
         {
+            if (boundary == BattleResourceBoundary.TownReturn && session.Character is { } townCharacter)
+                session.NonCombatResourceSnapshot = ResolveInventoryVitals(townCharacter,
+                    session.NativeBattleResources ?? session.NonCombatResourceSnapshot);
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
@@ -1241,6 +1241,8 @@ public sealed partial class NetworkAdapterService
             await CommitNativeCheckpointAsync(session, null, timeout.Token);
             var finalResources = session.NativeBattleResources
                 ?? BattleResourceSnapshot.Capture(session.NativeCheckpoint!, session.NativeBattleEpoch);
+            if (session.Character is { } finalCharacter)
+                finalResources = ResolveInventoryVitals(finalCharacter, finalResources);
             session.PendingBattleResourceSnapshot = BattleResourceSnapshotPolicy.CarriesAcross(boundary)
                 ? finalResources
                 : null;

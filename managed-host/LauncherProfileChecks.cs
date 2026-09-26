@@ -42,8 +42,8 @@ internal static class LauncherProfileChecks
                 && second.MaxMp == 5000 && second.CurrentMp == 700,
                 "launcher maxima apply while legacy current HP/MP keys cannot overwrite persistent runtime resources");
             Check(second.AttackModifier == 3456 && second.DefenseFlat == 789 && second.InitialAttackMode == 2, "launcher combat values not applied");
-            Check(second.SelectedSkill1 == 52_000_001u && second.SkillSlotExpansionExpires == 2_099_123_123u,
-                "launcher X skill did not receive the matching default slot entitlement");
+            Check(second.SelectedSkill1 == 52_000_001u && second.SkillSlotExpansionExpires == 0,
+                "launcher X selection does not create a free permanent slot entitlement");
             Check(second.Hans == 12345 && second.Cash == 67890, "launcher sidecar balances not applied");
             Check(second.Items.Any(x => x.ItemCode == 10160036) && second.Items.Any(x => x.ItemCode == 15009105)
                 && second.Items.Any(x => x.ItemCode == 14000001 && x.Quantity == 3), "launcher backpack sidecars not applied");
@@ -122,6 +122,21 @@ internal static class LauncherProfileChecks
                 : null;
             Check(listenerCharacter?.DungeonGrade == 23,
                 "11999 profile registration did not persist the fixed dungeon grade");
+            var hpGem = ShopCatalog.All.First(item => item.Category == 17
+                && item.PetAccessoryEffects.Where(effect => effect.Enabled && effect.Type == 2)
+                    .Sum(effect => effect.FixedValue) == 400).ItemCode;
+            await using (var resources = new SqliteConnection($"Data Source={database.DatabasePath}"))
+            {
+                await resources.OpenAsync();
+                await using var seed = resources.CreateCommand();
+                seed.CommandText = "UPDATE Characters SET MaxHp=22222,CurrentHp=22550 WHERE Id=$id; UPDATE CharacterItems SET PetAccessory0=$gem WHERE CharacterId=$id AND ItemCode=15009205";
+                seed.Parameters.AddWithValue("$id",second.Id);seed.Parameters.AddWithValue("$gem",hpGem);
+                await seed.ExecuteNonQueryAsync();
+            }
+            var withGem = await database.ImportLocalProfileAsync(Profile(25,22222,5000,"auto"),root);
+            Check(withGem.MaxHp==22222 && withGem.CurrentHp==22550
+                && NetworkAdapterService.ResolveInventoryVitals(withGem).MaximumHp==22622,
+                "profile reapply preserves absolute current above base and does not double selected gem capacity");
             Console.WriteLine("LAUNCHER_PROFILE_CHECKS_PASS level=25-preserved title=39-auto/42-fixed register11999=23 C355=39 CF71=39 native_grade=PASS frontier_reset=PASS hp=1800/2400 mp=700/5000 attack=3456 defense=789 selina_pet_level=3 accessory_d5=PASS inventory=PASS");
         }
         finally { SqliteConnection.ClearAllPools(); if (Directory.Exists(root)) Directory.Delete(root, true); }

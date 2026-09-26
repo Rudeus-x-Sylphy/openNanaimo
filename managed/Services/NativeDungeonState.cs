@@ -28,6 +28,25 @@ public sealed class NativeDungeonState
         .ToDictionary(i => Get(1956 + i * 8), i => Get(1960 + i * 8));
     public static bool IsNativeItem(uint code) => code / 1_000_000 is 14 or 17 or 19 or 21;
 
+    // F100 maxima stay base; only current is effective. Resolve against this
+    // state's own selected-pet/gem tuple, never a stale session snapshot maximum.
+    internal (ushort Hp, ushort Mp) GetEffectiveResourceMaximums()
+    {
+        var pet = Get(68);
+        var resources = NetworkAdapterService.ResolveInventoryVitals(new CharacterRecord
+        {
+            MaxHp = checked((int)Math.Min(Get(16), ushort.MaxValue)),
+            MaxMp = checked((int)Math.Min(Get(24), ushort.MaxValue)),
+            EquippedPetItemCode = pet,
+            Items = pet == 0 ? [] : [new CharacterItemRecord
+            {
+                ItemCode = pet, Quantity = 1,
+                PetAccessory0 = Get(140), PetAccessory1 = Get(144), PetAccessory2 = Get(148)
+            }]
+        });
+        return (resources.MaximumHp, resources.MaximumMp);
+    }
+
     public static NativeDungeonState Create(CharacterRecord c, IReadOnlyList<CharacterCardRecord> cards,
         IReadOnlyList<CharacterSkillRecord> skills)
     {
@@ -43,11 +62,8 @@ public sealed class NativeDungeonState
         BinaryPrimitives.WriteInt64LittleEndian(data.AsSpan(32, 8), c.Hans);
         BinaryPrimitives.WriteInt64LittleEndian(data.AsSpan(40, 8), c.Cash);
         s.Put(48, c.SkillPoints); s.Put(52, c.SelectedSkill0); s.Put(56, c.SelectedSkill1);
-        var equippedPetItemCode = c.EquippedPetItemCode != 0
-            ? c.EquippedPetItemCode
-            : c.PetVariant is >= 1 and <= 3
-                ? 15_000_000u + (uint)c.PetVariant
-                : 0u;
+        // Zero is an explicit unequip, not a request to restore the creation pet.
+        var equippedPetItemCode = c.EquippedPetItemCode;
         s.Put(60, c.RevivalUseCount); s.Put(64, c.QuickSlotExpansionExpires); s.Put(68, equippedPetItemCode);
         s.Put(AttackModifierOffset, c.AttackModifier); s.Put(DefenseFlatOffset, c.DefenseFlat);
         s.Put(PetCombatLevelOffset, (uint)Math.Clamp(c.InitialAttackMode + 1, 1, 3));
@@ -88,8 +104,7 @@ public sealed class NativeDungeonState
         var inventoryInstances = c.Items
             .Where(item => item.Quantity > 0
                 && ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
-                && catalogItem.Section == InventorySection.GameItem
-                && catalogItem.Category is not (42 or 47))
+                && catalogItem.IsGameInventoryItem)
             .OrderBy(item => item.ItemCode)
             .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
             .ToArray();

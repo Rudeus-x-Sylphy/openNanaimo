@@ -9,13 +9,31 @@
 #define MANAGED_PET_COMBAT_LEVEL_OFFSET 5116u
 static unsigned managed_get(const unsigned char*p,unsigned o){return (unsigned)p[o]|((unsigned)p[o+1]<<8)|((unsigned)p[o+2]<<16)|((unsigned)p[o+3]<<24);}
 static void managed_put(unsigned char*p,unsigned o,unsigned v){p[o]=(unsigned char)v;p[o+1]=(unsigned char)(v>>8);p[o+2]=(unsigned char)(v>>16);p[o+3]=(unsigned char)(v>>24);}
+/* Maxima in the bridge remain BASE values. Validate absolute current against
+   only this import's selected PET and gems, before touching globals or disk. */
+static int managed_bridge_resources_valid(const unsigned char*p){
+    unsigned i,pet=managed_get(p,68),gems[3]={0u,0u,0u};
+    unsigned a,pct,h,m,hm=managed_get(p,16),mm=managed_get(p,24);
+    const struct pet_crafting_pet_growth_row*g;
+    if(hm<1u||hm>65535u||mm>65535u)return 0;
+    if(pet){
+        g=pet_crafting_pet_growth_find(pet);if(!g)return 0;
+        for(i=0u;i<3u;i++){
+            gems[i]=managed_get(p,140u+i*4u);
+            if(gems[i]&&(i>=g->slot_count||!pet_crafting_pet_gem_find(gems[i])))return 0;
+        }
+    }
+    pet_crafting_pet_effect_sums_for_gems(gems,&a,&pct,&h,&m);
+    hm+=h;if(hm>65535u)hm=65535u;mm+=m;if(mm>65535u)mm=65535u;
+    return managed_get(p,20)<=hm&&managed_get(p,28)<=mm;
+}
 static int managed_bridge_import(const unsigned char*p){
     unsigned i,n=managed_get(p,1952),nl=managed_get(p,88);
     struct progression_progression_state st;
     struct progression_dungeon_grade_state grade;
     if(managed_get(p,0)!=1u||n>255u||nl<1u||nl>14u||managed_get(p,4)<1u||managed_get(p,4)>65535u)return 0;
     if(managed_get(p,8)!=progression_progression_level_for_exp(managed_get(p,12)))return 0;
-    if(managed_get(p,16)<1u||managed_get(p,16)>65535u||managed_get(p,20)>managed_get(p,16)||managed_get(p,24)>65535u||managed_get(p,28)>managed_get(p,24))return 0;
+    if(!managed_bridge_resources_valid(p))return 0;
     for(i=0;i<16u;i++)if(managed_get(p,160+i*4)>5u)return 0;
     g_account_name[0]=0;
     memset(g_stable_name,0,16);memcpy(g_stable_name,p+96,nl);g_stable_name_len=nl;
@@ -79,6 +97,12 @@ static void managed_bridge_snapshot(SOCKET c,unsigned status){
     managed_put(p,88,g_stable_name_len);managed_put(p,92,g_stable_gender);memcpy(p+96,g_stable_name,g_stable_name_len);
     managed_put(p,MANAGED_PET_LEVEL_OFFSET,g_managed_pet_level);managed_put(p,MANAGED_PET_EXPERIENCE_OFFSET,g_managed_pet_experience);
     managed_put(p,MANAGED_PET_COMBAT_LEVEL_OFFSET,g_managed_pet_combat_level);
+    /* A snapshot is a complete next F100 seed: dropping gems here would make
+       an otherwise legal current>base state lose its effective cap on reentry. */
+    pet_crafting_pet_state_load();
+    if(g_stable_pet){int pi=pet_crafting_pet_row_index(g_stable_pet);
+        if(pi>=0)for(i=0u;i<3u;i++)managed_put(p,140u+i*4u,g_pet_crafting_pet_items[pi].gems[i]);
+    }
     for(i=0;i<5u;i++)managed_put(p,112+i*4,g_stable_equip[i]);managed_put(p,132,g_stable_effect);managed_put(p,136,g_profile_quickbar_current);
     for(i=0;i<16u;i++)managed_put(p,160+i*4,g_skill_progress_grade[i]);
     for(i=0;i<6u;i++){managed_put(p,224+i*8,g_quickbar_code[i]);managed_put(p,228+i*8,g_quickbar_instance[i]);}

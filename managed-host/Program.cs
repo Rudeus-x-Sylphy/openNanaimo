@@ -17,6 +17,21 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--inventory-lifecycle-self-test"))
+    {
+        await InventoryLifecycleChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--inventory-vitals-self-test"))
+    {
+        InventoryVitalsChecks.Run();
+        return;
+    }
+    if (args.Contains("--inventory-protocol-self-test"))
+    {
+        await InventoryProtocolChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--health-recovery-self-test"))
     {
         await HealthRecoveryChecks.RunAsync();

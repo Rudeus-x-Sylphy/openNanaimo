@@ -334,9 +334,7 @@ public sealed partial class DatabaseService
         int level = (int)Math.Clamp(Read("level", 1), 1, 99);
         var selectedSkill0 = Read("skill_slot_z");
         var selectedSkill1 = Read("skill_slot_x");
-        var skillSlotExpiration = Read(
-            "skill_slot_expiry",
-            selectedSkill1 != 0 ? 2_099_123_123u : 0u);
+        var skillSlotExpiration = Read("skill_slot_expiry", 0u);
         await Execute("""
             UPDATE Characters SET TutorialCompleted=0, Appearance=$appearance, Gender=$gender,
               Level=$level, Experience=$exp, MaxHp=$hpmax, CurrentHp=$hp, MaxMp=$mpmax, CurrentMp=$mp,
@@ -364,6 +362,9 @@ public sealed partial class DatabaseService
         await ApplyLocalSidecarsAsync(connection, transaction, result.CharacterId, sidecars, token);
         await ReplaceLocalProfileSkillsAsync(connection, transaction, result.CharacterId, values, token);
         await ApplyLauncherDungeonGradeAsync(connection, transaction, result.CharacterId, dungeonGrade, token);
+        var initialMaximum = await GetEffectiveInventoryResourceMaximaAsync(connection, transaction, result.CharacterId, token);
+        if (initialMaximum is { } initial)
+            await Execute("UPDATE Characters SET CurrentHp=$hp, CurrentMp=$mp WHERE Id=$id", ("$hp", initial.Hp), ("$mp", initial.Mp));
         await transaction.CommitAsync(token);
         return (await GetCharacterAsync(accountId.Value, token))!;
     }
@@ -393,17 +394,13 @@ public sealed partial class DatabaseService
 
         var selectedSkill0 = read("skill_slot_z", existing.SelectedSkill0);
         var selectedSkill1 = read("skill_slot_x", existing.SelectedSkill1);
-        var skillSlotExpiration = read(
-            "skill_slot_expiry",
-            existing.SkillSlotExpansionExpires != 0
-                ? existing.SkillSlotExpansionExpires
-                : selectedSkill1 != 0
-                    ? 2_099_123_123u
-                    : 0u);
+        var skillSlotExpiration = read("skill_slot_expiry", existing.SkillSlotExpansionExpires);
         var maximumHp = checked((int)Math.Clamp(read("hp_max", (uint)existing.MaxHp), 1u, (uint)ushort.MaxValue));
         var maximumMp = checked((int)Math.Clamp(read("mp_max", (uint)existing.MaxMp), 1u, (uint)ushort.MaxValue));
-        var currentHp = Math.Min(existing.CurrentHp, maximumHp);
-        var currentMp = Math.Min(existing.CurrentMp, maximumMp);
+        // Clamp only after importing the selected pet/gems below. The profile
+        // maxima are base, so clipping here would destroy effective current.
+        var currentHp = Math.Clamp(existing.CurrentHp, 0, ushort.MaxValue);
+        var currentMp = Math.Clamp(existing.CurrentMp, 0, ushort.MaxValue);
         await Execute("""
             UPDATE Characters SET Appearance=$appearance, Gender=$gender,
               MaxHp=$hpmax, CurrentHp=$hp, MaxMp=$mpmax, CurrentMp=$mp,
@@ -434,6 +431,10 @@ public sealed partial class DatabaseService
         await ApplyLocalSidecarsAsync(connection, transaction, existing.Id, sidecars, token);
         await ReplaceLocalProfileSkillsAsync(connection, transaction, existing.Id, values, token);
         await ApplyLauncherDungeonGradeAsync(connection, transaction, existing.Id, dungeonGrade, token);
+        var effectiveMaximum = await GetEffectiveInventoryResourceMaximaAsync(connection, transaction, existing.Id, token);
+        if (effectiveMaximum is { } maximum)
+            await Execute("UPDATE Characters SET CurrentHp=MIN(CurrentHp,$hp), CurrentMp=MIN(CurrentMp,$mp) WHERE Id=$id",
+                ("$hp", maximum.Hp), ("$mp", maximum.Mp));
         await transaction.CommitAsync(token);
     }
 
@@ -945,8 +946,7 @@ public sealed partial class DatabaseService
                 var itemCode = checked((uint)reader.GetInt64(0));
                 var quantity = reader.GetInt32(1);
                 if (!ShopCatalog.TryGet(itemCode, out var catalogItem)
-                    || catalogItem.Section != InventorySection.GameItem
-                    || catalogItem.Category is 42 or 47)
+                    || !catalogItem.IsGameInventoryItem)
                     continue;
                 for (var i = 0; i < quantity && itemCodes.Count < 84; i++)
                     itemCodes.Add(itemCode);

@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 183,
+  "count": 189,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -9,15 +9,15 @@
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
       "size": 18288640,
-      "sha256": "37F6339E55A8E5B5CD3359912976B6D25FDAFB2324A076E123944EA31A470D8E"
+      "sha256": "FE561AA7F127E437025BF900D3202C27AD8D87B63A5E893C462F01E08C345878"
     },
     "adapter/nanaimo_adapter_testports.exe": {
       "size": 18288640,
-      "sha256": "19D7F6D4FFF652DB1D8CBC20CFFD0CB922872C5CCF2EC6F8F1E1CEA67355762E"
+      "sha256": "B5F977B802FCC8477EF362E683F968F83891F01B83D8A11943C945AA4F72ABF7"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 18296832,
-      "sha256": "7633199E81E5515E1D2C76EC6839ADB7D67E29ED3C7E86AA4620CC68AB3A23ED"
+      "size": 18297344,
+      "sha256": "66B59A1457D052A576862ECD1F552B1DAB1772FF54C242AF1B6E3B0B5EFDCBF7"
     }
   },
   "files": [
@@ -48,8 +48,8 @@
     },
     {
       "path": "managed-host/CardSynthesisChecks.cs",
-      "size": 18801,
-      "sha256": "BA9205A4CE51533F4D8682070D9BD3F5CEB7E9ADE8541FCE7F9B6FD0174164B9"
+      "size": 18772,
+      "sha256": "A6A4281AE3B16364154E7E268B336B4501C8A18DF55941E9D7C9371B43D52F32"
     },
     {
       "path": "managed-host/ChannelReentryChecks.cs",
@@ -77,14 +77,29 @@
       "sha256": "6C4DB020EA303A1F87502A3A664DBA23C3CDB92C06E8E4FF7A0E41E82C5E95FB"
     },
     {
+      "path": "managed-host/InventoryLifecycleChecks.cs",
+      "size": 32101,
+      "sha256": "2EF4352B1848D188375744D5BBE26E2FA436A77B79B73BA69BAF89DA161DCFB1"
+    },
+    {
+      "path": "managed-host/InventoryProtocolChecks.cs",
+      "size": 18601,
+      "sha256": "2816B9EE4440C2A1C9751DCE1C3852B698068EA58BB9A8AD4D56F85ED319427C"
+    },
+    {
       "path": "managed-host/InventoryQuickbarChecks.cs",
       "size": 19740,
       "sha256": "CB22B154D3AAA91C1FF8D4AF37621F64DD5EC7E599A9C8CBE230CED5733FF2D1"
     },
     {
+      "path": "managed-host/InventoryVitalsChecks.cs",
+      "size": 14578,
+      "sha256": "B13DF37EF4EABD8A8958F01F8B45AF6283A63EF207BD81D7DB07F5133E7D66E4"
+    },
+    {
       "path": "managed-host/LauncherProfileChecks.cs",
-      "size": 10983,
-      "sha256": "F360D77B8AC2F0404B1D20CA8C8D3314D3243FCFF8DD8E7FCF637CC285C37BEE"
+      "size": 12178,
+      "sha256": "81B5D35600B826DE37BE5E949E58AB30439EE37BDD2DA3CFFEEF948494953355"
     },
     {
       "path": "managed-host/MigrationChecks.cs",
@@ -103,8 +118,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 7725,
-      "sha256": "6790D1CF9A696D594344601E6B1611BE2907ECE933529CBA9272E9F724C6396B"
+      "size": 8117,
+      "sha256": "66020B3D3E6A730921F8DE6ADA4395A85CB1694C682792BC7CC73546381F2AC8"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -273,8 +288,8 @@
     },
     {
       "path": "managed/Services/BattleResourceSnapshot.cs",
-      "size": 7640,
-      "sha256": "A3D3AE60F956760609F4F7640E8287AE86E0774914A4866AD2C7697106E2A66A"
+      "size": 7706,
+      "sha256": "FE8168C3FD14A743E802232B3975DEE13FFDBFC74EC75DD3279C9C8466BB0D26"
     },
     {
       "path": "managed/Services/CardCatalog.cs",
@@ -307,19 +322,24 @@
       "sha256": "1E604FB140CF08789052FD68E7166A3F4836212B0B4A30D6A8024FEF1AB0BFA7"
     },
     {
+      "path": "managed/Services/DatabaseService.Inventory.cs",
+      "size": 20251,
+      "sha256": "8AAF0946B5355AE58CA3F0452BE138E04556C49E829D517E0AAA86DE098095D9"
+    },
+    {
       "path": "managed/Services/DatabaseService.LocalAccounts.cs",
       "size": 3397,
       "sha256": "D0CBE075FDC859695EA009A22AC10BB5857BCA9D9BBB628E28B36A51469FEF1F"
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
-      "size": 59411,
-      "sha256": "4C8F51B1744AD6937CA3FCD1E814FCD77F41D23D5E7E2652E3BE03782DF487C1"
+      "size": 59930,
+      "sha256": "7A6EBE175D1A946EF410B0DB0E4BAF1C4433A4D0B073F525107A42551B637787"
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 586086,
-      "sha256": "979FBF3F2D42E686419D878D862F50DD949C9269E56A1658F25F6B3B57D2E587"
+      "size": 585909,
+      "sha256": "07E17A1E24E57831472D9A6BC28CF962B91E511206EE0371F1B531A1960323EF"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -383,8 +403,8 @@
     },
     {
       "path": "managed/Services/NativeDungeonState.cs",
-      "size": 7196,
-      "sha256": "5ABF1284A2E48A29D231076C35551F9A028892AA8E5FBC0D4BA70BE1A483C6AD"
+      "size": 7893,
+      "sha256": "16F73290641ACA98B9C3484E1C9406093B0D371C6E69C81D4F05D38C1C9BAFDD"
     },
     {
       "path": "managed/Services/NativeProcessJob.cs",
@@ -402,9 +422,19 @@
       "sha256": "53F78CCE3628D7D0382CA5F8F7B4E2EC9D08F3E2B6BB515AD120B599B80190FC"
     },
     {
+      "path": "managed/Services/NetworkAdapterService.InventoryIdentity.cs",
+      "size": 5108,
+      "sha256": "DF4CE68C05DDDFE28A66FFD09E2A6DDD1DCBBE9BAE8AD96384BC858127AF4C18"
+    },
+    {
+      "path": "managed/Services/NetworkAdapterService.InventoryVitals.cs",
+      "size": 8885,
+      "sha256": "1FE1C349A5E75BE8CABE2DC6D160415ED3D4B16ECA1DFB711008210D88133773"
+    },
+    {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 63393,
-      "sha256": "DF5861D500D1DD098577FEFC94C230317D80E1227FEBB3F0845197DA006B44DF"
+      "size": 63664,
+      "sha256": "15EAD9B285C689CA87ACF18D652786F58C67635C50CE2DD244184893B9BDF172"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
@@ -418,8 +448,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 951451,
-      "sha256": "2D6378E401ADFF7B673FA23DAFBF1A239B52D07FA7DE05F1AFA084531661335D"
+      "size": 954404,
+      "sha256": "3319F3D0327D4FFF49E191D913E3ECCE714FDB63D7C44E499FB69D6E54ADDE17"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -433,8 +463,8 @@
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
-      "size": 37541,
-      "sha256": "7F7455DEC52BF0CF72E483366F62B89CC5AF0F2A618241CEABB4254FAFF33C53"
+      "size": 37841,
+      "sha256": "CA50CA5B0683F3A7848E1659B5ECA56EDAD74E761F085FC1DC924C420EA3CB38"
     },
     {
       "path": "managed/Services/ProtocolInspector.cs",
@@ -678,8 +708,8 @@
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
-      "size": 9132,
-      "sha256": "C0705C9D194B27253263D4D440B5D9C72A62A0C752CB86E746FF7C3C535A61A0"
+      "size": 10269,
+      "sha256": "E8C10C1F34706AF06AE6FF297751E0213445BF9088B912E56362892E1DCA4A96"
     },
     {
       "path": "release/components/game_session/revival_runtime.inc",
@@ -703,8 +733,8 @@
     },
     {
       "path": "release/components/inventory_instances/petitem_runtime.inc",
-      "size": 16742,
-      "sha256": "312D186C3926B35981B6A96CCC2794F18DC5B5AE6D7F8EB91697E2BBFBB86914"
+      "size": 17444,
+      "sha256": "3B7D194DB9853CD9FEDD481EF5596F61871453A8F2C4731C48D83941C5BFDCC5"
     },
     {
       "path": "release/components/inventory_instances/shop_runtime.inc",

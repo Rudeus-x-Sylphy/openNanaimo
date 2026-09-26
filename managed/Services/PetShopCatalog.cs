@@ -51,6 +51,11 @@ public sealed class ShopCatalogItem
     public string Source { get; init; } = string.Empty;
     public string IconPath { get; init; } = string.Empty;
 
+    // C46A is the shopping-coupon (domain 41) page. Other ordinary items,
+    // including microphones (42) and card keys (47), share C430 identities.
+    public bool IsGameInventoryItem => Section == InventorySection.GameItem && Category != 41;
+    public bool IsShoppingCoupon => Category == 41;
+
     public bool IsPurchasable => HansPrice > 0 || CashPrice > 0;
     public bool PaysWithCash => CashPrice > 0 && HansPrice == 0;
     public uint PurchasePrice => PaysWithCash ? CashPrice : HansPrice;

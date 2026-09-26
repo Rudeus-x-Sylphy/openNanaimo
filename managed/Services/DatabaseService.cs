@@ -538,7 +538,20 @@ public sealed partial class DatabaseService
         await EnsureColumnAsync(connection, "Characters", "InitialAttackMode", "INTEGER NOT NULL DEFAULT 0 CHECK (InitialAttackMode BETWEEN 0 AND 3)", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "CardKeyStateVersion", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "PetVariant", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        var hadEquippedPetColumn = (await GetTableColumnsAsync(connection, "Characters", cancellationToken))
+            .Contains("EquippedPetItemCode");
         await EnsureColumnAsync(connection, "Characters", "EquippedPetItemCode", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        if (!hadEquippedPetColumn)
+        {
+            await using var migrateEquippedPet = connection.CreateCommand();
+            migrateEquippedPet.CommandText = """
+                UPDATE Characters SET EquippedPetItemCode = CASE
+                    WHEN PetVariant BETWEEN 1 AND 3 THEN 15000000 + PetVariant
+                    WHEN TutorialCompleted = 1 THEN 15000001
+                    ELSE 0 END
+                """;
+            await migrateEquippedPet.ExecuteNonQueryAsync(cancellationToken);
+        }
         await EnsureColumnAsync(connection, "Characters", "PetLevel", "INTEGER NOT NULL DEFAULT 1", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "PetExperience", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "MaxHp", "INTEGER NOT NULL DEFAULT 1500", cancellationToken);
@@ -698,11 +711,9 @@ public sealed partial class DatabaseService
                     END,
                     EquippedPetItemCode = CASE
                         WHEN EquippedPetItemCode BETWEEN 15000001 AND 15999999 THEN EquippedPetItemCode
-                        WHEN PetVariant BETWEEN 1 AND 3 THEN 15000000 + PetVariant
-                        WHEN TutorialCompleted = 1 THEN 15000001
                         ELSE 0
                     END,
-                    PetLevel = MIN(99, MAX(1, PetLevel)),
+                    PetLevel = CASE WHEN EquippedPetItemCode = 0 THEN 0 ELSE MIN(99, MAX(1, PetLevel)) END,
                     PetExperience = MAX(0, PetExperience),
                     AttributePoints = CASE
                         WHEN LastSavedAt IS NULL THEN MAX(
@@ -733,21 +744,13 @@ public sealed partial class DatabaseService
                             1440 + MAX(0, Vitality) * 12 + (MIN(99, MAX(1, Level)) - 1) * 8)
                         WHEN MaxHp <= 200 AND CurrentHp >= MaxHp THEN
                             1440 + MAX(0, Vitality) * 12 + (MIN(99, MAX(1, Level)) - 1) * 8
-                        ELSE MIN(
-                            MAX(0, CurrentHp),
-                            MAX(
-                                MAX(0, MaxHp),
-                                1440 + MAX(0, Vitality) * 12 + (MIN(99, MAX(1, Level)) - 1) * 8))
+                        ELSE MIN(65535, MAX(0, CurrentHp))
                     END,
                     CurrentMp = CASE
                         WHEN LastSavedAt IS NULL THEN MAX(
                             MAX(0, MaxMp),
                             50 + MAX(0, Intelligence) * 10 + (MIN(99, MAX(1, Level)) - 1) * 5)
-                        ELSE MIN(
-                            MAX(0, CurrentMp),
-                            MAX(
-                                MAX(0, MaxMp),
-                                50 + MAX(0, Intelligence) * 10 + (MIN(99, MAX(1, Level)) - 1) * 5))
+                        ELSE MIN(65535, MAX(0, CurrentMp))
                     END,
                     CurrentMapId = CASE
                         WHEN LastSavedAt IS NULL AND TutorialCompleted = 0 THEN 0
@@ -779,7 +782,7 @@ public sealed partial class DatabaseService
                 UPDATE Characters
                 SET Appearance = CASE WHEN Gender = 1 THEN $maleAppearance ELSE $femaleAppearance END,
                     Face = CASE WHEN Gender = 1 THEN 10130001 ELSE 10030001 END
-                WHERE length(Appearance) <> 36 OR Appearance = zeroblob(36);
+                WHERE length(Appearance) <> 36;
                 UPDATE Accounts
                 SET TrialPlayedSeconds = TrialPlayedSeconds + CASE
                         WHEN IsOnline = 1 AND OnlineSince IS NOT NULL
@@ -807,6 +810,7 @@ public sealed partial class DatabaseService
             await migration.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        await ClampPersistedEffectiveInventoryResourcesAsync(connection, cancellationToken);
     }
 
     public async Task<int> GetWebAdminPortAsync(
@@ -3768,7 +3772,7 @@ public sealed partial class DatabaseService
                     Name = tutorialPet.Name,
                     Section = InventorySection.Pet,
                     IconPath = tutorialPet.IconPath,
-                    IsEquipped = character.EquippedPetItemCode == 0 || character.EquippedPetItemCode == tutorialPetCode,
+                    IsEquipped = character.EquippedPetItemCode == tutorialPetCode,
                     IsProtected = true
                 });
             }
@@ -3891,8 +3895,7 @@ public sealed partial class DatabaseService
         {
             await using var repair = connection.CreateCommand();
             repair.Transaction = transaction;
-            repair.CommandText = "UPDATE Characters SET EquippedPetItemCode = $replacement, LastSavedAt = $now WHERE Id = $characterId";
-            repair.Parameters.AddWithValue("$replacement", tutorialPetItemCode);
+            repair.CommandText = "UPDATE Characters SET EquippedPetItemCode = 0, PetLevel = 0, PetExperience = 0, LastSavedAt = $now WHERE Id = $characterId";
             repair.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
             repair.Parameters.AddWithValue("$characterId", characterId);
             await repair.ExecuteNonQueryAsync(cancellationToken);
@@ -5325,11 +5328,11 @@ public sealed partial class DatabaseService
         uint itemCode,
         CancellationToken cancellationToken = default)
     {
-        if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId) || !ShopCatalog.TryGet(itemCode, out _))
+        if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId) || !ShopCatalog.TryGet(itemCode, out var claimedItem))
             return (false, "待领取物品参数无效。", 0, 0);
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction();
+        await using var transaction = connection.BeginTransaction(deferred: false);
         await using (var session = connection.CreateCommand())
         {
             session.Transaction = transaction;
@@ -5383,6 +5386,9 @@ public sealed partial class DatabaseService
             return (false, "正式背包中的物品数量已达到上限。", checked((ushort)inboxQuantity), ushort.MaxValue);
         }
 
+        var inventoryBefore = claimedItem.IsGameInventoryItem
+            ? await GetGameInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken)
+            : null;
         var newInboxQuantity = checked((ushort)(inboxQuantity - 1));
         var newInventoryQuantity = checked((ushort)(inventoryQuantity + 1));
         var now = DateTime.UtcNow.ToString("O");
@@ -5418,6 +5424,13 @@ public sealed partial class DatabaseService
             await updateInventory.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        if (inventoryBefore is not null && !await ReindexGameQuickSlotsAfterInsertionAsync(
+            connection, transaction, characterId, inventoryBefore, itemCode, cancellationToken))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return (false, "The claimed item would move an equipped quick item beyond the inventory projection.",
+                checked((ushort)inboxQuantity), checked((ushort)inventoryQuantity));
+        }
         await transaction.CommitAsync(cancellationToken);
         return (true, string.Empty, newInboxQuantity, newInventoryQuantity);
     }
@@ -5438,6 +5451,10 @@ public sealed partial class DatabaseService
             || expectedSection is InventorySection.Pet
             || expectedSection == InventorySection.GameItem && catalogItem.Category == 47)
             return (false, 0);
+
+        if (catalogItem.IsGameInventoryItem)
+            return await DeleteGameInventoryItemCoreAsync(
+                accountId, characterId, sessionId, itemCode, null, cancellationToken);
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction();
@@ -5519,11 +5536,10 @@ public sealed partial class DatabaseService
 
         if (expectedSection == InventorySection.Clothing && remaining == 0)
         {
-            var defaults = gender == 1 ? DefaultMaleAppearance : DefaultFemaleAppearance;
             for (var offset = 0; offset < 28; offset += sizeof(uint))
             {
                 if (BinaryPrimitives.ReadUInt32LittleEndian(appearance.AsSpan(offset, sizeof(uint))) == itemCode)
-                    defaults.AsSpan(offset, sizeof(uint)).CopyTo(appearance.AsSpan(offset, sizeof(uint)));
+                    appearance.AsSpan(offset, sizeof(uint)).Clear();
             }
             // EquippedPetItemCode is persisted in its own column. Keep the
             // stored appearance block canonical and inject the pet only when
@@ -5612,19 +5628,9 @@ public sealed partial class DatabaseService
             repairEquippedPet.Transaction = transaction;
             repairEquippedPet.CommandText = """
                 UPDATE Characters
-                SET EquippedPetItemCode = CASE
-                        WHEN EquippedPetItemCode <> $itemCode THEN EquippedPetItemCode
-                        WHEN PetVariant BETWEEN 1 AND 3 THEN 15000000 + PetVariant
-                        ELSE COALESCE((
-                            SELECT ItemCode
-                            FROM CharacterItems
-                            WHERE CharacterId = $characterId
-                              AND Quantity > 0
-                              AND ItemCode BETWEEN 15000000 AND 15999999
-                            ORDER BY ItemCode
-                            LIMIT 1
-                        ), 0)
-                    END,
+                SET EquippedPetItemCode = CASE WHEN EquippedPetItemCode = $itemCode THEN 0 ELSE EquippedPetItemCode END,
+                    PetLevel = CASE WHEN EquippedPetItemCode = $itemCode THEN 0 ELSE PetLevel END,
+                    PetExperience = CASE WHEN EquippedPetItemCode = $itemCode THEN 0 ELSE PetExperience END,
                     LastSavedAt = $now
                 WHERE Id = $characterId
                   AND AccountId = $accountId
@@ -5717,32 +5723,8 @@ public sealed partial class DatabaseService
             return false;
         }
 
-        var gameInventoryItemCodes = new List<uint>(84);
-        await using (var inventory = connection.CreateCommand())
-        {
-            inventory.Transaction = transaction;
-            inventory.CommandText = """
-                SELECT ItemCode, Quantity
-                FROM CharacterItems
-                WHERE CharacterId = $characterId AND Quantity > 0
-                ORDER BY ItemCode
-                """;
-            inventory.Parameters.AddWithValue("$characterId", characterId);
-            await using var reader = await inventory.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken) && gameInventoryItemCodes.Count < 84)
-            {
-                var itemCode = checked((uint)reader.GetInt64(0));
-                var quantity = reader.GetInt32(1);
-                if (!ShopCatalog.TryGet(itemCode, out var catalogItem)
-                    || catalogItem.Section != InventorySection.GameItem
-                    || catalogItem.Category is 42 or 47)
-                    continue;
-                for (var quantityIndex = 0;
-                     quantityIndex < quantity && gameInventoryItemCodes.Count < 84;
-                     quantityIndex++)
-                    gameInventoryItemCodes.Add(itemCode);
-            }
-        }
+        var gameInventoryItemCodes = await GetGameInventoryItemCodesAsync(
+            connection, transaction, characterId, cancellationToken);
 
         foreach (var slot in quickSlots)
         {
@@ -5758,9 +5740,6 @@ public sealed partial class DatabaseService
             }
         }
 
-        if (currentEquippedPet == 0 && petVariant is >= 1 and <= 3)
-            currentEquippedPet = 15_000_000u + (uint)petVariant;
-
         var changesPet = equippedPetItemCode != 0 || unequippedPetItemCode != 0;
         if (!changesPet)
         {
@@ -5774,7 +5753,7 @@ public sealed partial class DatabaseService
         else
         {
             if ((unequippedPetItemCode != 0 && unequippedPetItemCode != currentEquippedPet)
-                || equippedPetItemCode / 1_000_000 != 15
+                || (equippedPetItemCode != 0 && equippedPetItemCode / 1_000_000 != 15)
                 || appearancePetItemCode != equippedPetItemCode)
             {
                 await transaction.RollbackAsync(cancellationToken);
@@ -5784,7 +5763,7 @@ public sealed partial class DatabaseService
             var tutorialPetItemCode = petVariant is >= 1 and <= 3
                 ? 15_000_000u + (uint)petVariant
                 : 0u;
-            if (equippedPetItemCode != tutorialPetItemCode)
+            if (equippedPetItemCode != 0 && equippedPetItemCode != tutorialPetItemCode)
             {
                 await using var ownership = connection.CreateCommand();
                 ownership.Transaction = transaction;
@@ -7674,6 +7653,7 @@ public sealed partial class DatabaseService
                     ELSE 1
                 END,
                 EquippedPetItemCode = CASE
+                    WHEN TutorialCompleted = 1 AND EquippedPetItemCode = 0 THEN 0
                     WHEN EquippedPetItemCode BETWEEN 15000001 AND 15999999 THEN EquippedPetItemCode
                     WHEN PetVariant BETWEEN 1 AND 3 THEN 15000000 + PetVariant
                     WHEN $petVariant BETWEEN 1 AND 3 THEN 15000000 + $petVariant
@@ -8158,6 +8138,7 @@ public sealed partial class DatabaseService
             || string.IsNullOrEmpty(sessionId)
             || !ShopCatalog.TryGet(itemCode, out var catalogItem)
             || catalogItem.Section != InventorySection.GameItem
+            || catalogItem.Category != 44
             || catalogItem.InventoryExpansionType > 6
             || catalogItem.DurationDays == 0)
             return (false, "Invalid inventory-expansion request.", 0, 0);
@@ -8225,6 +8206,10 @@ public sealed partial class DatabaseService
                 checked((ushort)Math.Min(currentQuantity, ushort.MaxValue)));
         }
 
+        var inventoryBefore = await GetGameInventoryItemCodesAsync(
+            connection, transaction, characterId, cancellationToken);
+        var consumedIndex = inventoryBefore.IndexOf(itemCode);
+
         var remaining = currentQuantity - 1;
         await using (var consume = connection.CreateCommand())
         {
@@ -8274,6 +8259,10 @@ public sealed partial class DatabaseService
                     checked((ushort)Math.Min(currentQuantity, ushort.MaxValue)));
             }
         }
+
+        if (consumedIndex >= 0)
+            await ReindexGameQuickSlotsAfterRemovalAsync(
+                connection, transaction, characterId, inventoryBefore, consumedIndex, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
         return (true, string.Empty, newExpiration, checked((ushort)remaining));
@@ -8459,20 +8448,6 @@ public sealed partial class DatabaseService
             storedSkill0 = checked((uint)reader.GetInt64(0));
             storedSkill1 = checked((uint)reader.GetInt64(1));
             skillSlotExpansionExpires = checked((uint)reader.GetInt64(2));
-        }
-
-        if (skillSlotExpansionExpires == 0 && storedSkill1 != 0)
-        {
-            // Older launcher imports could persist an X-slot skill without the
-            // matching entitlement timestamp. Repair that split ledger before
-            // validating the next C401 save.
-            skillSlotExpansionExpires = 2_099_123_123u;
-            await using var migrate = connection.CreateCommand();
-            migrate.Transaction = transaction;
-            migrate.CommandText = "UPDATE Characters SET SkillSlotExpansionExpires=$expiration WHERE Id=$characterId AND SkillSlotExpansionExpires=0";
-            migrate.Parameters.AddWithValue("$expiration", skillSlotExpansionExpires);
-            migrate.Parameters.AddWithValue("$characterId", characterId);
-            await migrate.ExecuteNonQueryAsync(cancellationToken);
         }
 
         var learned = new Dictionary<uint, byte>();
@@ -8692,11 +8667,15 @@ public sealed partial class DatabaseService
         CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        var maxima = await GetEffectiveInventoryResourceMaximaAsync(connection, transaction, characterId, cancellationToken);
+        if (maxima is not { } maximum) return false;
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             UPDATE Characters
-            SET CurrentHp = MIN(MaxHp, MAX(0, $currentHp)),
-                CurrentMp = MIN(MaxMp, MAX(0, $currentMp)),
+            SET CurrentHp = MIN($maximumHp, MAX(0, $currentHp)),
+                CurrentMp = MIN($maximumMp, MAX(0, $currentMp)),
                 CurrentMapId = MAX(0, $mapId),
                 CurrentTownPage = MIN(255, MAX(0, $townPage)),
                 PositionX = $positionX,
@@ -8708,10 +8687,14 @@ public sealed partial class DatabaseService
               AND IsOnline = 1
               AND ActiveSessionId = $sessionId
             """;
+        command.Parameters.AddWithValue("$maximumHp", maximum.Hp);
+        command.Parameters.AddWithValue("$maximumMp", maximum.Mp);
         AddRuntimeStateParameters(command, characterId, state);
         command.Parameters.AddWithValue("$accountId", accountId);
         command.Parameters.AddWithValue("$sessionId", sessionId);
-        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        if (await command.ExecuteNonQueryAsync(cancellationToken) != 1) return false;
+        await transaction.CommitAsync(cancellationToken);
+        return true;
     }
 
     public async Task<bool> EndWorldSessionAsync(
@@ -8723,15 +8706,17 @@ public sealed partial class DatabaseService
     {
         var now = DateTime.UtcNow.ToString("O");
         await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction();
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        var maxima = await GetEffectiveInventoryResourceMaximaAsync(connection, transaction, characterId, cancellationToken);
+        if (maxima is not { } maximum) return false;
         var characterUpdated = false;
         await using (var characterCommand = connection.CreateCommand())
         {
             characterCommand.Transaction = transaction;
             characterCommand.CommandText = """
                 UPDATE Characters
-                SET CurrentHp = MIN(MaxHp, MAX(0, $currentHp)),
-                    CurrentMp = MIN(MaxMp, MAX(0, $currentMp)),
+                SET CurrentHp = MIN($maximumHp, MAX(0, $currentHp)),
+                    CurrentMp = MIN($maximumMp, MAX(0, $currentMp)),
                     CurrentMapId = MAX(0, $mapId),
                     CurrentTownPage = MIN(255, MAX(0, $townPage)),
                     PositionX = $positionX,
@@ -8747,6 +8732,8 @@ public sealed partial class DatabaseService
                   AND IsOnline = 1
                   AND ActiveSessionId = $sessionId
                 """;
+            characterCommand.Parameters.AddWithValue("$maximumHp", maximum.Hp);
+            characterCommand.Parameters.AddWithValue("$maximumMp", maximum.Mp);
             AddRuntimeStateParameters(characterCommand, characterId, state);
             characterCommand.Parameters.AddWithValue("$accountId", accountId);
             characterCommand.Parameters.AddWithValue("$sessionId", sessionId);
@@ -9701,8 +9688,6 @@ public sealed partial class DatabaseService
         var tutorialPetItemCode = petVariant is >= 1 and <= 3
             ? 15_000_000u + (uint)petVariant
             : 0u;
-        if (equippedPetItemCode == 0)
-            equippedPetItemCode = tutorialPetItemCode;
         if (petExperienceReward > 0
             && equippedPetItemCode != 0
             && ShopCatalog.TryGet(15, equippedPetItemCode, out var petCatalogItem))

@@ -50,7 +50,7 @@ internal static class CardSynthesisChecks
         Check(NetworkAdapterService.TryParseInventoryExpansionRequest(
                 [5, 0, 6, 0], out var expansionType, out var expansionReserved)
             && expansionType == 5 && expansionReserved == 6,
-            "C480 parses WORD type 5 and ignores the trailing client control word");
+            "C480 parses wire action and preserves the clicked inventory identity");
 
         var wireNow = new DateTime(2026, 9, 22, 7, 0, 0, DateTimeKind.Local);
         var character = new CharacterRecord
@@ -84,8 +84,8 @@ internal static class CardSynthesisChecks
             character,
             [new CharacterSkillRecord { SkillCode = 52_000_001u, Grade = 5 }],
             wireNow);
-        Check(BinaryPrimitives.ReadUInt32LittleEndian(cardList.AsSpan(124, 4)) == 2_099_123_123u,
-            "C3E8 keeps an imported active X slot visibly unlocked when the legacy expiry was zero");
+        Check(BinaryPrimitives.ReadUInt32LittleEndian(cardList.AsSpan(124, 4)) == 0,
+            "C3E8 does not invent permanent expansion from an imported X selection");
 
         var dataDirectory = Path.Combine(Path.GetTempPath(), "nanaimo-card-synthesis-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dataDirectory);

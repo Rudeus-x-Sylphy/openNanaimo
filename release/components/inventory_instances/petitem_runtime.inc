@@ -70,10 +70,30 @@ static void pet_crafting_pet_send_c44c_pet_list(SOCKET c){char p[4096];unsigned 
 static void pet_crafting_pet_write_c379_summary(char*p){unsigned price=0u,a=0u,b=0u;int h,q;pet_crafting_pet_state_load();memset(p+0xA8,0,0x24u);if(!g_stable_pet)return;shopping_pet_lookup(g_stable_pet,&price,&a,&b);h=pet_crafting_pet_selected_handle();q=pet_crafting_pet_row_index(g_stable_pet);stable_put32(p,0xA8,g_stable_pet);stable_resource_put16(p,0xAC,h>=0?(unsigned)h:0xFFFFu);p[0xAE]=(char)a;p[0xAF]=(char)b;p[0xB0]=1;p[0xB1]=(char)(q>=0?pet_crafting_pet_upgrade_flag(&g_pet_crafting_pet_items[q]):0u);stable_resource_put16(p,0xB2,100u);stable_put32(p,0xB4,0u);if(q>=0){stable_put32(p,0xB8,g_pet_crafting_pet_items[q].gems[0]);stable_put32(p,0xBC,g_pet_crafting_pet_items[q].gems[1]);stable_put32(p,0xC0,g_pet_crafting_pet_items[q].gems[2]);}stable_put32(p,0xC4,PET_CRAFTING_PET_EXPIRY);stable_put32(p,0xC8,0u);}
 static void pet_crafting_pet_sync_selected_age(void){unsigned price=0u,a=g_stable_pet_age_a,b=g_stable_pet_age_b;int q;pet_crafting_pet_state_load();if(g_stable_pet&&shopping_pet_lookup(g_stable_pet,&price,&a,&b)){q=pet_crafting_pet_row_index(g_stable_pet);if(q>=0&&pet_crafting_pet_upgrade_flag(&g_pet_crafting_pet_items[q]))a=b=3u;g_stable_pet_age_a=a;g_stable_pet_age_b=b;g_pet_equipped=g_stable_pet;}printf("  [PET_CRAFTING] selected pet=%u handle=%d age=%u/%u\n",g_stable_pet,pet_crafting_pet_selected_handle(),g_stable_pet_age_a,g_stable_pet_age_b);fflush(0);}
 
-static void pet_crafting_pet_effect_sums(unsigned*attack_flat,unsigned*attack_percent,unsigned*hp,unsigned*mp){unsigned i,j;int q;*attack_flat=*attack_percent=*hp=*mp=0u;pet_crafting_pet_state_load();q=pet_crafting_pet_row_index(g_stable_pet);if(q<0)return;for(i=0u;i<3u;i++){const struct pet_crafting_pet_gem_effect_row*d=pet_crafting_pet_gem_find(g_pet_crafting_pet_items[q].gems[i]);if(!d)continue;for(j=0u;j<3u;j++){unsigned t=d->type[j],v=d->value[j],pct=d->percent[j];if(t==1u){if(*attack_flat>0xFFFFFFFFu-v)*attack_flat=0xFFFFFFFFu;else *attack_flat+=v;if(*attack_percent>0xFFFFFFFFu-pct)*attack_percent=0xFFFFFFFFu;else *attack_percent+=pct;}else if(t==2u){if(*hp>65535u-v)*hp=65535u;else *hp+=v;}else if(t==3u){if(*mp>65535u-v)*mp=65535u;else *mp+=v;}}}}
+/* Pure catalog sum shared by runtime and F100 preflight. Never read a previous
+   selected-pet ledger while validating the next managed state. */
+static void pet_crafting_pet_effect_sums_for_gems(const unsigned*gems,unsigned*attack_flat,unsigned*attack_percent,unsigned*hp,unsigned*mp){unsigned i,j;*attack_flat=*attack_percent=*hp=*mp=0u;for(i=0u;i<3u;i++){const struct pet_crafting_pet_gem_effect_row*d=pet_crafting_pet_gem_find(gems[i]);if(!d)continue;for(j=0u;j<3u;j++){unsigned t=d->type[j],v=d->value[j],pct=d->percent[j];if(t==1u){if(*attack_flat>0xFFFFFFFFu-v)*attack_flat=0xFFFFFFFFu;else *attack_flat+=v;if(*attack_percent>0xFFFFFFFFu-pct)*attack_percent=0xFFFFFFFFu;else *attack_percent+=pct;}else if(t==2u){if(*hp>65535u-v)*hp=65535u;else *hp+=v;}else if(t==3u){if(*mp>65535u-v)*mp=65535u;else *mp+=v;}}}}
+static void pet_crafting_pet_effect_sums(unsigned*attack_flat,unsigned*attack_percent,unsigned*hp,unsigned*mp){int q;*attack_flat=*attack_percent=*hp=*mp=0u;pet_crafting_pet_state_load();q=pet_crafting_pet_row_index(g_stable_pet);if(q>=0)pet_crafting_pet_effect_sums_for_gems(g_pet_crafting_pet_items[q].gems,attack_flat,attack_percent,hp,mp);}
+
 static unsigned item_effects_items_selected_attack_bonus(void){unsigned a,p,h,m;pet_crafting_pet_effect_sums(&a,&p,&h,&m);return a;}
 static unsigned pet_crafting_pet_adjust_attack(unsigned base){unsigned flat,pct,h,m,out=base;pet_crafting_pet_effect_sums(&flat,&pct,&h,&m);if(out>0xFFFFFFFFu-flat)out=0xFFFFFFFFu;else out+=flat;if(pct){unsigned long long add=((unsigned long long)base*(unsigned long long)pct)/100ull;if(add>0xFFFFFFFFull-out)out=0xFFFFFFFFu;else out+=(unsigned)add;}return out;}
-static void pet_crafting_pet_effective_resources(unsigned*hp_max,unsigned*hp_current,unsigned*mp_max,unsigned*mp_current){unsigned a,p,h,m,hm,mm,hc,mc;pet_crafting_pet_effect_sums(&a,&p,&h,&m);hm=g_profile_hp_max+h;if(hm>65535u||hm<g_profile_hp_max)hm=65535u;mm=g_profile_mp_max+m;if(mm>65535u||mm<g_profile_mp_max)mm=65535u;hc=(g_profile_hp_current==g_profile_hp_max)?hm:g_profile_hp_current;if(hc>hm)hc=hm;mc=(g_profile_mp_current==g_profile_mp_max)?mm:g_profile_mp_current;if(mc>mm)mc=mm;if(hp_max)*hp_max=hm;if(hp_current)*hp_current=hc;if(mp_max)*mp_max=mm;if(mp_current)*mp_current=mc;}
+static void pet_crafting_pet_effective_resources(unsigned*hp_max,unsigned*hp_current,unsigned*mp_max,unsigned*mp_current){
+    unsigned a,p,h,m,hm,mm,hc,mc;
+    pet_crafting_pet_effect_sums(&a,&p,&h,&m);
+    hm=g_profile_hp_max+h;if(hm>65535u||hm<g_profile_hp_max)hm=65535u;
+    mm=g_profile_mp_max+m;if(mm>65535u||mm<g_profile_mp_max)mm=65535u;
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+    /* F100/F102 current values are absolute effective resources, not a full
+       flag. Merely equalling the base maximum must not heal a managed actor. */
+    hc=g_profile_hp_current;mc=g_profile_mp_current;
+#else
+    hc=(g_profile_hp_current==g_profile_hp_max)?hm:g_profile_hp_current;
+    mc=(g_profile_mp_current==g_profile_mp_max)?mm:g_profile_mp_current;
+#endif
+    if(hc>hm)hc=hm;if(mc>mm)mc=mm;
+    if(hp_max)*hp_max=hm;if(hp_current)*hp_current=hc;
+    if(mp_max)*mp_max=mm;if(mp_current)*mp_current=mc;
+}
 static unsigned pet_crafting_pet_effective_hp_max(void){unsigned v;pet_crafting_pet_effective_resources(&v,0,0,0);return v;}
 static unsigned pet_crafting_pet_effective_hp_current(void){unsigned v;pet_crafting_pet_effective_resources(0,&v,0,0);return v;}
 static unsigned pet_crafting_pet_effective_mp_max(void){unsigned v;pet_crafting_pet_effective_resources(0,0,&v,0);return v;}

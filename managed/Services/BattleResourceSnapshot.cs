@@ -35,13 +35,14 @@ public sealed record BattleResourceSnapshot(
         uint powerStage = 0)
     {
         ArgumentNullException.ThrowIfNull(state);
+        var (maximumHp, maximumMp) = state.GetEffectiveResourceMaximums();
         return new BattleResourceSnapshot(
-            checked((ushort)Math.Min(state.Get(20), ushort.MaxValue)),
-            checked((ushort)Math.Min(state.Get(28), ushort.MaxValue)),
+            checked((ushort)Math.Min(state.Get(20), maximumHp)),
+            checked((ushort)Math.Min(state.Get(28), maximumMp)),
             NormalizeAttackMode(powerStage))
         {
-            MaximumHp = checked((ushort)Math.Min(state.Get(16), ushort.MaxValue)),
-            MaximumMp = checked((ushort)Math.Min(state.Get(24), ushort.MaxValue)),
+            MaximumHp = maximumHp,
+            MaximumMp = maximumMp,
             Epoch = epoch
         };
     }
@@ -121,8 +122,9 @@ public sealed record BattleResourceSnapshot(
     public void ApplyTo(NativeDungeonState state)
     {
         ArgumentNullException.ThrowIfNull(state);
-        var maxHp = Math.Min(state.Get(16), ushort.MaxValue);
-        var maxMp = Math.Min(state.Get(24), ushort.MaxValue);
+        // F100 now accepts current <= selected-pet effective maximum. Keep
+        // +16/+24 BASE (native adds gems once); never project current to base.
+        var (maxHp, maxMp) = state.GetEffectiveResourceMaximums();
         BinaryPrimitives.WriteUInt32LittleEndian(
             state.Bytes.AsSpan(20, 4), Math.Min(CurrentHp, maxHp));
         BinaryPrimitives.WriteUInt32LittleEndian(
