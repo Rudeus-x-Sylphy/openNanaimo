@@ -89,6 +89,7 @@ GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色
   start_nanaimo_launcher.bat
   gui_launcher/           启动器
   adapter_runtime/        完整 adapter（随仓库提供）
+  scripts/        脚本（随仓库提供）
 ```
 
 启动器会自动完成所需的客户端兼容准备；也可先手工执行只读预检：
