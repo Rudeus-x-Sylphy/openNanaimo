@@ -105,22 +105,18 @@ static unsigned native_actor_revival_count(unsigned actor_uid){
 
 #define boss_ctx (*multiplayer_shared_boss_context())
 /* SCENE_INJURY D00F routing.
- * Static: sub_670E10 reads collision object+0x1A0 and serializes that authored
- * class to D00F WORD+0x08.  Runtime evidence places kinds 60/80 beside fixed
- * obj/d_* scene resources, but D00F carries no numeric damage field and does
- * not prove an authoritative HP loss.  Repeated ambient scene contacts made
- * the former fixed-100 policy look like random HP loss.  Only kind10 enters
- * the direct projectile injury route here; fixed-scene kinds 60/80 retain the
- * request-driven compatibility echo and never mutate the authoritative HP
- * ledger.  Kind20 remains a separate ordinary-contact policy below. */
+ * Kind10 uses the projectile route. Kind60 applies damage only when its
+ * selected type4 row closes to an exact same-resource positive-HP parent;
+ * unmatched kind60 and every kind80 remain compatibility echoes. Kind20 and
+ * kind40 retain their separate contact policies below. */
 static int scene_injury_direct_projectile_d00f_kind(unsigned kind){return kind==10u;}
 static int scene_injury_fixed_scene_echo_kind(unsigned kind){return kind==60u||kind==80u;}
 #define score_ctx (*multiplayer_shared_score_context())
 /* COLLISION_DAMAGE ordinary-collision double damage.
    The ordinary D00F kind20 contact settled only the player's HP; the collided
    monster took nothing. The adapter applies the target half through
-   components/combat_economy/collision_damage_runtime.inc (see that file for the evidence
-   and the policy). Meat contacts are untouched: the shipped meat path already
+   components/combat_economy/collision_damage_runtime.inc. Meat contacts are
+   unchanged: the established meat path already
    damages the target and suppresses the player. Compile-time A/B:
    COLLISION_DAMAGE_COLLISION_TARGET_DAMAGE_MODE 0 = COLLISION_CONTEXT behaviour (no target damage),
    1 = released behaviour (default). */
@@ -222,18 +218,16 @@ static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,un
     printf("  S0xD010 INJURY_RESOURCE injury actor=%u hp=%u damage=%u terminal=%d score=%u meta=%u kind=%u len=36 t=%lds\n",local_uid,hp,damage,terminal,battle_score,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),(unsigned char)p[0x1D],sec());fflush(0);
 }
 
-/* Request-driven player injury settlement for D00F kind10 and the separately
- * classified ordinary kind20 contact route.  Fixed-scene kinds 60/80 must not
- * call this function.  The accepted request carries source metadata rather
- * than final numeric damage; applied routes share the authoritative combat HP
- * ledger, battle epoch, immunity gates and death latch. */
+/* Player injury settlement for D00F projectile, exact associated scene, and
+ * contact routes. Applied routes share the authoritative combat HP ledger,
+ * battle epoch, immunity gates and death latch. */
 static int player_collision_apply_player_d00f_injury(SOCKET c,int port,const unsigned char*req,unsigned request_kind,unsigned injury_now,
         unsigned dungeon_room_epoch,unsigned battle_epoch,int injury_armed,unsigned injury_room_epoch,unsigned injury_battle_epoch,
         unsigned*combat_hp,int*injury_dead,unsigned max_hp,unsigned battle_score,const struct stage_damage_damage_context*damage_ctx,const struct skill_effect_cleanup_context*skill_cleanup_ctx){
     unsigned source_field_140=(unsigned char)req[0x0A]|((unsigned char)req[0x0B]<<8);
     unsigned collision_index=(unsigned char)req[0x0C]|((unsigned char)req[0x0D]<<8);
     unsigned source_field_14=(unsigned char)req[0x0E]|((unsigned char)req[0x0F]<<8);
-    unsigned raw_damage,damage,applied,wire_damage;struct stage_damage_damage_lookup resolved;struct stage_damage_damage_application damage_app;const char *route=request_kind==10u?"kind10":request_kind==20u?"ordinary-kind20":request_kind==40u?"boss-kind40":"unsupported";
+    unsigned raw_damage,damage,applied,wire_damage;struct stage_damage_damage_lookup resolved;struct stage_damage_damage_application damage_app;const char *route=request_kind==10u?"kind10":request_kind==20u?"ordinary-kind20":request_kind==40u?"boss-kind40":request_kind==60u?"associated-kind60":"unsupported";
 #if TEAMPLAY_FEATURE_MEAT_LIFECYCLE_COMPLETION
     if(skill_effect_cleanup_meat_invulnerable(skill_cleanup_ctx,dungeon_room_epoch,battle_epoch,injury_now)){
         printf("  [INJURY_SCENE] suppress route=%s kind=%u reason=meat-invulnerability actor=%u hp=%u meat_code=%u generation=%u elapsed_ms=%u no-D010 t=%lds\n",route,request_kind,multiplayer_current_uid(),*combat_hp,skill_cleanup_ctx->code,skill_cleanup_ctx->generation,(unsigned)(injury_now-skill_cleanup_ctx->armed_tick),sec());
@@ -256,7 +250,7 @@ static int player_collision_apply_player_d00f_injury(SOCKET c,int port,const uns
         printf("  [INJURY_SCENE] suppress route=%s kind=%u reason=already-dead actor=%u room=%u battle=%u source_field=%u collision_index=%u source_aux=%u no-D010 t=%lds\n",route,request_kind,multiplayer_current_uid(),injury_room_epoch,injury_battle_epoch,source_field_140,collision_index,source_field_14,sec());
         fflush(0);return 0;
     }
-    raw_damage=stage_damage_player_d00f_damage(damage_ctx,req,request_kind,&resolved);damage=multiplayer_combat_profile_reduce_damage(raw_damage);printf("  [INCOMING_COMBAT] wire=%u/%u/%u/st%u/d%u resource_tuple=%u/%u/%u/st%u kind=%u owner=%u source=%u resource=%s selected_smmo=%s rows=%u base=%u lookup_status=%u scope_incomplete=%u translated=%u raw_policy_damage=%u defense=%u final_policy_damage=%u provenance=%s defense_formula=private-flat-floor1\n",resolved.wire_hd,resolved.wire_episode,resolved.wire_dungeon,resolved.wire_stage,resolved.difficulty,resolved.resource_hd,resolved.resource_episode,resolved.resource_dungeon,resolved.resource_stage,request_kind,resolved.owner,resolved.source,resolved.resource?resolved.resource:"<none>",resolved.selected_smmo?resolved.selected_smmo:"<none>",resolved.row_count,resolved.base,resolved.status,resolved.scope_incomplete,resolved.identity_translated,raw_damage,g_profile_defense_flat,damage,(resolved.status==STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT||resolved.status==STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE||resolved.status==STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE)?"stage-resource-exact":"bounded-fallback");fflush(0);damage_app=stage_damage_apply_actor_damage(*combat_hp,damage);applied=damage_app.actual_damage;*combat_hp=damage_app.hp_after;wire_damage=damage_app.wire_damage;*injury_dead=damage_app.terminal?1:0;
+    raw_damage=stage_damage_player_d00f_damage(damage_ctx,req,request_kind,&resolved);damage=multiplayer_combat_profile_reduce_damage(raw_damage);printf("  [INCOMING_COMBAT] wire=%u/%u/%u/st%u/d%u resource_tuple=%u/%u/%u/st%u kind=%u owner=%u source=%u resource=%s selected_smmo=%s rows=%u base=%u lookup_status=%u scope_incomplete=%u translated=%u raw_policy_damage=%u defense=%u final_policy_damage=%u provenance=%s defense_formula=private-flat-floor1\n",resolved.wire_hd,resolved.wire_episode,resolved.wire_dungeon,resolved.wire_stage,resolved.difficulty,resolved.resource_hd,resolved.resource_episode,resolved.resource_dungeon,resolved.resource_stage,request_kind,resolved.owner,resolved.source,resolved.resource?resolved.resource:"<none>",resolved.selected_smmo?resolved.selected_smmo:"<none>",resolved.row_count,resolved.base,resolved.status,resolved.scope_incomplete,resolved.identity_translated,raw_damage,g_profile_defense_flat,damage,(resolved.status==STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT||resolved.status==STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE||resolved.status==STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE||resolved.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE)?"stage-resource-exact":"bounded-fallback");fflush(0);damage_app=stage_damage_apply_actor_damage(*combat_hp,damage);applied=damage_app.actual_damage;*combat_hp=damage_app.hp_after;wire_damage=damage_app.wire_damage;*injury_dead=damage_app.terminal?1:0;
 #ifdef MEAT_D010_DAMAGE_ZERO_PROBE
     if(*combat_hp!=0u)wire_damage=0u;
 #endif
@@ -388,8 +382,8 @@ static void gs_thread(void* arg){
                     if(type==0xF104){
                         /* mkpkt clears its full 4096-byte construction buffer. */
                         char ack[4096];unsigned mode=0u,hp=0u,mp=0u;int ok=0;
-                        if(len==16){mode=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8);hp=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);mp=(unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8);ok=mode==0u&&hp>0u&&hp<=pet_crafting_pet_effective_hp_max()&&mp>0u&&mp<=g_profile_mp_max;}
-                        if(ok){combat_hp=hp;g_profile_hp_current=hp;g_profile_mp_current=mp;injury_dead=0;death_latched=0;retry_acknowledged=0;lifesteal_remainder=0u;printf("  [REVIVE] internal F104 paid-continue sync hp=%u mp=%u battle=%u latch-cleared\n",hp,mp,boss_ctx.battle_epoch);fflush(0);}else{printf("  [REVIVE] internal F104 rejected len=%d mode=%u hp=%u mp=%u injury_dead=%d combat_hp=%u max_hp=%u max_mp=%u\n",len,mode,hp,mp,injury_dead,combat_hp,pet_crafting_pet_effective_hp_max(),g_profile_mp_max);fflush(0);}
+                        if(len==16){mode=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8);hp=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);mp=(unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8);ok=mode==0u&&hp>0u&&hp<=pet_crafting_pet_effective_hp_max()&&mp>0u&&mp<=pet_crafting_pet_effective_mp_max();}
+                        if(ok){combat_hp=hp;g_profile_hp_current=hp;g_profile_mp_current=mp;injury_dead=0;death_latched=0;retry_acknowledged=0;lifesteal_remainder=0u;printf("  [REVIVE] internal F104 paid-continue sync hp=%u mp=%u battle=%u latch-cleared\n",hp,mp,boss_ctx.battle_epoch);fflush(0);}else{printf("  [REVIVE] internal F104 rejected len=%d mode=%u hp=%u mp=%u injury_dead=%d combat_hp=%u max_hp=%u max_mp=%u\n",len,mode,hp,mp,injury_dead,combat_hp,pet_crafting_pet_effective_hp_max(),pet_crafting_pet_effective_mp_max());fflush(0);}
                         mkpkt(ack,0xF105,16,1);ack[8]=(char)(ok?1:0);ack[9]=0;ack[10]=(char)mode;ack[11]=(char)(mode>>8);ack[12]=(char)hp;ack[13]=(char)(hp>>8);ack[14]=(char)mp;ack[15]=(char)(mp>>8);sendbuf(c,ack,16);
                     } else if(managed_bridge_handle(c,type,len,(const unsigned char*)&buf[off])) {
                         /* Internal state exchange; never routed from a game client. */
@@ -863,7 +857,16 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                             player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,injury_now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
                         } else {
                             int send_nonlocal_echo=1;
-                            if(scene_injury_fixed_scene_echo_kind(request_kind)){
+                            if(request_kind==60u){
+                                struct stage_damage_damage_lookup scene_resolved;unsigned scene_damage=stage_damage_player_d00f_damage(&incoming_damage_ctx,(const unsigned char*)&buf[off],request_kind,&scene_resolved);
+                                if(scene_damage&&scene_resolved.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE){
+                                    unsigned injury_now=tickms();send_nonlocal_echo=0;
+                                    printf("  [INJURY_SCENE] associated kind60 selector=%u parent=%u resource=%s damage=%u -> player-injury/no-echo t=%lds\n",scene_resolved.owner,scene_resolved.associated_selector,scene_resolved.resource?scene_resolved.resource:"<none>",scene_damage,sec());fflush(0);
+                                    player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,injury_now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
+                                }else{
+                                    printf("  [INJURY_SCENE] fixed-scene kind=60 reason=no-exact-associated-target -> echo-only/no-authoritative-HP t=%lds\n",sec());fflush(0);
+                                }
+                            }else if(scene_injury_fixed_scene_echo_kind(request_kind)){
                                 printf("  [INJURY_SCENE] fixed-scene kind=%u -> echo-only/no-authoritative-HP t=%lds\n",request_kind,sec());fflush(0);
                             }else if(request_kind==20u||request_kind==40u){
                                 unsigned w08=(unsigned char)buf[off+0x08]|((unsigned char)buf[off+0x09]<<8);
@@ -1132,19 +1135,23 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                         sleep(0); send_53002(c);
                     } else if(type==0xCF77){
                         unsigned op=(unsigned char)buf[off+8] | ((unsigned char)buf[off+9]<<8);
+                        unsigned wire_hd=len>=16?(unsigned char)buf[off+0x0A]:current_hd;
+                        unsigned wire_ep=len>=16?(unsigned char)buf[off+0x0B]:current_stage;
+                        unsigned wire_dg=len>=16?(unsigned char)buf[off+0x0C]:current_dungeon;
+                        unsigned wire_diff=len>=16?(unsigned char)buf[off+0x0D]:current_difficulty;
+                        int has_base_tuple=len>=16&&(op==10u||op==100u);
 #if TEAMPLAY_FEATURE_MAP_IDENTITY_GENERIC
-                        if(len>=16 && op==100u){unsigned wire_hd=(unsigned char)buf[off+0x0A],wire_ep=(unsigned char)buf[off+0x0B],wire_dg=(unsigned char)buf[off+0x0C],wire_diff=(unsigned char)buf[off+0x0D];int map_ok=map_identity_apply_cf77(&map_identity,wire_hd,wire_ep,wire_dg,wire_diff);if(map_ok){current_hd=map_identity.hd;current_stage=map_identity.episode;current_dungeon=map_identity.dungeon;current_difficulty=map_identity.difficulty;current_slot=map_identity.absolute_slot;boss_hp_sync_select_stage(&boss_ctx,current_stage);}printf("  [GS %d] MAP_ID CF77 base hd=%u ep=%u dg=%u diff=%u accepted=%d valid=0x%X authoritative=%u blocked=%u\n",port,wire_hd,wire_ep,wire_dg,wire_diff,map_ok,map_identity.valid_mask,map_identity.cf6c_authoritative,map_identity.blocked);fflush(0);}
+                        if(has_base_tuple){int map_ok=map_identity_apply_cf77(&map_identity,wire_hd,wire_ep,wire_dg,wire_diff);if(map_ok){current_hd=map_identity.hd;current_stage=map_identity.episode;current_dungeon=map_identity.dungeon;current_difficulty=map_identity.difficulty;current_slot=map_identity.absolute_slot;boss_hp_sync_select_stage(&boss_ctx,current_stage);}printf("  [GS %d] MAP_ID CF77 base hd=%u ep=%u dg=%u diff=%u accepted=%d valid=0x%X authoritative=%u blocked=%u\n",port,wire_hd,wire_ep,wire_dg,wire_diff,map_ok,map_identity.valid_mask,map_identity.cf6c_authoritative,map_identity.blocked);fflush(0);}
 #elif TEAMPLAY_FEATURE_CF77_DUNGEON_TUPLE
-                        if(len>=16 && op==100u){
-                            unsigned wire_hd=(unsigned char)buf[off+0x0A],wire_ep=(unsigned char)buf[off+0x0B],wire_dg=(unsigned char)buf[off+0x0C],wire_diff=(unsigned char)buf[off+0x0D];
+                        if(has_base_tuple){
                             if(wire_diff<=2u){current_hd=wire_hd;current_stage=wire_ep;current_dungeon=wire_dg;current_difficulty=wire_diff;current_slot=wire_diff*3u;boss_hp_sync_select_stage(&boss_ctx,current_stage);printf("  [GS %d] SESSION_TARGET_POLICY CF77 dungeon tuple hd=%u ep=%u dg=%u diff=%u slot=%u -> arm Boss/target identity before CF7F\n",port,current_hd,current_stage,current_dungeon,current_difficulty,current_slot);fflush(0);}
                             else{printf("  [GS %d] SESSION_TARGET_POLICY CF77 reject invalid difficulty=%u; retain hd=%u ep=%u dg=%u diff=%u slot=%u\n",port,wire_diff,current_hd,current_stage,current_dungeon,current_difficulty,current_slot);fflush(0);}
                         }
 #endif
-                        printf("  [GS %d] GOT CF77 dungeon lobby action op=%u fields=%u/%u/%u/%u -> CF78 empty lobby\n",
+                        printf("  [GS %d] GOT CF77 dungeon lobby action op=%u fields=%u/%u/%u/%u -> CF78 episode=%u dungeon=%u\n",
                                port,op,(unsigned char)buf[off+10],(unsigned char)buf[off+11],
-                               (unsigned char)buf[off+12],(unsigned char)buf[off+13]); fflush(0);
-                        sleep(0); send_cf78_empty_lobby(c);
+                               (unsigned char)buf[off+12],(unsigned char)buf[off+13],wire_ep,wire_dg); fflush(0);
+                        sleep(0); send_cf78_empty_lobby(c,wire_ep,wire_dg);
                     } else if(type==0xC4E0 && len==32){printf("  [MULTI] C4E0 invite from=%u\n",multiplayer_current_uid());fflush(0);multiplayer_forward_invite((const unsigned char*)&buf[off],len);
                     } else if(type==0xC4E1 && len==12){unsigned inviter=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);printf("  [MULTI] C4E1 accept uid=%u inviter=%u\n",multiplayer_current_uid(),inviter);fflush(0);multiplayer_accept_party(inviter);
                     } else if(type==0xC4E7 && len==8){printf("  [MULTI] C4E7 exit uid=%u\n",multiplayer_current_uid());fflush(0);multiplayer_exit_party();

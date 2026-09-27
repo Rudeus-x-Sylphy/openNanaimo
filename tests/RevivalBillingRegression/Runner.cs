@@ -31,6 +31,7 @@ internal static class RevivalBillingChecks
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         await CheckContinuationResources();
         await CheckLiveBilling();
+        await CheckCommittedPaymentRetry();
         await CheckInsufficientFunds();
         await CheckRejectedTransitions();
         Console.WriteLine($"REVIVAL_BILLING_REGRESSION_PASS checks={checks}");
@@ -66,94 +67,74 @@ internal static class RevivalBillingChecks
     {
         await using var f = await Fixture.Create(1000, 12);
         await f.Hp(0);
-        await f.Revive(1, 950);
+        await f.Revive(1, 1280);
         await f.Balance(1000, 12, "recovery before the first start does not pay");
         Check(f.Dead && f.Drain().Count == 0, "unstarted recovery remains dead");
+
         await f.Hp(2000);
         await f.Start();
-        var epoch = (long)Get(f.Session, "NativeBattleEpoch")!;
         f.Character.Hans = 99999;
         await f.Hp(0);
-        await f.Revive(1, 950);
-        await f.Balance(950, 12, "first recovery uses exactly 50 coins despite a stale wallet and egg selection");
-        f.Recovered(20, 1000, 400);
-        await f.Revive(0, 10);
-        await f.Balance(950, 12, "repeated recovery while alive pays nothing");
+        await f.Revive(1, 1280);
+        await f.Balance(1000, 11, "first mode1/value1280 service-egg click consumes exactly one egg and no Hans");
+        f.Recovered(60, 2000, 800);
+
+        await f.Revive(0, 50);
+        await f.Balance(1000, 11, "repeated recovery while alive pays nothing");
         Check(f.Drain().Count == 0, "repeated recovery has no second success");
 
-        await f.Start(); // Repetition while alive must not restore the first-price option.
-        await f.ReadyRoom();
-        await f.Start(); // A roster refresh is not a completed round transition.
-        await f.Hp(0);
-        await f.Start(); // Nor can an attempted start while dead reset billing.
-        await Task.WhenAll(f.Revive(0, 65535), f.Revive(1, 1));
-        await f.Balance(950, 11, "concurrent second recovery consumes one egg, never more coins");
-        f.Recovered(60, 2000, 800);
-
-        await f.Send(0xCF8B, [0, 0, 1, 0]); // No settlement authorization.
-        f.Drain();
-        await f.Start();
         await f.Hp(0);
         await f.Revive(0, 50);
-        await f.Balance(950, 10, "unarmed transition and duplicate start do not reset the first-price option");
-        f.Recovered(60, 2000, 800);
+        await f.Balance(950, 11, "mode0 uses its proven Hans price without consuming an egg");
+        f.Recovered(20, 2000, 800);
 
-        await f.Settle();
-        await f.Send(0xCF8B, [0, 0, 2, 0]);
-        f.Drain();
-        Check((byte)Get(f.Session, "NativeDungeonDungeon")! == 1, "accepted next-round selection advances");
-        await f.ReadyRoom(); // Clears teardown authorization; the one-time start permission must survive.
-        var malformed = NativeDungeonClient.Frame(0xCF7F, []); malformed[4] = 7;
-        await f.Send(malformed);
-        await f.Hp(0);
-        await f.Revive(0, 50);
-        await f.Balance(950, 10, "transition alone and malformed start do not start another paid cycle");
-        Check(f.Dead && f.Drain().Count == 0, "next round must start before revival becomes available");
-        await f.Hp(2000);
-        await f.Start();
-        Check((long)Get(f.Session, "NativeBattleEpoch")! == epoch, "same-connection next round retains the connection epoch");
         await f.Hp(0);
         await f.Revive(1, 1400);
-        await f.Balance(900, 10, "same-connection next round resets to exactly 50 coins");
-        f.Recovered(20, 1000, 400);
-        await f.Send(0xCF8B, [0, 0, 2, 0]);
-        f.Drain();
-        await f.ReadyRoom();
-        await f.Start();
-        await f.Hp(0);
-        await f.Revive(0, 50);
-        await f.Balance(900, 9, "replayed transition and ready-room refresh cannot rearm another reset");
+        await f.Balance(950, 10, "later mode1 remains the egg path regardless of client value");
         f.Recovered(60, 2000, 800);
+    }
 
-        await f.Settle();
-        await f.Send(0xCF8B, [0, 0, 1, 0]); // A valid same-stage retry is a new round too.
-        f.Drain();
+    private static async Task CheckCommittedPaymentRetry()
+    {
+        await using var f = await Fixture.Create(1000, 2);
         await f.Start();
         await f.Hp(0);
-        await f.Revive(0, 10);
-        await f.Balance(850, 9, "authorized same-stage retry resets on the next start");
-        f.Recovered(20, 1000, 400);
-        await f.Balance(850, 9, "later persistence retains the committed payment exactly once");
+        f.Worker.RejectNextPaidSync = true;
+        await f.Revive(0, 50);
+        await f.Balance(950, 2, "a committed Hans payment is recorded exactly once when F104/F105 rejects");
+        Check(f.Dead && f.Drain().Count == 0,
+            "rejected post-commit synchronization keeps the connection route alive, death latched and response pending");
+
+        await f.Revive(0, 50);
+        await f.Balance(950, 2, "retry completes the pending paid recovery without another debit");
+        f.Recovered(20, 2000, 800);
     }
 
     private static async Task CheckInsufficientFunds()
     {
-        await using var f = await Fixture.Create(49, 0);
-        await f.Start();
-        await f.Hp(0);
-        await f.Revive(1, 10);
-        await f.Balance(49, 0, "insufficient first coins cannot fall back or restore health");
-        Check(f.Dead && f.Drain().Count == 0, "failed payment retains death");
-        await f.Coins(50);
-        f.Character.Hans = 0;
-        await f.Revive(0, 65535);
-        await f.Balance(0, 0, "retry after funding still uses the first 50-coin payment");
-        f.Recovered(20, 1000, 400);
-        await f.Coins(1000);
-        await f.Hp(0);
-        await f.Revive(0, 50);
-        await f.Balance(1000, 0, "no eggs on later recovery never falls back to coins");
-        Check(f.Dead && f.Drain().Count == 0, "missing egg keeps death and grants no recovery");
+        await using (var f = await Fixture.Create(49, 2))
+        {
+            await f.Start();
+            await f.Hp(0);
+            await f.Revive(0, 50);
+            await f.Balance(49, 2, "insufficient mode0 Hans leaves both ledgers unchanged");
+            Check(f.Dead && f.Drain().Count == 0,
+                "insufficient mode0 returns normally, retains the death latch and emits no fabricated success");
+
+            await f.Revive(1, 1280);
+            await f.Balance(49, 1, "mode1 can still consume the selected service egg after a rejected Hans attempt");
+            f.Recovered(60, 2000, 800);
+        }
+
+        await using (var f = await Fixture.Create(1000, 0))
+        {
+            await f.Start();
+            await f.Hp(0);
+            await f.Revive(1, 1280);
+            await f.Balance(1000, 0, "mode1 without eggs never falls back to Hans");
+            Check(f.Dead && f.Drain().Count == 0,
+                "missing service egg keeps death and grants no recovery");
+        }
     }
 
     private static async Task CheckRejectedTransitions()
@@ -162,7 +143,7 @@ internal static class RevivalBillingChecks
         await f.Start();
         await f.Hp(0);
         await f.Revive(0, 50);
-        f.Recovered(20, 1000, 400);
+        f.Recovered(20, 2000, 800);
         await f.Settle();
         f.Worker.RejectTransition = true;
         await f.Send(0xCF8B, [0, 0, 1, 0]);
@@ -171,8 +152,8 @@ internal static class RevivalBillingChecks
         await f.Start();
         await f.Hp(0);
         await f.Revive(0, 50);
-        await f.Balance(950, 4, "invalid transition result cannot grant a fresh first-price option");
-        f.Recovered(60, 2000, 800);
+        await f.Balance(900, 5, "invalid transition does not change mode0 Hans selector semantics");
+        f.Recovered(20, 2000, 800);
         await f.Settle();
         await f.Send(0xCF8B, [0, 0, 0, 0]);
         f.Drain();
@@ -180,8 +161,8 @@ internal static class RevivalBillingChecks
         Set(f.Session, "NativeDungeonSettlementAwaitingAction", false);
         await f.Hp(0);
         await f.Revive(0, 50);
-        await f.Balance(950, 3, "invalid transition mode does not reset billing");
-        f.Recovered(60, 2000, 800);
+        await f.Balance(850, 5, "invalid transition mode still leaves mode0 on the Hans path");
+        f.Recovered(20, 2000, 800);
     }
 
     private sealed class Fixture : IAsyncDisposable
@@ -255,7 +236,7 @@ internal static class RevivalBillingChecks
         public async Task Hp(ushort hp)
         {
             Worker.Hp(hp);
-            var payload = new byte[10]; Put(payload, 0, (ushort)Character.Id); Put(payload, 8, hp);
+            var payload = new byte[28]; Put(payload, 0, (ushort)Character.Id); Put(payload, 8, hp);
             await (Task)Receive.Invoke(Service, [Session, NativeDungeonClient.Frame(0xD010, payload), 7L, Stop.Token])!;
             Drain();
         }
@@ -321,6 +302,7 @@ internal static class RevivalBillingChecks
         private NativeDungeonState state;
         private readonly object gate = new();
         public bool RejectTransition;
+        public bool RejectNextPaidSync;
         private byte dungeon, stage;
         public int Port => ((IPEndPoint)Listener.LocalEndpoint).Port;
         public Worker(NativeDungeonState initial) { state = new NativeDungeonState(initial.Bytes.ToArray()); Listener.Start(); }
@@ -349,7 +331,12 @@ internal static class RevivalBillingChecks
                             await stream.WriteAsync(NativeDungeonClient.Frame(0xF102,bytes));
                             break;
                         case 0xF104:
-                            var ack=new byte[8]; Put(ack,0,1); Put(ack,4,U16(frame,10)); Put(ack,6,U16(frame,12));
+                            var ack=new byte[8];
+                            if (!RejectNextPaidSync)
+                            {
+                                Put(ack,0,1); Put(ack,4,U16(frame,10)); Put(ack,6,U16(frame,12));
+                            }
+                            else RejectNextPaidSync = false;
                             await stream.WriteAsync(NativeDungeonClient.Frame(0xF105,ack));
                             break;
                         case 0xCF95:

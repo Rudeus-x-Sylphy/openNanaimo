@@ -53,7 +53,7 @@ if(Test-Path -LiteralPath $AdapterManifest){
 }
 $ReleaseIdentity=if($ExpectedAdapterDllHash){'Adapter.dll '+$ExpectedAdapterDllHash.Substring(0,[Math]::Min(12,$ExpectedAdapterDllHash.Length))}else{'Adapter.dll UNVERIFIED'}
 $GbK=[Text.Encoding]::GetEncoding(936)
-$KnownDungeonTitles=@{0='修炼中的初级收集者';2='打败大机械熊偶的收集者';23='打败头脑胶囊的收集者';24='打败马斯特洛克的收集者'}
+$KnownDungeonTitles=@{0='修炼中的初级收集者';1='打败机炮飞艇的收集者';2='打败大机械熊偶的收集者';3='打败斯巴特洛的收集者';4='打败单眼怪里奥的收集者';5='打败石鬼豪斯的收集者';6='打败立忠大将军的收集者';7='打败独角蓝鬼咒魁的收集者';8='打败不老的始皇帝的收集者';9='打败乔伊桑和蜈蚣王的收集者';10='打败疾风刺客法雷的收集者';11='打败不死神坛的收集者';12='打败坏熊梅尔文的收集者';13='打败海盗王丹尼的收集者';14='打败轰天炮台的收集者';15='打败三龟巨魔的收集者';16='打败派·罗斯的收集者';17='打败瓦格拉诺的收集者';18='打败闇黑法老王的收集者';19='打败邪神马米加的收集者';20='打败迷之爱丽丝的收集者';21='打败冰龙邪王的收集者';22='打败大魔女明琪的收集者';23='打败头脑胶囊的收集者';24='打败马斯特洛克的收集者'}
 function Get-DungeonTitleIconResource([int]$grade){if($grade-lt0-or$grade-gt42){throw '称号档位必须为0～42。'};return 1243+$grade}
 function Get-DungeonTitleTextResource([int]$grade){if($grade-lt0-or$grade-gt42){throw '称号档位必须为0～42。'};if($grade-le20){return 2038+$grade};if($grade-le38){return 2394+($grade-21)};return 2412}
 function New-DungeonTitleChoices([int]$currentGrade=-1){
@@ -61,9 +61,9 @@ function New-DungeonTitleChoices([int]$currentGrade=-1){
     [void]$rows.Add([pscustomobject]@{Grade=-1;ResourceId=$null;IconResource=$null;TextResource=$null;Rank='';Name='跟随进度档';Display='跟随已有地宫进度，不覆盖称号'})
     for($g=0;$g-le42;$g++){
         $icon=Get-DungeonTitleIconResource $g;$text=Get-DungeonTitleTextResource $g
-        $rank=if($g-ge17-and$g-le39){'R'+($g-16)}else{''}
-        $name=if($KnownDungeonTitles.ContainsKey($g)){[string]$KnownDungeonTitles[$g]}else{"称号档位 $g"}
-        $suffix=if($g-ge40){'（无配套图标）'}elseif($rank){"（$rank）"}else{''}
+        $rank=if($g-ge1-and$g-le16){'P'+$g}elseif($g-ge17-and$g-le39){'R'+($g-16)}else{''}
+        $name=if($KnownDungeonTitles.ContainsKey($g)){[string]$KnownDungeonTitles[$g]}elseif($g-ge25){'原生文本为空'}else{"称号档位 $g"}
+        $suffix=if($g-ge40){'（原生文本为空；无配套图标）'}elseif($rank){"（$rank）"}else{''}
         [void]$rows.Add([pscustomobject]@{Grade=$g;ResourceId=$icon;IconResource=$icon;TextResource=$text;Rank=$rank;Name=$name;Display=("档位 {0,2} | {1}{2}"-f$g,$name,$suffix)})
     }
     return ,$rows
@@ -293,11 +293,11 @@ if($SelfTestTitleIO){
     try{
         if($titleChoices.Count-ne44){throw 'title choice count'}
         foreach($g in 0..42){$row=@($titleChoices|Where-Object Grade -eq $g)[0];if($row.IconResource-ne(1243+$g)-or$row.ResourceId-ne$row.IconResource-or$row.TextResource-ne(Get-DungeonTitleTextResource $g)){throw "title resources $g"}}
-        $r7=@($titleChoices|Where-Object Grade -eq 23)[0];$r8=@($titleChoices|Where-Object Grade -eq 24)[0];$r23=@($titleChoices|Where-Object Grade -eq 39)[0];$last=@($titleChoices|Where-Object Grade -eq 42)[0]
-        if($r7.Rank-ne'R7'-or$r7.IconResource-ne1266-or$r7.TextResource-ne2396-or$r8.Rank-ne'R8'-or$r8.TextResource-ne2397-or$r23.Rank-ne'R23'-or$r23.IconResource-ne1282-or$last.Rank-ne''-or$last.IconResource-ne1285-or$last.TextResource-ne2412){throw 'title choice mapping'}
+        $p1=@($titleChoices|Where-Object Grade -eq 1)[0];$p16=@($titleChoices|Where-Object Grade -eq 16)[0];$r1=@($titleChoices|Where-Object Grade -eq 17)[0];$r7=@($titleChoices|Where-Object Grade -eq 23)[0];$r8=@($titleChoices|Where-Object Grade -eq 24)[0];$r23=@($titleChoices|Where-Object Grade -eq 39)[0];$last=@($titleChoices|Where-Object Grade -eq 42)[0]
+        if($KnownDungeonTitles.Count-ne25-or$p1.Rank-ne'P1'-or$p1.Name-ne'打败机炮飞艇的收集者'-or$p16.Rank-ne'P16'-or$p16.Name-ne'打败派·罗斯的收集者'-or$r1.Rank-ne'R1'-or$r1.Name-ne'打败瓦格拉诺的收集者'-or$r7.Rank-ne'R7'-or$r7.IconResource-ne1266-or$r7.TextResource-ne2396-or$r7.Name-ne'打败头脑胶囊的收集者'-or$r8.Rank-ne'R8'-or$r8.TextResource-ne2397-or$r8.Name-ne'打败马斯特洛克的收集者'-or$r23.Rank-ne'R23'-or$r23.IconResource-ne1282-or$r23.Name-ne'原生文本为空'-or$last.Rank-ne''-or$last.IconResource-ne1285-or$last.TextResource-ne2412-or$last.Name-ne'原生文本为空'){throw 'title choice mapping'}
         $path=Write-DungeonGradeState $tmp '5449544C4554455354' 42;$state=Read-KeyValueFile $path
         if([int]$state.grade-ne42-or[int]$state.frontier_valid-ne0-or(Read-DungeonGradeState $tmp '5449544C4554455354')-ne42){throw 'grade42 state roundtrip'}
-        Write-Output 'CHARACTER_TITLE_IO_PASS choices=44 grade_range=0..42 images=1243..1285 unavailable_images=1283..1285 state_roundtrip=PASS'
+        Write-Output 'CHARACTER_TITLE_IO_PASS choices=44 automatic=P1..P16+R1..R7 native_names=grade0..24 blank_text=25..42 images=1243..1285 unavailable_images=1283..1285 state_roundtrip=PASS'
     }finally{if(Test-Path -LiteralPath $tmp){[IO.Directory]::Delete($tmp,$true)}};exit 0
 }
 if($SelfTestInventoryIO){Write-Output (Test-InventoryAdminInstallation $Root);exit 0}
@@ -314,7 +314,7 @@ if($ValidateOnly){
     $networkInfo=Get-LaunchModeInfo 'network' '127.0.0.1'
     [void](Test-LaunchModeTemplate $networkInfo)
     if(($networkInfo.ClientArgs-join' ')-ne'-q :1:1:0:3:4:-i 5:-r 6:7:1:127.0.0.1:'){throw 'network client arguments'}
-    if($defaultCardKeyNormal-ne99-or$defaultCardKeyGold-ne99-or$defaultCardKeyMystery-ne99-or$defaultCardKeySpecial-ne99-or$defaultFreeMagicKeyExpiry-ne2099123123){throw 'card key defaults'};if($titleChoices.Count-ne44-or@($titleChoices|Where-Object Grade -eq 23)[0].Rank-ne'R7'-or@($titleChoices|Where-Object Grade -eq 39)[0].Rank-ne'R23'-or@($titleChoices|Where-Object Grade -eq 42)[0].Rank-ne''){throw 'title choices'}
+    if($defaultCardKeyNormal-ne99-or$defaultCardKeyGold-ne99-or$defaultCardKeyMystery-ne99-or$defaultCardKeySpecial-ne99-or$defaultFreeMagicKeyExpiry-ne2099123123){throw 'card key defaults'};if($titleChoices.Count-ne44-or@($titleChoices|Where-Object Grade -eq 1)[0].Rank-ne'P1'-or@($titleChoices|Where-Object Grade -eq 16)[0].Rank-ne'P16'-or@($titleChoices|Where-Object Grade -eq 23)[0].Rank-ne'R7'-or@($titleChoices|Where-Object Grade -eq 39)[0].Rank-ne'R23'-or@($titleChoices|Where-Object Grade -eq 42)[0].Rank-ne''){throw 'title choices'}
     Write-Host ('NETWORK_VALIDATE_PASS titles=43+auto pets={0} equipment={1} profile={2}/{3} hp={4}/{5} mp={6}/{7} attack={8} defense={9} coin={10} nana_point={11} skip_tutorial={12} launch_mode={13} network_ip={14} templates=PASS filters=PASS inventory_admin=PASS'-f$pets.Count,$equips.Count,$defaultName,$defaultLevel,$defaultHpMax,$defaultHpMax,$defaultMpMax,$defaultMpMax,$defaultAttack,$defaultDefense,$defaultCoin,$defaultNanaPoint,[int]$defaultSkipTutorial,$defaultLaunchMode,$defaultNetworkIp);exit 0
 }
 if($SelfTestLaunchModes){

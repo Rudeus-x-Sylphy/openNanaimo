@@ -21,6 +21,8 @@ internal static class DungeonRankingChecks
                 var accountId = await db.OpenLocalAccountAsync($"rank-check-{index:D2}");
                 await db.CreateLocalCharacterAsync(accountId, $"Rank{index:D2}", 1);
                 var character = (await db.GetCharacterAsync(accountId))!;
+                character.DungeonGrade = index == 11 ? (byte)23 : checked((byte)(index % 5));
+                await SetDungeonGradeAsync(db, character.Id, character.DungeonGrade);
                 var sessionId = Guid.NewGuid().ToString("N");
                 Check(await db.BeginWorldSessionAsync(accountId, character.Id, sessionId, 1, "127.0.0.1"),
                     $"ranking fixture {index} online");
@@ -44,6 +46,8 @@ internal static class DungeonRankingChecks
                 "CF16 leaderboard sorts highest score first");
             Check(leaderboard[0].CharacterName == "Rank11" && leaderboard[^1].CharacterName == "Rank02",
                 "CF16 leaderboard retained the correct top-ten identities");
+            Check(leaderboard[0].CharacterLevel == 1 && leaderboard[0].DungeonGrade == 23,
+                "CF16 persistence keeps character level and exact dungeon-title grade independent");
 
             var ratings = await db.GetDungeonBestRatingsAsync(characters[11].Id);
             Check(NetworkAdapterService.ExtractPackedDungeonReadyRoomRank(
@@ -62,6 +66,19 @@ internal static class DungeonRankingChecks
                 && nativeHd == 0 && nativeEpisode == 2 && nativeDungeon == 1
                 && nativeStage == 0 && nativeDifficulty == 0,
                 "native CF6C selection is decoded in the same logical difficulty domain as persistence");
+
+            var lumineosSelection = NativeDungeonClient.Frame(0xCF6C, new byte[44]);
+            lumineosSelection[0x22] = 0;
+            lumineosSelection[0x23] = 100;
+            lumineosSelection[0x24] = 6;
+            lumineosSelection[0x25] = 1;
+            BinaryPrimitives.WriteUInt16LittleEndian(lumineosSelection.AsSpan(0x26, 2), 2);
+            Check(NetworkAdapterService.TryParseNativeDungeonSelectionFrame(
+                    lumineosSelection, out var lumineosHd, out var lumineosEpisode,
+                    out var lumineosDungeon, out var lumineosStage, out var lumineosDifficulty)
+                && lumineosHd == 0 && lumineosEpisode == 100 && lumineosDungeon == 6
+                && lumineosStage == 1 && lumineosDifficulty == 0,
+                "native CF6C preserves Lumineos wire ep100/dungeon6/stage1 identity");
 
             Check(NetworkAdapterService.ShouldPersistNativeDungeonSettlement(0xCF87, deathLatched: false)
                 && !NetworkAdapterService.ShouldPersistNativeDungeonSettlement(0xCF87, deathLatched: true)
@@ -214,6 +231,18 @@ internal static class DungeonRankingChecks
                 && challengeDungeon == 2 && challengeStage == 1 && challengeDifficulty == 0,
                 "CF8B/CF8C challenge advances the effective tuple to the persistent Super-BOSS slot");
 
+            var lumineosChallengeResponse = NativeDungeonClient.Frame(0xCF8C, new byte[40]);
+            BinaryPrimitives.WriteUInt16LittleEndian(lumineosChallengeResponse.AsSpan(0x28, 2), 1);
+            BinaryPrimitives.WriteUInt16LittleEndian(lumineosChallengeResponse.AsSpan(0x2C, 2), 6);
+            BinaryPrimitives.WriteUInt16LittleEndian(lumineosChallengeResponse.AsSpan(0x2E, 2), 6);
+            Check(NetworkAdapterService.TryResolveNativeDungeonTransition(
+                    6, 0, 0, challengeRequest, lumineosChallengeResponse,
+                    out var lumineosChallengeDungeon, out var lumineosChallengeStage,
+                    out var lumineosChallengeDifficulty)
+                && lumineosChallengeDungeon == 6 && lumineosChallengeStage == 1
+                && lumineosChallengeDifficulty == 0,
+                "CF8B/CF8C preserves Lumineos dungeon6 while entering stage1 Super-BOSS");
+
             var nextDungeonRequest = NativeDungeonClient.Frame(0xCF8B, new byte[4]);
             BinaryPrimitives.WriteUInt16LittleEndian(nextDungeonRequest.AsSpan(8, 2), 0);
             BinaryPrimitives.WriteUInt16LittleEndian(nextDungeonRequest.AsSpan(10, 2), 2);
@@ -291,8 +320,8 @@ internal static class DungeonRankingChecks
             Check(DecodeGbk(payload.AsSpan(4, 16)) == "Rank11"
                 && BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(20, 4)) == 2_100
                 && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(24, 2)) == 1
-                && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(26, 2)) == 1,
-                "CF16 first record uses name/score/level/icon at the proven offsets");
+                && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(26, 2)) == 23,
+                "CF16 first record uses name/score/character-level/exact-title-grade at the proven offsets");
             await DungeonRankingRouteChecks.RunAsync(db, root, characters[11], payload);
 
             var characterForCf71 = characters[11];
@@ -302,13 +331,45 @@ internal static class DungeonRankingChecks
                 characterForCf71, checked((ushort)characterForCf71.Id), 0, 0, 0, 0, 1, 0, 0, 0, 0, 3);
             Check(blank[0xB4 - 8] == 0 && ranked[0xB4 - 8] == 3 && ranked[0xB5 - 8] == 0,
                 "CF71 +0xB4 publishes blank/S without leaking character level into the rank field");
-            Console.WriteLine("DUNGEON_RANKING_CHECKS_PASS ready=0/B/A/S CF16=10x24 persistence=normal+secret");
+            Console.WriteLine("DUNGEON_RANKING_CHECKS_PASS ready=0/B/A/S CF16=10x24 level+title-grade persistence=normal+secret");
         }
         finally
         {
             SqliteConnection.ClearAllPools();
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
+    }
+
+    private static async Task SetDungeonGradeAsync(
+        DatabaseService db, long characterId, byte dungeonGrade)
+    {
+        await using var connection = new SqliteConnection($"Data Source={db.DatabasePath}");
+        await connection.OpenAsync();
+        await using (var ensure = connection.CreateCommand())
+        {
+            ensure.CommandText = "CREATE TABLE IF NOT EXISTS NativeDungeonProfiles(CharacterId INTEGER PRIMARY KEY REFERENCES Characters(Id), State BLOB NOT NULL)";
+            await ensure.ExecuteNonQueryAsync();
+        }
+
+        byte[] state;
+        await using (var read = connection.CreateCommand())
+        {
+            read.CommandText = "SELECT State FROM NativeDungeonProfiles WHERE CharacterId=$id";
+            read.Parameters.AddWithValue("$id", characterId);
+            state = await read.ExecuteScalarAsync() is byte[] saved && saved.Length == NativeDungeonState.Size
+                ? saved.ToArray()
+                : new byte[NativeDungeonState.Size];
+        }
+        BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(0, 4), 1);
+        state.AsSpan(NativeDungeonState.DungeonGradeOffset, NativeDungeonState.DungeonGradeStateLength).Clear();
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            state.AsSpan(NativeDungeonState.DungeonGradeOffset, 4), dungeonGrade);
+
+        await using var write = connection.CreateCommand();
+        write.CommandText = "INSERT INTO NativeDungeonProfiles(CharacterId,State) VALUES($id,$state) ON CONFLICT(CharacterId) DO UPDATE SET State=$state";
+        write.Parameters.AddWithValue("$id", characterId);
+        write.Parameters.AddWithValue("$state", state);
+        await write.ExecuteNonQueryAsync();
     }
 
     private static bool HasValidNativeChecksum(ReadOnlySpan<byte> frame)

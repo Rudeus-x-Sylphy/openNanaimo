@@ -66,9 +66,9 @@ internal static class PetRevivalVillageChecks
         BinaryPrimitives.WriteInt64LittleEndian(paid.Bytes.AsSpan(32), 4050);
         var paidResources = NetworkAdapterService.RestoreNativeDungeonContinueResources(dead, paid)!;
         paidResources.ApplyTo(paid);
-        Check(paid.Get(20) == 1000 && paid.Get(28) == 400
+        Check(paid.Get(20) == 2000 && paid.Get(28) == 800
             && paid.Get(60) == 33 && paid.GetBalance(32) == 4050,
-            "verified F105 paid restore persists HP/MP without debiting revival uses again");
+            "verified F105 paid restore fills effective HP/MP without debiting revival uses again");
         Check(paidResources.Epoch == 7 && paidResources.AttackMode == 2,
             "paid continue preserves epoch and Power");
         var secondDeath = resources.WithCurrentHp(0, 2000);

@@ -14,8 +14,6 @@ public sealed partial class NetworkAdapterService
         return payload;
     }
 
-    internal const ushort NativeDungeonFirstRevivalCost = 50;
-
     internal enum NativeDungeonRevivalBillingMode : byte
     {
         None = 0,
@@ -27,13 +25,16 @@ public sealed partial class NetworkAdapterService
     {
         public readonly SemaphoreSlim Gate = new(1, 1);
         public readonly object BoundaryGate = new();
-        public bool FirstHansConsumed;
+        public NativePaidContinueCommit? PendingPaidContinue;
         public bool BattleStartArmed;
         public bool BattleStarted;
         public NativeRevivalTransition? Transition;
     }
 
     private sealed record NativeRevivalTransition(byte[] Request, byte Dungeon, byte Stage, byte Difficulty);
+
+    private sealed record NativePaidContinueCommit(
+        long Hans, byte RevivalUseCount, int CurrentHp, int CurrentMp, ushort ClientCostField);
 
     private readonly ConditionalWeakTable<ConnectionSession, NativeRevivalCycleState> _nativeRevivalCycles = new();
 
@@ -52,7 +53,7 @@ public sealed partial class NetworkAdapterService
         var cycle = GetNativeRevivalCycle(session);
         lock (cycle.BoundaryGate)
         {
-            cycle.FirstHansConsumed = false;
+            cycle.PendingPaidContinue = null;
             cycle.BattleStartArmed = true;
             cycle.BattleStarted = false;
             cycle.Transition = null;
@@ -111,21 +112,28 @@ public sealed partial class NetworkAdapterService
                 return false;
             cycle.BattleStartArmed = false;
             cycle.BattleStarted = true;
-            cycle.FirstHansConsumed = false;
+            cycle.PendingPaidContinue = null;
             cycle.Transition = null;
             return true;
         }
     }
 
     internal static NativeDungeonRevivalBillingMode ResolveNativeDungeonRevivalBilling(
-        bool deathLatched, bool firstHansConsumed)
+        bool deathLatched, ushort clientMode)
         => !deathLatched ? NativeDungeonRevivalBillingMode.None
-            : firstHansConsumed ? NativeDungeonRevivalBillingMode.RevivalEgg : NativeDungeonRevivalBillingMode.Hans;
+            : clientMode switch
+            {
+                0 => NativeDungeonRevivalBillingMode.Hans,
+                1 => NativeDungeonRevivalBillingMode.RevivalEgg,
+                _ => NativeDungeonRevivalBillingMode.None
+            };
 
-    // The successful recovery clears the death latch. The cached wallet may
-    // differ from persistence and is never used to infer payment success.
-    private async Task<bool> TryHandleNativeDungeonContinueBillingAsync(
-        byte[] frame, string channel, ConnectionSession session, ushort clientCostField, CancellationToken token)
+    // CF83 mode is a proven client selector: mode1 is the revival egg/CF95
+    // path and mode0 is the Hans/F104 path. Serialize both paths and preserve
+    // a committed Hans result until worker synchronization can be retried.
+    private async Task HandleNativeDungeonContinueBillingAsync(
+        byte[] frame, string channel, ConnectionSession session, ushort clientMode,
+        ushort clientCostField, CancellationToken token)
     {
         var cycle = GetNativeRevivalCycle(session);
         await cycle.Gate.WaitAsync(token);
@@ -133,40 +141,51 @@ public sealed partial class NetworkAdapterService
         {
             if (session.NativeDungeon is null || !session.OnlineTracked || session.Character is null
                 || !session.NativeDungeonDeathLatched)
-                return true;
-            bool firstHansConsumed;
+                return;
             lock (cycle.BoundaryGate)
-            {
                 if (!cycle.BattleStarted)
-                    return true;
-                firstHansConsumed = cycle.FirstHansConsumed;
+                    return;
+
+            NativePaidContinueCommit? pending;
+            lock (cycle.BoundaryGate)
+                pending = cycle.PendingPaidContinue;
+            if (pending is not null)
+            {
+                await TryCompleteNativeDungeonPaidContinueAsync(
+                    frame, channel, session, pending, token);
+                return;
             }
-            var billing = ResolveNativeDungeonRevivalBilling(session.NativeDungeonDeathLatched, firstHansConsumed);
+
+            var billing = ResolveNativeDungeonRevivalBilling(
+                session.NativeDungeonDeathLatched, clientMode);
             if (billing == NativeDungeonRevivalBillingMode.Hans)
-            {
-                try
-                {
-                    await HandleNativeDungeonPaidContinueAsync(
-                        frame, channel, session, NativeDungeonFirstRevivalCost, token);
-                }
-                finally
-                {
-                    // Also retain success if delivery fails after recovery completed.
-                    if (!session.NativeDungeonDeathLatched)
-                        lock (cycle.BoundaryGate)
-                            cycle.FirstHansConsumed = true;
-                }
-            }
+                await HandleNativeDungeonPaidContinueAsync(
+                    frame, channel, session, clientCostField, token);
             else if (billing == NativeDungeonRevivalBillingMode.RevivalEgg)
-            {
-                await HandleNativeDungeonRevivalContinueAsync(frame, channel, session, clientCostField, token);
-            }
-            return true;
+                await HandleNativeDungeonRevivalContinueAsync(
+                    frame, channel, session, clientCostField, token);
         }
         finally
         {
             cycle.Gate.Release();
         }
+    }
+
+    private void RememberNativeDungeonPaidContinue(
+        ConnectionSession session, NativePaidContinueCommit committed)
+    {
+        var cycle = GetNativeRevivalCycle(session);
+        lock (cycle.BoundaryGate)
+            cycle.PendingPaidContinue = committed;
+    }
+
+    private void CompleteNativeDungeonPaidContinue(
+        ConnectionSession session, NativePaidContinueCommit committed)
+    {
+        var cycle = GetNativeRevivalCycle(session);
+        lock (cycle.BoundaryGate)
+            if (ReferenceEquals(cycle.PendingPaidContinue, committed))
+                cycle.PendingPaidContinue = null;
     }
 
     // Only a verified worker debit is allowed to replace the local death HP.
@@ -196,8 +215,8 @@ public sealed partial class NetworkAdapterService
         NativeDungeonState restored)
         => resources is null ? null : resources with
         {
-            CurrentHp = checked((ushort)Math.Min(restored.Get(20), resources.MaximumHp)),
-            CurrentMp = checked((ushort)Math.Min(restored.Get(28), resources.MaximumMp)),
+            CurrentHp = resources.MaximumHp,
+            CurrentMp = resources.MaximumMp,
             SettlementFrozen = false,
             HpAuthority = BattleHpAuthority.LocalDamage
         };

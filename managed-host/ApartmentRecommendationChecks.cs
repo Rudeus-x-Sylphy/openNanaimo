@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Collections;
 using System.Reflection;
 using System.Text;
 using Microsoft.Data.Sqlite;
@@ -218,6 +219,7 @@ internal static class ApartmentRecommendationChecks
         Set("AccountId", actor.AccountId);
         Set("Character", actor);
         Set("OnlineTracked", true);
+        Set("ChannelId", 1);
         Set("ApartmentOwnerCharacterId", owner.Id);
         var sessionId = (string)sessionType.GetProperty("SessionId")!.GetValue(session)!;
         await using (var connection = new SqliteConnection($"Data Source={db.DatabasePath};Pooling=False"))
@@ -236,6 +238,25 @@ internal static class ApartmentRecommendationChecks
             actor.Id, "recommend-test-10", actor.Name, "127.0.0.1", 1, DateTime.UtcNow, DateTime.UtcNow, (Action<string>)(_ => { }) });
         var presences = type.GetField("_activeWorldSessions", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(service)!;
         presences.GetType().GetMethod("TryAdd")!.Invoke(presences, new[] { sessionId, presence });
+        object AddApartmentPresence(CharacterRecord character, long apartmentOwnerCharacterId)
+        {
+            var targetSession = Activator.CreateInstance(sessionType, nonPublic: true)!;
+            void SetTarget(string name, object? value) => sessionType.GetProperty(name)!.SetValue(targetSession, value);
+            SetTarget("AccountId", character.AccountId);
+            SetTarget("Character", character);
+            SetTarget("OnlineTracked", true);
+            SetTarget("ChannelId", 1);
+            SetTarget("ApartmentOwnerCharacterId", apartmentOwnerCharacterId);
+            var targetSessionId = (string)sessionType.GetProperty("SessionId")!.GetValue(targetSession)!;
+            var targetPresence = presenceType.GetConstructors().Single().Invoke(new object[] { targetSession, targetSessionId,
+                character.AccountId, character.Id, $"recommend-target-{character.Id}", character.Name, "127.0.0.1", 1,
+                DateTime.UtcNow, DateTime.UtcNow, (Action<string>)(_ => { }) });
+            presences.GetType().GetMethod("TryAdd")!.Invoke(presences, new[] { targetSessionId, targetPresence });
+            return targetSession;
+        }
+        var ownerSession = AddApartmentPresence(owner, owner.Id);
+        _ = AddApartmentPresence(other, other.Id);
+        var pending = (IList)sessionType.GetProperty("PendingBroadcasts")!.GetValue(session)!;
         Task<byte[]?> Call(bool count, byte[] payload)
         {
             var frame = new byte[8 + payload.Length];
@@ -257,9 +278,35 @@ internal static class ApartmentRecommendationChecks
         Set("ApartmentOwnerCharacterId", actor.Id);
         Check(Reply(await Call(false, Name(actor.Name)), 0xC397, 1), "network handler returns one for self recommendation");
         Set("ApartmentOwnerCharacterId", owner.Id);
-        Check(Reply(await Call(false, chinese), 0xC397, 3)
-            && Reply(await Call(false, chinese), 0xC397, 1)
-            && Reply(await Call(true, Array.Empty<byte>()), 0xC399, 2), "C396 success then duplicate with persisted C399 remaining two");
+        var ownerPointsBefore = await db.GetApartmentRecommendationPointsAsync(owner.Id);
+        var successReply = await Call(false, chinese);
+        Check(Reply(successReply, 0xC397, 3), "C396 success returns C397 before room refresh broadcasts");
+        var refreshes = pending.Cast<object>()
+            .Select(item => new
+            {
+                TargetSessionId = (string)item.GetType().GetProperty("Target")!.PropertyType
+                    .GetProperty("SessionId")!.GetValue(item.GetType().GetProperty("Target")!.GetValue(item))!,
+                Opcode = (ushort)item.GetType().GetProperty("Opcode")!.GetValue(item)!,
+                Payload = (byte[])item.GetType().GetProperty("Payload")!.GetValue(item)!
+            })
+            .Where(item => item.Opcode == 0xC38E)
+            .ToArray();
+        var ownerSessionId = (string)sessionType.GetProperty("SessionId")!.GetValue(ownerSession)!;
+        var expectedOwnerPoints = checked((ulong)(ownerPointsBefore + 1));
+        Check(refreshes.Length == 2
+            && refreshes.Select(item => item.TargetSessionId).ToHashSet(StringComparer.Ordinal)
+                .SetEquals(new[] { sessionId, ownerSessionId })
+            && refreshes.All(item => item.Payload.Length == 104
+                && BinaryPrimitives.ReadUInt64LittleEndian(item.Payload.AsSpan(56, 8)) == expectedOwnerPoints),
+            "successful recommendation queues current C38E points for recommender and online owner only");
+        Check(refreshes.Single(item => item.TargetSessionId == sessionId).Payload[1] is 30 or 40
+            && refreshes.Single(item => item.TargetSessionId == ownerSessionId).Payload[1] is 10 or 20,
+            "recommendation refresh preserves visitor and owner room types per recipient");
+        var pendingAfterSuccess = pending.Count;
+        Check(Reply(await Call(false, chinese), 0xC397, 1)
+            && pending.Count == pendingAfterSuccess
+            && Reply(await Call(true, Array.Empty<byte>()), 0xC399, 2),
+            "C396 duplicate keeps persisted C399 remaining two without another points refresh");
         Set("AuxiliaryGameSession", true);
         Check(await Call(true, Array.Empty<byte>()) is null, "auxiliary session cannot query recommendation quota");
         Set("AuxiliaryGameSession", false);

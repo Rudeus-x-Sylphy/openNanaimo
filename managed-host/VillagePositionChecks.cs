@@ -93,6 +93,20 @@ internal static class VillagePositionChecks
             Check(selectorZeroTransition.Page == 27 && selectorZeroTransition.Flag == 0,
                 "selector0 mode1 retains its explicit page while clearing the transient flag");
 
+            Check(TownTravelPolicy.ResolveFare(0, 1, 1) == TownTravelPolicy.PlatanosTaoyuanFareHans
+                  && TownTravelPolicy.ResolveFare(1, 0, 1) == TownTravelPolicy.PlatanosTaoyuanFareHans,
+                "Platanos and Taoyuan transport NPCs charge 50 Hans in both directions");
+            Check(TownTravelPolicy.ResolveFare(1, 2, 1) == TownTravelPolicy.OuterVillageFareHans
+                  && TownTravelPolicy.ResolveFare(2, 1, 1) == TownTravelPolicy.OuterVillageFareHans
+                  && TownTravelPolicy.ResolveFare(2, 3, 1) == TownTravelPolicy.OuterVillageFareHans
+                  && TownTravelPolicy.ResolveFare(3, 2, 1) == TownTravelPolicy.OuterVillageFareHans
+                  && TownTravelPolicy.ResolveFare(4, 3, 1) == TownTravelPolicy.OuterVillageFareHans,
+                "Taoyuan/Saen, Saen/Jinyu and Lamineos-to-Jinyu rides charge 70 Hans");
+            Check(TownTravelPolicy.ResolveFare(3, 4, 1) == 0
+                  && TownTravelPolicy.ResolveFare(0, 1, 0) == 0
+                  && TownTravelPolicy.ResolveFare(2, 2, 1) == 0,
+                "Jinyu has no NPC ride to Lamineos and non-ride transitions are free");
+
             var townUserInfoBuilder = typeof(NetworkAdapterService).GetMethod(
                 "BuildTownUserInfoPayload",
                 BindingFlags.NonPublic | BindingFlags.Static,
@@ -145,21 +159,20 @@ internal static class VillagePositionChecks
             var sessionType = serviceType.GetNestedType("ConnectionSession", BindingFlags.NonPublic)!;
             var dispatch = serviceType.GetMethod("HandleNativeFrameAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
             object session = Activator.CreateInstance(sessionType, nonPublic: true)!;
-            var runtimeCharacter = new CharacterRecord
-            {
-                Id = 77,
-                AccountId = accountId,
-                Name = "VilPos",
-                TutorialCompleted = true,
-                CurrentMapId = 4,
-                CurrentTownPage = 18,
-                PositionX = ushort.MaxValue,
-                PositionY = ushort.MaxValue,
-                MaxHp = 2000,
-                CurrentHp = 2000,
-                MaxMp = 500,
-                CurrentMp = 500
-            };
+            string activeSessionId = (string)sessionType.GetProperty("SessionId")!.GetValue(session)!;
+            await WriteHansAsync(reopened.DatabasePath, healed.Id, 1000);
+            Check(await reopened.BeginWorldSessionAsync(accountId, healed.Id, activeSessionId, 1, "127.0.0.1"),
+                "town-travel billing fixture starts an owned online session");
+            var runtimeCharacter = (await reopened.GetCharacterAsync(accountId))!;
+            runtimeCharacter.TutorialCompleted = true;
+            runtimeCharacter.CurrentMapId = 4;
+            runtimeCharacter.CurrentTownPage = 18;
+            runtimeCharacter.PositionX = ushort.MaxValue;
+            runtimeCharacter.PositionY = ushort.MaxValue;
+            runtimeCharacter.MaxHp = 2000;
+            runtimeCharacter.CurrentHp = 2000;
+            runtimeCharacter.MaxMp = 500;
+            runtimeCharacter.CurrentMp = 500;
             Set(session, "AccountId", accountId);
             Set(session, "Character", runtimeCharacter);
             Set(session, "ChannelId", 1);
@@ -214,29 +227,56 @@ internal static class VillagePositionChecks
             Check(runtimeCharacter.PositionX == TownPositionPolicy.FallbackX
                   && runtimeCharacter.PositionY == TownPositionPolicy.FallbackY,
                 "C365 never writes its FFFF/FFFF transient coordinates into Character");
+            Check(runtimeCharacter.Hans == 1000
+                  && (await reopened.GetCharacterAsync(accountId))!.Hans == 1000,
+                "mode0 explicit page transition does not debit Hans");
 
             runtimeCharacter.PositionX = 444;
             runtimeCharacter.PositionY = 222;
             Set(session, "LastReportedPositionX", (ushort)444);
             Set(session, "LastReportedPositionY", (ushort)222);
 
-            foreach (var (label, selector, requestedPage, mode, x, y, expectedPage) in new[]
+            foreach (var (label, sourceTown, destinationTown, requestedPage, mode, x, y, expectedPage, expectedFare) in new[]
                      {
-                         ("1->2", (byte)1, (ushort)0, (byte)1, (ushort)240, (ushort)320, (byte)0),
-                         ("2->3", (byte)2, (ushort)0, (byte)1, (ushort)320, (ushort)400, (byte)0),
-                         ("3->4", (byte)3, (ushort)29, (byte)1, (ushort)272, (ushort)240, (byte)0),
-                         ("4->3", (byte)2, (ushort)0, (byte)1, (ushort)320, (ushort)400, (byte)0),
-                         ("mode0 reverse", (byte)3, (ushort)6, (byte)0, (ushort)208, (ushort)272, (byte)6)
+                         ("Platanos->Taoyuan", (byte)0, (byte)1, (ushort)0, (byte)1, (ushort)240, (ushort)320, (byte)0, 50L),
+                         ("Taoyuan->Platanos", (byte)1, (byte)0, (ushort)0, (byte)1, (ushort)240, (ushort)320, (byte)0, 50L),
+                         ("Taoyuan->Saen", (byte)1, (byte)2, (ushort)0, (byte)1, (ushort)320, (ushort)400, (byte)0, 70L),
+                         ("Saen->Taoyuan", (byte)2, (byte)1, (ushort)0, (byte)1, (ushort)320, (ushort)400, (byte)0, 70L),
+                         ("Saen->Jinyu", (byte)2, (byte)3, (ushort)29, (byte)1, (ushort)272, (ushort)240, (byte)0, 70L),
+                         ("Jinyu->Saen", (byte)3, (byte)2, (ushort)0, (byte)1, (ushort)320, (ushort)400, (byte)0, 70L),
+                         ("Lamineos->Jinyu", (byte)4, (byte)3, (ushort)0, (byte)1, (ushort)272, (ushort)240, (byte)0, 70L),
+                         ("mode0 reverse", (byte)3, (byte)3, (ushort)6, (byte)0, (ushort)208, (ushort)272, (byte)6, 0L)
                      })
             {
-                c366 = (await Dispatch(0xC365, BuildC365(selector, requestedPage, mode, x, y)))!;
+                Set(session, "TownId", sourceTown);
+                runtimeCharacter.CurrentMapId = sourceTown;
+                long beforeHans = runtimeCharacter.Hans;
+                Check(TownTravelPolicy.ResolveFare(sourceTown, destinationTown, mode) == expectedFare,
+                    $"C365/C366 {label} resolves the original NPC fare {expectedFare}");
+                c366 = (await Dispatch(0xC365, BuildC365(destinationTown, requestedPage, mode, x, y)))!;
                 Check(ReadOpcode(c366) == 0xC366
                       && c366[8] == 200
-                      && c366[9] == selector
+                      && c366[9] == destinationTown
                       && c366[10] == expectedPage
                       && c366[11] == 0,
-                    $"C365/C366 {label} response uses selector {selector}, page {expectedPage}, flag 0");
-                Check(runtimeCharacter.CurrentMapId == selector
+                    $"C365/C366 {label} response uses selector {destinationTown}, page {expectedPage}, flag 0");
+                Check(runtimeCharacter.Hans == beforeHans - expectedFare
+                      && (await reopened.GetCharacterAsync(accountId))!.Hans == beforeHans - expectedFare,
+                    $"C365/C366 {label} atomically debits exactly {expectedFare} Hans");
+                if (expectedFare > 0)
+                {
+                    Check(c366.Length > 12
+                          && ReadOpcode(c366.AsSpan(12)) == 0xC379
+                          && BinaryPrimitives.ReadUInt64LittleEndian(c366.AsSpan(12 + 208, 8))
+                             == (ulong)(beforeHans - expectedFare),
+                        $"C365/C366 {label} immediately publishes the committed Hans balance through C379");
+                }
+                else
+                {
+                    Check(c366.Length == 12,
+                        $"C365/C366 {label} keeps the existing response-only shape for a free transition");
+                }
+                Check(runtimeCharacter.CurrentMapId == destinationTown
                       && runtimeCharacter.CurrentTownPage == expectedPage,
                     $"C365/C366 {label} stores the canonical destination page");
                 Check(runtimeCharacter.PositionX == 444
@@ -245,6 +285,33 @@ internal static class VillagePositionChecks
                       && (ushort)sessionType.GetProperty("LastReportedPositionY")!.GetValue(session)! == 222,
                     $"C365/C366 {label} does not persist transient transport coordinates ({x},{y})");
             }
+
+            Check(runtimeCharacter.Hans == 550,
+                "the seven original NPC rides debit 50+50+70+70+70+70+70 Hans while mode0 remains free");
+            await WriteHansAsync(reopened.DatabasePath, runtimeCharacter.Id, TownTravelPolicy.PlatanosTaoyuanFareHans - 1);
+            runtimeCharacter.Hans = TownTravelPolicy.PlatanosTaoyuanFareHans - 1;
+            Set(session, "TownId", (byte)0);
+            runtimeCharacter.CurrentMapId = 0;
+            byte previousTown = (byte)sessionType.GetProperty("TownId")!.GetValue(session)!;
+            byte previousPage = (byte)sessionType.GetProperty("TownPage")!.GetValue(session)!;
+            int previousMap = runtimeCharacter.CurrentMapId;
+            int previousCharacterPage = runtimeCharacter.CurrentTownPage;
+            c366 = (await Dispatch(0xC365, BuildC365(1, 0, 1, 240, 320)))!;
+            Check(ReadOpcode(c366) == 0xC366
+                  && c366[8] == 0
+                  && c366[9] == previousTown
+                  && c366[10] == previousPage,
+                "insufficient Hans returns a non-success C366 with the retained town tuple");
+            Check(runtimeCharacter.Hans == TownTravelPolicy.PlatanosTaoyuanFareHans - 1
+                  && (await reopened.GetCharacterAsync(accountId))!.Hans == TownTravelPolicy.PlatanosTaoyuanFareHans - 1
+                  && runtimeCharacter.CurrentMapId == previousMap
+                  && runtimeCharacter.CurrentTownPage == previousCharacterPage,
+                "insufficient Hans neither debits nor commits the village transition");
+            var staleDebit = await reopened.DebitTownTravelFareAsync(
+                accountId, runtimeCharacter.Id, "stale-session", TownTravelPolicy.PlatanosTaoyuanFareHans);
+            Check(!staleDebit.Success
+                  && (await reopened.GetCharacterAsync(accountId))!.Hans == TownTravelPolicy.PlatanosTaoyuanFareHans - 1,
+                "stale session cannot debit a town-travel fare");
 
             byte[] destinationC367 = new byte[8];
             BinaryPrimitives.WriteInt32LittleEndian(destinationC367, 6);
@@ -272,7 +339,7 @@ internal static class VillagePositionChecks
             Check(runtimeCharacter.PositionX == 512 && runtimeCharacter.PositionY == 288,
                 "CB21 legal movement still updates the persistent carrier");
 
-            Console.WriteLine("VILLAGE_POSITION_CHECKS_PASS c355-bootstrap c365-c366-transition-matrix c367 c368-offsets cb21 sentinel persistence startup-self-heal");
+            Console.WriteLine("VILLAGE_POSITION_CHECKS_PASS c355-bootstrap c365-c366-transition-matrix travel-fare atomic-debit insufficient-balance stale-session c367 c368-offsets cb21 sentinel persistence startup-self-heal");
         }
         finally
         {
@@ -325,8 +392,27 @@ internal static class VillagePositionChecks
         Check(await command.ExecuteNonQueryAsync() == 1, "dirty position fixture written");
     }
 
+    private static async Task WriteHansAsync(string databasePath, long characterId, long hans)
+    {
+        await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = databasePath,
+            Mode = SqliteOpenMode.ReadWrite,
+            ForeignKeys = true
+        }.ToString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Characters SET Hans=$hans WHERE Id=$id";
+        command.Parameters.AddWithValue("$hans", hans);
+        command.Parameters.AddWithValue("$id", characterId);
+        Check(await command.ExecuteNonQueryAsync() == 1, "town-travel Hans fixture written");
+    }
+
     private static ushort ReadOpcode(byte[] frame)
-        => BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2));
+        => ReadOpcode(frame.AsSpan());
+
+    private static ushort ReadOpcode(ReadOnlySpan<byte> frame)
+        => BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2));
 
     private static void Set(object instance, string name, object? value)
         => instance.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!

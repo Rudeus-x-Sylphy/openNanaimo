@@ -71,4 +71,5 @@ public sealed record DungeonStageLeaderboardRecord(
     long CharacterId,
     string CharacterName,
     uint BestScore,
-    ushort CharacterLevel);
+    ushort CharacterLevel,
+    ushort DungeonGrade);

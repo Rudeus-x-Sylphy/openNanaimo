@@ -1,6 +1,7 @@
 #ifndef NANAIMO_STAGE_DAMAGE_DAMAGE_RUNTIME_INC
 #define NANAIMO_STAGE_DAMAGE_DAMAGE_RUNTIME_INC
 #include "../target_resources/lumineos_resource_identity.inc"
+#include "../targets/hp_resource_global_data.inc"
 #include "stage_damage_catalog.inc"
 #include "boss_contact_catalog.inc"
 #include "monster_contact_catalog.inc"
@@ -14,6 +15,7 @@
 #define STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_FIXED 9u
 #define STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE 10u
 #define STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE 11u
+#define STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE 12u
 #define STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND 7u
 #define STAGE_DAMAGE_DAMAGE_STAGE_MISSING 8u
 
@@ -36,6 +38,7 @@ struct stage_damage_damage_lookup {
     unsigned wire_hd,wire_episode,wire_dungeon,wire_stage,difficulty;
     unsigned resource_hd,resource_episode,resource_dungeon,resource_stage;
     unsigned kind,owner,source,row_count,base,status,policy_damage;
+    unsigned associated_selector,target_type;
     unsigned scope_incomplete,identity_translated;
     const char *resource,*selected_smmo;
 };
@@ -119,12 +122,53 @@ static unsigned stage_damage_monster_contact_lookup(const struct stage_damage_da
         if(cmp<0)lo=mid+1u;else hi=mid;
     }return 0u;
 }
+static int stage_damage_target_profile_compare(const struct hp_sync_profile_def *p,unsigned hd,unsigned ep,unsigned dg,unsigned st,unsigned diff,unsigned segment){
+    if((unsigned)p->hd_id!=hd)return (unsigned)p->hd_id<hd?-1:1;
+    if((unsigned)p->stage_id!=ep)return (unsigned)p->stage_id<ep?-1:1;
+    if((unsigned)p->dungeon_id!=dg)return (unsigned)p->dungeon_id<dg?-1:1;
+    if((unsigned)p->stage_index!=st)return (unsigned)p->stage_index<st?-1:1;
+    if((unsigned)p->difficulty!=diff)return (unsigned)p->difficulty<diff?-1:1;
+    if((unsigned)p->segment!=segment)return (unsigned)p->segment<segment?-1:1;
+    return 0;
+}
+static const struct hp_sync_profile_def *stage_damage_find_target_profile(const struct stage_damage_damage_context *ctx){
+    unsigned lo=0u,hi=HP_SYNC_PROFILE_COUNT,segment;if(!ctx||!ctx->active)return 0;
+    segment=ctx->resource_stage;
+    while(lo<hi){unsigned mid=lo+(hi-lo)/2u;const struct hp_sync_profile_def *p=&hp_sync_profiles[mid];int cmp=stage_damage_target_profile_compare(p,ctx->resource_hd,ctx->resource_episode,ctx->resource_dungeon,ctx->resource_stage,ctx->difficulty,segment);
+        if(cmp<0)lo=mid+1u;else if(cmp>0)hi=mid;else return p;
+    }return 0;
+}
+/* Kind60 reports a selected-slot target selector, not a PON owner.  Only an
+ * authored type4 row with an explicit same-placement/resource association to
+ * a positive ordinary target may inherit that target's exact contact attack.
+ * Unassociated scene rows, non-damaging parents, misses and kind80 stay echo-only. */
+static unsigned stage_damage_scene_associated_lookup(const struct stage_damage_damage_context *ctx,unsigned selector,struct stage_damage_damage_lookup *out){
+    const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);const struct hp_sync_target_def *child,*parent;unsigned associated,damage;
+    if(!profile||selector>=(unsigned)profile->target_count)return 0u;
+    child=&hp_sync_target_defs[profile->first_row+selector];
+    if((unsigned)child->selector!=selector||child->target_type!=4u||child->association<0)return 0u;
+    associated=(unsigned)child->placement_selector_start+(unsigned)child->association;
+    if(associated>=(unsigned)profile->target_count)return 0u;
+    parent=&hp_sync_target_defs[profile->first_row+associated];
+    if((unsigned)parent->selector!=associated||parent->target_type==4u||parent->nominal_hp<=0||
+       parent->placement_index!=child->placement_index||parent->resource_index!=child->resource_index||
+       parent->segment!=child->segment)return 0u;
+    damage=stage_damage_monster_contact_lookup(ctx,associated);if(!damage)return 0u;
+    if(out){out->associated_selector=associated;out->target_type=(unsigned)child->target_type;out->row_count=(unsigned)profile->target_count;
+        out->base=damage;out->status=STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE;out->policy_damage=damage;
+        out->resource=child->resource_index<HP_SYNC_RESOURCE_COUNT?hp_sync_resources[child->resource_index].name:"<scene-resource-oob>";}
+    return damage;
+}
 static unsigned stage_damage_player_d00f_damage(const struct stage_damage_damage_context *ctx,const unsigned char *req,unsigned kind,struct stage_damage_damage_lookup *out){
     unsigned owner=(unsigned)req[0x0A]|((unsigned)req[0x0B]<<8),source=(unsigned)req[0x0C]|((unsigned)req[0x0D]<<8);
     if(kind==10u)return stage_damage_damage_projectile_lookup(ctx,owner,source,out);
     stage_damage_damage_lookup_clear(out);stage_damage_damage_lookup_context(ctx,out);
     if(kind==40u)source=stage_damage_boss_collision_component_index(req);
     if(out){out->kind=kind;out->owner=owner;out->source=source;out->resource=kind==20u?"<ordinary-collision-policy>":kind==40u?"<boss-collision-component>":"<non-damaging-scene-event>";}
+    if(kind==60u){unsigned damage=stage_damage_scene_associated_lookup(ctx,owner,out);
+        if(!damage&&out)out->status=STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND;
+        return damage;
+    }
     if(kind==20u){unsigned damage=stage_damage_monster_contact_lookup(ctx,owner);
         if(out){out->status=damage?STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_COLLISION_FIXED;
             out->base=damage;out->policy_damage=damage?damage:STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;out->resource=damage?"<ordinary-collision-resource>":"<ordinary-collision-policy>";}
@@ -135,7 +179,7 @@ static unsigned stage_damage_player_d00f_damage(const struct stage_damage_damage
             out->base=damage;out->policy_damage=damage?damage:STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE;}
         return damage?damage:STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE;
     }
-    /* Fixed-scene kinds 60/80 are metadata-only compatibility events. */
+    /* Unmapped kind60 and every kind80 remain metadata-only compatibility events. */
     if(out)out->status=STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND;return 0u;
 }
 static struct stage_damage_damage_application stage_damage_apply_actor_damage(unsigned current_hp,unsigned policy_damage){

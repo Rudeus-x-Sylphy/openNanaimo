@@ -152,30 +152,14 @@ public sealed partial class NetworkAdapterService
             session.LastReportedPositionY = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(20, 2));
             session.HasReportedDungeonPosition = true;
         }
-        // The original client uses CF83 mode 1 (not CF95) when the player
-        // clicks the activated revival-item option on the dungeon death UI.
-        // Do not forward that request to the retained worker: its CF83 path
-        // has no managed database transaction and produces no CF84 response.
-        // The second WORD is the client-visible continuation-price field. It
-        // is diagnostic only for mode 1 and must never become a Hans gate.
+        // CF83 mode is the proven selector: mode1 is the service-egg/CF95
+        // path; mode0 is the Hans/F104 path and its second WORD is the price.
+        // Never reinterpret a mode1 egg click as the first Hans payment.
         if (opcode == 0xCF83
             && TryParseNativeDungeonContinueFrame(frame, out var continueMode, out var clientCostField))
         {
-            if (await TryHandleNativeDungeonContinueBillingAsync(
-                    frame,
-                    channel,
-                    session,
-                    clientCostField,
-                    token))
-                return true;
-
-            await HandleNativeDungeonContinueAsync(
-                frame,
-                channel,
-                session,
-                continueMode,
-                clientCostField,
-                token);
+            await HandleNativeDungeonContinueBillingAsync(
+                frame, channel, session, continueMode, clientCostField, token);
             return true;
         }
         if (opcode == 0xC378 && frame.Length == 8 && session.OnlineTracked)
@@ -678,33 +662,6 @@ public sealed partial class NetworkAdapterService
             && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(12, 2)) == expectedHp
             && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(14, 2)) == expectedMp;
 
-    private async Task HandleNativeDungeonContinueAsync(
-        byte[] frame,
-        string channel,
-        ConnectionSession session,
-        ushort mode,
-        ushort clientCostField,
-        CancellationToken token)
-    {
-        if (mode == 1)
-        {
-            await HandleNativeDungeonRevivalContinueAsync(
-                frame,
-                channel,
-                session,
-                clientCostField,
-                token);
-            return;
-        }
-
-        await HandleNativeDungeonPaidContinueAsync(
-            frame,
-            channel,
-            session,
-            clientCostField,
-            token);
-    }
-
     private async Task HandleNativeDungeonRevivalContinueAsync(
         byte[] frame,
         string channel,
@@ -749,6 +706,11 @@ public sealed partial class NetworkAdapterService
         session.NativeDungeonDeathLatched = false;
         var revivePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 60);
         var revive = BuildNativeFrame(frame, 0xCF84, revivePayload, session);
+        session.DungeonRunRevived = true;
+        var revivalProgress = await _database.AdvanceQuestActionAsync(
+            session.AccountId, character.Id, session.SessionId, 0, 0, revived: true, token);
+        if (revivalProgress.Changed)
+            BuildQuestProgressFrames(frame, revivalProgress.Tasks, session, revivalProgress.NewlyCompleted);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
             revive,
             "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
@@ -802,42 +764,83 @@ public sealed partial class NetworkAdapterService
         character.RevivalUseCount = consumed.RevivalUseCount;
         character.CurrentHp = consumed.CurrentHp;
         character.CurrentMp = consumed.CurrentMp;
+        var committed = new NativePaidContinueCommit(
+            consumed.Hans, consumed.RevivalUseCount, consumed.CurrentHp, consumed.CurrentMp, clientCostField);
+        RememberNativeDungeonPaidContinue(session, committed);
+        if (!await TryCompleteNativeDungeonPaidContinueAsync(frame, channel, session, committed, token))
+            _log($"{channel}: native dungeon paid continue remains committed and pending worker synchronization: character={character.Id} cost={clientCostField} hans={consumed.Hans} hp={consumed.CurrentHp} mp={consumed.CurrentMp}; duplicate CF83 will retry without another debit");
+    }
 
+    private async Task<bool> TryCompleteNativeDungeonPaidContinueAsync(
+        byte[] frame,
+        string channel,
+        ConnectionSession session,
+        NativePaidContinueCommit committed,
+        CancellationToken token)
+    {
+        if (!session.OnlineTracked
+            || session.Character is null
+            || session.NativeDungeon is null
+            || session.NativeCheckpoint is null)
+            return false;
+
+        var checkpoint = session.NativeCheckpoint;
+        var character = session.Character;
         var importedBytes = checkpoint.Bytes.ToArray();
-        BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(20, 4), checked((uint)consumed.CurrentHp));
-        BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(28, 4), checked((uint)consumed.CurrentMp));
-        BinaryPrimitives.WriteInt64LittleEndian(importedBytes.AsSpan(32, 8), consumed.Hans);
-        BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(60, 4), consumed.RevivalUseCount);
+        BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(20, 4), checked((uint)committed.CurrentHp));
+        BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(28, 4), checked((uint)committed.CurrentMp));
+        BinaryPrimitives.WriteInt64LittleEndian(importedBytes.AsSpan(32, 8), committed.Hans);
+        BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(60, 4), committed.RevivalUseCount);
         var importedState = new NativeDungeonState(importedBytes);
-        var syncPayload = BuildNativePaidContinueRuntimeSyncPayload(
-            checked((ushort)Math.Clamp(consumed.CurrentHp, 1, ushort.MaxValue)),
-            checked((ushort)Math.Clamp(consumed.CurrentMp, 1, ushort.MaxValue)));
-        var exchange = await session.NativeDungeon.ExchangeCapturedAsync(
-            NativeDungeonClient.Frame(0xF104, syncPayload),
-            importedState,
-            token);
+        var expectedHp = checked((ushort)Math.Clamp(committed.CurrentHp, 1, ushort.MaxValue));
+        var expectedMp = checked((ushort)Math.Clamp(committed.CurrentMp, 1, ushort.MaxValue));
+        NativeDungeonExchangeResult exchange;
+        try
+        {
+            exchange = await session.NativeDungeon.ExchangeCapturedAsync(
+                NativeDungeonClient.Frame(
+                    0xF104, BuildNativePaidContinueRuntimeSyncPayload(expectedHp, expectedMp)),
+                importedState,
+                token);
+        }
+        catch (Exception ex) when (!token.IsCancellationRequested)
+        {
+            _log($"{channel}: native dungeon paid continue worker synchronization deferred after committed payment: character={character.Id} cost={committed.ClientCostField} error={ex.Message}");
+            return false;
+        }
+
         var runtimeSynchronized = exchange.Frames.Any(item =>
-            TryParseNativePaidContinueRuntimeSyncAck(
-                item,
-                checked((ushort)consumed.CurrentHp),
-                checked((ushort)consumed.CurrentMp)));
-        if (!runtimeSynchronized
-            || exchange.State.Get(20) != consumed.CurrentHp
-            || exchange.State.Get(28) != consumed.CurrentMp
-            || exchange.State.GetBalance(32) != consumed.Hans)
-            throw new InvalidDataException("Native paid-continue runtime synchronization failed after the committed payment.");
+            TryParseNativePaidContinueRuntimeSyncAck(item, expectedHp, expectedMp));
+        var stateSynchronized = exchange.State.Get(20) == committed.CurrentHp
+            && exchange.State.Get(28) == committed.CurrentMp
+            && exchange.State.GetBalance(32) == committed.Hans;
+        if (!runtimeSynchronized || !stateSynchronized)
+        {
+            var capturedOpcodes = string.Join(",", exchange.Frames
+                .Where(item => item.Length >= 8)
+                .Select(item => $"0x{BinaryPrimitives.ReadUInt16LittleEndian(item.AsSpan(6, 2)):X4}"));
+            _log($"{channel}: native dungeon paid continue worker synchronization rejected after committed payment: character={character.Id} cost={committed.ClientCostField} f105={runtimeSynchronized} state={stateSynchronized} captured={capturedOpcodes}; connection retained for idempotent retry");
+            return false;
+        }
 
         session.NativeCheckpoint = exchange.State;
         session.NativeBattleResources = RestoreNativeDungeonContinueResources(
             session.NativeBattleResources, exchange.State);
         session.NativeDungeonDeathLatched = false;
+        CompleteNativeDungeonPaidContinue(session, committed);
         var continuePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 20);
         var response = BuildNativeFrame(frame, 0xCF84, continuePayload, session);
+        session.DungeonRunRevived = true;
+        var revivalProgress = await _database.AdvanceQuestActionAsync(
+            session.AccountId, character.Id, session.SessionId, 0, 0, revived: true, token);
+        if (revivalProgress.Changed)
+            BuildQuestProgressFrames(frame, revivalProgress.Tasks, session, revivalProgress.NewlyCompleted);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
             response,
             "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
             true, false, "native paid continue complete CF84 variant20"), token);
-        _log($"{channel}: native dungeon paid continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} cf84Hans={character.Hans} hans={character.Hans} hansDebited={clientCostField} workerAck=F105 clientResponse=CF84-variant20");
+        _log($"{channel}: native dungeon paid continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={committed.ClientCostField} cf84Hans={character.Hans} hans={character.Hans} hansDebited={committed.ClientCostField} workerAck=F105 clientResponse=CF84-variant20");
+        return true;
     }
 
     private async Task CommitNativeCheckpointAsync(
@@ -943,6 +946,17 @@ public sealed partial class NetworkAdapterService
         session.NativeCheckpoint = next;
         File.Delete(journal);
         await RefreshSessionCharacterAsync(session, token);
+        if (settlement is { } completed && persistSettlementRank && !session.NativeDungeonDeathLatched)
+        {
+            session.QuestClearEpisode = completed.Episode;
+            session.QuestClearDifficulty = completed.LogicalDifficulty;
+            session.QuestClearDungeonBit = completed.Dungeon + completed.Stage == 3 ? 3 : completed.Dungeon;
+            var questProgress = await EvaluateSessionQuestsAsync(
+                session, token, cleared: true, checked((uint)Math.Max(0, completed.Score)),
+                GetEquippedPetItemCode(session.Character), bossDefeated: true);
+            if (questProgress.Changed && frame is not null)
+                BuildQuestProgressFrames(frame, questProgress.Tasks, session, questProgress.NewlyCompleted);
+        }
         foreach (var response in exchange.Frames)
         {
             PatchNativePetSettlementFrame(response, next.Get(4), applied);
@@ -1040,7 +1054,18 @@ public sealed partial class NetworkAdapterService
                         : checked((uint)Math.Max(0, character.MaxHp)));
             _log($"NativeDungeon local D010 observed: character={character.Id} hp={currentHp} deathLatched={session.NativeDungeonDeathLatched}");
         }
-        if (BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) == 0xF103)
+        if (response.Length == 16 && responseOpcode == 0xCF9C
+            && session.Character is { } skillOwner && response[10] == 0 && response[11] is >= 1 and <= 5
+            && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8)) == GetSceneEntityId(skillOwner))
+        {
+            var questAction = await _database.AdvanceQuestActionAsync(
+                session.AccountId, skillOwner.Id, session.SessionId,
+                BinaryPrimitives.ReadUInt32LittleEndian(response.AsSpan(12)), response[11],
+                revived: false, token);
+            if (questAction.Changed)
+                BuildQuestProgressFrames(response, questAction.Tasks, session, questAction.NewlyCompleted);
+        }
+        if (responseOpcode == 0xF103)
         {
             await ApplyNativeQuestHitAsync(session, response, token);
             return;
@@ -1328,10 +1353,6 @@ public sealed partial class NetworkAdapterService
             out var resource, out _) || !QuestMonsterCatalog.TryResolveTarget(frame[9], frame[10], resource, out var target)) return;
         var result = await _database.AdvanceQuestMonsterHitAsync(session.AccountId, session.Character.Id, session.SessionId, target, token);
         if (result.Authorized && result.Changed)
-        {
-            var response = BuildNativeFrame(frame, 0xC59C, BuildTaskListPayload(result.Tasks), session);
-            await QueueOutboundWriteAsync(session, new OutboundNativeWrite(response, "NativeDungeon", session.ListenerPort,
-                session.RemoteIp ?? "local", true, false, "native-hit quest progress"), token);
-        }
+            BuildQuestProgressFrames(frame, result.Tasks, session, result.NewlyCompleted);
     }
 }

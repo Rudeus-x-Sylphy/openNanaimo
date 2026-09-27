@@ -30,10 +30,38 @@ public readonly record struct QuestTaskMutationResult(
     bool Success,
     CharacterRecord? Character,
     bool HansChanged,
-    int GainedLevels);
+    int GainedLevels,
+    bool InventoryChanged = false);
+
+public readonly record struct QuestRunRestrictions(
+    bool ItemUsed, bool Charged, bool Revived,
+    bool HasClear = false, int Episode = -1, int Difficulty = -1, int DungeonBit = -1, uint Score = 0)
+{
+    public uint? BattlePetCode { get; init; }
+    public bool BossDefeated { get; init; }
+    public QuestRunRestrictions(bool itemUsed, bool charged, bool revived, bool hasClear,
+        int episode, int difficulty, int dungeonBit)
+        : this(itemUsed, charged, revived, hasClear, episode, difficulty, dungeonBit, 0) { }
+    public void Deconstruct(out bool itemUsed, out bool charged, out bool revived, out bool hasClear,
+        out int episode, out int difficulty, out int dungeonBit)
+    {
+        itemUsed = ItemUsed; charged = Charged; revived = Revived; hasClear = HasClear;
+        episode = Episode; difficulty = Difficulty; dungeonBit = DungeonBit;
+    }
+    public static QuestRunRestrictions None { get; } = new(false, false, false);
+}
 
 public readonly record struct QuestProgressMutationResult(
     bool Authorized,
     bool Changed,
     bool NewlyCompleted,
     IReadOnlyList<CharacterTaskRecord> Tasks);
+
+public readonly record struct NativeQuestSettlement(int Episode, int Difficulty, int DungeonBit, uint Score)
+{
+    public bool Authoritative { get; init; }
+    public uint PetCode { get; init; }
+    public int Participants { get; init; }
+    public bool BossDefeated { get; init; }
+    public uint BattleEpoch { get; init; }
+}

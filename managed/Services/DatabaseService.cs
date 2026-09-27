@@ -314,6 +314,33 @@ public sealed partial class DatabaseService
                 );
                 CREATE INDEX IF NOT EXISTS IX_CharacterTasks_CharacterId_SlotType
                     ON CharacterTasks(CharacterId, SlotType, CreatedAt, QuestId);
+                CREATE TABLE IF NOT EXISTS CharacterQuestObjectives (
+                    CharacterId INTEGER NOT NULL,
+                    QuestId INTEGER NOT NULL,
+                    ObjectiveId INTEGER NOT NULL,
+                    CompletedAt TEXT NOT NULL,
+                    PRIMARY KEY (CharacterId, QuestId, ObjectiveId),
+                    FOREIGN KEY (CharacterId, QuestId) REFERENCES CharacterTasks(CharacterId, QuestId) ON DELETE CASCADE
+                );
+                CREATE TABLE IF NOT EXISTS CharacterStoryClaims (
+                    CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                    QuestId INTEGER NOT NULL,
+                    ClaimedAt TEXT NOT NULL,
+                    PRIMARY KEY (CharacterId, QuestId)
+                );
+                CREATE TABLE IF NOT EXISTS CharacterQuestFlags (
+                    CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                    FlagCode INTEGER NOT NULL,
+                    Value INTEGER NOT NULL,
+                    PRIMARY KEY (CharacterId, FlagCode)
+                );
+                CREATE TABLE IF NOT EXISTS CharacterStoryGuides (
+                    CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                    GuideId INTEGER NOT NULL CHECK (GuideId BETWEEN 0 AND 6),
+                    RewardPending INTEGER NOT NULL DEFAULT 0 CHECK (RewardPending IN (0, 1)),
+                    CompletedAt TEXT NOT NULL,
+                    PRIMARY KEY (CharacterId, GuideId)
+                );
                 CREATE TABLE IF NOT EXISTS DungeonProgress (
                     CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
                     Episode INTEGER NOT NULL CHECK (Episode BETWEEN 0 AND 19),
@@ -358,6 +385,18 @@ public sealed partial class DatabaseService
                     ClearedAt TEXT NOT NULL,
                     UpdatedAt TEXT NOT NULL,
                     PRIMARY KEY (CharacterId, Episode, Difficulty, ArchiveSlot)
+                );
+                CREATE TABLE IF NOT EXISTS DungeonTitleMilestones (
+                    CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                    Grade INTEGER NOT NULL CHECK (Grade BETWEEN 1 AND 23),
+                    HdIndex INTEGER NOT NULL CHECK (HdIndex BETWEEN 0 AND 1),
+                    Episode INTEGER NOT NULL CHECK (Episode BETWEEN 0 AND 255),
+                    Dungeon INTEGER NOT NULL CHECK (Dungeon BETWEEN 0 AND 255),
+                    Difficulty INTEGER NOT NULL CHECK (Difficulty BETWEEN 0 AND 2),
+                    Stage INTEGER NOT NULL CHECK (Stage BETWEEN 0 AND 2),
+                    ClearedAt TEXT NOT NULL,
+                    UpdatedAt TEXT NOT NULL,
+                    PRIMARY KEY (CharacterId, Grade)
                 );
                 CREATE TABLE IF NOT EXISTS CharacterApartmentItems (
                     CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
@@ -7947,17 +7986,22 @@ public sealed partial class DatabaseService
             || mode is not (0 or 1)
             || mode == 0 && hansCost == 0
             || restoredHp <= 0
-            || restoredMp <= 0)
+            || restoredHp > ushort.MaxValue
+            || restoredMp <= 0
+            || restoredMp > ushort.MaxValue)
             return (false, "Invalid dungeon-continue request.", 0, 0, 0, 0);
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
+        // CurrentHp/CurrentMp may legitimately exceed the persisted base MaxHp/MaxMp
+        // while dungeon equipment/PET/gem bonuses are active. Callers pass verified
+        // effective maxima, so do not clamp the revival result back to launcher base.
         command.CommandText = mode == 0
             ? """
               UPDATE Characters
               SET Hans = Hans - $hansCost,
-                  CurrentHp = MIN(MaxHp, $restoredHp),
-                  CurrentMp = MIN(MaxMp, $restoredMp),
+                  CurrentHp = $restoredHp,
+                  CurrentMp = $restoredMp,
                   LastSavedAt = $now
               WHERE Id = $characterId
                 AND AccountId = $accountId
@@ -7976,8 +8020,8 @@ public sealed partial class DatabaseService
             : """
               UPDATE Characters
               SET RevivalUseCount = RevivalUseCount - 1,
-                  CurrentHp = MIN(MaxHp, $restoredHp),
-                  CurrentMp = MIN(MaxMp, $restoredMp),
+                  CurrentHp = $restoredHp,
+                  CurrentMp = $restoredMp,
                   LastSavedAt = $now
               WHERE Id = $characterId
                 AND AccountId = $accountId
@@ -8951,10 +8995,10 @@ public sealed partial class DatabaseService
             return new QuestScrollPurchaseResult(false, QuestScrollPurchaseStatus.AlreadyExists, 0);
         scroll = officialScroll;
 
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction(deferred: false);
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
         long hans;
-        await using (var character = connection.CreateCommand())
+        using (var character = connection.CreateCommand())
         {
             character.Transaction = transaction;
             character.CommandText = """
@@ -8977,7 +9021,7 @@ public sealed partial class DatabaseService
             hans = Convert.ToInt64(value, CultureInfo.InvariantCulture);
         }
 
-        await using (var duplicate = connection.CreateCommand())
+        using (var duplicate = connection.CreateCommand())
         {
             duplicate.Transaction = transaction;
             duplicate.CommandText = "SELECT 1 FROM CharacterTasks WHERE CharacterId = $characterId AND QuestId = $questId";
@@ -8990,7 +9034,7 @@ public sealed partial class DatabaseService
             }
         }
 
-        await using (var count = connection.CreateCommand())
+        using (var count = connection.CreateCommand())
         {
             count.Transaction = transaction;
             count.CommandText = "SELECT COUNT(*) FROM CharacterTasks WHERE CharacterId = $characterId AND SlotType = 0";
@@ -9010,7 +9054,7 @@ public sealed partial class DatabaseService
 
         var now = DateTime.UtcNow.ToString("O");
         var remainingHans = hans - scroll.Price;
-        await using (var wallet = connection.CreateCommand())
+        using (var wallet = connection.CreateCommand())
         {
             wallet.Transaction = transaction;
             wallet.CommandText = """
@@ -9034,7 +9078,7 @@ public sealed partial class DatabaseService
             }
         }
 
-        await using (var insert = connection.CreateCommand())
+        using (var insert = connection.CreateCommand())
         {
             insert.Transaction = transaction;
             insert.CommandText = """
@@ -9066,15 +9110,15 @@ public sealed partial class DatabaseService
         byte runtimeState,
         CancellationToken cancellationToken = default)
     {
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction(deferred: false);
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
         if (!await IsAuthorizedCharacterAsync(connection, transaction, accountId, characterId, sessionId, cancellationToken))
         {
             await transaction.RollbackAsync(cancellationToken);
             return new QuestTaskMutationResult(false, false, null, false, 0);
         }
 
-        await using var update = connection.CreateCommand();
+        using var update = connection.CreateCommand();
         update.Transaction = transaction;
         update.CommandText = """
             UPDATE CharacterTasks
@@ -9107,15 +9151,15 @@ public sealed partial class DatabaseService
         ushort runtimeState,
         CancellationToken cancellationToken = default)
     {
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction(deferred: false);
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
         if (!await IsAuthorizedCharacterAsync(connection, transaction, accountId, characterId, sessionId, cancellationToken))
         {
             await transaction.RollbackAsync(cancellationToken);
             return new QuestTaskMutationResult(false, false, null, false, 0);
         }
 
-        await using var delete = connection.CreateCommand();
+        using var delete = connection.CreateCommand();
         delete.Transaction = transaction;
         delete.CommandText = """
             DELETE FROM CharacterTasks
@@ -9123,6 +9167,7 @@ public sealed partial class DatabaseService
               AND QuestId = $questId
               AND TaskType = $taskType
               AND RuntimeState = $runtimeState
+              AND SlotType = 0
             """;
         delete.Parameters.AddWithValue("$characterId", characterId);
         delete.Parameters.AddWithValue("$questId", questId);
@@ -9136,6 +9181,13 @@ public sealed partial class DatabaseService
         return new QuestTaskMutationResult(true, success, null, false, 0);
     }
 
+    /// <summary>
+    /// Persisted completion state echoed by the client on abandon/complete.
+    /// This byte alone does not enable hand-in: C59C record +4 (Progress1) must
+    /// also be nonzero (client 4D8D50 -> A60E20 -> A5EF60 -> 7B2610).
+    /// </summary>
+    public const byte QuestRuntimeStateObjectiveReached = 1;
+
     public async Task<QuestProgressMutationResult> AdvanceQuestMonsterHitAsync(
         long accountId,
         long characterId,
@@ -9143,8 +9195,8 @@ public sealed partial class DatabaseService
         uint targetCode,
         CancellationToken cancellationToken = default)
     {
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction(deferred: false);
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
         if (!await IsAuthorizedCharacterAsync(
                 connection, transaction, accountId, characterId, sessionId, cancellationToken))
         {
@@ -9153,18 +9205,18 @@ public sealed partial class DatabaseService
         }
 
         var activeTasks = new List<(uint QuestId, uint Progress)>();
-        await using (var query = connection.CreateCommand())
+        using (var query = connection.CreateCommand())
         {
             query.Transaction = transaction;
             query.CommandText = """
                 SELECT QuestId, Progress3
                 FROM CharacterTasks
                 WHERE CharacterId = $characterId
-                  AND SlotType = 0
+                  AND SlotType IN (0, 1)
                   AND Progress2 <> 0
                 """;
             query.Parameters.AddWithValue("$characterId", characterId);
-            await using var reader = await query.ExecuteReaderAsync(cancellationToken);
+            using var reader = await query.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
                 activeTasks.Add((
@@ -9184,19 +9236,24 @@ public sealed partial class DatabaseService
                 continue;
 
             var progress = Math.Min(objective.RequiredCount, task.Progress + 1u);
-            await using var update = connection.CreateCommand();
+            var reached = progress >= objective.RequiredCount;
+            using var update = connection.CreateCommand();
             update.Transaction = transaction;
             update.CommandText = """
                 UPDATE CharacterTasks
                 SET Progress3 = $progress,
+                    Progress1 = CASE WHEN $reached <> 0 THEN 1 ELSE Progress1 END,
+                    RuntimeState = CASE WHEN $reached <> 0 THEN $reachedState ELSE RuntimeState END,
                     UpdatedAt = $now
                 WHERE CharacterId = $characterId
                   AND QuestId = $questId
                   AND Progress3 = $oldProgress
-                  AND SlotType = 0
+                  AND SlotType IN (0, 1)
                   AND Progress2 <> 0
                 """;
             update.Parameters.AddWithValue("$progress", progress);
+            update.Parameters.AddWithValue("$reached", reached ? 1 : 0);
+            update.Parameters.AddWithValue("$reachedState", QuestRuntimeStateObjectiveReached);
             update.Parameters.AddWithValue("$now", now);
             update.Parameters.AddWithValue("$characterId", characterId);
             update.Parameters.AddWithValue("$questId", task.QuestId);
@@ -9207,13 +9264,499 @@ public sealed partial class DatabaseService
                 return new QuestProgressMutationResult(false, false, false, []);
             }
             changed = true;
-            newlyCompleted |= progress >= objective.RequiredCount;
+            newlyCompleted |= reached;
         }
 
         await transaction.CommitAsync(cancellationToken);
         var tasks = await GetCharacterTasksAsync(
             accountId, characterId, sessionId, cancellationToken);
         return new QuestProgressMutationResult(true, changed, newlyCompleted, tasks);
+    }
+
+    // Called only for successful local native actions, never raw client claims.
+    public async Task<QuestProgressMutationResult> AdvanceQuestActionAsync(
+        long accountId, long characterId, string sessionId, uint skillCode, byte skillGrade,
+        bool revived, CancellationToken cancellationToken = default)
+    {
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
+        if (!await IsAuthorizedCharacterAsync(connection, transaction, accountId, characterId, sessionId, cancellationToken))
+            return new QuestProgressMutationResult(false, false, false, []);
+        var changed = false;
+        foreach (var quest in QuestCatalog.Quests)
+        {
+            if (quest.Objectives.Count != 1) continue;
+            var objective = quest.Objectives[0];
+            var matches = revived && objective.ObjectiveId == 75000147;
+            if (objective.ObjectiveType == 35 && skillCode != 0 && objective.TargetCode == skillCode)
+            {
+                var requiredGrade = 1u;
+                foreach (var condition in objective.Conditions.Where(c => c.Tag == 36))
+                    if (condition.Comparison == skillCode) requiredGrade = condition.Value;
+                matches = skillGrade >= requiredGrade;
+            }
+            if (!matches) continue;
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = """
+                UPDATE CharacterTasks SET Progress3=$required, Progress1=1, RuntimeState=1, UpdatedAt=$now
+                WHERE CharacterId=$id AND QuestId=$quest AND SlotType IN (0,1) AND Progress2<>0
+                  AND Progress3<$required
+                """;
+            update.Parameters.AddWithValue("$id", characterId);
+            update.Parameters.AddWithValue("$quest", quest.QuestId);
+            update.Parameters.AddWithValue("$required", GetQuestRequiredProgress(quest));
+            update.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            changed |= await update.ExecuteNonQueryAsync(cancellationToken) == 1;
+        }
+        await transaction.CommitAsync(cancellationToken);
+        return new QuestProgressMutationResult(true, changed, changed,
+            changed ? await GetCharacterTasksAsync(accountId, characterId, sessionId, cancellationToken) : []);
+    }
+
+    private static uint GetQuestRequiredProgress(QuestDefinition quest)
+        => quest.Objectives.Aggregate(1u, (required, objective) => Math.Max(required,
+            objective.ObjectiveType is 2 or 9 or 20 or 21 or 22 or 23 or 25 or 37 or 5
+                ? 1u : objective.RequiredCount));
+
+    public async Task<QuestProgressMutationResult> EvaluateQuestObjectivesAsync(
+        long accountId,
+        long characterId,
+        string sessionId,
+        bool soloRun,
+        QuestRunRestrictions restrictions,
+        CancellationToken cancellationToken = default)
+    {
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
+        if (!await IsAuthorizedCharacterAsync(connection, transaction, accountId, characterId, sessionId, cancellationToken))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return new QuestProgressMutationResult(false, false, false, []);
+        }
+
+        int level;
+        uint equippedPetCode;
+        using (var character = connection.CreateCommand())
+        {
+            character.Transaction = transaction;
+            character.CommandText = "SELECT Level, EquippedPetItemCode FROM Characters WHERE Id = $characterId";
+            character.Parameters.AddWithValue("$characterId", characterId);
+            using var reader = await character.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return new QuestProgressMutationResult(false, false, false, []);
+            }
+            level = reader.GetInt32(0);
+            equippedPetCode = checked((uint)reader.GetInt64(1));
+        }
+
+        var active = new List<(uint QuestId, uint Progress, byte RuntimeState, ushort Ready)>();
+        using (var query = connection.CreateCommand())
+        {
+            query.Transaction = transaction;
+            query.CommandText = """
+                SELECT QuestId, Progress3, RuntimeState, Progress1 FROM CharacterTasks
+                WHERE CharacterId = $characterId AND SlotType IN (0, 1) AND Progress2 <> 0
+                """;
+            query.Parameters.AddWithValue("$characterId", characterId);
+            using var reader = await query.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                active.Add((
+                    checked((uint)reader.GetInt64(0)),
+                    checked((uint)reader.GetInt64(1)),
+                    checked((byte)reader.GetInt32(2)),
+                    checked((ushort)reader.GetInt32(3))));
+        }
+        if (active.Count == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return new QuestProgressMutationResult(true, false, false, []);
+        }
+
+        var completedObjectives = new HashSet<(uint QuestId, uint ObjectiveId)>();
+        using (var query = connection.CreateCommand())
+        {
+            query.Transaction = transaction;
+            query.CommandText = "SELECT QuestId, ObjectiveId FROM CharacterQuestObjectives WHERE CharacterId = $characterId";
+            query.Parameters.AddWithValue("$characterId", characterId);
+            using var reader = await query.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                completedObjectives.Add((checked((uint)reader.GetInt64(0)), checked((uint)reader.GetInt64(1))));
+        }
+
+        var cards = new HashSet<uint>();
+        using (var query = connection.CreateCommand())
+        {
+            query.Transaction = transaction;
+            query.CommandText = "SELECT CardCode FROM CharacterCards WHERE CharacterId = $characterId AND Quantity > 0";
+            query.Parameters.AddWithValue("$characterId", characterId);
+            using var reader = await query.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                cards.Add(checked((uint)reader.GetInt64(0)));
+        }
+
+        var ownedItems = new HashSet<uint>();
+        using (var query = connection.CreateCommand())
+        {
+            query.Transaction = transaction;
+            query.CommandText = "SELECT ItemCode FROM CharacterItems WHERE CharacterId = $characterId AND Quantity > 0";
+            query.Parameters.AddWithValue("$characterId", characterId);
+            using var reader = await query.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                ownedItems.Add(checked((uint)reader.GetInt64(0)));
+        }
+
+        var interior = new HashSet<uint>();
+        using (var query = connection.CreateCommand())
+        {
+            query.Transaction = transaction;
+            query.CommandText = "SELECT DISTINCT ItemCode FROM CharacterApartmentItems WHERE CharacterId = $characterId";
+            query.Parameters.AddWithValue("$characterId", characterId);
+            using var reader = await query.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                interior.Add(checked((uint)reader.GetInt64(0)));
+        }
+
+        // "带过 N 名学生" is read from the mentor ledger on this same transaction: a read on a
+        // second connection would have to wait behind the write lock taken by this one.
+        var mentorStudents = 0;
+        using (var query = connection.CreateCommand())
+        {
+            query.Transaction = transaction;
+            query.CommandText = """
+                SELECT COUNT(DISTINCT CASE WHEN RequestOpcode = $studentRequest
+                                           THEN RequesterCharacterId ELSE TargetCharacterId END)
+                FROM MentorInteractions
+                WHERE Status = $accepted
+                  AND ((RequestOpcode = $studentRequest AND TargetCharacterId = $characterId)
+                    OR (RequestOpcode = $teacherRequest AND RequesterCharacterId = $characterId))
+                """;
+            query.Parameters.AddWithValue("$studentRequest", MentorProtocol.StudentRequestOpcode);
+            query.Parameters.AddWithValue("$teacherRequest", MentorProtocol.TeacherRequestOpcode);
+            query.Parameters.AddWithValue("$accepted", MentorProtocol.Accepted);
+            query.Parameters.AddWithValue("$characterId", characterId);
+            mentorStudents = Convert.ToInt32(
+                await query.ExecuteScalarAsync(cancellationToken),
+                CultureInfo.InvariantCulture);
+        }
+
+        bool ObjectiveMet(QuestObjectiveDefinition objective, uint storedProgress)
+        {
+            var battlePet = restrictions.BattlePetCode ?? equippedPetCode;
+            if (QuestCatalog.TryGetPetBossTarget(objective, out _, out _)
+                || QuestCatalog.TryGetScoreTarget(objective, out _, out _)
+                || QuestCatalog.TryGetDungeonClearCondition(objective, out _, out _, out _))
+            {
+                if (!restrictions.HasClear || !QuestCatalog.MatchesSettlement(objective,
+                        restrictions.Episode, restrictions.DungeonBit, battlePet, restrictions.Score,
+                        soloRun, restrictions.BossDefeated))
+                    return false;
+                return objective.ObjectiveType switch
+                {
+                    21 => !restrictions.Charged,
+                    22 => !restrictions.ItemUsed,
+                    23 => !restrictions.Revived,
+                    _ => true
+                };
+            }
+            switch (objective.ObjectiveType)
+            {
+                // Monster hits are counted by AdvanceQuestMonsterHitAsync, which owns their
+                // own C59C/C59D frames; here they only report their stored progress.
+                case 26:
+                    return storedProgress >= objective.RequiredCount;
+                case 3:
+                    return level >= objective.RequiredCount;
+                case 2 or 9 or 20 or 21 or 22 or 23 or 25:
+                    // 75000147 is the mainline's successful revival, unlike
+                    // zero-count type-23 "no revival" challenge scrolls.
+                    return objective.ObjectiveId == 75000147 && storedProgress >= 1;
+                case 37:
+                    // QT 71000003 asks for the synthesized pet 15000017, not
+                    // its ingredient card 13000018. Card inventory cannot hold
+                    // a pet item code. Preserve card targets for other quests.
+                    return ShopCatalog.TryGet(objective.RequiredCount, out _)
+                        ? ownedItems.Contains(objective.RequiredCount)
+                        : cards.Contains(objective.RequiredCount);
+                case 5:
+                    return interior.Contains(objective.RequiredCount);
+                case 35:
+                    // These two mainline objectives say USE the skill. Only a
+                    // successful local CF9C event advances them, not ownership.
+                    return storedProgress >= objective.RequiredCount;
+                case 11:
+                    // "带过 N 名学生": distinct peers with an accepted mentor relation.
+                    return mentorStudents >= objective.RequiredCount;
+                default:
+                    // Type 1 (talk to an NPC) is not linked by any official quest.
+                    return false;
+            }
+        }
+
+        var changed = false;
+        var newlyCompleted = false;
+        var now = DateTime.UtcNow.ToString("O");
+        foreach (var (questId, progress, runtimeState, ready) in active)
+        {
+            if (!QuestCatalog.TryGetQuest(questId, out var quest) || quest.Objectives.Count == 0)
+                continue;
+            var required = 1u;
+            var met = true;
+            foreach (var objective in quest.Objectives)
+            {
+                // A clear objective is satisfied by one clear, and several of its variants
+                // (types 21/22/23) store a zero or a code in the count field, so the count
+                // cannot be used as the target for them.
+                var singleAchievement = objective.ObjectiveType is 2 or 9 or 20 or 21 or 22 or 23 or 25 or 37 or 5;
+                required = Math.Max(required, singleAchievement ? 1u : objective.RequiredCount);
+                if (completedObjectives.Contains((questId, objective.ObjectiveId))) continue;
+                if (!ObjectiveMet(objective, progress))
+                {
+                    met = false;
+                    continue;
+                }
+                if (QuestCatalog.TryGetDungeonClearCondition(objective, out _, out _, out _)
+                    || QuestCatalog.TryGetPetBossTarget(objective, out _, out _)
+                    || QuestCatalog.TryGetScoreTarget(objective, out _, out _))
+                {
+                    using var remember = connection.CreateCommand();
+                    remember.Transaction = transaction;
+                    remember.CommandText = "INSERT OR IGNORE INTO CharacterQuestObjectives VALUES($id,$quest,$objective,$now)";
+                    remember.Parameters.AddWithValue("$id", characterId);
+                    remember.Parameters.AddWithValue("$quest", questId);
+                    remember.Parameters.AddWithValue("$objective", objective.ObjectiveId);
+                    remember.Parameters.AddWithValue("$now", now);
+                    changed |= await remember.ExecuteNonQueryAsync(cancellationToken) == 1;
+                }
+            }
+            if (!met)
+                continue;
+            // Repair legacy completed rows too: the client disables its submit button
+            // when Progress1 is zero even if Progress3 and RuntimeState are complete.
+            var progressNeeded = progress < required;
+            var stateNeeded = runtimeState != QuestRuntimeStateObjectiveReached;
+            if (!progressNeeded && !stateNeeded && ready != 0)
+                continue;
+
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = """
+                UPDATE CharacterTasks SET Progress3 = $progress, Progress1 = 1,
+                    RuntimeState = $runtimeState, UpdatedAt = $now
+                WHERE CharacterId = $characterId AND QuestId = $questId
+                  AND Progress3 = $oldProgress AND SlotType IN (0, 1)
+                """;
+            update.Parameters.AddWithValue("$progress", required);
+            update.Parameters.AddWithValue("$runtimeState", QuestRuntimeStateObjectiveReached);
+            update.Parameters.AddWithValue("$now", now);
+            update.Parameters.AddWithValue("$characterId", characterId);
+            update.Parameters.AddWithValue("$questId", questId);
+            update.Parameters.AddWithValue("$oldProgress", progress);
+            if (await update.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return new QuestProgressMutationResult(false, false, false, []);
+            }
+            changed = true;
+            newlyCompleted |= ready == 0;
+        }
+
+        if (!changed)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return new QuestProgressMutationResult(true, false, false, []);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        var tasks = await GetCharacterTasksAsync(accountId, characterId, sessionId, cancellationToken);
+        return new QuestProgressMutationResult(true, changed, newlyCompleted, tasks);
+    }
+
+    public async Task<(bool Authorized, uint Mask, byte Medals)> GetStoryGuideStateAsync(
+        long accountId, long characterId, string sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
+        if (!await IsAuthorizedCharacterAsync(connection, transaction, accountId, characterId, sessionId, cancellationToken))
+            return (false, 0, 0);
+        using var query = connection.CreateCommand();
+        query.Transaction = transaction;
+        query.CommandText = """
+            SELECT COALESCE((SELECT SUM(1 << GuideId) FROM CharacterStoryGuides WHERE CharacterId=$id),0),
+                   EXISTS(SELECT 1 FROM CharacterStoryClaims WHERE CharacterId=$id AND QuestId=71000000),
+                   (SELECT COUNT(*) FROM CharacterStoryClaims WHERE CharacterId=$id AND QuestId BETWEEN 71000000 AND 71000011)
+            """;
+        query.Parameters.AddWithValue("$id", characterId);
+        using var reader = await query.ExecuteReaderAsync(cancellationToken);
+        await reader.ReadAsync(cancellationToken);
+        var mask = checked((uint)reader.GetInt64(0));
+        if (reader.GetInt64(1) != 0) mask |= 0x80;
+        var medals = (byte)((mask & 0x40) != 0 ? 100 : Math.Min(12, reader.GetInt64(2)));
+        return (true, mask, medals);
+    }
+
+    // C599 type 0 / IDs 0..5 are client-side story-guide completions, not QT
+    // quests. Type 7 / ID 6 is the twelve-medal epilogue. Never accept reward
+    // IDs, quantities, or the uninitialized 72-byte tail from the client.
+    public async Task<(bool Authorized, bool Success, bool RewardPending, CharacterRecord? Character)> CompleteStoryGuideAsync(
+        long accountId, long characterId, string sessionId, uint guideId, ushort taskType,
+        CancellationToken cancellationToken = default)
+    {
+        if (guideId > 6 || taskType != (guideId == 6 ? 7 : 0))
+            return (true, false, false, null);
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
+        if (!await IsAuthorizedCharacterAsync(connection, transaction, accountId, characterId, sessionId, cancellationToken))
+            return (false, false, false, null);
+        int gender, level, keys;
+        bool tutorial, introDone, alreadyDone, pending;
+        long medals;
+        using (var query = connection.CreateCommand())
+        {
+            query.Transaction = transaction;
+            query.CommandText = """
+                SELECT Gender, Level, CardSummonCount, TutorialCompleted,
+                       EXISTS(SELECT 1 FROM CharacterStoryGuides WHERE CharacterId=$id AND GuideId=0),
+                       EXISTS(SELECT 1 FROM CharacterStoryGuides WHERE CharacterId=$id AND GuideId=$guide),
+                       COALESCE((SELECT RewardPending FROM CharacterStoryGuides WHERE CharacterId=$id AND GuideId=$guide),0),
+                       (SELECT COUNT(*) FROM CharacterStoryClaims WHERE CharacterId=$id AND QuestId BETWEEN 71000000 AND 71000011)
+                FROM Characters WHERE Id=$id
+                """;
+            query.Parameters.AddWithValue("$id", characterId);
+            query.Parameters.AddWithValue("$guide", guideId);
+            using var reader = await query.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken)) return (false, false, false, null);
+            gender = reader.GetInt32(0); level = reader.GetInt32(1); keys = reader.GetInt32(2);
+            tutorial = reader.GetInt64(3) != 0; introDone = reader.GetInt64(4) != 0;
+            alreadyDone = reader.GetInt64(5) != 0; pending = reader.GetInt64(6) != 0;
+            medals = reader.GetInt64(7);
+        }
+        if (!tutorial || (guideId != 0 && !introDone)
+            || (guideId is 4 or 5 && level < 3) || (guideId == 6 && medals < 12))
+            return (true, false, false, null);
+
+        if (!alreadyDone)
+        {
+            // QS text 1025/1027 and retail guide previews at A31E00/A494E1.
+            // The furniture preview at A54597 contains the matching four gifts.
+            uint[] items = guideId switch
+            {
+                1 => [15005007u, 17000003u, 21000001u, 14000005u],
+                3 => gender == 1 ? [10110300u, 10120300u, 10130300u] : [10010300u, 10020300u, 10030300u],
+                4 => [11000009u, 11110004u, 11460048u, 11250026u],
+                _ => []
+            };
+            foreach (var itemCode in items)
+                if (!ShopCatalog.TryGet(itemCode, out _))
+                    throw new InvalidDataException($"Missing story guide reward {itemCode}");
+            // The owner chose direct 100-Hans credit for the two legacy coupons.
+            // The unverified Hasio gift-box definition stays an explicit debt.
+            pending = guideId == 6;
+            // A full key counter keeps its reward pending; never silently clamp.
+            if (guideId == 2 && keys > 245) pending = true;
+            var now = DateTime.UtcNow.ToString("O");
+            if (guideId is 0 or 5)
+            {
+                using var grant = connection.CreateCommand();
+                grant.Transaction = transaction;
+                grant.CommandText = "UPDATE Characters SET Hans=MIN(4294967295,Hans+100),LastSavedAt=$now WHERE Id=$id";
+                grant.Parameters.AddWithValue("$id", characterId);
+                grant.Parameters.AddWithValue("$now", now);
+                await grant.ExecuteNonQueryAsync(cancellationToken);
+            }
+            foreach (var itemCode in items)
+            {
+                using var grant = connection.CreateCommand();
+                grant.Transaction = transaction;
+                grant.CommandText = """
+                    INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt)
+                    VALUES($id,$item,1,$now)
+                    ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET
+                        Quantity=MIN(65535,CharacterItems.Quantity+1),UpdatedAt=excluded.UpdatedAt
+                    """;
+                grant.Parameters.AddWithValue("$id", characterId);
+                grant.Parameters.AddWithValue("$item", itemCode);
+                grant.Parameters.AddWithValue("$now", now);
+                await grant.ExecuteNonQueryAsync(cancellationToken);
+            }
+            if (guideId == 2 && !pending)
+            {
+                using var grant = connection.CreateCommand();
+                grant.Transaction = transaction;
+                grant.CommandText = "UPDATE Characters SET CardSummonCount=CardSummonCount+10,CardKeyStateVersion=1,LastSavedAt=$now WHERE Id=$id";
+                grant.Parameters.AddWithValue("$id", characterId);
+                grant.Parameters.AddWithValue("$now", now);
+                await grant.ExecuteNonQueryAsync(cancellationToken);
+            }
+            using var complete = connection.CreateCommand();
+            complete.Transaction = transaction;
+            complete.CommandText = "INSERT INTO CharacterStoryGuides(CharacterId,GuideId,RewardPending,CompletedAt) VALUES($id,$guide,$pending,$now)";
+            complete.Parameters.AddWithValue("$id", characterId);
+            complete.Parameters.AddWithValue("$guide", guideId);
+            complete.Parameters.AddWithValue("$pending", pending ? 1 : 0);
+            complete.Parameters.AddWithValue("$now", now);
+            await complete.ExecuteNonQueryAsync(cancellationToken);
+        }
+        await transaction.CommitAsync(cancellationToken);
+        return (true, true, pending, await GetCharacterByIdAsync(characterId, cancellationToken));
+    }
+
+    /// <summary>Restore the first unclaimed link without resetting an existing chain.</summary>
+    public async Task<bool> ActivateStoryQuestAsync(
+        long accountId,
+        long characterId,
+        string sessionId,
+        uint questId,
+        CancellationToken cancellationToken = default)
+    {
+        if (QuestCatalog.MainLineQuestIds.Count == 0 || QuestCatalog.MainLineQuestIds[0] != questId)
+            return false;
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
+        if (!await IsAuthorizedCharacterAsync(connection, transaction, accountId, characterId, sessionId, cancellationToken))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
+        }
+
+        var nextIndex = 0;
+        using (var claims = connection.CreateCommand())
+        {
+            claims.Transaction = transaction;
+            claims.CommandText = "SELECT QuestId FROM CharacterStoryClaims WHERE CharacterId=$id";
+            claims.Parameters.AddWithValue("$id", characterId);
+            using var reader = await claims.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+                for (var i = 0; i < QuestCatalog.MainLineQuestIds.Count; i++)
+                    if (QuestCatalog.MainLineQuestIds[i] == checked((uint)reader.GetInt64(0)))
+                        nextIndex = Math.Max(nextIndex, i + 1);
+        }
+        if (nextIndex >= QuestCatalog.MainLineQuestIds.Count)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
+        }
+        questId = QuestCatalog.MainLineQuestIds[nextIndex];
+        using var insert = connection.CreateCommand();
+        insert.Transaction = transaction;
+        insert.CommandText = """
+            INSERT INTO CharacterTasks(
+                CharacterId, QuestId, TaskType, RuntimeState, State3,
+                Progress1, Progress2, Progress3, SlotType, CreatedAt, UpdatedAt)
+            SELECT $characterId, $questId, 3, 0, 0, 0, 1, 0, 1, $now, $now
+            WHERE NOT EXISTS (SELECT 1 FROM CharacterTasks WHERE CharacterId = $characterId AND SlotType = 1)
+              AND NOT EXISTS (SELECT 1 FROM CharacterStoryClaims WHERE CharacterId = $characterId AND QuestId = $questId)
+            ON CONFLICT(CharacterId, QuestId) DO NOTHING
+            """;
+        insert.Parameters.AddWithValue("$characterId", characterId);
+        insert.Parameters.AddWithValue("$questId", questId);
+        insert.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+        var inserted = await insert.ExecuteNonQueryAsync(cancellationToken) == 1;
+        await transaction.CommitAsync(cancellationToken);
+        return inserted;
     }
 
     public async Task<QuestTaskMutationResult> CompleteQuestTaskAsync(
@@ -9225,25 +9768,29 @@ public sealed partial class DatabaseService
         ushort runtimeState,
         CancellationToken cancellationToken = default)
     {
-        if (!QuestCatalog.TryGetQuest(questId, out var definition)
-            || !QuestCatalog.TryGetMonsterHitObjective(questId, out var objective)
-            || definition.Rewards.Any(reward => reward.RewardType is not 1 and not 7))
+        // Rewards require a started, server-evaluated task, including story slots.
+        if (!QuestCatalog.TryGetQuest(questId, out var definition))
             return new QuestTaskMutationResult(true, false, null, false, 0);
 
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction(deferred: false);
+
+        using var connection = await OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction(deferred: false);
         int oldLevel;
         long oldExperience;
         long oldHans;
-        int vitality;
-        int intelligence;
+        int oldStrength;
+        int oldVitality;
+        int oldAgility;
+        int oldIntelligence;
+        int oldLuck;
         uint progress;
-        await using (var query = connection.CreateCommand())
+        byte[] appearance = [];
+        using (var query = connection.CreateCommand())
         {
             query.Transaction = transaction;
             query.CommandText = """
-                SELECT c.Level, c.Experience, c.Hans, c.Vitality, c.Intelligence,
-                       t.Progress3
+                SELECT c.Level, c.Experience, c.Hans, c.Strength, c.Vitality, c.Agility,
+                       c.Intelligence, c.Luck, t.Progress3, c.Appearance
                 FROM Characters c
                 JOIN CharacterTasks t ON t.CharacterId = c.Id
                 WHERE c.Id = $characterId
@@ -9251,18 +9798,14 @@ public sealed partial class DatabaseService
                   AND c.IsOnline = 1
                   AND c.ActiveSessionId = $sessionId
                   AND t.QuestId = $questId
-                  AND t.TaskType = $taskType
-                  AND t.RuntimeState = $runtimeState
+                  AND t.SlotType IN (0, 1)
                   AND t.Progress2 <> 0
-                  AND t.SlotType = 0
                 """;
             query.Parameters.AddWithValue("$characterId", characterId);
             query.Parameters.AddWithValue("$accountId", accountId);
             query.Parameters.AddWithValue("$sessionId", sessionId);
             query.Parameters.AddWithValue("$questId", questId);
-            query.Parameters.AddWithValue("$taskType", taskType);
-            query.Parameters.AddWithValue("$runtimeState", runtimeState);
-            await using var reader = await query.ExecuteReaderAsync(cancellationToken);
+            using var reader = await query.ExecuteReaderAsync(cancellationToken);
             if (!await reader.ReadAsync(cancellationToken))
             {
                 await transaction.RollbackAsync(cancellationToken);
@@ -9271,12 +9814,16 @@ public sealed partial class DatabaseService
             oldLevel = reader.GetInt32(0);
             oldExperience = reader.GetInt64(1);
             oldHans = reader.GetInt64(2);
-            vitality = reader.GetInt32(3);
-            intelligence = reader.GetInt32(4);
-            progress = checked((uint)reader.GetInt64(5));
+            oldStrength = reader.GetInt32(3);
+            oldVitality = reader.GetInt32(4);
+            oldAgility = reader.GetInt32(5);
+            oldIntelligence = reader.GetInt32(6);
+            oldLuck = reader.GetInt32(7);
+            progress = checked((uint)reader.GetInt64(8));
+            appearance = reader.IsDBNull(9) ? [] : (byte[])reader.GetValue(9);
         }
 
-        if (progress < objective.RequiredCount)
+        if (definition.Objectives.Count == 0 || progress < GetQuestRequiredProgress(definition))
         {
             await transaction.RollbackAsync(cancellationToken);
             return new QuestTaskMutationResult(true, false, null, false, 0);
@@ -9288,16 +9835,32 @@ public sealed partial class DatabaseService
         var experienceReward = definition.Rewards
             .Where(reward => reward.RewardType == 7)
             .Aggregate(0L, (total, reward) => checked(total + reward.Amount));
+        // Items, cards, story claims and progress flags commit with the currency grant.
+        var itemRewards = definition.Rewards
+            .Where(reward => (reward.RewardType == 2 || (reward.RewardType == 6 && reward.RewardCode / 1000000 == 12))
+                && reward.RewardCode != 0 && reward.Amount != 0)
+            .ToArray();
+        var cardRewards = definition.Rewards
+            .Where(reward => reward.RewardType == 6 && reward.RewardCode / 1000000 == 13 && reward.Amount != 0)
+            .ToArray();
         var hans = Math.Min(uint.MaxValue, oldHans + hansReward);
         var experience = Math.Min(uint.MaxValue, oldExperience + experienceReward);
         var level = Math.Max(Math.Clamp(oldLevel, 1, CharacterProgression.MaximumLevel),
             CharacterProgression.CalculateLevel(experience));
         var gainedLevels = Math.Max(0, level - oldLevel);
+        // Same level-up rule as the other grant paths: one point into each of the five
+        // attributes per level, with the vital caps recomputed from the raised
+        // vitality/intelligence instead of the pre-level values.
+        var strength = oldStrength + gainedLevels;
+        var vitality = oldVitality + gainedLevels;
+        var agility = oldAgility + gainedLevels;
+        var intelligence = oldIntelligence + gainedLevels;
+        var luck = oldLuck + gainedLevels;
         var maxHp = CharacterProgression.CalculateMaxHp(level, vitality);
         var maxMp = CharacterProgression.CalculateMaxMp(level, intelligence);
         var now = DateTime.UtcNow.ToString("O");
 
-        await using (var update = connection.CreateCommand())
+        using (var update = connection.CreateCommand())
         {
             update.Transaction = transaction;
             update.CommandText = """
@@ -9305,7 +9868,11 @@ public sealed partial class DatabaseService
                 SET Hans = $hans,
                     Experience = $experience,
                     Level = $level,
-                    AttributePoints = AttributePoints + $points,
+                    Strength = $strength,
+                    Vitality = $vitality,
+                    Agility = $agility,
+                    Intelligence = $intelligence,
+                    Luck = $luck,
                     MaxHp = $maxHp,
                     MaxMp = $maxMp,
                     CurrentHp = CASE WHEN $points > 0 THEN $maxHp ELSE MIN(CurrentHp, $maxHp) END,
@@ -9319,6 +9886,11 @@ public sealed partial class DatabaseService
             update.Parameters.AddWithValue("$experience", experience);
             update.Parameters.AddWithValue("$level", level);
             update.Parameters.AddWithValue("$points", gainedLevels * CharacterProgression.AttributePointsPerLevel);
+            update.Parameters.AddWithValue("$strength", strength);
+            update.Parameters.AddWithValue("$vitality", vitality);
+            update.Parameters.AddWithValue("$agility", agility);
+            update.Parameters.AddWithValue("$intelligence", intelligence);
+            update.Parameters.AddWithValue("$luck", luck);
             update.Parameters.AddWithValue("$maxHp", maxHp);
             update.Parameters.AddWithValue("$maxMp", maxMp);
             update.Parameters.AddWithValue("$now", now);
@@ -9332,7 +9904,79 @@ public sealed partial class DatabaseService
             }
         }
 
-        await using (var delete = connection.CreateCommand())
+        foreach (var reward in itemRewards)
+        {
+            using var insertItem = connection.CreateCommand();
+            insertItem.Transaction = transaction;
+            insertItem.CommandText = """
+                INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, UpdatedAt)
+                VALUES($characterId, $itemCode, $quantity, $now)
+                ON CONFLICT(CharacterId, ItemCode) DO UPDATE SET
+                    Quantity = MIN(65535, CharacterItems.Quantity + excluded.Quantity),
+                    UpdatedAt = excluded.UpdatedAt
+                """;
+            insertItem.Parameters.AddWithValue("$characterId", characterId);
+            insertItem.Parameters.AddWithValue("$itemCode", reward.RewardCode);
+            insertItem.Parameters.AddWithValue("$quantity", checked((int)Math.Min(reward.Amount, 65535u)));
+            insertItem.Parameters.AddWithValue("$now", now);
+            if (await insertItem.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return new QuestTaskMutationResult(true, false, null, false, 0);
+            }
+        }
+
+        foreach (var reward in cardRewards)
+        {
+            using var insertCard = connection.CreateCommand();
+            insertCard.Transaction = transaction;
+            insertCard.CommandText = """
+                INSERT INTO CharacterCards(CharacterId, CardCode, Quantity, UpdatedAt)
+                VALUES($characterId, $cardCode, $quantity, $now)
+                ON CONFLICT(CharacterId, CardCode) DO UPDATE SET
+                    Quantity = MIN(255, CharacterCards.Quantity + excluded.Quantity),
+                    UpdatedAt = excluded.UpdatedAt
+                """;
+            insertCard.Parameters.AddWithValue("$characterId", characterId);
+            insertCard.Parameters.AddWithValue("$cardCode", reward.RewardCode);
+            insertCard.Parameters.AddWithValue("$quantity", checked((int)Math.Min(reward.Amount, 255u)));
+            insertCard.Parameters.AddWithValue("$now", now);
+            if (await insertCard.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return new QuestTaskMutationResult(true, false, null, false, 0);
+            }
+        }
+
+        if (QuestCatalog.MainLineQuestIds.Contains(questId))
+        {
+            using var claim = connection.CreateCommand();
+            claim.Transaction = transaction;
+            claim.CommandText = "INSERT OR IGNORE INTO CharacterStoryClaims VALUES($characterId, $questId, $now)";
+            claim.Parameters.AddWithValue("$characterId", characterId);
+            claim.Parameters.AddWithValue("$questId", questId);
+            claim.Parameters.AddWithValue("$now", now);
+            if (await claim.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return new QuestTaskMutationResult(true, false, null, false, 0);
+            }
+        }
+        foreach (var flag in definition.Rewards.Where(reward => reward.RewardType == 8))
+        {
+            using var grantFlag = connection.CreateCommand();
+            grantFlag.Transaction = transaction;
+            grantFlag.CommandText = """
+                INSERT INTO CharacterQuestFlags VALUES($characterId, $code, $value)
+                ON CONFLICT(CharacterId, FlagCode) DO UPDATE SET Value = MAX(Value, excluded.Value)
+                """;
+            grantFlag.Parameters.AddWithValue("$characterId", characterId);
+            grantFlag.Parameters.AddWithValue("$code", flag.RewardCode);
+            grantFlag.Parameters.AddWithValue("$value", flag.Amount);
+            await grantFlag.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        using (var delete = connection.CreateCommand())
         {
             delete.Transaction = transaction;
             delete.CommandText = "DELETE FROM CharacterTasks WHERE CharacterId = $characterId AND QuestId = $questId";
@@ -9345,9 +9989,36 @@ public sealed partial class DatabaseService
             }
         }
 
+        // A finished story quest opens the next link in the fixed slot: the client renders a
+        // single story entry there, so the next link replaces the one just claimed.
+        foreach (var nextLink in definition.Rewards.Where(reward => reward.RewardType == 3 && reward.RewardCode == 1))
+        {
+            if (!QuestCatalog.MainLineQuestIds.Contains(nextLink.Amount))
+                throw new InvalidDataException("Mainline reward references an unknown quest.");
+            using var advance = connection.CreateCommand();
+            advance.Transaction = transaction;
+            advance.CommandText = """
+                INSERT INTO CharacterTasks(
+                    CharacterId, QuestId, TaskType, RuntimeState, State3,
+                    Progress1, Progress2, Progress3, SlotType, CreatedAt, UpdatedAt)
+                VALUES($characterId, $questId, 3, 0, 0, 0, 1, 0, 1, $now, $now)
+                ON CONFLICT(CharacterId, QuestId) DO NOTHING
+                """;
+            advance.Parameters.AddWithValue("$characterId", characterId);
+            advance.Parameters.AddWithValue("$questId", nextLink.Amount);
+            advance.Parameters.AddWithValue("$now", now);
+            await advance.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         await transaction.CommitAsync(cancellationToken);
         var character = await GetCharacterByIdAsync(characterId, cancellationToken);
-        return new QuestTaskMutationResult(true, character is not null, character, hansReward > 0, gainedLevels);
+        return new QuestTaskMutationResult(
+            true,
+            character is not null,
+            character,
+            hansReward > 0,
+            gainedLevels,
+            itemRewards.Length > 0 || cardRewards.Length > 0);
     }
 
     private static async Task<bool> IsAuthorizedCharacterAsync(
@@ -9912,15 +10583,29 @@ public sealed partial class DatabaseService
         command.Parameters.AddWithValue("$archiveSlot", archiveSlot);
         command.Parameters.AddWithValue("$limit", limit);
 
-        var result = new List<DungeonStageLeaderboardRecord>(limit);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
+        var rows = new List<(long CharacterId, string CharacterName, uint BestScore, ushort CharacterLevel)>(limit);
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                rows.Add((
+                    reader.GetInt64(0),
+                    reader.GetString(1),
+                    checked((uint)reader.GetInt64(2)),
+                    checked((ushort)Math.Clamp(reader.GetInt32(3), 0, ushort.MaxValue))));
+            }
+        }
+
+        var result = new List<DungeonStageLeaderboardRecord>(rows.Count);
+        foreach (var row in rows)
+        {
+            var dungeonGrade = await LoadDungeonGradeAsync(connection, row.CharacterId, cancellationToken);
             result.Add(new DungeonStageLeaderboardRecord(
-                reader.GetInt64(0),
-                reader.GetString(1),
-                checked((uint)reader.GetInt64(2)),
-                checked((ushort)Math.Clamp(reader.GetInt32(3), 0, ushort.MaxValue))));
+                row.CharacterId,
+                row.CharacterName,
+                row.BestScore,
+                row.CharacterLevel,
+                dungeonGrade));
         }
         return result;
     }

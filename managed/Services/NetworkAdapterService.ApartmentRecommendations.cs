@@ -25,6 +25,8 @@ public sealed partial class NetworkAdapterService
                 session.SessionId, ownerId, ownerName, IsCurrentVisit, token);
             if (result.Status == ApartmentRecommendationStatus.Rejected || !IsCurrentVisit())
                 return null;
+            if (result.Status == ApartmentRecommendationStatus.Success)
+                await QueueApartmentRecommendationPointsRefreshAsync(session, ownerId, result.OwnerPoints, token);
             return BuildNativeFrame(frame, 0xC397, BuildApartmentRecommendationResultPayload(result.Status), session);
         }
         finally { _presenceGate.Release(); }
@@ -47,6 +49,41 @@ public sealed partial class NetworkAdapterService
             return BuildNativeFrame(frame, 0xC399, BuildApartmentRecommendCountPayload(remaining.Value), session);
         }
         finally { _presenceGate.Release(); }
+    }
+
+    // C397 carries only the result code; C38E payload +56 (full frame +64) is the
+    // established room-state carrier for the owner's current recommendation points.
+    private async Task QueueApartmentRecommendationPointsRefreshAsync(
+        ConnectionSession source, long ownerId, long ownerPoints, CancellationToken token)
+    {
+        if (ownerId <= 0 || ownerPoints < 0)
+            return;
+        var owner = await _database.GetCharacterByIdAsync(ownerId, token);
+        if (owner is null || source.ApartmentOwnerCharacterId != ownerId
+            || !IsApartmentRecommendationSessionCurrent(source))
+            return;
+
+        var placements = await _database.GetApartmentPlacementsAsync(ownerId, token);
+        var basePayload = BuildMiniRoomMovePayload(owner, true, placements);
+        var streetHouse = await _database.GetOwnedApartmentHouseAsync(ownerId, token);
+        var now = DateTimeOffset.UtcNow;
+        foreach (var target in _activeWorldSessions.Values
+                     .Where(item => ReferenceEquals(item.Session, source)
+                         || IsSameApartmentRoom(source, item.Session)))
+        {
+            var targetSession = target.Session;
+            if (targetSession.ApartmentOwnerCharacterId != ownerId
+                || !IsApartmentRecommendationSessionCurrent(targetSession))
+                continue;
+            var payload = basePayload.ToArray();
+            ApplyApartmentHouseState(payload, targetSession.Character!.Id == ownerId, streetHouse, now);
+            BinaryPrimitives.WriteUInt64LittleEndian(payload.AsSpan(56, 8), checked((ulong)ownerPoints));
+            source.PendingBroadcasts.Add(new PendingNativeBroadcast(
+                target,
+                0xC38E,
+                payload,
+                "apartment recommendation points refresh"));
+        }
     }
 
     private bool IsApartmentRecommendationSessionCurrent(ConnectionSession session)

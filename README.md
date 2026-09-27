@@ -1,5 +1,5 @@
 # openNanaimo
-The September 27, 2026 inventory update makes completed item uses and inventory expansions appear immediately on the current inventory page. The launcher now provides a full-quickbar expiration control and an optional Z/X-slot expiration control, while preserving existing character values unless they are explicitly changed.
+The September 27, 2026 integrated update repairs Dungeon 16 revival billing/effective HP-MP restoration, stage1-only P1..P16/R1..R7 title progression, exact CF16 title grades, and exactly associated kind60 laser damage. The launcher title selector now shows the decoded native grade0..24 names. Immediate inventory refresh and expiry controls remain included.
 
 
 面向韩国的飞行射击游戏 **Nanaimo** 的客户端行为研究与本地协议适配工程，包含 Windows 图形启动器、完整 adapter 源码、构建脚本、验证脚本和工程知识库。
@@ -61,7 +61,7 @@ GUI 的主要入口是绿色按钮 **“一键进入 Nanaimo”**：保存角色
 - 村庄移动、聊天、表情、好友、师徒、情侣。
 - 玩家组队、玩家交易、卡片交易所。
 - 天空竞技场、娱乐房间和相关大厅流程。
-- 单身公寓、按实例同步的家具选取状态、每日推荐、14 天街区住宅与到期换房、房屋外观与标语牌拖入及文字编辑、中文装饰商店、金币及购物券结算、保存完成弹框。
+- 单身公寓、按实例同步的家具选取状态、每日推荐及同房间推荐点即时刷新、14 天街区住宅与到期换房、房屋外观与标语牌拖入及文字编辑、中文装饰商店、金币及购物券结算、保存完成弹框。
 - 启动器“数值与道具”页支持公寓推荐点数，默认1000；购房消费和日常获得的点数持久保存。
 - 公寓使用规则与状态保存说明见 [单身公寓](docs/单身公寓.md)。
 - 地宫房间、多人同步、伤害、首领、掉落、结算、复活和关卡进度。

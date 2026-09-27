@@ -12,6 +12,7 @@ internal static class MigrationChecks
 #if NET6_0
         await CompatibilityChecks.RunAsync();
 #endif
+        await QuestSystemChecks.RunAsync();
         await TutorialAppearanceChecks.RunAsync();
         await InventoryDiscardChecks.RunAsync();
         await InventoryExpansionChecks.RunAsync();

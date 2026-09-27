@@ -118,7 +118,7 @@ internal static class DungeonSaveChecks
             Check(System.Text.Encoding.GetEncoding(936).GetString(cf16Payload, 4, 16).TrimEnd('\0') == character.Name
                 && BinaryPrimitives.ReadUInt32LittleEndian(cf16Payload.AsSpan(20, 4)) == 1600
                 && BinaryPrimitives.ReadUInt16LittleEndian(cf16Payload.AsSpan(24, 2)) == character.Level
-                && BinaryPrimitives.ReadUInt16LittleEndian(cf16Payload.AsSpan(26, 2)) == 1
+                && BinaryPrimitives.ReadUInt16LittleEndian(cf16Payload.AsSpan(26, 2)) == normalLeaderboard[0].DungeonGrade
                 && cf16Payload.AsSpan(28, 24).ToArray().All(value => value == 0),
                 "CF16 first 24-byte row or zero-filled unused row is malformed");
 

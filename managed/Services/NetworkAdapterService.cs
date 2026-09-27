@@ -437,6 +437,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte NativeDungeonDungeon { get; set; }
         public byte NativeDungeonStage { get; set; }
         public byte NativeDungeonLogicalDifficulty { get; set; }
+        public bool DungeonRunUsedItem { get; set; }
+        public bool DungeonRunCharged { get; set; }
+        public bool DungeonRunRevived { get; set; }
+        public bool DungeonRunStarted { get; set; }
+        public bool QuestCompletionNoticePending { get; set; }
+        public int DungeonRunStartLevel { get; set; }
+        public int QuestClearEpisode { get; set; } = -1;
+        public int QuestClearDifficulty { get; set; } = -1;
+        public int QuestClearDungeonBit { get; set; } = -1;
     }
 
     private sealed record PendingNativeBroadcast(
@@ -1890,6 +1899,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         CancellationToken token)
     {
         var payload = frame[8..];
+        if (string.Equals(channel, "WorldAdapter", StringComparison.Ordinal) && session.OnlineTracked)
+            ObserveQuestRun(session, opcode, frame);
         if (opcode == 0xCF95)
             return await HandleDungeonRevivalRetryAsync(frame, channel, remote, session, payload, token);
         if (await RouteNativeDungeonAsync(frame, opcode, channel, session, token))
@@ -2697,25 +2708,21 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
 
-                var taskTypeValue = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(0, 2));
-                var runtimeStateValue = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2, 2));
-                var questId = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
-                if (taskTypeValue > byte.MaxValue
-                    || runtimeStateValue > byte.MaxValue
-                    || !QuestCatalog.TryGetQuest(questId, out var quest)
-                    || quest.Rewards.Any(reward => reward.RewardType is not 1 and not 7)
-                    || payload.AsSpan(8, 72).IndexOfAnyExcept((byte)0) >= 0)
+                if (!TryParseTaskCompletionRequest(payload, out var taskType, out var runtimeStateValue, out var questId))
                 {
-                    _log($"{channel}:{remote} task completion rejected: quest={questId} type={taskTypeValue} state={runtimeStateValue} reward selection is not valid for the official fixed-reward task");
+                    _log($"{channel}:{remote} task completion rejected: payload fields invalid; archive unchanged");
                     return null;
                 }
 
+                // C599 is 88 bytes, but only the first eight payload bytes are stable
+                // task fields. Original-server captures carry non-zero opaque tail bytes.
+                await EvaluateSessionQuestsAsync(session, token);
                 var completion = await _database.CompleteQuestTaskAsync(
                     session.AccountId,
                     session.Character.Id,
                     session.SessionId,
                     questId,
-                    checked((byte)taskTypeValue),
+                    taskType,
                     runtimeStateValue,
                     token);
                 if (!completion.Authorized)
@@ -2723,19 +2730,26 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 if (completion.Success && completion.Character is not null)
                 {
                     session.Character = completion.Character;
+                    session.QuestCompletionNoticePending = false;
                     AccountStateChanged?.Invoke();
                 }
-                _log($"{channel}:{remote} task completion: quest={questId} type={taskTypeValue} state={runtimeStateValue} result={(completion.Success ? "success" : "rejected")} levels={completion.GainedLevels}");
-                return BuildNativeFrame(
+                _log($"{channel}:{remote} task completion: quest={questId} type={taskType} state={runtimeStateValue} result={(completion.Success ? "success" : "rejected")} levels={completion.GainedLevels} inventory={completion.InventoryChanged}");
+                var completionFrame = BuildNativeFrame(
                     frame,
                     0xC59A,
                     BuildTaskCompletionResultPayload(
                         completion.Success,
                         questId,
                         completion.Character ?? session.Character,
-                        completion.HansChanged,
+                        completion.HansChanged || completion.InventoryChanged,
                         completion.GainedLevels),
                     session);
+                if (!completion.Success)
+                    return completionFrame;
+                var remainingTasks = await _database.GetCharacterTasksAsync(
+                    session.AccountId, session.Character.Id, session.SessionId, token);
+                return CombineNativeFrames(completionFrame,
+                    BuildNativeFrame(frame, 0xC59C, BuildTaskListPayload(remainingTasks), session));
             }
 
             case 0xC59B: // REQ_TASK_LIST
@@ -2747,13 +2761,18 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     _log($"{channel}:{remote} task list rejected: expected=0 actual={payload.Length}; no response");
                     return null;
                 }
+                await EnsureSessionStoryQuestAsync(session, token);
+                var evaluated = await EvaluateSessionQuestsAsync(session, token);
                 var tasks = await _database.GetCharacterTasksAsync(
                     session.AccountId,
                     session.Character.Id,
                     session.SessionId,
                     token);
-                _log($"{channel}:{remote} task list: normal={tasks.Count(task => task.SlotType == 0)} fixed={tasks.Count(task => task.SlotType != 0)}");
-                return BuildNativeFrame(frame, 0xC59C, BuildTaskListPayload(tasks), session);
+                _log($"{channel}:{remote} task list: normal={tasks.Count(task => task.SlotType == 0)} fixed={tasks.Count(task => task.SlotType != 0)} changed={evaluated.Changed} newlyCompleted={evaluated.NewlyCompleted} "
+                    + string.Join(" | ", tasks.Select(task =>
+                        $"quest={task.QuestId} slot={task.SlotType} type={task.TaskType} state={task.RuntimeState} state3={task.State3} p1={task.Progress1} p2={task.Progress2} p3={task.Progress3}")));
+                return BuildQuestProgressFrames(frame, tasks, session, evaluated.NewlyCompleted,
+                    isTaskListRequest: true);
             }
 
             case 0xC59E: // REQ_QUEST_SCROLL_PURCHASE
@@ -4538,7 +4557,31 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
 
+                var sourceTownId = session.TownId;
                 var transition = TownPositionPolicy.ResolveTransition(townId, townPage, transientFlag);
+                var travelFare = TownTravelPolicy.ResolveFare(sourceTownId, townId, transientFlag);
+                if (travelFare > 0)
+                {
+                    var debit = await _database.DebitTownTravelFareAsync(
+                        session.AccountId,
+                        session.Character.Id,
+                        session.SessionId,
+                        travelFare,
+                        token);
+                    if (!debit.Success)
+                    {
+                        _log($"{channel}:{remote} C365 paid village transition rejected: source={sourceTownId} destination={townId} requestedPage={townPage} mode={transientFlag} fare={travelFare} error={debit.Error}");
+                        return BuildNativeFrame(
+                            frame,
+                            0xC366,
+                            BuildTownEnterPayload(0, session.TownId, session.TownPage, 0),
+                            session);
+                    }
+
+                    session.Character.Hans = debit.Hans;
+                    AccountStateChanged?.Invoke();
+                }
+
                 LeaveTradeRoomScene(session, "town enter");
                 LeaveApartmentScene(session, "town enter");
                 LeaveVillageShopScene(session, "town enter");
@@ -4551,12 +4594,25 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 // down. Its X/Y describe transient transport context, not the new
                 // actor's authoritative landing point. Preserve the last legal
                 // position until the destination C367/CB21 chain reports one.
-                _log($"{channel}:{remote} C365 village transition: selector={townId} requestedPage={townPage} mode={transientFlag} -> responsePage={transition.Page} responseFlag={transition.Flag} transientPosition=({requestedPositionX},{requestedPositionY}) retainedPosition=({session.LastReportedPositionX},{session.LastReportedPositionY}) canonicalized={transition.Canonicalized}");
-                return BuildNativeFrame(
+                _log($"{channel}:{remote} C365 village transition: source={sourceTownId} destination={townId} requestedPage={townPage} mode={transientFlag} fare={travelFare} remainingHans={session.Character.Hans} -> responsePage={transition.Page} responseFlag={transition.Flag} transientPosition=({requestedPositionX},{requestedPositionY}) retainedPosition=({session.LastReportedPositionX},{session.LastReportedPositionY}) canonicalized={transition.Canonicalized}");
+                var transitionResponse = BuildNativeFrame(
                     frame,
                     0xC366,
-                    BuildTownEnterPayload(townId, transition.Page, transition.Flag),
+                    BuildTownEnterPayload(200, townId, transition.Page, transition.Flag),
                     session);
+                if (travelFare == 0)
+                    return transitionResponse;
+
+                // C366 carries no wallet field. Publish the committed Hans value
+                // through the established C379 balance carrier immediately after
+                // accepting the paid ride; actor reconstruction remains deferred.
+                var transitionSkills = await _database.GetCharacterSkillsAsync(session.Character.Id, token);
+                var balanceRefresh = BuildNativeFrame(
+                    frame,
+                    0xC379,
+                    BuildBoxInfoPayloadWithSkills(session.Character, transitionSkills),
+                    session);
+                return CombineNativeFrames(transitionResponse, balanceRefresh);
             }
 
             case 0xC367: // move town page: int32 page/sub-mode and transient uint16 X/Y
@@ -5503,18 +5559,31 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 }
                 else
                 {
-                    var requestedQuickLogicalDifficulty = DecodeDungeonLogicalDifficulty(
-                        payload[4],
-                        payload[3],
-                        payload[5]);
-                    quickSelectionAllowed = await CanCharacterEnterDungeonSelectionAsync(
-                        session.Character,
-                        payload[2],
-                        payload[4],
-                        requestedQuickLogicalDifficulty,
-                        token);
+                    quickSelectionAllowed = TryParseDungeonQuickSelection(
+                        payload,
+                        out _,
+                        out var requestedQuickHdIndex,
+                        out var requestedQuickEpisode,
+                        out var requestedQuickDungeon,
+                        out var requestedQuickDifficulty);
+                    var requestedQuickLogicalDifficulty = quickSelectionAllowed
+                        ? DecodeDungeonLogicalDifficulty(
+                            requestedQuickDungeon,
+                            realStage: 0,
+                            requestedQuickDifficulty)
+                        : byte.MaxValue;
                     quickSelectionAllowed = quickSelectionAllowed
-                        && DungeonCombatCatalog.HasStage(0, payload[2], payload[4], payload[3]);
+                        && await CanCharacterEnterDungeonSelectionAsync(
+                            session.Character,
+                            requestedQuickEpisode,
+                            requestedQuickDungeon,
+                            requestedQuickLogicalDifficulty,
+                            token)
+                        && DungeonCombatCatalog.HasStage(
+                            requestedQuickHdIndex,
+                            requestedQuickEpisode,
+                            requestedQuickDungeon,
+                            stage: 0);
                 }
                 var quickCreated = false;
                 var quickRoom = quickSelectionAllowed
@@ -5524,7 +5593,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     await RestoreDungeonVitalsAsync(session, false, token);
                 var quickResult = quickRoom is null ? (ushort)50 : quickCreated ? (ushort)100 : (ushort)10;
                 _log($"{channel}:{remote} 鍦板蹇€熷弬涓庡鐞嗭細mode={quickMode} " +
-                     $"episode={payload[2]} dungeon={payload[4]} stage={payload[3]} level={payload[5]} " +
+                     $"hd={payload[2]} episode={payload[3]} dungeon={payload[4]} difficulty={payload[5]} " +
                      $"result={quickResult} room={quickRoom?.Id ?? 0} character={session.Character.Name}");
                 return BuildNativeFrame(frame, 0xCF78,
                     BuildDungeonQuickEnterPayload(quickRoom, quickResult), session);
@@ -7315,6 +7384,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         endPayload.AsSpan(0x1C, 4));
                     var equippedPetState = PetProgression.GetState(session.Character, GetEquippedPetItemCode(session.Character));
                     _log($"{channel}:{remote} Dungeon reward persisted: room={endRoom.Id} character={rewardCharacterId} cleared={rewardCleared} rating={settlementReward.Rating} party={rewardPartySize} hitScore={hitScore}/{maximumScore.HitScore} bossBonus={bossBonusScore}/{maximumScore.BossBonusScore} totalScore={score}/{maximumScore.TotalScore} reportedMp={reportedCurrentMp} authoritativeMp={session.Character.CurrentMp} reward=exp:{settlementReward.CharacterExperience}/pet:{settlementReward.PetExperience}/hans:{settlementReward.Hans} level={session.Character.Level} exp={session.Character.Experience} clientExp={clientExperience} levelRange={clientLevelStart}-{clientNextLevel} hans={session.Character.Hans} pet={equippedPetState.ItemCode} petStage={equippedPetState.CurrentStage}/{equippedPetState.MaximumStage} petLevel={equippedPetState.Level} petExp={equippedPetState.Experience} petLevelUp={petLevelUp}");
+                    session.QuestClearEpisode = rewardEpisode;
+                    session.QuestClearDifficulty = rewardDifficulty;
+                    session.QuestClearDungeonBit = rewardIsSuperBoss ? 3 : rewardDungeon;
+                    var questProgress = await EvaluateSessionQuestsAsync(
+                        session, token, rewardCleared, checked((uint)Math.Max(0, score)),
+                        GetEquippedPetItemCode(session.Character), rewardCleared);
+                    if (questProgress.Changed)
+                        BuildQuestProgressFrames(frame, questProgress.Tasks, session, questProgress.NewlyCompleted);
                     return BuildNativeFrame(frame, 0xCF88, endPayload, session);
                 }
                 finally
@@ -8668,7 +8745,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     grade,
                     requestedSkillCode);
                 if (result == 0)
+                {
                     QueueDungeonBroadcast(session, 0xCF9C, skillResultPayload, false, "dungeon skill use");
+                    var questAction = await _database.AdvanceQuestActionAsync(
+                        session.AccountId, session.Character.Id, session.SessionId,
+                        requestedSkillCode, grade, revived: false, token);
+                    if (questAction.Changed)
+                        BuildQuestProgressFrames(frame, questAction.Tasks, session, questAction.NewlyCompleted);
+                }
                 _log($"{channel}:{remote} Dungeon skill use: room={session.DungeonRoomId} character={session.Character.Id} slot={requestedSlot} skill={requestedSkillCode} grade={grade} result={(result == 0 ? "success" : "failure")} mpCost={manaCost} attack={attackValue} activeFrames={activeFrames} cooldownFrames={cooldownFrames} mp={session.Character.CurrentMp}/{session.Character.MaxMp}");
                 return BuildNativeFrame(frame, 0xCF9C, skillResultPayload, session);
             }
@@ -12063,6 +12147,36 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return expected[..expectedLength].SequenceEqual(suppliedPassword[..suppliedLength]);
     }
 
+    internal static bool TryParseDungeonQuickSelection(
+        ReadOnlySpan<byte> requestPayload,
+        out ushort mode,
+        out byte hdIndex,
+        out byte episode,
+        out byte dungeon,
+        out byte wireDifficulty)
+    {
+        mode = 0;
+        hdIndex = 0;
+        episode = 0;
+        dungeon = 0;
+        wireDifficulty = byte.MaxValue;
+        if (requestPayload.Length != 8)
+            return false;
+
+        mode = BinaryPrimitives.ReadUInt16LittleEndian(requestPayload.Slice(0, 2));
+        if (mode is not (10 or 100))
+            return false;
+
+        // Retail sub_6E9BA0/sub_6E9C20 serialize the CF77 base tuple as
+        // hd, episode, dungeon, difficulty. CF77 carries no RealStage byte;
+        // the initial ready-room target is the ordinary stage (RealStage 0).
+        hdIndex = requestPayload[2];
+        episode = requestPayload[3];
+        dungeon = requestPayload[4];
+        wireDifficulty = requestPayload[5];
+        return wireDifficulty < DungeonDifficultyCount;
+    }
+
     private DungeonRoom? QuickEnterDungeonRoom(
         ConnectionSession session,
         ReadOnlySpan<byte> requestPayload,
@@ -12076,17 +12190,18 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             return TryJoinDungeonRoom(session, requestedRoomId, out var selected, new byte[8]) ? selected : null;
         }
 
-        // Retail sub_6E9BA0/sub_6E9C20 serialize the four selection getters in
-        // this exact order: episode, RealStage, dungeon, difficulty. Captured Dungeon 2
-        // traffic is 0A0000000102FFFF and the matching CF6C room stores those
-        // selectors at create payload offsets 27, 29, 28 and 30 respectively.
-        var requestedEpisode = requestPayload[2];
-        var requestedStage = requestPayload[3];
-        var requestedDungeon = requestPayload[4];
-        var requestedDifficulty = requestPayload[5];
-        if (requestedDifficulty >= DungeonDifficultyCount
+        if (!TryParseDungeonQuickSelection(
+                requestPayload,
+                out _,
+                out var requestedHdIndex,
+                out var requestedEpisode,
+                out var requestedDungeon,
+                out var requestedDifficulty)
             || !DungeonCombatCatalog.HasStage(
-                0, requestedEpisode, requestedDungeon, requestedStage))
+                requestedHdIndex,
+                requestedEpisode,
+                requestedDungeon,
+                stage: 0))
             return null;
         DungeonRoom? available;
         lock (_dungeonRoomGate)
@@ -12096,9 +12211,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                                && !room.Started
                                && !room.HasPendingTransition)
                 .Where(room => room.CreateRequestPayload[35] == 0)
-                .Where(room => room.Episode == requestedEpisode
+                .Where(room => room.HdIndex == requestedHdIndex
+                               && room.Episode == requestedEpisode
                                && room.Dungeon == requestedDungeon
-                               && room.Stage == requestedStage
+                               && room.Stage == 0
                                && room.Difficulty == requestedDifficulty)
                 .Where(room => room.Members.Count < 3)
                 .OrderBy(room => room.Id)
@@ -12115,9 +12231,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt16LittleEndian(createPayload.AsSpan(24, 2), 100);
         BinaryPrimitives.WriteUInt16LittleEndian(createPayload.AsSpan(30, 2),
             requestedDifficulty);
+        createPayload[26] = requestedHdIndex;
         createPayload[27] = requestedEpisode;
         createPayload[28] = requestedDungeon;
-        createPayload[29] = requestedStage;
+        createPayload[29] = 0;
         created = true;
         return CreateDungeonRoom(session, createPayload);
     }
@@ -12151,20 +12268,25 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return false;
             }
 
-            var mode = BinaryPrimitives.ReadUInt16LittleEndian(requestPayload.Slice(0, 2));
-            if (mode == 20
-                || requestPayload[2] != retainedRoom.PendingEpisode
-                || !IsRetainedDungeonStageSelectorAccepted(retainedRoom, requestPayload[3])
-                || requestPayload[4] != retainedRoom.PendingDungeon
+            if (!TryParseDungeonQuickSelection(
+                    requestPayload,
+                    out var mode,
+                    out var requestedHdIndex,
+                    out var requestedEpisode,
+                    out var requestedDungeon,
+                    out var requestedDifficulty)
+                || requestedHdIndex != retainedRoom.HdIndex
+                || requestedEpisode != retainedRoom.PendingEpisode
+                || requestedDungeon != retainedRoom.PendingDungeon
                 || !IsRetainedDungeonDifficultySelectorAccepted(
                     retainedRoom,
-                    requestPayload[5]))
+                    requestedDifficulty))
             {
                 var normalDifficulty = EncodeDungeonDifficultySelector(
                     retainedRoom.PendingLogicalDifficulty,
                     superBoss: false);
                 rejection =
-                    $"selectors={mode}/{requestPayload[2]}/{requestPayload[3]}/{requestPayload[4]}/{requestPayload[5]} expectedTarget=10-or-100/{retainedRoom.PendingEpisode}/{retainedRoom.PendingStage}/{retainedRoom.PendingDungeon}/{retainedRoom.Difficulty} sourceNormalDifficulty={normalDifficulty}";
+                    $"selectors={mode}/{requestPayload[2]}/{requestPayload[3]}/{requestPayload[4]}/{requestPayload[5]} expectedBase=10-or-100/{retainedRoom.HdIndex}/{retainedRoom.PendingEpisode}/{retainedRoom.PendingDungeon}/{retainedRoom.Difficulty} pendingStage={retainedRoom.PendingStage} sourceNormalDifficulty={normalDifficulty}";
                 return false;
             }
 
@@ -16675,6 +16797,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             0xCF84,
             BuildRevivalApplyPayload(session.Character),
             session);
+        session.DungeonRunRevived = true;
+        var revivalProgress = await _database.AdvanceQuestActionAsync(
+            session.AccountId, session.Character.Id, session.SessionId,
+            0, 0, revived: true, token);
+        if (revivalProgress.Changed)
+            BuildQuestProgressFrames(frame, revivalProgress.Tasks, session, revivalProgress.NewlyCompleted);
         var refresh = BuildNativeFrame(frame, 0xCF72, BuildDungeonActorRefreshPayload(session.Character), session);
         _log($"{channel}:{remote} dungeon revival retry completed: room={session.DungeonRoomId} character={session.Character.Id} hp={result.CurrentHp} uses={result.RevivalUseCount}");
         return CombineNativeFrames(ack, revive, refresh);
@@ -18255,13 +18383,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
-    private static byte[] BuildTownEnterPayload(byte townId, byte responsePage, byte responseFlag)
+    private static byte[] BuildTownEnterPayload(byte status, byte townId, byte responsePage, byte responseFlag)
     {
         // C366 is a fixed 12-byte frame. The handler consumes only these four
         // bytes and then creates the local entity from the saved 271A context.
         // responsePage/responseFlag are the canonical server result, not a raw
-        // echo of C365's transient page/mode fields.
-        return [200, townId, responsePage, responseFlag];
+        // echo of C365's transient page/mode fields. Status 200 accepts the
+        // transition; zero keeps an unpaid request from becoming free travel.
+        return [status, townId, responsePage, responseFlag];
     }
 
     private static byte[] BuildProfileResponsePayload(CharacterRecord? character)

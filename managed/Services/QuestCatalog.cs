@@ -9,12 +9,19 @@ public sealed record QuestScrollDefinition(
     uint Price,
     uint QuestId);
 
+public sealed record QuestObjectiveCondition(byte Tag, uint Value, uint Comparison = 1)
+{
+    public QuestObjectiveCondition(byte tag, uint value) : this(tag, value, 1) { }
+    public void Deconstruct(out byte tag, out uint value) { tag = Tag; value = Value; }
+}
+
 public sealed record QuestObjectiveDefinition(
     uint ObjectiveId,
     string Name,
     byte ObjectiveType,
     uint TargetCode,
-    uint RequiredCount);
+    uint RequiredCount,
+    IReadOnlyList<QuestObjectiveCondition> Conditions);
 
 public sealed record QuestRewardDefinition(
     byte RewardType,
@@ -42,9 +49,39 @@ public static class QuestCatalog
     private const int QuestConditionTripleCount = 4;
 
     private static readonly Lazy<CatalogData> Data = new(Load);
+    private static readonly Lazy<IReadOnlyList<uint>> MainLine = new(() => ComputeMainLine(Data.Value));
 
     public static IReadOnlyCollection<QuestScrollDefinition> Scrolls => Data.Value.Scrolls.Values.ToArray();
     public static IReadOnlyCollection<QuestDefinition> Quests => Data.Value.Quests.Values.ToArray();
+    public static IReadOnlyList<uint> MainLineQuestIds => MainLine.Value;
+
+    private static IReadOnlyList<uint> ComputeMainLine(CatalogData data)
+    {
+        var sold = data.Scrolls.Values.Select(item => item.QuestId).ToHashSet();
+        var story = data.Quests.Values.Where(item => !sold.Contains(item.QuestId)).ToArray();
+        var storyIds = story.Select(item => item.QuestId).ToHashSet();
+        var next = new Dictionary<uint, uint>();
+        var referenced = new HashSet<uint>();
+        foreach (var quest in story)
+            foreach (var reward in quest.Rewards)
+                if (reward.RewardType == 3 && reward.RewardCode == 1 && storyIds.Contains(reward.Amount))
+                {
+                    next[quest.QuestId] = reward.Amount;
+                    referenced.Add(reward.Amount);
+                }
+        var result = new List<uint>(story.Length);
+        var seen = new HashSet<uint>();
+        var current = story.Select(item => item.QuestId).Where(id => !referenced.Contains(id)).OrderBy(id => id).FirstOrDefault();
+        while (current != 0 && seen.Add(current))
+        {
+            result.Add(current);
+            current = next.GetValueOrDefault(current);
+        }
+        foreach (var quest in story.OrderBy(item => item.QuestId))
+            if (seen.Add(quest.QuestId))
+                result.Add(quest.QuestId);
+        return result;
+    }
 
     public static bool TryGetScroll(uint scrollCode, out QuestScrollDefinition definition)
         => Data.Value.Scrolls.TryGetValue(scrollCode, out definition!);
@@ -62,6 +99,98 @@ public static class QuestCatalog
             return false;
         objective = quest.Objectives[0];
         return true;
+    }
+
+    public static bool TryGetClearTarget(
+        QuestObjectiveDefinition objective,
+        out int episode,
+        out int difficulty,
+        out int dungeonBit,
+        out uint requiredPetCode)
+    {
+        // Kind 14 is not a proven difficulty selector. Retain the API but use
+        // -1 for any recorded difficulty, per the original-alignment handoff.
+        difficulty = -1;
+        return TryGetDungeonClearCondition(objective, out episode, out dungeonBit, out requiredPetCode);
+    }
+
+    public static bool TryGetDungeonClearCondition(
+        QuestObjectiveDefinition objective, out int episode, out int dungeonBit, out uint requiredPetCode)
+    {
+        episode = dungeonBit = -1;
+        requiredPetCode = 0;
+        foreach (var condition in objective.Conditions)
+            switch (condition.Tag)
+            {
+                case 12: episode = checked((int)condition.Value) - 1; break;
+                case 13: dungeonBit = checked((int)condition.Value) - 1; break;
+                case 24: requiredPetCode = condition.Value; break;
+            }
+        // These four QT/QS mainline objectives explicitly name the super BOSS.
+        // Their kind-13 value is the physical dungeon (3), not its clear-mask
+        // slot (4). Do not reinterpret the unverified kind 38 globally.
+        if (objective.ObjectiveType == 20 && dungeonBit == 2
+            && objective.ObjectiveId is 75000139 or 75000143 or 75000148 or 75000151)
+            dungeonBit = 3;
+        // Types 21/22/23 are zero-count restriction challenges. They are safe
+        // only when evaluated against a live settlement carrying charge/item/
+        // revival evidence; a passive task-list refresh has HasClear=false.
+        var hasEvaluableCount = objective.RequiredCount != 0
+            || objective.ObjectiveType is 21 or 22 or 23;
+        return hasEvaluableCount && episode is >= 0 and < 16
+            && dungeonBit is >= 0 and < 4;
+    }
+
+    public static bool TryGetScoreTarget(QuestObjectiveDefinition objective, out int episode, out uint score)
+    {
+        episode = -1; score = 0;
+        foreach (var condition in objective.Conditions)
+        {
+            if (condition.Tag == 12) episode = checked((int)condition.Value) - 1;
+            if (condition.Tag == 16 && condition.Comparison == 0) score = condition.Value;
+        }
+        return objective.RequiredCount != 0 && episode is >= 0 and < 16 && score > 0;
+    }
+
+    public static bool TryGetPetBossTarget(QuestObjectiveDefinition objective, out int episode, out uint pet)
+    {
+        episode = -1; pet = 0;
+        // Only the 48 catalogued "use purple/blue/lemon cockroach against BOSS"
+        // objectives. No guessed interpretation of condition kinds 15 or 38.
+        if (objective.ObjectiveType != 25 || objective.RequiredCount != 1
+            || objective.Conditions.Any(c => c.Tag == 13)) return false;
+        foreach (var c in objective.Conditions)
+        {
+            if (c.Tag == 12) episode = (int)c.Value - 1;
+            if (c.Tag == 24) pet = c.Value;
+        }
+        return episode is >= 0 and < 16 && pet is 15000001 or 15000002 or 15000003;
+    }
+
+    public static bool MatchesSettlement(QuestObjectiveDefinition objective, int episode, int dungeonBit,
+        uint pet, uint score, bool solo, bool bossDefeated)
+    {
+        if (TryGetPetBossTarget(objective, out var bossEpisode, out var bossPet))
+            return bossDefeated && episode == bossEpisode && pet == bossPet;
+        if (TryGetScoreTarget(objective, out var scoreEpisode, out var threshold))
+            return episode == scoreEpisode && score >= threshold;
+        if (!TryGetDungeonClearCondition(objective, out var targetEpisode, out var targetBit, out var targetPet))
+            return false;
+        return episode == targetEpisode && dungeonBit == targetBit
+            && MatchesSettlementPet(objective, targetPet, pet)
+            && (objective.ObjectiveType != 9 || !solo)
+            && (objective.ObjectiveType != 25 || solo);
+    }
+
+    private static bool MatchesSettlementPet(QuestObjectiveDefinition objective, uint requiredPet, uint battlePet)
+    {
+        if (requiredPet == 0 || requiredPet == battlePet) return true;
+        // QT names the story-reward Blue Fairy (15005009). The ordinary
+        // Blue Fairy (15000010) has the same client name, family 6 and BOO
+        // model, but a different socket count. Accept both for this story
+        // objective; do not alias inventory IDs or unrelated pet missions.
+        return objective.ObjectiveId == 75000139 && objective.ObjectiveType == 20
+            && requiredPet == 15005009 && battlePet == 15000010;
     }
 
     private static CatalogData Load()
@@ -129,8 +258,18 @@ public static class QuestCatalog
             var objectiveType = checked((byte)ReadUInt(fields[record + 2], "QT objective type"));
             var targetCode = ReadUInt(fields[record + 3], "QT objective target");
             var requiredCount = ReadUInt(fields[record + 4], "QT objective count");
+            var conditions = new List<QuestObjectiveCondition>(4);
+            for (var conditionIndex = 0; conditionIndex < 4; conditionIndex++)
+            {
+                var condition = record + 5 + conditionIndex * 3;
+                var tag = ReadUInt(fields[condition], "QT objective condition tag");
+                var value = ReadUInt(fields[condition + 2], "QT objective condition value");
+                if (tag != 0)
+                    conditions.Add(new QuestObjectiveCondition(checked((byte)tag), value,
+                        ReadUInt(fields[condition + 1], "QT objective comparison or skill code")));
+            }
             if (!objectives.TryAdd(objectiveId, new QuestObjectiveDefinition(
-                    objectiveId, fields[record + 1], objectiveType, targetCode, requiredCount)))
+                    objectiveId, fields[record + 1], objectiveType, targetCode, requiredCount, conditions)))
                 throw new InvalidDataException($"The official QT catalog repeats objective {objectiveId}.");
         }
         offset += objectiveCount * ObjectiveFieldCount;

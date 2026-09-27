@@ -546,12 +546,13 @@ static void send_cf76_room_click(SOCKET c){
     printf("  S0xCF76 room-click status=10 compact=12B t=%lds\n",sec()); fflush(0);
 }
 
-/* CF77 is the observed dungeon-lobby action request. The CF78 dispatcher case
-   at 0x6F7D9F requires WORD +8 == 10, reads button states at +0x10..+0x12,
-   and may consume empty room text areas beginning at +0x14 and +0x1C.
-   A zeroed 0x20 frame is the minimum conservative empty-lobby probe. */
-static void send_cf78_empty_lobby(SOCKET c){
-    char p[4096];unsigned uid=multiplayer_current_uid(),owner=multiplayer_owner_uid(),status=(uid==owner)?100u:10u;mkpkt(p,0xCF78,0x24,1);stable_resource_put16(p,8,status);p[0x0A]=(char)(uid==owner?0:1);stable_resource_put16(p,0x0C,uid);sendbuf(c,p,0x24);printf("  S0xCF78 multiplayer role uid=%u owner=%u status=%u len=36 t=%lds\n",uid,owner,status,sec());fflush(0);
+/* CF77 is the dungeon-lobby action request.  The CF78 dispatcher
+   case at 0x6F7D9F consumes frame +0x0A/+0x0B as the selected episode and
+   dungeon when it constructs the ready-room view.  Keep those selectors from
+   the CF77 base tuple; they are not owner/guest role bytes.  The client reads
+   a DWORD room id at +0x0C and three availability bytes at +0x10..+0x12. */
+static void send_cf78_empty_lobby(SOCKET c,unsigned episode,unsigned dungeon){
+    char p[4096];unsigned uid=multiplayer_current_uid(),owner=multiplayer_owner_uid(),status=(uid==owner)?100u:10u;mkpkt(p,0xCF78,0x24,1);stable_resource_put16(p,8,status);p[0x0A]=(char)episode;p[0x0B]=(char)dungeon;stable_put32(p,0x0C,uid);sendbuf(c,p,0x24);printf("  S0xCF78 dungeon-ready-room uid=%u owner=%u status=%u episode=%u dungeon=%u len=36 t=%lds\n",uid,owner,status,episode,dungeon,sec());fflush(0);
 }
 
 /* State4 client requests and their statically paired adapter responses. */

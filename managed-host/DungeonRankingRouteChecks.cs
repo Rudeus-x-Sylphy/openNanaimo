@@ -37,7 +37,8 @@ internal static class DungeonRankingRouteChecks
             var builder = typeof(NetworkAdapterService).GetMethod(
                 "BuildDungeonStageRecordsPayload", BindingFlags.NonPublic | BindingFlags.Static)!;
             var rows = Enumerable.Range(0, 12).Select(index => new DungeonStageLeaderboardRecord(
-                index + 1, $"\u6392\u884c{index:D2}", (uint)(12_000 - index * 100), (ushort)(1 + index * 9))).ToArray();
+                index + 1, $"\u6392\u884c{index:D2}", (uint)(12_000 - index * 100),
+                (ushort)(1 + index * 9), (ushort)(index is 0 ? 23 : index + 3))).ToArray();
             byte[] Build(IReadOnlyList<DungeonStageLeaderboardRecord> records)
                 => (byte[])builder.Invoke(null, [new byte[] { 20, 0, 2, 0 }, records])!;
             var payload = Build(rows);
@@ -51,8 +52,8 @@ internal static class DungeonRankingRouteChecks
                     && payload.AsSpan(offset + name.Length, 16 - name.Length).ToArray().All(value => value == 0)
                     && BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(offset + 16, 4)) == rows[index].BestScore
                     && U16(payload, offset + 20) == rows[index].CharacterLevel
-                    && U16(payload, offset + 22) == Math.Min(7, (rows[index].CharacterLevel - 1) / 10 + 1),
-                    $"ranking row {index} has independent GBK/name/score/level/icon field coverage");
+                    && U16(payload, offset + 22) == rows[index].DungeonGrade,
+                    $"ranking row {index} has independent GBK/name/score/character-level/title-grade coverage");
             }
             Check(Build([]).AsSpan(4).ToArray().All(value => value == 0),
                 "empty ranking initializes all ten rows instead of retaining old names or scores");
@@ -165,7 +166,7 @@ internal static class DungeonRankingRouteChecks
                     Encoding.GetEncoding(936).GetBytes(character.Name).CopyTo(expected, 4);
                     BinaryPrimitives.WriteUInt32LittleEndian(expected.AsSpan(20), 9999);
                     BinaryPrimitives.WriteUInt16LittleEndian(expected.AsSpan(24), (ushort)character.Level);
-                    BinaryPrimitives.WriteUInt16LittleEndian(expected.AsSpan(26), 1);
+                    BinaryPrimitives.WriteUInt16LittleEndian(expected.AsSpan(26), character.DungeonGrade);
                 }
                 selector.CopyTo(expected, 0);
                 await Send(NativeDungeonClient.Frame(0xCF15, selector));

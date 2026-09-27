@@ -47,14 +47,17 @@ public sealed partial class NetworkAdapterService
     {
         // CF15's four bytes are a records selector, not permission to query a
         // client-chosen dungeon. Both routes use their authoritative room tuple.
+        var standardTuple = hd <= 1
+            && episode < (hd == 0 ? DungeonEpisodeCount : 4)
+            && dungeon < 3 && stage <= 1 && (stage == 0 || dungeon == 2);
+        var lumineosTuple = DungeonTitleProgression.IsLumineosTuple(hd, episode, dungeon, stage);
         if (!session.OnlineTracked || session.Character is null
             || request.Length != 8 + DungeonStageRecordsPayloadLength
             || BinaryPrimitives.ReadUInt16LittleEndian(request.AsSpan(4, 2)) != request.Length
             || BinaryPrimitives.ReadUInt16LittleEndian(request.AsSpan(6, 2)) != 0xCF15
             || BinaryPrimitives.ReadUInt16LittleEndian(request.AsSpan(8, 2)) != DungeonEpisodeCount
             || BinaryPrimitives.ReadUInt16LittleEndian(request.AsSpan(10, 2)) >= DungeonDifficultyCount
-            || hd > 1 || episode >= (hd == 0 ? DungeonEpisodeCount : 4)
-            || dungeon >= 3 || stage > 1 || (stage == 1 && dungeon != 2)
+            || (!standardTuple && !lumineosTuple)
             || difficulty >= DungeonDifficultyCount)
             return null;
         var records = await _database.GetDungeonStageLeaderboardAsync(

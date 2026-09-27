@@ -65,7 +65,7 @@ public sealed partial class NetworkAdapterService
                     {
                         cycle.BattleStartArmed = false;
                         cycle.BattleStarted = true;
-                        cycle.FirstHansConsumed = false;
+                        cycle.PendingPaidContinue = null;
                         cycle.Transition = null;
                         session.NativeBattleResources = session.NativeBattleResources?.ForEpoch(epoch);
                         session.NativeDungeonDeathLatched = false;

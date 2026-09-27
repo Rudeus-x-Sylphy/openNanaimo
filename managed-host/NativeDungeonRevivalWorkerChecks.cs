@@ -42,10 +42,28 @@ internal static class NativeDungeonRevivalWorkerChecks
                 Id = 1, Name = "Revival", Level = 1, MaxHp = 2000, CurrentHp = 2000,
                 MaxMp = 800, CurrentMp = 800, Hans = 1000, RevivalUseCount = 3
             };
+            BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(0, 4), 10130337);
+            BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(8, 4), 10110337);
+            BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(12, 4), 10120352);
+            BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(20, 4), 10150103);
+            BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(24, 4), 10160017);
             var initial = NativeDungeonState.Create(character, [], []);
+            var effective = initial.GetEffectiveResourceMaximums();
+            Require(effective.Hp > character.MaxHp && effective.Mp > character.MaxMp,
+                "fixture has effective HP/MP above base profile maxima");
             await stream.WriteAsync(NativeDungeonClient.Frame(0xF100, initial.Bytes), stop.Token);
             var state = await ReadState(stream, stop.Token);
             Require(state.Get(20) == 2000 && state.Get(60) == 3, "initial state import");
+
+            var effectiveSync = NativeDungeonClient.Frame(0xF104,
+                NetworkAdapterService.BuildNativePaidContinueRuntimeSyncPayload(effective.Hp, effective.Mp));
+            await stream.WriteAsync(effectiveSync.Concat(NativeDungeonClient.Frame(0xF101, [])).ToArray(), stop.Token);
+            Require(NetworkAdapterService.TryParseNativePaidContinueRuntimeSyncAck(
+                    await ReadFrame(stream, stop.Token), effective.Hp, effective.Mp),
+                "F104 accepts effective MP above base profile maximum");
+            state = await ReadState(stream, stop.Token);
+            Require(state.Get(20) == effective.Hp && state.Get(28) == effective.Mp,
+                "effective paid-continue resources survive F104/F105 state exchange");
             // These frames deliberately share a recv buffer. Losing the parser's
             // cursor repeats F104 forever instead of reaching the state request.
             for (int i = 0; i < 4; ++i)
@@ -82,7 +100,7 @@ internal static class NativeDungeonRevivalWorkerChecks
             Require(state.Get(20) == 900 && state.Get(28) == 300, "fragmented sync preserves checkpoint boundary");
             await Task.Delay(100, stop.Token);
             Require(client.Available == 0, "no unsolicited repeated acknowledgements after checkpoint");
-            Console.WriteLine("NATIVE_DUNGEON_REVIVAL_WORKER_PASS coalesced fragmented rejected bounded no-repeat");
+            Console.WriteLine("NATIVE_DUNGEON_REVIVAL_WORKER_PASS effective-max coalesced fragmented rejected bounded no-repeat");
         }
         finally
         {

@@ -242,6 +242,81 @@ public sealed partial class DatabaseService
         await write.ExecuteNonQueryAsync(token);
     }
 
+    private static byte ReadDungeonGrade(ReadOnlySpan<byte> state)
+    {
+        if (state.Length < NativeDungeonState.DungeonGradeOffset + 4)
+            return 0;
+        var grade = BinaryPrimitives.ReadUInt32LittleEndian(
+            state.Slice(NativeDungeonState.DungeonGradeOffset, 4));
+        return grade <= CharacterTitleState.MaximumGrade ? (byte)grade : (byte)0;
+    }
+
+    private static async Task<byte> GetHighestPersistedDungeonGradeAsync(
+        SqliteConnection connection,
+        SqliteTransaction? transaction,
+        long characterId,
+        CancellationToken token)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT MAX(Grade)
+            FROM (
+                SELECT Episode + 1 AS Grade
+                FROM DungeonProgress
+                WHERE CharacterId=$id AND Episode BETWEEN 0 AND 15
+                  AND (ClearMask & 8) != 0
+                UNION ALL
+                SELECT Episode + 1 AS Grade
+                FROM DungeonStagePerformance
+                WHERE CharacterId=$id AND Episode BETWEEN 0 AND 15
+                  AND ArchiveSlot=3
+                UNION ALL
+                SELECT Grade
+                FROM DungeonTitleMilestones
+                WHERE CharacterId=$id
+            )
+            """;
+        command.Parameters.AddWithValue("$id", characterId);
+        var value = await command.ExecuteScalarAsync(token);
+        return value is long grade
+            ? checked((byte)Math.Clamp(grade, 0, DungeonTitleProgression.MaximumAutomaticGrade))
+            : (byte)0;
+    }
+
+    private static async Task<byte> ReconcileDungeonGradeStateAsync(
+        SqliteConnection connection,
+        SqliteTransaction? transaction,
+        long characterId,
+        byte[] state,
+        bool persist,
+        CancellationToken token)
+    {
+        var storedGrade = ReadDungeonGrade(state);
+        var historyGrade = await GetHighestPersistedDungeonGradeAsync(
+            connection, transaction, characterId, token);
+        var legacyEpisode15R7 = DungeonTitleProgression.IsLegacyEpisode15R7State(state);
+        var effectiveGrade = legacyEpisode15R7
+            ? historyGrade
+            : Math.Max(storedGrade, historyGrade);
+
+        if (state.Length == NativeDungeonState.Size && effectiveGrade != storedGrade)
+        {
+            BinaryPrimitives.WriteUInt32LittleEndian(
+                state.AsSpan(NativeDungeonState.DungeonGradeOffset, 4), effectiveGrade);
+            if (persist)
+            {
+                await using var update = connection.CreateCommand();
+                update.Transaction = transaction;
+                update.CommandText = "UPDATE NativeDungeonProfiles SET State=$state WHERE CharacterId=$id";
+                update.Parameters.AddWithValue("$state", state);
+                update.Parameters.AddWithValue("$id", characterId);
+                await update.ExecuteNonQueryAsync(token);
+            }
+        }
+        return effectiveGrade;
+    }
+
     private static async Task<byte> LoadDungeonGradeAsync(
         SqliteConnection connection,
         long characterId,
@@ -250,17 +325,17 @@ public sealed partial class DatabaseService
         await using (var exists = connection.CreateCommand())
         {
             exists.CommandText = "SELECT 1 FROM sqlite_master WHERE type='table' AND name='NativeDungeonProfiles'";
-            if (await exists.ExecuteScalarAsync(token) is null) return 0;
+            if (await exists.ExecuteScalarAsync(token) is null)
+                return await GetHighestPersistedDungeonGradeAsync(connection, null, characterId, token);
         }
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT State FROM NativeDungeonProfiles WHERE CharacterId=$id";
         command.Parameters.AddWithValue("$id", characterId);
         if (await command.ExecuteScalarAsync(token) is not byte[] state
-            || state.Length < NativeDungeonState.DungeonGradeOffset + 4)
-            return 0;
-        var grade = BinaryPrimitives.ReadUInt32LittleEndian(
-            state.AsSpan(NativeDungeonState.DungeonGradeOffset, 4));
-        return grade <= 42 ? (byte)grade : (byte)0;
+            || state.Length != NativeDungeonState.Size)
+            return await GetHighestPersistedDungeonGradeAsync(connection, null, characterId, token);
+        return await ReconcileDungeonGradeStateAsync(
+            connection, null, characterId, state, persist: true, token);
     }
 
     public async Task<CharacterRecord> ImportLocalProfileAsync(string profile, CancellationToken token = default)
@@ -815,80 +890,106 @@ public sealed partial class DatabaseService
         }
         if (settlement is { } result)
         {
-            if (result.HdIndex > 1
-                || result.Episode >= (result.HdIndex == 0 ? 20 : 4)
-                || result.Dungeon >= 3
-                || result.Stage > 1
-                || (result.Stage == 1 && result.Dungeon != 2)
-                || result.Dungeon + result.Stage > 3
+            var standardTuple = result.HdIndex <= 1
+                && result.Episode < (result.HdIndex == 0 ? 20 : 4)
+                && result.Dungeon < 3
+                && result.Stage <= 1
+                && (result.Stage == 0 || result.Dungeon == 2)
+                && result.Dungeon + result.Stage <= 3;
+            var lumineosTuple = DungeonTitleProgression.IsLumineosTuple(
+                result.HdIndex, result.Episode, result.Dungeon, result.Stage);
+            if ((!standardTuple && !lumineosTuple)
                 || result.LogicalDifficulty >= 3
                 || result.Rating > DungeonRewardPolicy.ClearRatingS
                 || result.Score < 0
                 || result.StageRecordScore < result.Score)
                 throw new InvalidDataException("Native dungeon settlement tuple is invalid.");
 
-            // The retained worker's CF88 is the visible result authority on the
-            // playable route. It carries D..S as 1..5; C and lower intentionally
-            // leave the packed ready-room/C355 best-rank field at zero.
-            var clientBestRating = Math.Clamp(result.Rating - 2, 0, 3);
-            var archiveSlot = result.Dungeon + result.Stage;
-            var ratingShift = archiveSlot * 2;
-            var ratingFieldMask = 0x03 << ratingShift;
-            var ratingClearMask = 0xFF & ~ratingFieldMask;
             var now = DateTime.UtcNow.ToString("O");
-            if (result.HdIndex == 0)
+            if (standardTuple)
+            {
+                // The retained worker's CF88 is the visible result authority on the
+                // playable route. It carries D..S as 1..5; C and lower intentionally
+                // leave the packed ready-room/C355 best-rank field at zero.
+                var clientBestRating = Math.Clamp(result.Rating - 2, 0, 3);
+                var archiveSlot = result.Dungeon + result.Stage;
+                var ratingShift = archiveSlot * 2;
+                var ratingFieldMask = 0x03 << ratingShift;
+                var ratingClearMask = 0xFF & ~ratingFieldMask;
+                if (result.HdIndex == 0)
+                {
+                    await Execute("""
+                        INSERT INTO DungeonProgress(
+                            CharacterId,Episode,Difficulty,ClearMask,BestRatings,BestScore,ClearedAt,UpdatedAt)
+                        VALUES($id,$episode,$difficulty,$mask,$bestRatings,$score,$now,$now)
+                        ON CONFLICT(CharacterId,Episode,Difficulty) DO UPDATE SET
+                            ClearMask=DungeonProgress.ClearMask|excluded.ClearMask,
+                            BestRatings=(DungeonProgress.BestRatings&$ratingClearMask)
+                                |MAX(DungeonProgress.BestRatings&$ratingFieldMask,
+                                     excluded.BestRatings&$ratingFieldMask),
+                            BestScore=MAX(DungeonProgress.BestScore,excluded.BestScore),
+                            UpdatedAt=excluded.UpdatedAt
+                        """, ("$episode", result.Episode), ("$difficulty", result.LogicalDifficulty),
+                        ("$mask", 1 << archiveSlot), ("$bestRatings", clientBestRating << ratingShift),
+                        ("$ratingFieldMask", ratingFieldMask), ("$ratingClearMask", ratingClearMask),
+                        ("$score", result.Score), ("$now", now));
+                }
+                else
+                {
+                    await Execute("""
+                        INSERT INTO DungeonSecretProgress(
+                            CharacterId,Episode,ClearMask,BestRatings,BestScore,ClearedAt,UpdatedAt)
+                        VALUES($id,$episode,$mask,$bestRatings,$score,$now,$now)
+                        ON CONFLICT(CharacterId,Episode) DO UPDATE SET
+                            ClearMask=DungeonSecretProgress.ClearMask|excluded.ClearMask,
+                            BestRatings=(DungeonSecretProgress.BestRatings&$ratingClearMask)
+                                |MAX(DungeonSecretProgress.BestRatings&$ratingFieldMask,
+                                     excluded.BestRatings&$ratingFieldMask),
+                            BestScore=MAX(DungeonSecretProgress.BestScore,excluded.BestScore),
+                            UpdatedAt=excluded.UpdatedAt
+                        """, ("$episode", result.Episode), ("$mask", 1 << archiveSlot),
+                        ("$bestRatings", clientBestRating << ratingShift),
+                        ("$ratingFieldMask", ratingFieldMask), ("$ratingClearMask", ratingClearMask),
+                        ("$score", result.Score), ("$now", now));
+                }
+                if (result.StageRecordScore is { } stageRecordScore)
+                {
+                    // CF88 supplies slot scores but no proven elapsed-time field.
+                    // Reuse the existing stage leaderboard and best-score policy;
+                    // never invent a time or backfill a stage from aggregate history.
+                    var table = result.HdIndex == 0 ? "DungeonStagePerformance" : "DungeonSecretStagePerformance";
+                    await Execute($"""
+                        INSERT INTO {table}(CharacterId,Episode,Difficulty,ArchiveSlot,BestScore,
+                            BestElapsedMinutes,ClearedAt,UpdatedAt)
+                        VALUES($id,$episode,$difficulty,$slot,$score,NULL,$now,$now)
+                        ON CONFLICT(CharacterId,Episode,Difficulty,ArchiveSlot) DO UPDATE SET
+                            BestScore=MAX({table}.BestScore,excluded.BestScore),
+                            UpdatedAt=excluded.UpdatedAt
+                        """, ("$episode", result.Episode), ("$difficulty", result.LogicalDifficulty),
+                        ("$slot", archiveSlot), ("$score", stageRecordScore), ("$now", now));
+                }
+            }
+
+            if (DungeonTitleProgression.TryGetGrade(
+                    result.HdIndex, result.Episode, result.Dungeon, result.Stage,
+                    out var awardedGrade))
             {
                 await Execute("""
-                    INSERT INTO DungeonProgress(
-                        CharacterId,Episode,Difficulty,ClearMask,BestRatings,BestScore,ClearedAt,UpdatedAt)
-                    VALUES($id,$episode,$difficulty,$mask,$bestRatings,$score,$now,$now)
-                    ON CONFLICT(CharacterId,Episode,Difficulty) DO UPDATE SET
-                        ClearMask=DungeonProgress.ClearMask|excluded.ClearMask,
-                        BestRatings=(DungeonProgress.BestRatings&$ratingClearMask)
-                            |MAX(DungeonProgress.BestRatings&$ratingFieldMask,
-                                 excluded.BestRatings&$ratingFieldMask),
-                        BestScore=MAX(DungeonProgress.BestScore,excluded.BestScore),
-                        UpdatedAt=excluded.UpdatedAt
-                    """, ("$episode", result.Episode), ("$difficulty", result.LogicalDifficulty),
-                    ("$mask", 1 << archiveSlot), ("$bestRatings", clientBestRating << ratingShift),
-                    ("$ratingFieldMask", ratingFieldMask), ("$ratingClearMask", ratingClearMask),
-                    ("$score", result.Score), ("$now", now));
-            }
-            else
-            {
-                await Execute("""
-                    INSERT INTO DungeonSecretProgress(
-                        CharacterId,Episode,ClearMask,BestRatings,BestScore,ClearedAt,UpdatedAt)
-                    VALUES($id,$episode,$mask,$bestRatings,$score,$now,$now)
-                    ON CONFLICT(CharacterId,Episode) DO UPDATE SET
-                        ClearMask=DungeonSecretProgress.ClearMask|excluded.ClearMask,
-                        BestRatings=(DungeonSecretProgress.BestRatings&$ratingClearMask)
-                            |MAX(DungeonSecretProgress.BestRatings&$ratingFieldMask,
-                                 excluded.BestRatings&$ratingFieldMask),
-                        BestScore=MAX(DungeonSecretProgress.BestScore,excluded.BestScore),
-                        UpdatedAt=excluded.UpdatedAt
-                    """, ("$episode", result.Episode), ("$mask", 1 << archiveSlot),
-                    ("$bestRatings", clientBestRating << ratingShift),
-                    ("$ratingFieldMask", ratingFieldMask), ("$ratingClearMask", ratingClearMask),
-                    ("$score", result.Score), ("$now", now));
-            }
-            if (result.StageRecordScore is { } stageRecordScore)
-            {
-                // CF88 supplies slot scores but no proven elapsed-time field.
-                // Reuse the existing stage leaderboard and best-score policy;
-                // never invent a time or backfill a stage from aggregate history.
-                var table = result.HdIndex == 0 ? "DungeonStagePerformance" : "DungeonSecretStagePerformance";
-                await Execute($"""
-                    INSERT INTO {table}(CharacterId,Episode,Difficulty,ArchiveSlot,BestScore,
-                        BestElapsedMinutes,ClearedAt,UpdatedAt)
-                    VALUES($id,$episode,$difficulty,$slot,$score,NULL,$now,$now)
-                    ON CONFLICT(CharacterId,Episode,Difficulty,ArchiveSlot) DO UPDATE SET
-                        BestScore=MAX({table}.BestScore,excluded.BestScore),
-                        UpdatedAt=excluded.UpdatedAt
-                    """, ("$episode", result.Episode), ("$difficulty", result.LogicalDifficulty),
-                    ("$slot", archiveSlot), ("$score", stageRecordScore), ("$now", now));
+                    INSERT INTO DungeonTitleMilestones(
+                        CharacterId,Grade,HdIndex,Episode,Dungeon,Difficulty,Stage,ClearedAt,UpdatedAt)
+                    VALUES($id,$grade,$hd,$episode,$dungeon,$difficulty,$stage,$now,$now)
+                    ON CONFLICT(CharacterId,Grade) DO UPDATE SET
+                        HdIndex=excluded.HdIndex, Episode=excluded.Episode,
+                        Dungeon=excluded.Dungeon, Difficulty=excluded.Difficulty,
+                        Stage=excluded.Stage, UpdatedAt=excluded.UpdatedAt
+                    """, ("$grade", awardedGrade), ("$hd", result.HdIndex),
+                    ("$episode", result.Episode), ("$dungeon", result.Dungeon),
+                    ("$difficulty", result.LogicalDifficulty), ("$stage", result.Stage),
+                    ("$now", now));
             }
         }
+        await ReconcileDungeonGradeStateAsync(
+            connection, transaction, characterId, after.Bytes, persist: false, token);
         await Execute("CREATE TABLE IF NOT EXISTS NativeDungeonProfiles(CharacterId INTEGER PRIMARY KEY REFERENCES Characters(Id), State BLOB NOT NULL)");
         await Execute("INSERT INTO NativeDungeonProfiles VALUES($id,$state) ON CONFLICT(CharacterId) DO UPDATE SET State=$state", ("$state", after.Bytes));
         await transaction.CommitAsync(token);

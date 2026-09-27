@@ -1,4 +1,4 @@
-"""Regression checks for non-damaging fixed-scene D00F kinds 60/80."""
+"""Regression checks for exact kind60 associations and unmapped scene echoes."""
 from pathlib import Path
 import subprocess
 import tempfile
@@ -27,16 +27,19 @@ class FixedSceneInjuryPolicyTests(unittest.TestCase):
             source,
         )
         self.assertIn(
-            "if(scene_injury_fixed_scene_echo_kind(request_kind)){",
+            "if(request_kind==60u){",
             source,
         )
+        self.assertIn("STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE", source)
+        self.assertIn("associated kind60 selector=%u parent=%u resource=%s damage=%u -> player-injury/no-echo", source)
+        self.assertIn("reason=no-exact-associated-target", source)
         self.assertIn("echo-only/no-authoritative-HP", source)
         self.assertNotIn(
             "request_kind==10u||scene_injury_fixed_scene_d00f_kind(request_kind)",
             source,
         )
 
-    def test_stage_damage_returns_zero_for_fixed_scene(self):
+    def test_stage_damage_keeps_unmapped_scene_events_non_damaging(self):
         if not TCC.is_file():
             self.fail(f"Bundled compiler missing: {TCC}")
         harness = r'''#include <assert.h>
