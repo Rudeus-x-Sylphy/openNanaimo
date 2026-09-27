@@ -204,11 +204,7 @@ internal static class DungeonRankingChecks
                     == BattleResourceBoundary.ConnectionClose
                 && NetworkAdapterService.ResolveNativeDungeonEntryBoundary(
                     deathLatched: true, nextTransitionAuthorized: true, hasPendingBattleSnapshot: true)
-                    == BattleResourceBoundary.DeathReturn
-                && NetworkAdapterService.PreserveNativeDungeonPowerRestoreStage(
-                    3, BattleResourceBoundary.NextDungeon) == 3
-                && NetworkAdapterService.PreserveNativeDungeonPowerRestoreStage(
-                    3, BattleResourceBoundary.TownReturn) == 0,
+                    == BattleResourceBoundary.DeathReturn,
                 "CF09 and worker close preserve inherited resources and power only for an authorized continuation");
 
             var nativeCf88 = NativeDungeonClient.Frame(0xCF88, new byte[56]);

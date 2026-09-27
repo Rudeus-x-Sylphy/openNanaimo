@@ -29,7 +29,7 @@
     "derived_outputs": [
       {
         "path": "game.exe",
-        "operation": "automatic reviewed-site furniture Index redirect, ready-room revival HUD refresh, manual stage confirmation, consecutive-stage power-form restoration, scoped gift-refresh preview HP/MP preservation, street-house purchase confirmation and owned-house exterior decoration input and constructor-derived hit geometry, repeat exterior inventory rebuild and body-preview image getter, scoped exterior HUD/input ownership and teardown, native exterior shop button and preview resource types, initialized save payload and save feedback, banner icon getter stack correction with reviewed previous-recipe migration, bounded exterior Korean-to-GBK literals, request-bound native save-success notice"
+        "operation": "reviewed furniture Index redirect; restore retired revival HUD and P-sentinel patches to native bytes; manual confirmation for both settlement controllers preserving mouse and keyboard; scoped gift-refresh preview HP/MP preservation; purchase-window type25 entry plus required no-shop C37B yield patch; complete exterior lifecycle, resources and localized text"
       },
       {
         "path": "Village_map_image/Village_map_image.pack",
@@ -84,15 +84,19 @@
     "launcher_selection": {
       "arguments": [
         "--furniture",
-        "--revival-display",
+        "--native-state",
         "--dungeon-state",
+        "--inventory-gift-display",
+        "--land-purchase",
+        "--apartment-exterior",
         "--dungeon7",
         "--overwrite",
         "--apply"
       ],
       "modifies_game_exe": true,
       "emotion_page_policy": "adapter C355/728 progression and couple-field boundary; the supported empty-couple state uses the protocol boundary",
-      "furniture_policy": "required local compatibility redirect for the reviewed PE site; fixed C393 does not replace the click-time getter"
+      "furniture_policy": "required local compatibility redirect for the reviewed PE site; fixed C393 does not replace the click-time getter",
+      "native_state_policy": "retired revival-HUD and P-sentinel hooks are restored only from exact reviewed bytes; adapter owns CF72 count coherence and continuation rebuild gating; unknown sites refused"
     },
     "adapter_protocol_compatibility": {
       "request": "C354/8 with zero-byte payload on the world connection",
@@ -100,8 +104,9 @@
       "progression_segment": "full-frame +0x88..<+0xDF; final packed state1 byte 0x55, ending at +0xDE",
       "partner_name": "full-frame +0xDF..+0xEF, 17 bytes",
       "ring_suffix": "WORD full-frame +0xF0",
-      "revival_count": "BYTE full-frame +0xF2",
-      "fail_closed": "without a catalog-backed couple ring and nonempty partner name, name and ring remain zero so the native name gate blocks lookup"
+      "revival_count": "C355 BYTE+0xF2, CF71 BYTE+0xA8, CF72 BYTE+0x73; corresponding actor/account ledger, not zero-filled display override",
+      "fail_closed": "without a catalog-backed couple ring and nonempty partner name, name and ring remain zero so the native name gate blocks lookup",
+      "consecutive_power": "keep native actor P across same-PET continuation; CF72 WORD+0x64 controls PET rebuild, not P level; no synthetic FFFF D035 restoration"
     },
     "support_files": [
       "scripts/apartment_exterior_panel.py"

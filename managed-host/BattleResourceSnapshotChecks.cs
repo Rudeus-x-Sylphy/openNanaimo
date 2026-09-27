@@ -29,7 +29,7 @@ internal static class BattleResourceSnapshotChecks
 
         var next = BattleResourceSnapshotPolicy.CreateNextDungeonState(character, [], [], snapshot);
         Check(next.Get(20) == 333 && next.Get(28) == 44 && next.Get(NativeDungeonState.PetCombatLevelOffset) == 1,
-            "consecutive snapshot restores HP MP while power is restored at the real CF80 boundary");
+            "consecutive snapshot restores HP MP without encoding Power as PET level");
         Check(next.Get(16) == 1000 && next.Get(24) == 500 && next.Get(4) == 77,
             "snapshot restore does not replace profile maxima or identity");
 
@@ -113,25 +113,14 @@ internal static class BattleResourceSnapshotChecks
             "successful local category40 MP pickup updates only live MP");
 
 
-        var restorePayloads = NetworkAdapterService.BuildNativePowerRestorePayloads(77, 2);
-        Check(restorePayloads.Count == 2
-            && restorePayloads.All(payload => payload.Length == 16
-                && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(0, 2)) == 77
-                && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2, 2)) == 77
-                && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(4, 2)) == 40
-                && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(6, 2)) == ushort.MaxValue
-                && BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(8, 4)) == 1),
-            "consecutive stage restores the exact observed power stage through sentinel D035 frames");
-        Check(NetworkAdapterService.BuildNativePowerRestorePayloads(77, 0).Count == 0
-            && NetworkAdapterService.BuildNativePowerRestorePayloads(77, 9).Count == 3,
-            "power restore is absent for a fresh stage and bounded to stage three");
+        CheckNativeActorRefreshLifecycle(character);
 
         var workerOwnedActor = BuildFrame(0xCF72, 0x74);
         BinaryPrimitives.WriteUInt16LittleEndian(workerOwnedActor.AsSpan(8, 2), 77);
         workerOwnedActor[0x66] = workerOwnedActor[0x67] = 2;
         Check(NetworkAdapterService.PatchNativePetActorFrame(workerOwnedActor, character)
             && workerOwnedActor[0x66] == 2 && workerOwnedActor[0x67] == 2,
-            "valid retained-worker attack mode is not overwritten by profile initial mode");
+            "valid retained-worker PET level is not overwritten by profile initial Power");
 
         var effectiveActor = BuildFrame(0xCF72, 0x74);
         BinaryPrimitives.WriteUInt16LittleEndian(effectiveActor.AsSpan(8, 2), 77);
@@ -190,6 +179,86 @@ internal static class BattleResourceSnapshotChecks
             "timed recovery advances the effective carrier once and projects only storage-safe values");
 
         Console.WriteLine("BATTLE_RESOURCE_SNAPSHOT_CHECKS_PASS epoch-frozen effective-hp cf87-cf8b-cf70-cf71-cf72 pickup-recovery-exit");
+    }
+
+    private static void CheckNativeActorRefreshLifecycle(CharacterRecord character)
+    {
+        character.RevivalUseCount = 25;
+        var cf71 = BuildFrame(0xCF71, 0xB8);
+        BinaryPrimitives.WriteUInt16LittleEndian(cf71.AsSpan(0x1A, 2), 77);
+        var cf72 = NativeDungeonClient.Frame(0xCF72,
+            NetworkAdapterService.BuildDungeonActorRefreshPayload(character));
+        Check(cf72[0x73] == 25, "managed CF72 construction fills the authoritative revival count");
+        cf72[0x73] = 0; // retained-worker regression: later mode2 used to blank the text
+        Check(NetworkAdapterService.PatchNativeRevivalCountFrame(cf71, character)
+            && NetworkAdapterService.PatchNativeRevivalCountFrame(cf72, character)
+            && cf71[0xA8] == 25 && cf72[0x73] == 25,
+            "native CF71 and subsequent CF72 share the target revival ledger");
+        character.RevivalUseCount = 24;
+        Check(NetworkAdapterService.PatchNativeRevivalCountFrame(cf71, character)
+            && NetworkAdapterService.PatchNativeRevivalCountFrame(cf72, character)
+            && cf71[0xA8] == 24 && cf72[0x73] == 24
+            && NetworkAdapterService.BuildDungeonActorRefreshPayload(character)[0x73 - 8] == 24,
+            "post-debit CF71 and both CF72 constructors use the latest count, not an entry snapshot");
+        var remote = new CharacterRecord { Id = 78, RevivalUseCount = 9 };
+        var remoteFrame = cf72.ToArray();
+        BinaryPrimitives.WriteUInt16LittleEndian(remoteFrame.AsSpan(8, 2), 78);
+        remoteFrame[0x73] = 7;
+        var originalRemote = remoteFrame.ToArray();
+        Check(!NetworkAdapterService.PatchNativeRevivalCountFrame(remoteFrame, character)
+            && remoteFrame.SequenceEqual(originalRemote), "local count never overwrites a remote UID");
+        Check(NetworkAdapterService.PatchNativeRevivalCountFrame(remoteFrame, remote)
+            && remoteFrame[0x73] == 9, "resolved remote owner supplies its own count");
+        foreach (var count in new byte[] { 0, 255 })
+        {
+            character.RevivalUseCount = count;
+            NetworkAdapterService.PatchNativeRevivalCountFrame(cf72, character);
+            Check(cf72[0x73] == count, "revival carrier retains byte boundary " + count);
+        }
+        character.RevivalUseCount = 24;
+        foreach (var bad in new[] { new byte[0], new byte[7], BuildFrame(0xCF72, 0x73),
+            BuildFrame(0xCF72, 0x75), BuildFrame(0xCF71, 0xB7), BuildFrame(0xCF80, 8) })
+        {
+            var before = bad.ToArray();
+            Check(!NetworkAdapterService.PatchNativeRevivalCountFrame(bad, character)
+                && bad.SequenceEqual(before), "wrong/truncated revival tuple unchanged length=" + bad.Length);
+        }
+        var invalidDeclaredLength = cf72.ToArray();
+        invalidDeclaredLength[4]--;
+        Check(!NetworkAdapterService.PatchNativeRevivalCountFrame(invalidDeclaredLength, character),
+            "invalid declared length cannot update revival state");
+
+        // The C worker is the single PET/actor lifecycle authority. Its apply
+        // decision includes phase, join identity, and real gem state that may
+        // not be encoded in +58..+60. Managed must preserve BOTH decisions.
+        for (var i = 0x38; i < 0x64; ++i) cf72[i] = (byte)i;
+        BinaryPrimitives.WriteUInt32LittleEndian(cf72.AsSpan(0x30, 4), 15000001);
+        cf72[0x66] = cf72[0x67] = 2;
+        var current = new BattleResourceSnapshot(321, 123, 3)
+            { MaximumHp = 1000, MaximumMp = 500, Epoch = 9 };
+        foreach (var boundary in new[] { "initial", "same-epoch-pre-CF80", "CF8B-continuation",
+            "CF6C-new-room", "reconnect", "D010-death-CF84-revive", "PET-change", "gem-change" })
+        {
+            var apply = boundary is "same-epoch-pre-CF80" or "CF8B-continuation" ? (ushort)0 : (ushort)1;
+            BinaryPrimitives.WriteUInt16LittleEndian(cf72.AsSpan(0x64, 2), apply);
+            var before = cf72.ToArray();
+            Check(NetworkAdapterService.PatchNativeBattleResourceFrame(cf72, character, current)
+                && NetworkAdapterService.PatchNativeRevivalCountFrame(cf72, character)
+                && BinaryPrimitives.ReadUInt16LittleEndian(cf72.AsSpan(0x64, 2)) == apply
+                && cf72[0x66] == 2 && cf72[0x67] == 2,
+                "managed preserves worker lifecycle apply/PET level for " + boundary);
+            Check(cf72.AsSpan(0x12, 0x73 - 0x12).SequenceEqual(before.AsSpan(0x12, 0x73 - 0x12))
+                && BinaryPrimitives.ReadUInt16LittleEndian(cf72.AsSpan(0x0E, 2)) == 321
+                && BinaryPrimitives.ReadUInt16LittleEndian(cf72.AsSpan(0x10, 2)) == 123
+                && cf72[0x73] == 24,
+                "resource/count normalization preserves all skill quickbar PET fields for " + boundary);
+        }
+        var firstManaged = NetworkAdapterService.BuildDungeonActorRefreshPayload(character);
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(firstManaged.AsSpan(0x64 - 8, 2)) == 1,
+            "managed standalone revival constructor retains necessary initial PET apply");
+        Check(typeof(NetworkAdapterService).GetMethod("BuildNativePowerRestorePayloads",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic) is null,
+            "retired synthetic D035 FFFF factory is absent; Power preservation adds no packets");
     }
 
     private static byte[] BuildFrame(ushort opcode, int length)

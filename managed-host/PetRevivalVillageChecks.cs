@@ -375,8 +375,9 @@ internal static class PetRevivalVillageChecks
             && BinaryPrimitives.ReadUInt16LittleEndian(runtimeSync.AsSpan(4, 2)) == 250
             && NetworkAdapterService.TryParseNativePaidContinueRuntimeSyncAck(runtimeAck, 1_000, 250),
             "internal F104/F105 paid-continue sync preserves worker combat HP/MP across the managed payment");
-        Check(BinaryPrimitives.ReadUInt16LittleEndian(cf72.AsSpan(6, 2)) == 2_000,
-            "CF72 refresh carries current HP for the separate CF95 retry family");
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(cf72.AsSpan(6, 2)) == 2_000
+            && cf72[0x73 - 8] == character.RevivalUseCount,
+            "CF72 refresh carries current HP and the owner's revival ledger for the separate CF95 retry family");
 
         var localD010 = NativeDungeonClient.Frame(0xD010, new byte[28]);
         BinaryPrimitives.WriteUInt16LittleEndian(localD010.AsSpan(8, 2), 1);
@@ -520,6 +521,16 @@ internal static class PetRevivalVillageChecks
             Check(applied.Applied && persisted.CurrentHp == 2000 && persisted.CurrentMp == 800
                 && persisted.RevivalUseCount == 30 && persisted.Hans == 4050,
                 "native CF95 checkpoint persists restored HP/MP, exactly one use and unchanged Hans");
+            var afterDebitCf71 = NativeDungeonClient.Frame(0xCF71, new byte[0xB8 - 8]);
+            BinaryPrimitives.WriteUInt16LittleEndian(afterDebitCf71.AsSpan(0x1A, 2),
+                checked((ushort)persisted.Id));
+            var afterDebitCf72 = NativeDungeonClient.Frame(0xCF72,
+                NetworkAdapterService.BuildDungeonActorRefreshPayload(persisted));
+            afterDebitCf72[0x73] = 31; // stale worker snapshot from before the debit
+            Check(NetworkAdapterService.PatchNativeRevivalCountFrame(afterDebitCf71, persisted)
+                && NetworkAdapterService.PatchNativeRevivalCountFrame(afterDebitCf72, persisted)
+                && afterDebitCf71[0xA8] == 30 && afterDebitCf72[0x73] == 30,
+                "committed native revival debit corrects both CF71 and stale CF72 snapshots to 30");
             var nativeDuplicate = await database.ApplyNativeDungeonDeltaAsync(
                 accountId, characterId, sessionId, nativeBefore, nativeAfter, default, commitId);
             Check(!nativeDuplicate.Applied && (await database.GetCharacterAsync(accountId))!.RevivalUseCount == 30,

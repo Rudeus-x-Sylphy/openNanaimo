@@ -196,7 +196,6 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonSettlementAwaitingAction = true;
                 session.NativeDungeonNextTransitionAuthorized = false;
                 session.NativeDungeonTownTransitionAuthorized = false;
-                session.NativeDungeonPendingPowerRestoreStage = 0;
                 if (session.NativeBattleResources is { } resources
                     && session.Character is { } resourceCharacter
                     && BattleResourceSnapshot.TryReadSettlementCurrentMp(
@@ -221,8 +220,6 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonSettlementAwaitingAction = false;
                 session.NativeDungeonNextTransitionAuthorized = true;
                 session.NativeDungeonTownTransitionAuthorized = false;
-                session.NativeDungeonPendingPowerRestoreStage =
-                    session.NativeBattleResources?.AttackMode ?? 0;
             }
             else if (IsNativeDungeonManualTownLeavePrecursor(
                 session.NativeDungeonSettlementAwaitingAction,
@@ -449,25 +446,6 @@ public sealed partial class NetworkAdapterService
         return payload;
     }
 
-    internal static IReadOnlyList<byte[]> BuildNativePowerRestorePayloads(
-        ushort memberUid,
-        byte powerStage)
-    {
-        var count = Math.Clamp(powerStage, (byte)0, (byte)3);
-        var payloads = new List<byte[]>(count);
-        for (var index = 0; index < count; index++)
-        {
-            var payload = new byte[16];
-            BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0, 2), memberUid);
-            BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), memberUid);
-            BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(4, 2), 40);
-            BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(6, 2), ushort.MaxValue);
-            BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(8, 4), 1);
-            payloads.Add(payload);
-        }
-        return payloads;
-    }
-
     internal static bool ShouldSuppressUnarmedNativeDungeonSettlementLeave(
         bool awaitingAction,
         bool nextTransitionAuthorized,
@@ -514,13 +492,6 @@ public sealed partial class NetworkAdapterService
             : nextTransitionAuthorized || hasPendingBattleSnapshot
                 ? BattleResourceBoundary.NextDungeon
                 : BattleResourceBoundary.ConnectionClose;
-
-    internal static byte PreserveNativeDungeonPowerRestoreStage(
-        byte pendingStage,
-        BattleResourceBoundary boundary)
-        => BattleResourceSnapshotPolicy.CarriesAcross(boundary)
-            ? BattleResourceSnapshot.NormalizeAttackMode(pendingStage)
-            : (byte)0;
 
     internal static bool ShouldForwardNativeDungeonCheckpointFrame(ushort requestOpcode, ushort responseOpcode)
         => requestOpcode != 0xCF87 || responseOpcode == 0xCF88;
@@ -1012,26 +983,10 @@ public sealed partial class NetworkAdapterService
             return;
         }
         if (!session.NativeForwarding) return;
+        var revivalOwner = ResolveNativeRevivalOwner(session, response);
+        PatchNativeRevivalCountFrame(response, revivalOwner);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(response, "NativeDungeon",
             session.ListenerPort, session.RemoteIp ?? "local", true, false, "retained-native-dungeon"), token);
-        if (responseOpcode == 0xCF80
-            && session.NativeDungeonPendingPowerRestoreStage > 0
-            && session.Character is { } powerCharacter)
-        {
-            var restoreStage = session.NativeDungeonPendingPowerRestoreStage;
-            session.NativeDungeonPendingPowerRestoreStage = 0;
-            foreach (var payload in BuildNativePowerRestorePayloads(
-                GetSceneEntityId(powerCharacter),
-                restoreStage))
-            {
-                var restore = BuildNativeFrame(response, 0xD035, payload, session);
-                await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
-                    restore,
-                    "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
-                    true, false, "consecutive-stage power restore"), token);
-            }
-            _log($"NativeDungeon consecutive-stage power restored: character={powerCharacter.Id} stage={restoreStage}");
-        }
     }
 
     private async Task PatchNativeReadyRoomRankFrameAsync(
@@ -1155,19 +1110,54 @@ public sealed partial class NetworkAdapterService
             BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x0E, 2), current.CurrentHp);
             BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(0x10, 2), current.CurrentMp);
         }
-        else
-        {
-            // A retained worker owns the live power-up stage. Preserve a valid
-            // worker value; only repair absent/invalid bytes from the profile.
-            var workerMode = frame[0x66] is >= 1 and <= 3 ? frame[0x66] : frame[0x67];
-            var mode = workerMode is >= 1 and <= 3
-                ? workerMode
-                : checked((byte)Math.Clamp(character.InitialAttackMode + 1, 1, 3));
-            frame[0x66] = mode;
-            frame[0x67] = mode;
-        }
+        // The retained worker owns the CF72 lifecycle decision. In particular,
+        // apply=1 can mean REVIVE, a new actor, or a changed PET/gem set that is
+        // not fully represented by the wire identity. Never second-guess +64
+        // using a managed cache: preserve apply and PET levels +66/+67 exactly.
+        // Power lives in the existing client actor, not those PET-level bytes.
         RewriteNativeChecksum(frame);
         return true;
+    }
+
+    internal static bool PatchNativeRevivalCountFrame(byte[] frame, CharacterRecord? owner)
+    {
+        if (owner is null || frame.Length < 8
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4, 2)) != frame.Length)
+            return false;
+        var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2));
+        var countOffset = opcode == 0xCF71 && frame.Length == 0xB8 ? 0xA8
+            : opcode == 0xCF72 && frame.Length == 0x74 ? 0x73 : -1;
+        if (countOffset < 0)
+            return false;
+        var uidOffset = opcode == 0xCF71 ? 0x1A : 8;
+        if (BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(uidOffset, 2)) != GetSceneEntityId(owner))
+            return false;
+        frame[countOffset] = owner.RevivalUseCount;
+        RewriteNativeChecksum(frame);
+        return true;
+    }
+
+    private CharacterRecord? ResolveNativeRevivalOwner(ConnectionSession viewer, byte[] frame)
+    {
+        if (frame.Length < 8)
+            return null;
+        var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2));
+        var uidOffset = opcode == 0xCF71 && frame.Length == 0xB8 ? 0x1A
+            : opcode == 0xCF72 && frame.Length == 0x74 ? 8 : -1;
+        if (uidOffset < 0)
+            return null;
+        var uid = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(uidOffset, 2));
+        if (viewer.Character is { } local && GetSceneEntityId(local) == uid)
+            return local;
+        // No numeric-UID-to-account guess, and no local count projected onto a
+        // remote member. Only a tracked member of this same native party/lease
+        // owns an authoritative remote ledger; otherwise preserve worker bytes.
+        if (viewer.PartyId <= 0 || viewer.NativeLease is null)
+            return null;
+        return _activeWorldSessions.Values.Select(p => p.Session).FirstOrDefault(peer =>
+            peer.OnlineTracked && peer.PartyId == viewer.PartyId && peer.NativeDungeon is not null
+            && peer.NativeLease?.Port == viewer.NativeLease.Port
+            && peer.Character is { } member && GetSceneEntityId(member) == uid)?.Character;
     }
 
     internal static bool PatchNativePetActorFrame(byte[] frame, CharacterRecord? character, byte? battleAttackMode = null)
@@ -1229,8 +1219,6 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
-            session.NativeDungeonPendingPowerRestoreStage = PreserveNativeDungeonPowerRestoreStage(
-                session.NativeDungeonPendingPowerRestoreStage, boundary);
             if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleResources = null; session.NativeBattleAttackMode = null; }
             if (boundary != BattleResourceBoundary.TownReturn) session.NonCombatResourceSnapshot = null;
             return;
@@ -1259,8 +1247,6 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
-            session.NativeDungeonPendingPowerRestoreStage = PreserveNativeDungeonPowerRestoreStage(
-                session.NativeDungeonPendingPowerRestoreStage, boundary);
             session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
             await session.NativeDungeon.DisposeAsync(); session.NativeDungeon = null; session.NativeCheckpoint = null;

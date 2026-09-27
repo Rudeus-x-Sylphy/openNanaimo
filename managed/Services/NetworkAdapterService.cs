@@ -424,7 +424,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public BattleResourceSnapshot? NonCombatResourceSnapshot { get; set; }
         public long NativeBattleEpoch { get; set; }
         public byte? NativeBattleAttackMode { get; set; }
-        public byte NativeDungeonPendingPowerRestoreStage { get; set; }
         public bool NativeForwarding { get; set; }
         public bool NativeDungeonDeathLatched { get; set; }
         public bool NativeDungeonSettlementAwaitingAction { get; set; }
@@ -13767,6 +13766,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 dungeonSecretBestRatings,
                 coupleRelation),
             session);
+        // A pre-completion C354 still gets its native C355 response, but must
+        // not initialize our configured inventories/pet inside the main guide.
+        // Completion remains owned by validated C353; the next C354/C367 use
+        // the unchanged stored loadout through the normal village lifecycle.
+        if (session.Character is not { TutorialCompleted: true })
+            return loadNecessity;
+
         // The C476 notification is the client's inventory initialization gate.
         // Push the equipped pet immediately after it as well: a reconnect in
         // the same client process can keep its inventory-loaded flags and skip
@@ -13925,7 +13931,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             // The successful 271A handler stores these fields as the local
             // player context later consumed by the C366 room/town path.
             WriteFixedGbk(payload.AsSpan(8, 16), character.Name);
-            BuildStoredAppearance(character).CopyTo(payload, 24);
+            // Main-guide CGuideChar treats every appearance slot as an image,
+            // including D6. Do not inject launcher equipment into that native
+            // phase. This is a wire-only starter projection, not an unequip:
+            // preserve the stored loadout for C368 after valid C353 completion.
+            var appearance = character.TutorialCompleted
+                ? BuildStoredAppearance(character)
+                : DatabaseService.CreateDefaultAppearance(character.Gender);
+            appearance.CopyTo(payload, 24);
         }
         else
         {
@@ -15712,7 +15725,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // The C355 consumer passes frame+13 to the client's pet-carry setter.
         // C44C restores the inventory/model, but this independent flag drives
         // village following and the "pet required" dungeon-entry check.
-        payload[5] = GetEquippedPetItemCode(character) != 0 ? (byte)1 : (byte)0;
+        payload[5] = character is { TutorialCompleted: true } && GetEquippedPetItemCode(character) != 0
+            ? (byte)1 : (byte)0;
         // The retail C355 consumer restores the current-channel and global
         // mike counters from frame+14 and frame+15 respectively.
         payload[6] = character?.MikeChannelUseCount ?? 0;
@@ -16845,6 +16859,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         payload[0x67 - 8] = payload[0x66 - 8];
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x6C - 8, 4), 100);
         payload[0x72 - 8] = 1;
+        payload[0x73 - 8] = character.RevivalUseCount;
         return payload;
     }
 

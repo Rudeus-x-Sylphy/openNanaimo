@@ -1,4 +1,5 @@
 """Source-level launcher policy guards; WinForms geometry uses -SelfTestLayout."""
+import json
 import re
 import unittest
 from pathlib import Path
@@ -73,7 +74,7 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("$ClientCompatibilityTool=Join-Path $Root 'scripts\\prepare_client_compatibility.py'", text)
         self.assertIn("$ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay'", text)
         self.assertIn('function Ensure-ClientCompatibility', text)
-        self.assertIn("'--furniture','--revival-display','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--dungeon7','--overwrite','--apply'", text)
+        self.assertIn("'--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--dungeon7','--overwrite','--apply'", text)
         self.assertNotIn("'--emotion'", text)
         self.assertIn('Fixed C393 is protocol hygiene, not the click-time Index repair.', text)
         self.assertNotIn("'--all','--overwrite','--apply'", text)
@@ -82,6 +83,16 @@ class LauncherContractTests(unittest.TestCase):
         self.assertLess(click.index('Stop-Process -Force'), click.index('Ensure-ClientCompatibility'))
         self.assertLess(click.index('Ensure-ClientCompatibility'), click.index('Start-LocalAdapter'))
         self.assertLess(click.index('Ensure-ClientCompatibility'), click.index('Start-Process -FilePath $Client'))
+    def test_launcher_and_recipe_manifest_select_identical_operations(self):
+        text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
+        block = text.split('function Ensure-ClientCompatibility {', 1)[1].split('function Register-ClientProfile', 1)[0]
+        args = re.findall(r"'(--[a-z0-9-]+)'", block.split('$arguments=', 1)[1].split('$output=', 1)[0])
+        recipe = json.loads((ROOT / 'manifest/patch_runtime_requirements.json').read_text('utf-8'))
+        selected = [arg for arg in args if arg not in ('--source-root', '--output-root')]
+        self.assertEqual(selected, recipe['compatibility_derivation']['launcher_selection']['arguments'])
+        self.assertIn('--native-state', selected)
+        self.assertNotIn('--revival-display', selected)
+
     def test_game_entry_and_scoped_stop(self):
         for filename in ('nanaimo_launcher.ps1', 'client_connect.ps1'):
             text = (ROOT / 'gui_launcher' / filename).read_text('utf-8-sig')

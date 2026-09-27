@@ -1,5 +1,10 @@
 """Regression tests for safe, hash-free client compatibility derivation."""
 import importlib.util
+import itertools
+import contextlib
+import io
+import inspect
+from unittest import mock
 import struct
 import tempfile
 import unittest
@@ -93,6 +98,7 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         put(va, old)
     put(compat.REVIVAL_HUD_HOOK_VA, revival_hook)
     put(compat.REVIVAL_HUD_CAVE_VA, revival_cave)
+    put(compat.SETTLEMENT_OTHER_AUTO_GATE_VA, compat.SETTLEMENT_OTHER_AUTO_GATE_OLD)
     put(compat.SETTLEMENT_AUTO_GATE_VA, settlement_gate)
     put(compat.SETTLEMENT_AUTO_ACTION_GATE_VA, settlement_action_gate)
     put(compat.POWER_RESTORE_HOOK_VA, power_hook)
@@ -133,44 +139,38 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(compat.CompatibilityError, 'separately reviewed VA mapping'):
             compat.patch_furniture_getter(data)
 
-    def test_revival_hud_refresh_uses_authoritative_manager_and_is_idempotent(self):
-        data, _ = synthetic_pe()
-        output, report = compat.patch_revival_hud_refresh(data)
+    def test_revival_api_is_removal_not_installation(self):
+        original, _ = synthetic_pe()
+        output, report = compat.patch_revival_hud_refresh(original)
+        self.assertEqual(output, original)
+        self.assertFalse(report['changed'])
         hook, cave = compat._revival_hud_patch_bytes()
-        hook_offset = compat._va_offset(output, compat.REVIVAL_HUD_HOOK_VA, len(hook))
-        cave_offset = compat._va_offset(output, compat.REVIVAL_HUD_CAVE_VA, len(cave))
-        self.assertEqual(output[hook_offset:hook_offset + len(hook)], hook)
-        self.assertEqual(output[cave_offset:cave_offset + len(cave)], cave)
-        self.assertIn(struct.pack('<I', 0x00D869D4), cave)
-        self.assertIn(struct.pack('<I', compat.REVIVAL_COUNT_FORMAT_VA), cave)
-        self.assertFalse(report['hash_gate_used'])
-        again, second = compat.patch_revival_hud_refresh(output)
-        self.assertEqual(again, output)
-        self.assertEqual(second['status'], 'already_patched')
+        old, _ = synthetic_pe(revival_hook=hook, revival_cave=cave)
+        output, report = compat.patch_revival_hud_refresh(old)
+        self.assertEqual(output, original)
+        self.assertTrue(report['changed'])
+        self.assertEqual(compat.patch_revival_hud_refresh(output)[0], output)
 
     def test_unknown_revival_hud_site_is_refused(self):
         data, _ = synthetic_pe(revival_hook=b'BADHOOK')
         with self.assertRaisesRegex(compat.CompatibilityError, 'revival HUD draw entry differs'):
             compat.patch_revival_hud_refresh(data)
 
-    def test_dungeon_state_patch_disables_only_timeout_and_accepts_power_restore_sentinel(self):
+    def test_dungeon_policy_covers_both_timers_keeps_mouse_and_native_power(self):
         data, _ = synthetic_pe()
         output, report = compat.patch_dungeon_state_controls(data)
-        hook, cave = compat._power_restore_patch_bytes()
-        timer_offset = compat._va_offset(output, compat.SETTLEMENT_AUTO_GATE_VA, 2)
-        action_offset = compat._va_offset(output, compat.SETTLEMENT_AUTO_ACTION_GATE_VA, 2)
-        hook_offset = compat._va_offset(output, compat.POWER_RESTORE_HOOK_VA, len(hook))
-        cave_offset = compat._va_offset(output, compat.POWER_RESTORE_CAVE_VA, len(cave))
-        self.assertEqual(output[timer_offset:timer_offset + 2], compat.SETTLEMENT_AUTO_GATE_NEW)
-        self.assertEqual(output[action_offset:action_offset + 2], compat.SETTLEMENT_AUTO_ACTION_GATE_NEW)
-        self.assertEqual(output[hook_offset:hook_offset + len(hook)], hook)
-        self.assertEqual(output[cave_offset:cave_offset + len(cave)], cave)
-        self.assertIn(bytes.fromhex('66837A0EFF'), cave)
-        self.assertIn(bytes.fromhex('837A1001'), cave)
+        for va, expected in (
+                (compat.SETTLEMENT_AUTO_GATE_VA, compat.SETTLEMENT_AUTO_GATE_NEW),
+                (compat.SETTLEMENT_OTHER_AUTO_GATE_VA, compat.SETTLEMENT_OTHER_AUTO_GATE_NEW),
+                (compat.SETTLEMENT_AUTO_ACTION_GATE_VA, compat.SETTLEMENT_AUTO_ACTION_GATE_OLD),
+                (compat.POWER_RESTORE_HOOK_VA, compat.POWER_RESTORE_HOOK_OLD),
+                (compat.POWER_RESTORE_CAVE_VA, compat.POWER_RESTORE_CAVE_OLD)):
+            off = compat._va_offset(output, va, len(expected))
+            self.assertEqual(output[off:off + len(expected)], expected)
         self.assertFalse(report['hash_gate_used'])
         again, second = compat.patch_dungeon_state_controls(output)
         self.assertEqual(again, output)
-        self.assertEqual(second['status'], 'already_patched')
+        self.assertFalse(second['changed'])
 
     def test_unknown_settlement_or_power_site_is_refused(self):
         data, _ = synthetic_pe(settlement_gate=b'XX')
@@ -265,6 +265,126 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
                 b'crow projectile')
             self.assertTrue((out / 'nanaimo_compatibility_report.json').is_file())
 
+
+def replace_site(data, va, blob):
+    out = bytearray(data)
+    offset = compat._va_offset(data, va, len(blob))
+    out[offset:offset + len(blob)] = blob
+    return bytes(out)
+
+
+class NativeStateMigrationTests(unittest.TestCase):
+    def setUp(self):
+        self.original = synthetic_pe()[0]
+        rh, rc = compat._revival_hud_patch_bytes()
+        ph, pc = compat._power_restore_patch_bytes()
+        self.native_sites = (
+            (compat.REVIVAL_HUD_HOOK_VA, compat.REVIVAL_HUD_HOOK_OLD, rh),
+            (compat.REVIVAL_HUD_CAVE_VA, compat.REVIVAL_HUD_CAVE_OLD, rc),
+            (compat.POWER_RESTORE_HOOK_VA, compat.POWER_RESTORE_HOOK_OLD, ph),
+            (compat.POWER_RESTORE_CAVE_VA, compat.POWER_RESTORE_CAVE_OLD, pc))
+
+    def test_all_native_original_legacy_and_mixed_sites_converge(self):
+        for mask in itertools.product((0, 1), repeat=4):
+            with self.subTest(mask=mask):
+                source = self.original
+                for flag, (va, original, legacy) in zip(mask, self.native_sites):
+                    source = replace_site(source, va, legacy if flag else original)
+                output, report = compat.restore_native_state(source)
+                self.assertEqual(output, self.original)
+                self.assertEqual(report['changed'], any(mask))
+                self.assertEqual(compat.restore_native_state(output)[0], output)
+
+    def test_all_settlement_old_new_and_mixed_sites_converge(self):
+        ph, pc = compat._power_restore_patch_bytes()
+        sites = (
+            (compat.SETTLEMENT_AUTO_GATE_VA, compat.SETTLEMENT_AUTO_GATE_OLD, compat.SETTLEMENT_AUTO_GATE_NEW),
+            (compat.SETTLEMENT_OTHER_AUTO_GATE_VA, compat.SETTLEMENT_OTHER_AUTO_GATE_OLD, compat.SETTLEMENT_OTHER_AUTO_GATE_NEW),
+            (compat.SETTLEMENT_AUTO_ACTION_GATE_VA, compat.SETTLEMENT_AUTO_ACTION_GATE_OLD, compat.SETTLEMENT_AUTO_ACTION_GATE_LEGACY),
+            (compat.POWER_RESTORE_HOOK_VA, compat.POWER_RESTORE_HOOK_OLD, ph),
+            (compat.POWER_RESTORE_CAVE_VA, compat.POWER_RESTORE_CAVE_OLD, pc))
+        target = compat.patch_dungeon_state_controls(self.original)[0]
+        for mask in itertools.product((0, 1), repeat=len(sites)):
+            with self.subTest(mask=mask):
+                source = self.original
+                for flag, (va, original, legacy) in zip(mask, sites):
+                    source = replace_site(source, va, legacy if flag else original)
+                out, report = compat.patch_dungeon_state_controls(source)
+                self.assertEqual(out, target)
+                self.assertEqual(report['changed'], source != target)
+                self.assertFalse(compat.patch_dungeon_state_controls(out)[1]['changed'])
+
+    def test_unknown_native_bytes_fail_including_entire_cave_padding(self):
+        for va, original, legacy in self.native_sites:
+            for blob in (original, legacy):
+                for index in range(len(blob)):
+                    with self.subTest(va=hex(va), index=index):
+                        damaged = bytearray(blob)
+                        damaged[index] ^= 0x11
+                        source = replace_site(self.original, va, damaged)
+                        with self.assertRaises(compat.CompatibilityError):
+                            compat.restore_native_state(source)
+                        # A detached foreign cave is not silently erased either.
+                        off = compat._va_offset(source, va, len(blob))
+                        self.assertEqual(source[off:off + len(blob)], damaged)
+
+    def test_unknown_timer_and_mouse_bytes_fail(self):
+        for va, blob in (
+                (compat.SETTLEMENT_OTHER_AUTO_GATE_VA, compat.SETTLEMENT_OTHER_AUTO_GATE_OLD),
+                (compat.SETTLEMENT_AUTO_GATE_VA, compat.SETTLEMENT_AUTO_GATE_NEW),
+                (compat.SETTLEMENT_AUTO_ACTION_GATE_VA, compat.SETTLEMENT_AUTO_ACTION_GATE_LEGACY)):
+            for i in range(len(blob)):
+                damaged = bytearray(blob); damaged[i] ^= 0x11
+                with self.subTest(va=hex(va), i=i), self.assertRaises(compat.CompatibilityError):
+                    compat.patch_dungeon_state_controls(replace_site(self.original, va, damaged))
+
+    def test_native_cleanup_preserves_unrelated_bytes_and_settlement_policy(self):
+        source = compat.patch_dungeon_state_controls(self.original)[0] + b'OTHER USER DATA'
+        for va, original, _ in self.native_sites:
+            source = replace_site(source, va + len(original), b'USER')
+        self.assertEqual(compat.restore_native_state(source)[0], source)
+
+    def test_prepare_migration_dry_run_apply_and_repeat(self):
+        source = self.original
+        for va, _, legacy in self.native_sites:
+            source = replace_site(source, va, legacy)
+        for alias in ('native_state', 'revival_display'):
+            with self.subTest(alias=alias), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp) / 'client'; root.mkdir()
+                overlay = Path(temp) / 'overlay'; game = root / 'game.exe'
+                game.write_bytes(source)
+                kwargs = {alias: True}
+                report = compat.prepare(root, overlay, False, False, dry_run=True, **kwargs)
+                self.assertTrue(report['verification']['all_pass'])
+                self.assertFalse(overlay.exists())
+                self.assertEqual(game.read_bytes(), source)
+                report = compat.prepare(root, overlay, False, False, apply=True, **kwargs)
+                self.assertTrue(report['verification']['all_pass'])
+                self.assertEqual(game.read_bytes(), self.original)
+                self.assertIn(source, [p.read_bytes() for p in (overlay / 'backups').rglob('game.exe')])
+                again = compat.prepare(root, overlay, False, False, apply=True, overwrite=True, **kwargs)
+                self.assertTrue(all(r['status'] == 'unchanged' for r in again['apply_results']))
+
+    def test_unknown_apply_is_transactionally_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / 'client'; root.mkdir()
+            overlay = Path(temp) / 'overlay'; game = root / 'game.exe'
+            source = replace_site(self.original, compat.POWER_RESTORE_CAVE_VA, b'FOREIGN')
+            game.write_bytes(source)
+            with self.assertRaises(compat.CompatibilityError):
+                compat.prepare(root, overlay, False, False, native_state=True, apply=True)
+            self.assertEqual(game.read_bytes(), source)
+            self.assertFalse(overlay.exists())
+
+    def test_cli_native_state_alias_and_all_contract(self):
+        signature = inspect.signature(compat.prepare)
+        for flag in ('--native-state', '--revival-display', '--all', '--dungeon-state'):
+            with self.subTest(flag=flag), mock.patch.object(compat, 'prepare', return_value={}) as call:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(compat.main(['--source-root', 'x', '--output-root', 'y', flag]), 0)
+                bound = signature.bind(*call.call_args.args, **call.call_args.kwargs)
+                self.assertEqual(bound.arguments['native_state'], flag in ('--native-state', '--all'))
+                self.assertEqual(bound.arguments['revival_display'], flag == '--revival-display')
 
 if __name__ == '__main__':
     unittest.main()

@@ -21,18 +21,26 @@ static void send_cfd2_p2p_my_info(SOCKET c){
     printf("  S0xCFD2 ROOM_START_BASE room-slot=%u uid=%u status=1 len=12 t=%lds\n",slot,uid,sec());fflush(0);
 }
 
+/* State lives in gs_runtime after the multiplayer types are defined.  Callers
+   hold the multiplayer lock; this is per receiving client AND source actor. */
+enum native_cf72_phase { NATIVE_CF72_PROFILE=0, NATIVE_CF72_CONTINUATION=1, NATIVE_CF72_REVIVE=2 };
+static unsigned native_cf72_phase_for_socket(SOCKET c);
+static unsigned native_cf72_rebuild_required(SOCKET c,unsigned actor_uid,unsigned pet_level,unsigned phase);
+static unsigned native_actor_revival_count(unsigned actor_uid);
+
 #if TEAMPLAY_FEATURE_DYNAMIC_ROOM_CF72
 /* Static case53106 at 0x006F594E looks up the existing room actor by WORD+0x08.
-   WORD+0x64==1 applies the complete profile and BYTE+0x66 reaches the
-   launcher/PetLevel update path (sub_6D7300).  Unlike the retired UID1
+   WORD+0x64!=0 rebuilds PET and resets P; profile/vitals/quickbar are
+   still consumed with apply=0. BYTE+0x66 is PetLevel, not a P carrier.  Unlike the retired UID1
    experiment, this refresh targets the dynamic UID that CF71 just created. */
-static void send_cf72_dynamic_actor_refresh(SOCKET c,unsigned actor_uid){
-    char p[4096];unsigned i,hm,hc,mm,mc,qb[6]={0,0,0,0,0,0};
+static void send_cf72_dynamic_actor_refresh_phase(SOCKET c,unsigned actor_uid,unsigned phase){
+    char p[4096];unsigned i,hm,hc,mm,mc,apply,qb[6]={0,0,0,0,0,0};
 #ifdef NANAIMO_GAMEPLAY_BRIDGE
     unsigned pet_level=g_managed_pet_combat_level;
 #else
     unsigned pet_level=g_initial_attack_mode+1u;if(pet_level<1u)pet_level=1u;if(pet_level>3u)pet_level=3u;
 #endif
+    apply=native_cf72_rebuild_required(c,actor_uid,pet_level,phase);
     pet_crafting_pet_effective_resources(&hm,&hc,&mm,&mc);
     mkpkt(p,0xCF72,0x74,1);stable_resource_put16(p,0x08,actor_uid);
     stable_resource_put16(p,0x0A,hm);stable_resource_put16(p,0x0C,mm);stable_resource_put16(p,0x0E,hc);stable_resource_put16(p,0x10,mc);stable_resource_put16(p,0x12,0u);
@@ -53,21 +61,24 @@ static void send_cf72_dynamic_actor_refresh(SOCKET c,unsigned actor_uid){
 #else
     stable_resource_put16(p,0x56,0u);
 #endif
-    stable_put32(p,0x58,0u);stable_put32(p,0x5C,0u);stable_put32(p,0x60,0u);stable_resource_put16(p,0x64,1u);p[0x66]=(char)pet_level;p[0x67]=(char)pet_level;stable_put32(p,0x68,0u);stable_put32(p,0x6C,100u);p[0x72]=1;p[0x73]=0;
+    stable_put32(p,0x58,0u);stable_put32(p,0x5C,0u);stable_put32(p,0x60,0u);stable_resource_put16(p,0x64,apply);p[0x66]=(char)pet_level;p[0x67]=(char)pet_level;stable_put32(p,0x68,0u);stable_put32(p,0x6C,100u);p[0x72]=1;p[0x73]=(char)native_actor_revival_count(actor_uid);
     sendbuf(c,p,0x74);
 #if TEAMPLAY_FEATURE_QUICKBAR_BATTLE_UNLOCK
     printf("  [QUICKBAR_BATTLE_GATE] CF72 actor=%u local=%u gate=%u\n",actor_uid,multiplayer_current_uid(),(unsigned)((unsigned char)p[0x56]|((unsigned char)p[0x57]<<8)));fflush(0);
 #endif
 #if TEAMPLAY_FEATURE_ROOM_ACTOR_BASE_GENDER
-    printf("  S0xCF72 PET_CRAFTING actor=%u apply=1 pet=%u PetLevel=%u effect=%u base_gender=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,STABLE_PET,pet_level,g_effect_equipped,g_stable_gender&1u,hc,hm,mc,mm,sec());
+    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetLevel=%u effect=%u base_gender=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,apply,STABLE_PET,pet_level,g_effect_equipped,g_stable_gender&1u,hc,hm,mc,mm,sec());
 #else
-    printf("  S0xCF72 PET_CRAFTING actor=%u apply=1 pet=%u PetLevel=%u effect=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,STABLE_PET,pet_level,g_effect_equipped,hc,hm,mc,mm,sec());
+    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetLevel=%u effect=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,apply,STABLE_PET,pet_level,g_effect_equipped,hc,hm,mc,mm,sec());
 #endif
     fflush(0);
 }
 #else
-static void send_cf72_dynamic_actor_refresh(SOCKET c,unsigned actor_uid){(void)c;(void)actor_uid;}
+static void send_cf72_dynamic_actor_refresh_phase(SOCKET c,unsigned actor_uid,unsigned phase){(void)c;(void)actor_uid;(void)phase;}
 #endif
+static void send_cf72_dynamic_actor_refresh(SOCKET c,unsigned actor_uid){
+    send_cf72_dynamic_actor_refresh_phase(c,actor_uid,native_cf72_phase_for_socket(c));
+}
 #if TEAMPLAY_FEATURE_ROOM_REMOTE_CF72_SUPPRESSION
 static void send_cf72_after_cf71(SOCKET c,unsigned actor_uid){if(actor_uid!=multiplayer_current_uid()){printf("  [MULTI_ROOM] PROTOCOL_SLOT_POLICY suppress remote CF72 target=%u viewer=%u; preserve CF71-created actor\n",actor_uid,multiplayer_current_uid());fflush(0);return;}send_cf72_dynamic_actor_refresh(c,actor_uid);}
 #endif
@@ -99,7 +110,7 @@ stable_put32(p,0x34,0u);p[0x57]=0;stable_put32(p,0x58,0u);
    0/1 or the room actor's base model is never initialized. */
 stable_put32(p,0x3C,g_stable_gender&1u);p[0x57]=(char)(g_stable_gender&1u);stable_put32(p,0x58,g_stable_pet);
 #endif
-p[0xA8]=(char)((member_uid==multiplayer_current_uid())?game_session_revival_count():0u);p[0xA9]=1;p[0xAA]=(char)g0;p[0xAB]=(char)g1;stable_put32(p,0xAC,c0);stable_put32(p,0xB0,c1);sendbuf(c,p,0xB8);
+p[0xA8]=(char)native_actor_revival_count(member_uid);p[0xA9]=1;p[0xAA]=(char)g0;p[0xAB]=(char)g1;stable_put32(p,0xAC,c0);stable_put32(p,0xB0,c1);sendbuf(c,p,0xB8);
 #if TEAMPLAY_FEATURE_QUICKBAR_BATTLE_UNLOCK
     printf("  [QUICKBAR_BATTLE_GATE] CF71 member=%u local=%u gate=%u\n",member_uid,multiplayer_current_uid(),(unsigned)((unsigned char)p[0x7A]|((unsigned char)p[0x7B]<<8)));fflush(0);
 #endif
@@ -120,7 +131,7 @@ send_cf72_dynamic_actor_refresh(c,member_uid);
    both to select the room row and to place a newly created remote shooter at
    X=0x97+100*slot; leaving every member at zero overlays actors/score rows. */
 static void send_cf71_member(SOCKET c,unsigned owner_uid,unsigned member_uid,unsigned member_slot){
-    char p[4096];unsigned i,qb[6]={0,0,0,0,0,0},c0,c1,g0,g1;skill_progress_load();c0=g_skill_progress_slots[0];c1=g_skill_progress_slots[1];g0=skill_progress_grade(c0);g1=skill_progress_grade(c1);mkpkt(p,0xCF71,0xB8,1);memcpy(p+8,stable_1full_cf71,sizeof(stable_1full_cf71));memset(p+8,0,16);stable_name(p+8);stable_resource_put16(p,0x18,owner_uid);stable_resource_put16(p,0x1A,member_uid);for(i=0;i<5u;i++)stable_put32(p,0x1C+(int)(i*4u),stable_equip[i]);stable_put32(p,0x30,0);stable_put32(p,0x34,g_effect_equipped);stable_put32(p,0x38,STABLE_PET);stable_put32(p,0x40,225u);stable_put32(p,0x44,200u);p[0x48]=(char)STABLE_LEVEL;p[0x49]=(char)progression_dungeon_grade_current();stable_profile_write_cf71(p);p[0x52]=1;p[0x53]=0;p[0x56]=(char)(member_slot&0xFFu);p[0x57]=0;stable_put32(p,0x58,0);if(member_uid==multiplayer_current_uid())quickbar_export_battle_codes(qb);for(i=0;i<6u;i++)stable_put32(p,0x5C+(int)(i*4u),qb[i]);p[0xA8]=(char)((member_uid==multiplayer_current_uid())?game_session_revival_count():0u);p[0xA9]=1;p[0xAA]=(char)g0;p[0xAB]=(char)g1;stable_put32(p,0xAC,c0);stable_put32(p,0xB0,c1);sendbuf(c,p,0xB8);
+    char p[4096];unsigned i,qb[6]={0,0,0,0,0,0},c0,c1,g0,g1;skill_progress_load();c0=g_skill_progress_slots[0];c1=g_skill_progress_slots[1];g0=skill_progress_grade(c0);g1=skill_progress_grade(c1);mkpkt(p,0xCF71,0xB8,1);memcpy(p+8,stable_1full_cf71,sizeof(stable_1full_cf71));memset(p+8,0,16);stable_name(p+8);stable_resource_put16(p,0x18,owner_uid);stable_resource_put16(p,0x1A,member_uid);for(i=0;i<5u;i++)stable_put32(p,0x1C+(int)(i*4u),stable_equip[i]);stable_put32(p,0x30,0);stable_put32(p,0x34,g_effect_equipped);stable_put32(p,0x38,STABLE_PET);stable_put32(p,0x40,225u);stable_put32(p,0x44,200u);p[0x48]=(char)STABLE_LEVEL;p[0x49]=(char)progression_dungeon_grade_current();stable_profile_write_cf71(p);p[0x52]=1;p[0x53]=0;p[0x56]=(char)(member_slot&0xFFu);p[0x57]=0;stable_put32(p,0x58,0);if(member_uid==multiplayer_current_uid())quickbar_export_battle_codes(qb);for(i=0;i<6u;i++)stable_put32(p,0x5C+(int)(i*4u),qb[i]);p[0xA8]=(char)native_actor_revival_count(member_uid);p[0xA9]=1;p[0xAA]=(char)g0;p[0xAB]=(char)g1;stable_put32(p,0xAC,c0);stable_put32(p,0xB0,c1);sendbuf(c,p,0xB8);
 #if TEAMPLAY_FEATURE_ROOM_REMOTE_CF72_SUPPRESSION
 send_cf72_after_cf71(c,member_uid);
 #else

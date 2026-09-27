@@ -1,3 +1,108 @@
+/* Native profile refresh contract: CF72 +64 != 0 resets actor +7BB4 via
+   6F5A86 -> 6D71C0 -> 6D72DE/6DC760(0).  Keep the whole CF72 for vitals,
+   quickbar and entitlement, but rebuild only a new actor/PET configuration.
+   Rows survive CF8B/CF8C, NOT CF6C, leave or connection/UID reuse.  A duplicate
+   same-epoch profile refresh also does not justify resetting combat Power. */
+struct native_cf72_actor_state {
+    unsigned valid,uid,join_order,pet,pet_level,gems[3],name_len;
+    unsigned char name[16];
+};
+struct native_cf72_view_state {
+    SOCKET socket;unsigned join_order,continuation;
+    struct native_cf72_actor_state actor[MULTI_MAX_PLAYERS];
+};
+static struct native_cf72_view_state g_native_cf72_views[MULTI_MAX_PLAYERS];
+static char g_native_revival_account[MULTI_MAX_PLAYERS][48];
+static unsigned g_native_revival_join[MULTI_MAX_PLAYERS];
+static int native_actor_index(unsigned uid){
+    int i;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_conn[i].uid==uid)return i;
+    return -1;
+}
+static int native_view_index(SOCKET c){
+    int i;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_conn[i].socket==c)return i;
+    return -1;
+}
+static void native_cf72_reset_actor(int idx){
+    int i;if(idx<0||idx>=MULTI_MAX_PLAYERS)return;
+    memset(&g_native_cf72_views[idx],0,sizeof(g_native_cf72_views[idx]));
+    for(i=0;i<MULTI_MAX_PLAYERS;i++)memset(&g_native_cf72_views[i].actor[idx],0,sizeof(g_native_cf72_views[i].actor[idx]));
+}
+static void native_actor_bind_revival_account_current(void){
+    int i=g_multi_current;if(i<0||i>=MULTI_MAX_PLAYERS||!g_multi_conn[i].active)return;
+    card_safe_account(g_native_revival_account[i]);g_native_revival_join[i]=g_multi_conn[i].join_order;
+}
+static unsigned native_cf72_phase_for_socket(SOCKET c){
+    int v=native_view_index(c);
+    return v>=0&&g_native_cf72_views[v].socket==c&&g_native_cf72_views[v].join_order==g_multi_conn[v].join_order&&g_native_cf72_views[v].continuation?NATIVE_CF72_CONTINUATION:NATIVE_CF72_PROFILE;
+}
+static void native_cf72_continue_room(void){
+    int i;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){
+        struct native_cf72_view_state *v=&g_native_cf72_views[i];
+        if(v->socket!=g_multi_conn[i].socket||v->join_order!=g_multi_conn[i].join_order)memset(v,0,sizeof(*v));
+        v->socket=g_multi_conn[i].socket;v->join_order=g_multi_conn[i].join_order;v->continuation=1u;
+    }
+}
+static int native_cf72_same_state(const struct native_cf72_actor_state *a,const struct native_cf72_actor_state *b){
+    const unsigned char *x=(const unsigned char*)a,*y=(const unsigned char*)b;unsigned i;
+    for(i=0;i<sizeof(*a);i++)if(x[i]!=y[i])return 0;
+    return 1;
+}
+static void native_revival_state_path(char *out,unsigned cap,const char *key,const char *suffix){
+    unsigned n=0;
+    game_session_revive_copy(out,cap,"nanaimo_revival_state_v1_");
+    while(n<cap&&out[n])n++;if(n>=cap)return;
+    game_session_revive_copy(out+n,cap-n,key);
+    while(n<cap&&out[n])n++;if(n>=cap)return;
+    game_session_revive_copy(out+n,cap-n,suffix);
+}
+static unsigned native_cf72_rebuild_required(SOCKET c,unsigned actor_uid,unsigned pet_level,unsigned phase){
+    int vi=native_view_index(c),ai=native_actor_index(actor_uid),pi;unsigned i,rebuild;
+    struct native_cf72_actor_state now,*old;struct native_cf72_view_state *v;
+    if(vi<0||ai<0)return 1u; /* unknown/new actor must not inherit another row */
+    v=&g_native_cf72_views[vi];
+    if(v->socket!=c||v->join_order!=g_multi_conn[vi].join_order){memset(v,0,sizeof(*v));v->socket=c;v->join_order=g_multi_conn[vi].join_order;}
+    memset(&now,0,sizeof(now));now.valid=1u;now.uid=actor_uid;now.join_order=g_multi_conn[ai].join_order;
+    now.pet=STABLE_PET;now.pet_level=pet_level;now.name_len=g_stable_name_len;
+    memcpy(now.name,g_stable_name,sizeof(now.name));
+    pet_crafting_pet_state_load();pi=pet_crafting_pet_row_index(now.pet);
+    if(pi>=0)for(i=0;i<3u;i++)now.gems[i]=g_pet_crafting_pet_items[pi].gems[i];
+    old=&v->actor[ai];rebuild=phase==NATIVE_CF72_REVIVE||!native_cf72_same_state(old,&now);
+    *old=now;return rebuild;
+}
+/* Resolve the SOURCE actor, not multiplayer_current_uid() (the recipient during
+   roster iteration).  Managed workers use profile-name keys.  Legacy explicit
+   account keys are learned only from that actor's own profile; never borrow a
+   recipient's account or count for an unbound remote actor. */
+static unsigned native_actor_revival_count(unsigned actor_uid){
+    int ai=native_actor_index(actor_uid),local=actor_uid==multiplayer_current_uid();
+    char key[48],path[128],line[128];unsigned i,n=0u,value=0u,x;void *f;
+    static const char hex[]="0123456789ABCDEF";
+    if(ai<0)return local?game_session_revival_count():0u;
+    if(g_account_name[0]&&local){
+        card_safe_account(key);game_session_revive_copy(g_native_revival_account[ai],sizeof(g_native_revival_account[ai]),key);
+        g_native_revival_join[ai]=g_multi_conn[ai].join_order;
+    }else if(g_account_name[0]){
+        if(g_native_revival_join[ai]!=g_multi_conn[ai].join_order||!g_native_revival_account[ai][0]){
+            printf("  [CF72_REVIVAL] unbound source actor=%u; no recipient-count fallback\n",actor_uid);fflush(0);return 0u;
+        }
+        memcpy(key,g_native_revival_account[ai],sizeof(key));
+    }else{
+        /* Same profile-isolated key as card_safe_account, without changing the
+           current profile or its mutable revival cache. */
+        const struct multiplayer_profile *pr=&g_multi_conn[ai].profile;
+        unsigned len=local?g_stable_name_len:pr->name_len;
+        const unsigned char *name=local?(const unsigned char*)g_stable_name:pr->name;
+        if(len>16u)len=16u;key[n++]='p';key[n++]='_';
+        if(!len){key[n++]='d';key[n++]='e';key[n++]='f';}
+        for(i=0;i<len;i++){key[n++]=hex[name[i]>>4];key[n++]=hex[name[i]&15u];}key[n]=0;
+    }
+    if(g_game_session_revival_loaded&&game_session_revive_streq(key,g_game_session_revival_account))return g_game_session_revival_uses;
+    native_revival_state_path(path,sizeof(path),key,".dat");f=fopen(path,"r");
+    if(!f){native_revival_state_path(path,sizeof(path),key,".bak");f=fopen(path,"r");}
+    if(f){while(fgets(line,sizeof(line),f))if(sscanf(line,"uses=%u",&x)==1&&x<=GAME_SESSION_REVIVAL_MAX)value=x;fclose(f);}
+    return value;
+}
+
 #define boss_ctx (*multiplayer_shared_boss_context())
 /* SCENE_INJURY D00F routing.
  * Static: sub_670E10 reads collision object+0x1A0 and serializes that authored
@@ -38,7 +143,8 @@ static unsigned collision_damage_collision_target_damage(SOCKET c,int port,
    reproduce "stand exactly where the ready room left you". It is retired as a position
    fix and is NOT emitted here on any path (a placement frame without a proven coordinate
    must not be sent).
-   Policy: the pre-CF80 refresh sends the CF72 gate frame only - no local CF71 (which
+   Policy: the pre-CF80 refresh sends the complete CF72 with lifecycle-controlled
+   PET apply (no repeat reset for an unchanged actor) - no local CF71 (which
    re-arms the room hidden spawn) and no CF84. Nothing writes the local actor's position
    at stage entry, so the character stays exactly where the room entry left it.
    Probe-only switch PRE_PICKUP_REFRESH_PRE_CF80_REFRESH: 0 = suppress the CF72 frame as well (the
@@ -50,7 +156,7 @@ static void inventory_instances_send_skill_epoch_refresh(SOCKET c,const char*pha
     int idx=g_multi_current;
     if(idx<0||idx>=MULTI_MAX_PLAYERS||!g_multi_conn[idx].active||!g_multi_transport_alive[idx])return;
 #if PRE_PICKUP_REFRESH_PRE_CF80_REFRESH
-    send_cf72_dynamic_actor_refresh(c,g_multi_conn[idx].uid);
+    send_cf72_dynamic_actor_refresh_phase(c,g_multi_conn[idx].uid,native_cf72_phase_for_socket(c));
     printf("  [PRE_PICKUP_REFRESH] phase=%s uid=%u no-position-write: local CF71 suppressed (re-arms room X=-300) and CF84 retired (immediate-constant placement, not the room point) sent_cf72=1 t=%lds\n",phase,g_multi_conn[idx].uid,sec());fflush(0);
 #else
     printf("  [PRE_PICKUP_REFRESH] phase=%s uid=%u no-position-write AND no pre-CF80 refresh frame at all probe=mp-separation t=%lds\n",phase,g_multi_conn[idx].uid,sec());fflush(0);
@@ -198,6 +304,8 @@ static void gs_thread(void* arg){
         struct sockaddr_in backend_peer;int backend_peer_len=sizeof(backend_peer);memset(&backend_peer,0,sizeof(backend_peer));SOCKET c=pA(s,&backend_peer,&backend_peer_len); if(c==INVALID_SOCKET)break;
         int multiplayer_idx=multiplayer_register_connection(port,c);if(multiplayer_idx<0){printf("  [GS %d] non-multiplayer backend rejected\n",port);fflush(0);pC(c);continue;}
         multiplayer_lock_load(multiplayer_idx);
+        native_cf72_reset_actor(multiplayer_idx);
+        native_actor_bind_revival_account_current();
         if(multiplayer_is_primary_port(port)){ g_pet_selected=0; reset_pending_d00e(); reset_pending_c47f(); }
         g_sendct=0; reset_header_tuple(0x0E);
         printf("  [GS %d] *** CONN uid=%u t=%lds standalone=%d",port,multiplayer_current_uid(),sec(),g_standalone);peer_endpoint_log_current_endpoint();printf(" transport=");peer_endpoint_print_endpoint(backend_peer.sin_addr,peer_endpoint_host_port(backend_peer.sin_port));printf(" ***\n"); fflush(0);
@@ -492,6 +600,7 @@ static void gs_thread(void* arg){
                     } else if(type==0xC378){
                         printf("  [GS %d] GOT C378 one-way profile-state request (no C379 exists)\n",port); fflush(0);
                     } else if(type==0xCF6C){
+                        native_cf72_reset_actor(multiplayer_idx);
                         apartment_epoch_ready=0;apartment_scene_active=0;
                         /* CF6C is the authoritative new map/room epoch boundary. */
                         teamplay_roster_reset_current("CF6C");
@@ -564,14 +673,15 @@ static void gs_thread(void* arg){
                         teamplay_send_initial_roster_states_current();
                         teamplay_roster_after_current_cf70();
                         if(cf8b_post_reset_cf71_only){
-                            /* Original v2 post-CF8C tuple sends C588 + CF71 only.
-                               PROTOCOL_CHARACTER_CREATE still emitted experimental CF72 apply=1;
-                               the mode1 super-Boss transition then crashed after
-                               CHANGE_FLYSHOOTING_USER_DATA, before any CF7F. */
+                            /* The roster above already emitted its complete, phase-aware
+                               CF72. Suppress only the retired UID1 reset, not vitals,
+                               revival or quickbar carriers. */
                             cf8b_post_reset_cf71_only=0;
-                            printf("  [GS %d] GAME_SESSION_BASELINE post-CF8B CF70 -> CF71 only; suppress experimental CF72 once\n",port); fflush(0);
+                            printf("  [GS %d] GAME_SESSION_BASELINE post-CF8B CF70 -> roster CF72 retains P; suppress legacy UID1 reset\n",port); fflush(0);
                         } else if(g_initial_attack_mode<=2u){
+#if !TEAMPLAY_FEATURE_DYNAMIC_ROOM_CF72
                             sleep(0);send_cf72_initial_owner_reset(c);
+#endif
                         }
                         if(post_reset_pending)post_reset_seen_cf70=1;
                     } else if(type==0xCFD9 && len==8){
@@ -854,7 +964,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                         }
                         else { printf("  [GS %d] D011 quarantined boss_rc=%d phase=%u profile=%u mode=%u wire_mode=%u child=%u ordinal=%u expected=%u len=%d
 ",port,boss_rc,boss_ctx.phase,boss_ctx.profile_kind,boss_ctx.mode_index,(unsigned char)buf[off+0x12],(unsigned char)buf[off+0x13],(unsigned)((unsigned char)buf[off+0x14]|((unsigned char)buf[off+0x15]<<8)|((unsigned char)buf[off+0x16]<<16)|((unsigned char)buf[off+0x17]<<24)),boss_ctx.expected_ordinal,len); fflush(0); }
-                    } else if(type==0xCF95 && len==8){unsigned revive_before=0u,revive_after=0u;if(death_latched&&!retry_acknowledged&&death_battle_epoch==boss_ctx.battle_epoch&&game_session_revival_consume_retry(&revive_before,&revive_after)){retry_acknowledged=1;combat_hp=pet_crafting_pet_effective_hp_max();g_profile_hp_current=combat_hp;injury_dead=0;printf("  [REVIVE] GOT CF95 battle=%u uses=%u->%u hp=%u -> CF96/CF84/CF72 latch-retained-until-combat-or-CF87\n",death_battle_epoch,revive_before,revive_after,combat_hp);fflush(0);sleep(0);send_cf96_retry_inventory_instances(c);sleep(0);game_session_send_cf84_revive(c,multiplayer_current_uid());sleep(0);send_cf72_dynamic_actor_refresh(c,multiplayer_current_uid());}else{printf("  [REVIVE] GOT CF95 no-revive latched=%d death_battle=%u current_battle=%u uses=%u -> idempotent CF96 only\n",death_latched,death_battle_epoch,boss_ctx.battle_epoch,game_session_revival_count());fflush(0);sleep(0);send_cf96_retry_inventory_instances(c);}
+                    } else if(type==0xCF95 && len==8){unsigned revive_before=0u,revive_after=0u;if(death_latched&&!retry_acknowledged&&death_battle_epoch==boss_ctx.battle_epoch&&game_session_revival_consume_retry(&revive_before,&revive_after)){retry_acknowledged=1;combat_hp=pet_crafting_pet_effective_hp_max();g_profile_hp_current=combat_hp;injury_dead=0;printf("  [REVIVE] GOT CF95 battle=%u uses=%u->%u hp=%u -> CF96/CF84/CF72 latch-retained-until-combat-or-CF87\n",death_battle_epoch,revive_before,revive_after,combat_hp);fflush(0);sleep(0);send_cf96_retry_inventory_instances(c);sleep(0);game_session_send_cf84_revive(c,multiplayer_current_uid());sleep(0);send_cf72_dynamic_actor_refresh_phase(c,multiplayer_current_uid(),NATIVE_CF72_REVIVE);}else{printf("  [REVIVE] GOT CF95 no-revive latched=%d death_battle=%u current_battle=%u uses=%u -> idempotent CF96 only\n",death_latched,death_battle_epoch,boss_ctx.battle_epoch,game_session_revival_count());fflush(0);sleep(0);send_cf96_retry_inventory_instances(c);}
                     } else if(type==0xCF87 && len==12 && !settlement_sent){
                         cf87_total++;
                         if(death_latched&&death_battle_epoch==boss_ctx.battle_epoch){printf("  [DEATH_INVENTORY] GOT CF87 after local death -> immediate CF88 score=%u no-boss-settle\n",score_ctx.total);fflush(0);sleep(0);send_cf88_playable_noexp(c,score_ctx.total);settlement_sent=1;death_latched=0;retry_acknowledged=0;}
@@ -897,6 +1007,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                             if(advance_dungeon){map_identity.dungeon=current_dungeon;map_identity.valid_mask|=MAP_IDENTITY_HAVE_DUNGEON;map_identity.source_mask|=MAP_IDENTITY_SOURCE_CF8B;map_identity.generation++;}
                             if(map_identity_apply_cf8b(&map_identity,effective_real))current_slot=map_identity.absolute_slot;else{printf("  [GS %d] MAP_ID CF8B rejected stage=%u -> next combat fail-closed\n",port,effective_real);fflush(0);}
 #endif
+                            native_cf72_continue_room();
                             cf8b_post_reset_cf71_only=1;
                             if(dungeon_room_phase==ROOM_READY){int same_pending=post_reset_pending && post_reset_epoch==dungeon_room_epoch && post_reset_real==effective_real && post_reset_show==reset_show && post_reset_mode==reset_mode;if(!same_pending){int superseded=post_reset_pending;post_reset_pending=1;post_reset_seen_c587=0;post_reset_seen_cf70=0;post_reset_real=effective_real;post_reset_show=reset_show;post_reset_mode=reset_mode;post_reset_epoch=dungeon_room_epoch;printf("  [GS %d] LATE_REARM armed requested=%u effective=%u show=%u mode=%u authored_super=%d epoch=%u superseded=%d phase=READY\n",port,reset_real,effective_real,reset_show,reset_mode,authored_super,dungeon_room_epoch,superseded);fflush(0);}else{printf("  [GS %d] LATE_REARM duplicate request retains pending effective=%u show=%u mode=%u seen=%d/%d epoch=%u\n",port,effective_real,reset_show,reset_mode,post_reset_seen_c587,post_reset_seen_cf70,dungeon_room_epoch);fflush(0);}}
                             printf("  [GS %d] GOT CF8B reset requested=%u effective=%u show=%u mode=%u authored_super=%d advance_dungeon=%d dungeon=%u -> CF8C difficulty=current\n",port,reset_real,effective_real,reset_show,reset_mode,authored_super,advance_dungeon,current_dungeon); fflush(0);
@@ -925,8 +1036,9 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
 #endif
                         /* 1_full/6_battle: CF73 has no CF74 response; the
                            village return is completed by CF1D -> CF1E. */
-                        multiplayer_mark_room(0);stage_damage_damage_reset(&incoming_damage_ctx);injury_armed=0;injury_dead=0;death_latched=0;retry_acknowledged=0;death_battle_epoch=0u;item_effects_flight_reset_current(dungeon_room_epoch,boss_ctx.battle_epoch,"CF73");printf("  [GS %d] GOT CF73 leave-room -> no CF74 (playable flow)\n",port); fflush(0);
+                        native_cf72_reset_actor(multiplayer_idx);multiplayer_mark_room(0);stage_damage_damage_reset(&incoming_damage_ctx);injury_armed=0;injury_dead=0;death_latched=0;retry_acknowledged=0;death_battle_epoch=0u;item_effects_flight_reset_current(dungeon_room_epoch,boss_ctx.battle_epoch,"CF73");printf("  [GS %d] GOT CF73 leave-room -> no CF74 (playable flow)\n",port); fflush(0);
                     } else if(type==0xCF1D && len==8){
+                        native_cf72_reset_actor(multiplayer_idx);
                         post_reset_pending=post_reset_seen_c587=post_reset_seen_cf70=0;
 #if TEAMPLAY_FEATURE_CF99_SUPER_REARM_CLEAR
                         multiplayer_cf99_surrender_clear_current();
@@ -1075,7 +1187,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                 sleep(1);
             }
         }
-        multiplayer_lock_load(multiplayer_idx);multiplayer_village_leave_current("disconnect");print_combat_summary(port,d00d_obs,d00d_obs_count,d00d_total,d00f_total,d011_total,cf87_total,close_reason,close_error);multiplayer_save_unlock(multiplayer_idx);
+        multiplayer_lock_load(multiplayer_idx);native_cf72_reset_actor(multiplayer_idx);multiplayer_village_leave_current("disconnect");print_combat_summary(port,d00d_obs,d00d_obs_count,d00d_total,d00f_total,d011_total,cf87_total,close_reason,close_error);multiplayer_save_unlock(multiplayer_idx);
         pC(c);multiplayer_unregister_connection(multiplayer_idx);
     }
     pC(s);

@@ -6,6 +6,7 @@ Run with: python -B -m unittest discover -s scripts -p test_land_purchase_client
 """
 import contextlib
 import inspect
+import itertools
 import io
 import json
 import struct
@@ -34,7 +35,8 @@ CAVE = 0x00513690
 SPAN = 192
 BALANCE = 0x0053207E
 BALANCE_OLD = bytes.fromhex('85C07443')
-BALANCE_NEW = bytes.fromhex('85C0743E')
+BALANCE_LEGACY = bytes.fromhex('85C0743E')
+BALANCE_NEW = BALANCE_LEGACY
 OLD_SLOT = struct.pack('<I', 0x0040E912)
 NEW_SLOT = struct.pack('<I', CAVE)
 # Fixed instruction/relocation oracle, independent of the production emitter.
@@ -42,13 +44,14 @@ CODE = bytes.fromhex('''
     53 56 57 8b f1 e8 76 ed ff ff 50 83 7e 58 01
     0f 85 6b 00 00 00 e8 d8 38 ef ff 8b c8 e8 6f 85 2d 00
     85 c0 0f 84 57 00 00 00 8b ce e8 e0 ef ff ff 83 f8 13
-    0f 87 47 00 00 00 8b d8 6a 04 6a 1f e8 97 a4 ef ff
+    0f 87 47 00 00 00 8b d8 6a 04 6a 1e e8 97 a4 ef ff
     83 c4 08 85 c0 0f 84 31 00 00 00 8b f8 53 6a 01 8b cf
     e8 ab de ee ff 57 e8 91 38 ef ff 8b c8 e8 a1 cb ef ff
     e8 7a b6 ef ff 8b c8 e8 7f 54 f0 ff e8 6e b6 ef ff
     8b c8 e8 fa 63 f0 ff 58 5f 5e 5b c3
 ''')
 EXPECTED_CAVE = CODE + b'\xCC' * (SPAN - len(CODE))
+LEGACY_CAVE = EXPECTED_CAVE.replace(bytes.fromhex('8bd86a046a1e'), bytes.fromhex('8bd86a046a1f'))
 
 
 def offset(data, va, size):
@@ -106,13 +109,37 @@ class LandPurchasePatchTests(unittest.TestCase):
                 self.assertEqual(again, result)
                 self.assertFalse(second['changed'])
 
-    def test_upgrades_already_installed_click_wrapper_without_changing_it(self):
-        previous = replace(replace(self.original, VTABLE, NEW_SLOT), CAVE, EXPECTED_CAVE)
+    def test_upgrades_legacy_wrapper_and_preserves_required_balance_yield(self):
+        previous = replace(replace(replace(self.original, VTABLE, NEW_SLOT), CAVE, LEGACY_CAVE), BALANCE, BALANCE_LEGACY)
         result, report = compat.patch_land_purchase(previous)
-        self.assertEqual(result, replace(previous, BALANCE, BALANCE_NEW))
+        self.assertEqual(result, compat.patch_land_purchase(self.original)[0])
         self.assertFalse(report['update']['changed'])
-        self.assertFalse(report['cave']['changed'])
+        self.assertTrue(report['cave']['changed'])
+        self.assertFalse(report['balance_yield']['changed'])
+        self.assertEqual(compat._land_purchase_patch_bytes(legacy=True), (NEW_SLOT, LEGACY_CAVE))
+
+    def test_repairs_retracted_balance_branch_with_factory30_already_installed(self):
+        target, _ = compat.patch_land_purchase(self.original)
+        retracted = replace(target, BALANCE, BALANCE_OLD)
+        checks = compat._verify_client_bytes(retracted, False, False, False, land_purchase=True)
+        self.assertFalse(next(row['ok'] for row in checks if row['name'] == 'land_purchase_balance_yield'))
+        repaired, report = compat.patch_land_purchase(retracted)
+        self.assertEqual(repaired, target)
         self.assertTrue(report['balance_yield']['changed'])
+        self.assertFalse(report['update']['changed'] or report['cave']['changed'])
+        self.assertEqual([i for i, (a, b) in enumerate(zip(retracted, repaired)) if a != b],
+                         [offset(retracted, BALANCE, 4) + 3])
+
+    def test_all_original_legacy_new_mixed_land_sites_converge(self):
+        target = compat.patch_land_purchase(self.original)[0]
+        for slot, cave, balance in itertools.product(
+                (OLD_SLOT, NEW_SLOT), (b'\xCC' * SPAN, LEGACY_CAVE, EXPECTED_CAVE),
+                (BALANCE_OLD, BALANCE_LEGACY)):
+            source = replace(replace(replace(self.original, VTABLE, slot), CAVE, cave), BALANCE, balance)
+            output, report = compat.patch_land_purchase(source)
+            self.assertEqual(output, target)
+            self.assertEqual(report['changed'], source != target)
+            self.assertFalse(compat.patch_land_purchase(output)[1]['changed'])
 
     def test_rejects_corruption_in_every_byte_of_all_sites(self):
         patched, _ = compat.patch_land_purchase(self.original)
@@ -122,7 +149,7 @@ class LandPurchasePatchTests(unittest.TestCase):
                 for index in range(size):
                     with self.subTest(source=label, va=hex(va), byte=index):
                         broken = bytearray(source)
-                        broken[start + index] ^= 0x01
+                        broken[start + index] ^= 0x80
                         with self.assertRaises(compat.CompatibilityError):
                             compat.patch_land_purchase(bytes(broken))
 
@@ -191,7 +218,7 @@ class BalanceDispatchYieldTests(unittest.TestCase):
     def test_original_no_shop_branch_reenters_unconsumed_packet_loop(self):
         self.assertEqual(self.branch(BALANCE_OLD, 0), 0x5320C5)
 
-    def test_fixed_no_shop_branch_yields_without_discarding_packet(self):
+    def test_required_no_shop_branch_yields_instead_of_reentering_packet_loop(self):
         self.assertEqual(self.branch(BALANCE_NEW, 0), 0x5320C0)
 
     def test_shop_active_branch_keeps_native_profile_update(self):
@@ -263,7 +290,8 @@ class LandPurchaseCliTests(unittest.TestCase):
                 bound = signature.bind(*prepare.call_args.args, **prepare.call_args.kwargs)
                 bound.apply_defaults()
                 self.assertEqual(bound.arguments['land_purchase'], enabled)
-                for feature in ('furniture', 'dungeon7', 'revival_display',
+                self.assertFalse(bound.arguments['revival_display'])
+                for feature in ('furniture', 'dungeon7', 'native_state',
                                 'dungeon_state', 'inventory_gift_display'):
                     self.assertEqual(bound.arguments[feature], flag == '--all' or feature == flag[2:])
 
@@ -350,7 +378,7 @@ class LandPurchaseAbiTests(unittest.TestCase):
                 self.assertEqual(ecx, house)
                 result = slot
             elif name == 'factory':
-                self.assertEqual((read32(esp + 4), read32(esp + 8)), (31, 4))
+                self.assertEqual((read32(esp + 4), read32(esp + 8)), (30, 4))
                 result = window if factory_ok else 0
             elif name == 'init':
                 self.assertEqual(ecx, window)

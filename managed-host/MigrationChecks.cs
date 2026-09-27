@@ -12,6 +12,7 @@ internal static class MigrationChecks
 #if NET6_0
         await CompatibilityChecks.RunAsync();
 #endif
+        await TutorialAppearanceChecks.RunAsync();
         await ChannelReentryChecks.RunAsync();
         await ShopCurrencyPaginationChecks.RunAsync();
         await DungeonRankingChecks.RunAsync();

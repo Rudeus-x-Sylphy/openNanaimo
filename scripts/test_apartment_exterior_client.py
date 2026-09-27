@@ -243,7 +243,7 @@ class ApartmentExteriorCliTests(unittest.TestCase):
 
     def test_all_enables_exterior_and_individual_flags_leave_others_disabled(self):
         features = ('furniture', 'dungeon7', 'revival_display', 'dungeon_state',
-                    'inventory_gift_display', 'land_purchase', 'apartment_exterior')
+                    'inventory_gift_display', 'land_purchase', 'apartment_exterior', 'native_state')
         signature = inspect.signature(compat.prepare)
         self.assertIs(signature.parameters['apartment_exterior'].default, False)
         for flag in ('--all', *(('--' + name.replace('_', '-')) for name in features)):
@@ -254,7 +254,7 @@ class ApartmentExteriorCliTests(unittest.TestCase):
                 bound = signature.bind(*prepare.call_args.args, **prepare.call_args.kwargs)
                 bound.apply_defaults()
                 for name in features:
-                    self.assertEqual(bound.arguments[name], flag == '--all' or
+                    self.assertEqual(bound.arguments[name], (flag == '--all' and name != 'revival_display') or
                                      flag == '--' + name.replace('_', '-'), name)
 
     def test_no_feature_is_not_implicit_all_and_help_lists_exterior(self):

@@ -17,6 +17,11 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--tutorial-appearance-self-test"))
+    {
+        await TutorialAppearanceChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--inventory-gameitem-self-test"))
     {
         await InventoryGameItemChecks.RunAsync();

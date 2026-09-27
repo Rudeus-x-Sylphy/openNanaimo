@@ -37,7 +37,13 @@ SETTLEMENT_AUTO_GATE_OLD = bytes.fromhex('7666')
 SETTLEMENT_AUTO_GATE_NEW = bytes.fromhex('EB66')
 SETTLEMENT_AUTO_ACTION_GATE_VA = 0x0076FA2E
 SETTLEMENT_AUTO_ACTION_GATE_OLD = bytes.fromhex('742F')
-SETTLEMENT_AUTO_ACTION_GATE_NEW = bytes.fromhex('9090')
+# The old recipe accidentally disabled mouse-release confirmation. Restore it.
+SETTLEMENT_AUTO_ACTION_GATE_LEGACY = bytes.fromhex('9090')
+SETTLEMENT_AUTO_ACTION_GATE_NEW = SETTLEMENT_AUTO_ACTION_GATE_OLD
+# Alternate result controller (manager BYTE+3 == 0), same manual-only policy.
+SETTLEMENT_OTHER_AUTO_GATE_VA = 0x00762AF5
+SETTLEMENT_OTHER_AUTO_GATE_OLD = bytes.fromhex('0F8619030000')
+SETTLEMENT_OTHER_AUTO_GATE_NEW = bytes.fromhex('E91A03000090')
 POWER_RESTORE_HOOK_VA = 0x006F096A
 POWER_RESTORE_HOOK_OLD = bytes.fromhex('C78590F9FFFF00000000')
 POWER_RESTORE_CAVE_VA = 0x0041FB54
@@ -66,13 +72,13 @@ LAND_PURCHASE_VTABLE_OLD = struct.pack('<I', 0x0040E912)
 LAND_PURCHASE_CAVE_VA = 0x00513690
 LAND_PURCHASE_CAVE_SPAN = 192
 LAND_PURCHASE_CAVE_OLD = b'\xCC' * LAND_PURCHASE_CAVE_SPAN
-# Town C37B must yield to CHouseSaleMessage::packet processing (4F6100).
-# The original no-shop branch loops on the SAME unconsumed queue head, starving
-# the modal window. Target the existing return branch; do not discard C37B or
-# mark the window ready before its native balance consumer has run.
+# Factory30 creates native window type25, matching the town dispatcher lookup.
+# The no-shop C37B branch yields to the native balance consumer.
+# The compatibility recipe retains both the typed entry and the balance handoff.
 LAND_BALANCE_YIELD_VA = 0x0053207E
 LAND_BALANCE_YIELD_OLD = bytes.fromhex('85C07443')
-LAND_BALANCE_YIELD_NEW = bytes.fromhex('85C0743E')
+LAND_BALANCE_YIELD_LEGACY = bytes.fromhex('85C0743E')
+LAND_BALANCE_YIELD_NEW = LAND_BALANCE_YIELD_LEGACY
 
 # Route the owner's expanded house menu through both native decoration entries.
 APARTMENT_EXTERIOR_CALL_VA = 0x005DAB27
@@ -337,24 +343,31 @@ def _revival_hud_patch_bytes() -> tuple[bytes, bytes]:
     return hook, bytes(stub).ljust(REVIVAL_HUD_CAVE_SPAN, b'\xCC')
 
 
+def _migrate_site(data: bytes, va: int, target: bytes, known: tuple[bytes, ...],
+                  operation: str, mismatch: str) -> tuple[bytes, dict]:
+    """Accept exact known encodings only, including every byte of an owned cave."""
+    require(all(len(value) == len(target) for value in known), operation + ' span mismatch')
+    offset = _va_offset(data, va, len(target))
+    current = data[offset:offset + len(target)]
+    require(current == target or current in known, mismatch)
+    return _patch_site(data, va, current, target, operation, mismatch)
+
+
+def _migration_report(operation: str, **rows) -> dict:
+    changed = any(row['changed'] for row in rows.values())
+    return {'operation': operation, 'changed': changed,
+            'status': 'patched' if changed else 'already_patched',
+            **rows, 'hash_gate_used': False}
+
+
 def patch_revival_hud_refresh(data: bytes) -> tuple[bytes, dict]:
-    hook, cave = _revival_hud_patch_bytes()
-    output, cave_row = _patch_site(
-        data, REVIVAL_HUD_CAVE_VA, REVIVAL_HUD_CAVE_OLD, cave,
-        'patch_revival_hud_refresh_cave',
-        'the revival HUD code cave differs; this unpacking needs a separately reviewed VA mapping')
-    output, hook_row = _patch_site(
-        output, REVIVAL_HUD_HOOK_VA, REVIVAL_HUD_HOOK_OLD, hook,
-        'patch_revival_hud_refresh_hook',
-        'the revival HUD draw entry differs; this unpacking needs a separately reviewed VA mapping')
-    return output, {
-        'operation': 'patch_revival_hud_refresh',
-        'changed': bool(cave_row['changed'] or hook_row['changed']),
-        'status': 'patched' if cave_row['changed'] or hook_row['changed'] else 'already_patched',
-        'hook': hook_row,
-        'cave': cave_row,
-        'hash_gate_used': False,
-    }
+    """Compatibility API for migrating the legacy HUD entry to native bytes."""
+    hook, cave = _revival_hud_patch_bytes()  # frozen legacy fingerprints only
+    data, hook_row = _migrate_site(data, REVIVAL_HUD_HOOK_VA, REVIVAL_HUD_HOOK_OLD,
+        (hook,), 'restore_native_revival_hook', 'the revival HUD draw entry differs')
+    data, cave_row = _migrate_site(data, REVIVAL_HUD_CAVE_VA, REVIVAL_HUD_CAVE_OLD,
+        (cave,), 'restore_native_revival_cave', 'the revival HUD code cave differs')
+    return data, _migration_report('restore_native_revival', hook=hook_row, cave=cave_row)
 
 
 def _power_restore_patch_bytes() -> tuple[bytes, bytes]:
@@ -391,35 +404,36 @@ def _power_restore_patch_bytes() -> tuple[bytes, bytes]:
     return hook, bytes(stub)
 
 
+def restore_native_power(data: bytes) -> tuple[bytes, dict]:
+    hook, cave = _power_restore_patch_bytes()  # frozen legacy fingerprints only
+    data, hook_row = _migrate_site(data, POWER_RESTORE_HOOK_VA, POWER_RESTORE_HOOK_OLD,
+        (hook,), 'restore_native_power_hook', 'the D035 category40 site differs')
+    data, cave_row = _migrate_site(data, POWER_RESTORE_CAVE_VA, POWER_RESTORE_CAVE_OLD,
+        (cave,), 'restore_native_power_cave', 'the power restore cave differs')
+    return data, _migration_report('restore_native_power', hook=hook_row, cave=cave_row)
+
+
+def restore_native_state(data: bytes) -> tuple[bytes, dict]:
+    """Remove only this project's exactly recognized revival/P-sentinel code."""
+    data, revival = patch_revival_hud_refresh(data)
+    data, power = restore_native_power(data)
+    return data, _migration_report('restore_native_state', revival=revival, power=power)
+
+
 def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
-    data, timer_row = _patch_site(
-        data, SETTLEMENT_AUTO_GATE_VA, SETTLEMENT_AUTO_GATE_OLD, SETTLEMENT_AUTO_GATE_NEW,
-        'patch_settlement_manual_confirmation',
-        'the settlement timer gate differs; this unpacking needs a separately reviewed VA mapping')
-    data, action_row = _patch_site(
-        data, SETTLEMENT_AUTO_ACTION_GATE_VA,
-        SETTLEMENT_AUTO_ACTION_GATE_OLD, SETTLEMENT_AUTO_ACTION_GATE_NEW,
-        'patch_settlement_automatic_action',
-        'the settlement automatic action gate differs; this unpacking needs a separately reviewed VA mapping')
-    hook, cave = _power_restore_patch_bytes()
-    data, cave_row = _patch_site(
-        data, POWER_RESTORE_CAVE_VA, POWER_RESTORE_CAVE_OLD, cave,
-        'patch_consecutive_stage_power_restore_cave',
-        'the power restore cave differs; this unpacking needs a separately reviewed cave')
-    data, hook_row = _patch_site(
-        data, POWER_RESTORE_HOOK_VA, POWER_RESTORE_HOOK_OLD, hook,
-        'patch_consecutive_stage_power_restore_hook',
-        'the D035 category40 site differs; this unpacking needs a separately reviewed VA mapping')
-    return data, {
-        'operation': 'patch_dungeon_state_controls',
-        'changed': timer_row['changed'] or action_row['changed'] or cave_row['changed'] or hook_row['changed'],
-        'status': 'patched' if timer_row['changed'] or action_row['changed'] or cave_row['changed'] or hook_row['changed'] else 'already_patched',
-        'timer': timer_row,
-        'automatic_action': action_row,
-        'hook': hook_row,
-        'cave': cave_row,
-        'hash_gate_used': False,
-    }
+    """Manual-only result policy for both controllers; keep native mouse input."""
+    data, timer = _patch_site(data, SETTLEMENT_AUTO_GATE_VA,
+        SETTLEMENT_AUTO_GATE_OLD, SETTLEMENT_AUTO_GATE_NEW,
+        'patch_settlement_manual_confirmation', 'the settlement timer gate differs')
+    data, other_timer = _patch_site(data, SETTLEMENT_OTHER_AUTO_GATE_VA,
+        SETTLEMENT_OTHER_AUTO_GATE_OLD, SETTLEMENT_OTHER_AUTO_GATE_NEW,
+        'patch_settlement_other_controller_timer', 'the other settlement timer gate differs')
+    data, mouse = _migrate_site(data, SETTLEMENT_AUTO_ACTION_GATE_VA,
+        SETTLEMENT_AUTO_ACTION_GATE_OLD, (SETTLEMENT_AUTO_ACTION_GATE_LEGACY,),
+        'restore_settlement_mouse_confirmation', 'the settlement automatic action gate differs')
+    data, power = restore_native_power(data)
+    return data, _migration_report('patch_dungeon_state_controls', timer=timer,
+        other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power)
 
 
 def _gift_preview_patch_bytes() -> tuple[bytes, bytes]:
@@ -457,7 +471,7 @@ def patch_inventory_gift_display(data: bytes) -> tuple[bytes, dict]:
                   'hook': hook_row, 'cave': cave_row, 'hash_gate_used': False}
 
 
-def _land_purchase_patch_bytes() -> tuple[bytes, bytes]:
+def _land_purchase_patch_bytes(*, legacy: bool = False) -> tuple[bytes, bytes]:
     # CHouse update is a no-argument thiscall. Keep its result and all nonvolatile
     # registers. Only empty plots can open the existing mode-1 confirmation UI;
     # the UI manager gate prevents opening through a modal window.
@@ -481,8 +495,9 @@ def _land_purchase_patch_bytes() -> tuple[bytes, bytes]:
     call(0x005126A0)  # native cursor/button/rectangle test
     code.extend(b'\x83\xF8\x13')
     done_if(b'\x0F\x87')  # unsigned: reject -1 and any slot outside 0..19
-    code.extend(b'\x8B\xD8\x6A\x04\x6A\x1F')
-    call(0x0040DB6B)  # common-window factory (31, 4)
+    # legacy=True is solely the fingerprint of our previous 192-byte wrapper.
+    code.extend(b'\x8B\xD8\x6A\x04\x6A' + bytes([31 if legacy else 30]))
+    call(0x0040DB6B)  # common-window factory (30, 4) -> native type25
     code.extend(b'\x83\xC4\x08\x85\xC0')
     done_if(b'\x0F\x84')
     code.extend(b'\x8B\xF8\x53\x6A\x01\x8B\xCF')
@@ -507,8 +522,9 @@ def _land_purchase_patch_bytes() -> tuple[bytes, bytes]:
 def patch_land_purchase(data: bytes) -> tuple[bytes, dict]:
     """Reconnect empty-plot input to the native purchase confirmation dialog."""
     slot, cave = _land_purchase_patch_bytes()
-    data, cave_row = _patch_site(data, LAND_PURCHASE_CAVE_VA, LAND_PURCHASE_CAVE_OLD, cave,
-        'patch_land_purchase_cave', 'land purchase code space differs; reviewed mapping required')
+    _, legacy_cave = _land_purchase_patch_bytes(legacy=True)
+    data, cave_row = _migrate_site(data, LAND_PURCHASE_CAVE_VA, cave,
+        (LAND_PURCHASE_CAVE_OLD, legacy_cave), 'patch_land_purchase_cave', 'land purchase code space differs; reviewed mapping required')
     data, slot_row = _patch_site(data, LAND_PURCHASE_VTABLE_VA, LAND_PURCHASE_VTABLE_OLD, slot,
         'patch_land_purchase_update', 'house update entry differs; reviewed mapping required')
     data, balance_row = _patch_site(data, LAND_BALANCE_YIELD_VA,
@@ -630,10 +646,10 @@ def _safe_relative(path: Path) -> Path:
     return path
 
 
-def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False):
+def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False):
     files: dict[Path, bytes] = {}
     operations = []
-    if furniture or revival_display or dungeon_state or inventory_gift_display or land_purchase or apartment_exterior:
+    if furniture or revival_display or native_state or dungeon_state or inventory_gift_display or land_purchase or apartment_exterior:
         source = source_root / 'game.exe'
         require(source.is_file(), 'source game.exe is missing')
         original = source.read_bytes()
@@ -641,8 +657,8 @@ def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival
         if furniture:
             data, row = patch_furniture_getter(data)
             operations.append(row)
-        if revival_display:
-            data, row = patch_revival_hud_refresh(data)
+        if revival_display or native_state:
+            data, row = restore_native_state(data)
             operations.append(row)
         if dungeon_state:
             data, row = patch_dungeon_state_controls(data)
@@ -760,41 +776,31 @@ def _check(name: str, ok: bool, detail: str):
     return {'name': name, 'ok': bool(ok), 'detail': detail}
 
 
-def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False):
+def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False):
     checks = []
     if furniture:
         offset = _va_offset(data, FURNITURE_CALL_VA, len(FURNITURE_NEW))
         actual = data[offset:offset + len(FURNITURE_NEW)]
         checks.append(_check('furniture_index_getter', actual == FURNITURE_NEW,
                              f'VA=0x{FURNITURE_CALL_VA:08X} actual={actual.hex().upper()}'))
-    if revival_display:
-        hook, cave = _revival_hud_patch_bytes()
-        hook_offset = _va_offset(data, REVIVAL_HUD_HOOK_VA, len(hook))
-        cave_offset = _va_offset(data, REVIVAL_HUD_CAVE_VA, len(cave))
-        actual_hook = data[hook_offset:hook_offset + len(hook)]
-        actual_cave = data[cave_offset:cave_offset + len(cave)]
-        checks.append(_check('revival_hud_refresh_hook', actual_hook == hook,
-                             f'VA=0x{REVIVAL_HUD_HOOK_VA:08X} actual={actual_hook.hex().upper()}'))
-        checks.append(_check('revival_hud_refresh_cave', actual_cave == cave,
-                             f'VA=0x{REVIVAL_HUD_CAVE_VA:08X} sha256={sha256(actual_cave)}'))
+    expected_sites = []
+    if revival_display or native_state:
+        expected_sites.extend((
+            ('native_revival_hook', REVIVAL_HUD_HOOK_VA, REVIVAL_HUD_HOOK_OLD),
+            ('native_revival_cave', REVIVAL_HUD_CAVE_VA, REVIVAL_HUD_CAVE_OLD)))
+    if revival_display or native_state or dungeon_state:
+        expected_sites.extend((
+            ('native_power_hook', POWER_RESTORE_HOOK_VA, POWER_RESTORE_HOOK_OLD),
+            ('native_power_cave', POWER_RESTORE_CAVE_VA, POWER_RESTORE_CAVE_OLD)))
     if dungeon_state:
-        timer_offset = _va_offset(data, SETTLEMENT_AUTO_GATE_VA, len(SETTLEMENT_AUTO_GATE_NEW))
-        action_offset = _va_offset(data, SETTLEMENT_AUTO_ACTION_GATE_VA, len(SETTLEMENT_AUTO_ACTION_GATE_NEW))
-        hook, cave = _power_restore_patch_bytes()
-        hook_offset = _va_offset(data, POWER_RESTORE_HOOK_VA, len(hook))
-        cave_offset = _va_offset(data, POWER_RESTORE_CAVE_VA, len(cave))
-        checks.append(_check('settlement_manual_confirmation',
-                             data[timer_offset:timer_offset + len(SETTLEMENT_AUTO_GATE_NEW)] == SETTLEMENT_AUTO_GATE_NEW,
-                             f'VA=0x{SETTLEMENT_AUTO_GATE_VA:08X}'))
-        checks.append(_check('settlement_automatic_action_disabled',
-                             data[action_offset:action_offset + len(SETTLEMENT_AUTO_ACTION_GATE_NEW)] == SETTLEMENT_AUTO_ACTION_GATE_NEW,
-                             f'VA=0x{SETTLEMENT_AUTO_ACTION_GATE_VA:08X}'))
-        checks.append(_check('consecutive_stage_power_restore_hook',
-                             data[hook_offset:hook_offset + len(hook)] == hook,
-                             f'VA=0x{POWER_RESTORE_HOOK_VA:08X}'))
-        checks.append(_check('consecutive_stage_power_restore_cave',
-                             data[cave_offset:cave_offset + len(cave)] == cave,
-                             f'VA=0x{POWER_RESTORE_CAVE_VA:08X} sha256={sha256(cave)}'))
+        expected_sites.extend((
+            ('settlement_manual_confirmation', SETTLEMENT_AUTO_GATE_VA, SETTLEMENT_AUTO_GATE_NEW),
+            ('settlement_other_controller_timer', SETTLEMENT_OTHER_AUTO_GATE_VA, SETTLEMENT_OTHER_AUTO_GATE_NEW),
+            ('settlement_mouse_confirmation', SETTLEMENT_AUTO_ACTION_GATE_VA, SETTLEMENT_AUTO_ACTION_GATE_OLD)))
+    for name, va, expected in expected_sites:
+        offset = _va_offset(data, va, len(expected))
+        checks.append(_check(name, data[offset:offset + len(expected)] == expected,
+                             f'VA=0x{va:08X}'))
     if inventory_gift_display:
         hook, cave = _gift_preview_patch_bytes()
         for name, va, expected in (('hook', GIFT_PREVIEW_HOOK_VA, hook),
@@ -867,7 +873,7 @@ def _verify_village_bytes(data: bytes):
 
 
 def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
-                 furniture: bool, dungeon7: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False):
+                 furniture: bool, dungeon7: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False):
     def read(relative: Path) -> bytes:
         if files is not None and relative in files:
             return files[relative]
@@ -876,8 +882,8 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
         return path.read_bytes()
 
     checks = []
-    if furniture or revival_display or dungeon_state or inventory_gift_display or land_purchase or apartment_exterior:
-        checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior))
+    if furniture or revival_display or native_state or dungeon_state or inventory_gift_display or land_purchase or apartment_exterior:
+        checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state))
     if dungeon7:
         checks.extend(_verify_village_bytes(read(Path('Village_map_image/Village_map_image.pack'))))
         for source_rel, target_rel, role in ALIAS_SPECS:
@@ -891,17 +897,17 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
 def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: bool,
             overwrite: bool = False, dry_run: bool = False,
             apply: bool = False, revival_display: bool = False,
-            dungeon_state: bool = False, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False) -> dict:
+            dungeon_state: bool = False, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False) -> dict:
     source_root = source_root.resolve()
     output_root = output_root.resolve()
     require(source_root.is_dir(), 'source client root does not exist')
     require(output_root != source_root, 'output root must be separate from the source client root')
-    files, operations = _collect_outputs(source_root, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior)
+    files, operations = _collect_outputs(source_root, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state)
     require(files, 'no compatibility operation selected')
     report = {'schema_version': 2, 'source_root': str(source_root), 'output_root': str(output_root),
               'hash_gate_used': False, 'dry_run': bool(dry_run), 'apply_requested': bool(apply),
               'operations': operations, 'planned_files': [relative.as_posix() for relative in files]}
-    report['planned_verification'] = _verify_data(source_root, files, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior)
+    report['planned_verification'] = _verify_data(source_root, files, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state)
     require(report['planned_verification']['all_pass'], 'derived compatibility verification failed')
     if dry_run:
         report['overlay_writes'] = []
@@ -912,7 +918,7 @@ def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: boo
     output_root.mkdir(parents=True, exist_ok=True)
     report['overlay_writes'] = _write_overlay(output_root, files, overwrite)
     report['apply_results'] = _apply_outputs(source_root, output_root, files) if apply else []
-    report['verification'] = _verify_data(source_root, None if apply else files, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior)
+    report['verification'] = _verify_data(source_root, None if apply else files, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state)
     require(report['verification']['all_pass'], 'post-write compatibility verification failed')
     report_path = output_root / 'nanaimo_compatibility_report.json'
     _atomic_write(report_path, (json.dumps(report, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
@@ -926,10 +932,12 @@ def main(argv=None) -> int:
     parser.add_argument('--output-root', type=Path, required=True, help='separate local overlay/output directory')
     parser.add_argument('--furniture', action='store_true', help='derive the furniture Index-getter repair')
     parser.add_argument('--dungeon7', action='store_true', help='derive P03 roads and SSTG/PON aliases')
+    parser.add_argument('--native-state', action='store_true',
+                        help='remove recognized legacy revival HUD and P-sentinel patches')
     parser.add_argument('--revival-display', action='store_true',
-                        help='refresh the ready-room revival counter from the authoritative native manager')
+                        help='deprecated alias for --native-state; removes old patches')
     parser.add_argument('--dungeon-state', action='store_true',
-                        help='require manual stage confirmation and restore consecutive-stage power form')
+                        help='manual confirmation in both result controllers; restore mouse and remove legacy P hook')
     parser.add_argument('--inventory-gift-display', action='store_true',
                         help='preserve preview HP/MP maxima across C476 inventory refresh cleanup')
     parser.add_argument('--land-purchase', action='store_true',
@@ -937,7 +945,7 @@ def main(argv=None) -> int:
     parser.add_argument('--apartment-exterior', action='store_true',
                         help='restore the owned exterior menu and hit geometry, repeat inventory snapshots and body preview')
     parser.add_argument('--all', action='store_true',
-                        help='derive furniture, revival-display, dungeon-state, inventory-gift-display, land-purchase, apartment-exterior and dungeon7 compatibility')
+                        help='derive furniture, native-state, dungeon-state, inventory-gift-display, land-purchase, apartment-exterior and dungeon7 compatibility')
     parser.add_argument('--overwrite', action='store_true', help='replace differing named files in the overlay')
     parser.add_argument('--dry-run', action='store_true', help='validate and report without writing any file')
     parser.add_argument('--apply', action='store_true',
@@ -945,16 +953,17 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     furniture = args.furniture or args.all
     dungeon7 = args.dungeon7 or args.all
-    revival_display = args.revival_display or args.all
+    revival_display = args.revival_display
+    native_state = args.native_state or args.all
     dungeon_state = args.dungeon_state or args.all
     inventory_gift_display = args.inventory_gift_display or args.all
     land_purchase = args.land_purchase or args.all
     apartment_exterior = args.apartment_exterior or args.all
-    if not furniture and not dungeon7 and not revival_display and not dungeon_state and not inventory_gift_display and not land_purchase and not apartment_exterior:
-        parser.error('select --furniture, --revival-display, --dungeon-state, --dungeon7, --inventory-gift-display, --land-purchase, --apartment-exterior or --all')
+    if not furniture and not dungeon7 and not revival_display and not native_state and not dungeon_state and not inventory_gift_display and not land_purchase and not apartment_exterior:
+        parser.error('select --furniture, --native-state, --revival-display, --dungeon-state, --dungeon7, --inventory-gift-display, --land-purchase, --apartment-exterior or --all')
     try:
         report = prepare(args.source_root, args.output_root, furniture, dungeon7,
-                         args.overwrite, args.dry_run, args.apply, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior)
+                         args.overwrite, args.dry_run, args.apply, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state)
         print('CLIENT_COMPATIBILITY_READY', json.dumps(report, ensure_ascii=False))
         return 0
     except (CompatibilityError, OSError, struct.error) as exc:
