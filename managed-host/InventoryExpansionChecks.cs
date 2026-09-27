@@ -107,10 +107,13 @@ internal static class InventoryExpansionChecks
                     Request(raw == 6 ? (byte)3 : (byte)1,identities[1]) })
                     await Reject(bad, $"raw{raw}: malformed, wrong action or invalid identity leaves ledger unchanged ({Convert.ToHexString(bad)})");
                 ushort originalControl = control;
-                var answer = await Dispatch(0xC480,request);
-                Check(InventoryDiscardChecks.SplitFrames(answer)[0].Length == 20 && answer[8] == 0 && answer[10] == request[0] && answer[11] == identities[1]
-                    && BinaryPrimitives.ReadUInt32LittleEndian(answer.AsSpan(12)) == ticket.ItemCode,
-                    $"raw{raw}: exact C481 success layout");
+                var answerFrames = InventoryDiscardChecks.SplitFrames(await Dispatch(0xC480,request));
+                var answer = answerFrames[0];
+                Check(answerFrames.Count == 2 && answer.Length == 20 && answer[8] == 0 && answer[10] == request[0] && answer[11] == identities[1]
+                    && BinaryPrimitives.ReadUInt32LittleEndian(answer.AsSpan(12)) == ticket.ItemCode
+                    && BinaryPrimitives.ReadUInt16LittleEndian(answerFrames[1].AsSpan(6)) == 0xC430
+                    && BinaryPrimitives.ReadUInt16LittleEndian(answerFrames[1].AsSpan(10)) == 2,
+                    $"raw{raw}: exact C481 success layout plus immediate C430 refresh");
                 var state = await Read();
                 Check(state.Items.Single(x=>x.ItemCode == ticket.ItemCode).Quantity == 2, $"raw{raw}: consumes exactly one");
                 Check(state.QuickSlots.Select(s=>s.Slot).SequenceEqual(new byte[]{0,2})
@@ -137,15 +140,20 @@ internal static class InventoryExpansionChecks
                 Check(expiry == SkillSlotExpansionTime.Encode(DateTime.Now.AddDays(ticket.DurationDays)),
                     $"raw{raw}: expiry uses catalog duration, not a permanent constant");
                 string committed = await Snapshot();
-                var replay = await Dispatch(0xC480,request,originalControl);
-                Check(replay.Length == 20 && replay.AsSpan(8,12).SequenceEqual(answer.AsSpan(8,12)) && committed == await Snapshot(),
-                    $"raw{raw}: identical control and payload replays receipt, not transaction");
+                var replayFrames = InventoryDiscardChecks.SplitFrames(await Dispatch(0xC480,request,originalControl));
+                var replay = replayFrames[0];
+                Check(replayFrames.Count == 2 && replay.AsSpan(8,12).SequenceEqual(answer.AsSpan(8,12))
+                    && BinaryPrimitives.ReadUInt16LittleEndian(replayFrames[1].AsSpan(10)) == 2
+                    && committed == await Snapshot(),
+                    $"raw{raw}: identical control and payload replays receipt plus current C430, not transaction");
                 // Reusing a control word with different payload is not a transport replay.
-                var extended = await Dispatch(0xC480,Request(request[0],identities[0]),originalControl);
-                Check(extended[8] == 0 && extended[11] == identities[0]
+                var extendedFrames = InventoryDiscardChecks.SplitFrames(await Dispatch(0xC480,Request(request[0],identities[0]),originalControl));
+                var extended = extendedFrames[0];
+                Check(extendedFrames.Count == 2 && extended[8] == 0 && extended[11] == identities[0]
                     && BinaryPrimitives.ReadUInt32LittleEndian(extended.AsSpan(16)) == SkillSlotExpansionTime.Extend(expiry,ticket.DurationDays,DateTime.Now)
+                    && BinaryPrimitives.ReadUInt16LittleEndian(extendedFrames[1].AsSpan(10)) == 1
                     && (await Read()).Items.Single(x=>x.ItemCode==ticket.ItemCode).Quantity == 1,
-                    $"raw{raw}: different payload with same control consumes its own instance and extends active expiry");
+                    $"raw{raw}: different payload with same control consumes its own instance, refreshes C430 and extends active expiry");
                 await Reject(request,$"raw{raw}: consumed identity cannot consume a same-code survivor");
                 uint restoredExpiry = BinaryPrimitives.ReadUInt32LittleEndian(extended.AsSpan(16));
                 var box = await Dispatch(0xC378,[]);
@@ -172,11 +180,13 @@ internal static class InventoryExpansionChecks
                     $"raw{raw}: stale ledger projects inactive to native local renewal gate");
                 Check((uint)typeof(CharacterRecord).GetProperty(column)!.GetValue(await Read())! == 2000010100,
                     $"raw{raw}: projection never erases persisted expiration");
-                var renewed = await Dispatch(0xC480,Request(request[0],identities[2]));
-                Check(renewed[8] == 0 && BinaryPrimitives.ReadUInt32LittleEndian(renewed.AsSpan(16))
+                var renewedFrames = InventoryDiscardChecks.SplitFrames(await Dispatch(0xC480,Request(request[0],identities[2])));
+                var renewed = renewedFrames[0];
+                Check(renewedFrames.Count == 2 && renewed[8] == 0 && BinaryPrimitives.ReadUInt32LittleEndian(renewed.AsSpan(16))
                         == SkillSlotExpansionTime.Encode(DateTime.Now.AddDays(ticket.DurationDays))
+                    && BinaryPrimitives.ReadUInt16LittleEndian(renewedFrames[1].AsSpan(10)) == 0
                     && (await Read()).Items.All(x=>x.ItemCode!=ticket.ItemCode),
-                    $"raw{raw}: expired entitlement renews from now and last ticket row is deleted");
+                    $"raw{raw}: expired entitlement renews from now and immediate C430 deletes the last ticket row");
                 var freshDb = new DatabaseService(root);
                 await freshDb.InitializeAsync();
                 var persisted = (await freshDb.GetCharacterAsync(account))!;
@@ -187,6 +197,32 @@ internal static class InventoryExpansionChecks
                 Check(await freshDb.BeginWorldSessionAsync(account,character,sid,1,"127.0.0.1"),
                     $"raw{raw}: reauthenticate after startup deliberately clears online sessions");
                 await Reject(Request(request[0],identities[2]),$"raw{raw}: last-ticket replay with new control is rejected");
+            }
+            foreach (byte raw in new byte[] { 0, 2, 3, 4, 5 })
+            {
+                var ticket = ShopCatalog.All.First(x => x.Category == 44 && x.InventoryExpansionType == raw && x.DurationDays > 0);
+                string column = raw switch
+                {
+                    0 => "AvatarInventoryExpansionExpires",
+                    2 => "GameInventoryExpansionExpires",
+                    3 => "InteriorInventoryExpansionExpires",
+                    4 => "QuickSlotExpansionExpires",
+                    5 => "FreeMagicExpansionExpires",
+                    _ => throw new InvalidOperationException()
+                };
+                await Execute($"DELETE FROM CharacterQuickSlots WHERE CharacterId=$id; DELETE FROM CharacterItems WHERE CharacterId=$id; " +
+                    $"INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES($id,{ticket.ItemCode},1,$now); " +
+                    $"UPDATE Characters SET {column}=0 WHERE Id=$id;");
+                var list = await Dispatch(0xC42F, []);
+                ushort identity = BinaryPrimitives.ReadUInt16LittleEndian(list.AsSpan(16));
+                var frames = InventoryDiscardChecks.SplitFrames(await Dispatch(0xC480,
+                    Request(NetworkAdapterService.InventoryExpansionWireAction(raw), identity)));
+                Check(frames.Count == 2 && frames[0][8] == 0
+                    && BinaryPrimitives.ReadUInt16LittleEndian(frames[1].AsSpan(6)) == 0xC430
+                    && BinaryPrimitives.ReadUInt16LittleEndian(frames[1].AsSpan(10)) == 0
+                    && (uint)typeof(CharacterRecord).GetProperty(column)!.GetValue(await Read())! != 0
+                    && (await Read()).Items.All(item => item.ItemCode != ticket.ItemCode),
+                    $"raw{raw}: successful expansion immediately removes its last ticket from C430 and persists its independent expiry");
             }
             var skillTicket = ShopCatalog.All.First(x=>x.Category==44 && x.InventoryExpansionType==6 && x.DurationDays>0);
             await Execute($"DELETE FROM CharacterQuickSlots WHERE CharacterId=$id; DELETE FROM CharacterItems WHERE CharacterId=$id; " +

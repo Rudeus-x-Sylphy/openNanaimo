@@ -30,7 +30,10 @@ public sealed partial class NetworkAdapterService
             && DateTime.UtcNow - session.LastSkillSlotExpansionRequestUtc <= TimeSpan.FromSeconds(5))
         {
             _log($"{channel}:{remote} replayed C480 transport frame; returning cached C481 without consuming another ticket");
-            return BuildNativeFrame(frame, 0xC481, cachedResult, session);
+            var cachedAcknowledgement = BuildNativeFrame(frame, 0xC481, cachedResult, session);
+            return cachedResult[0] == 0
+                ? BuildInventoryMutationRefresh(frame, cachedAcknowledgement, session, shoppingCoupon: false)
+                : cachedAcknowledgement;
         }
 
         var requestParsed = TryParseInventoryExpansionRequest(
@@ -90,7 +93,10 @@ public sealed partial class NetworkAdapterService
         session.LastSkillSlotExpansionRequestPayload = payload.ToArray();
         session.LastSkillSlotExpansionRequestUtc = DateTime.UtcNow;
         session.LastSkillSlotExpansionResultPayload = resultPayload.ToArray();
-        return BuildNativeFrame(frame, 0xC481, resultPayload, session);
+        var acknowledgement = BuildNativeFrame(frame, 0xC481, resultPayload, session);
+        return resultPayload[0] == 0
+            ? BuildInventoryMutationRefresh(frame, acknowledgement, session, shoppingCoupon: false)
+            : acknowledgement;
     }
 
     internal static bool TryParseInventoryExpansionRequest(

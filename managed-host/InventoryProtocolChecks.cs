@@ -128,7 +128,7 @@ internal static class InventoryProtocolChecks
             seed.CommandText = """
                 UPDATE Characters SET MaxHp=22222,MaxMp=1000,CurrentHp=1000,CurrentMp=100 WHERE Id=$id;
                 INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt)
-                VALUES($id,14000001,2,$now),($id,42000001,1,$now),($id,41000001,1,$now);
+                VALUES($id,14000001,2,$now),($id,42000001,1,$now),($id,48000001,1,$now),($id,41000001,1,$now);
                 """;
             seed.Parameters.AddWithValue("$id", characterId);
             seed.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
@@ -148,9 +148,24 @@ internal static class InventoryProtocolChecks
             var use = new byte[8];
             BinaryPrimitives.WriteUInt32LittleEndian(use,42000001);
             BinaryPrimitives.WriteUInt32LittleEndian(use.AsSpan(4),2);
-            var mike = await Dispatch(0xC46D,use);
-            Check(mike is not null && BinaryPrimitives.ReadUInt32LittleEndian(mike.AsSpan(8))==1,
-                "microphone activation resolves the C430 identity without requesting the coupon page");
+            var mikeFrames = InventoryDiscardChecks.SplitFrames((await Dispatch(0xC46D,use))!);
+            var mike = mikeFrames[0];
+            Check(mikeFrames.Count == 2 && BinaryPrimitives.ReadUInt32LittleEndian(mike.AsSpan(8))==1
+                && !ReadCodes(mikeFrames[1][8..]).Contains(42000001u),
+                "microphone activation resolves the C430 identity and immediately removes it from the page");
+            var afterMikeRows = mikeFrames[1];
+            var afterMikeCount = BinaryPrimitives.ReadUInt16LittleEndian(afterMikeRows.AsSpan(10));
+            var revivalRow = Enumerable.Range(0, afterMikeCount)
+                .Single(index => BinaryPrimitives.ReadUInt32LittleEndian(afterMikeRows.AsSpan(12 + index * 8)) == 48000001u);
+            var revivalIdentity = BinaryPrimitives.ReadUInt16LittleEndian(afterMikeRows.AsSpan(16 + revivalRow * 8));
+            var revivalUse = new byte[8];
+            BinaryPrimitives.WriteUInt32LittleEndian(revivalUse, 48000001u);
+            BinaryPrimitives.WriteUInt32LittleEndian(revivalUse.AsSpan(4), revivalIdentity);
+            var revivalFrames = InventoryDiscardChecks.SplitFrames((await Dispatch(0xC46D, revivalUse))!);
+            Check(revivalFrames.Count == 2 && BinaryPrimitives.ReadUInt32LittleEndian(revivalFrames[0].AsSpan(8)) == 1
+                && !ReadCodes(revivalFrames[1][8..]).Contains(48000001u)
+                && (await database.GetCharacterAsync(accountId))!.RevivalUseCount == 5,
+                "revival bundle activation immediately removes the egg row and credits persistent uses");
             var food=new byte[8];
             BinaryPrimitives.WriteUInt32LittleEndian(food,14000001);
             BinaryPrimitives.WriteUInt16LittleEndian(food.AsSpan(4),1);

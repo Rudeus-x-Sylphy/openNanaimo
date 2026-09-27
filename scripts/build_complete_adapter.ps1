@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$OutputRoot = (Join-Path (Split-Path $PSScriptRoot -Parent) 'adapter_runtime'),
     [string]$TccPath,
     [string]$DotnetPath,
@@ -32,7 +32,7 @@ $resourceSource = if ($ResourceDataRoot) { [IO.Path]::GetFullPath($ResourceDataR
 if (-not (Test-Path -LiteralPath $resourceSource)) { throw "Adapter data missing. Supply -ResourceDataRoot with the prepared 资源\数据 directory: $resourceSource" }
 $resourceTarget = Join-Path $output '资源\数据'
 [IO.Directory]::CreateDirectory($resourceTarget) | Out-Null
-Copy-Item -Path (Join-Path $resourceSource '*') -Destination $resourceTarget -Force
+if(-not [IO.Path]::GetFullPath($resourceSource).TrimEnd('\').Equals([IO.Path]::GetFullPath($resourceTarget).TrimEnd('\'),[StringComparison]::OrdinalIgnoreCase)){Copy-Item -Path (Join-Path $resourceSource '*') -Destination $resourceTarget -Force}
 $adapter = Join-Path $output 'Nanaimo.Adapter.exe'
 foreach ($path in @($adapter,$bridge)) { if (-not (Test-Path -LiteralPath $path)) { throw "Build output missing: $path" } }
 $manifestPath = Join-Path $output 'adapter_manifest.json'

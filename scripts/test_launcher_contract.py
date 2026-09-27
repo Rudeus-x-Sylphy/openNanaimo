@@ -201,7 +201,7 @@ class LauncherContractTests(unittest.TestCase):
                 'equip_bottom', 'equip_accessory', 'equip_effect', 'hp_max',
                 'mp_max', 'attack', 'defense',
                 'coin', 'nana_point', 'card_key_gold', 'card_key_mystery',
-                'free_magic_key_expiry', 'quickbar_expiry', 'skill_config',
+                'free_magic_key_expiry', 'quickbar_expiry', 'skill_slot_expiry', 'skill_config',
                 'skill_projectile_route', 'skill_meat_route', 'skill_slot_z',
                 'skill_slot_x',
             },
@@ -227,6 +227,16 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn('public const int DungeonGradeOffset = 5024;', state)
         self.assertIn('payload[0x24 - NativeHeaderLength] = CharacterTitleState.GetGrade(character);', village)
         self.assertIn('payload[0x49 - 8] = CharacterTitleState.GetGrade(character);', room)
+
+    def test_expansion_expiry_controls_are_explicit_and_non_minting(self):
+        launcher = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
+        self.assertIn("'\u5168\u5f00\u5feb\u6377\u680f\u671f\u9650\uff080=\u672a\u542f\u7528\uff09'", launcher)
+        self.assertIn("'Z/X\u69fd\u671f\u9650\uff080=\u672a\u542f\u7528\uff09'", launcher)
+        self.assertIn("$skillSlotExpiryConfigured=$ini.ContainsKey('skill_slot_expiry')", launcher)
+        self.assertIn('if($resources.skill_slot_expiry_apply){$lines+="skill_slot_expiry=', launcher)
+        self.assertIn("\u672a\u52fe\u9009=\u4fdd\u7559\u89d2\u8272\u6570\u636e\u5e93\u73b0\u503c", launcher)
+        self.assertIn("\u672a\u6765\u671f\u9650\u8868\u793a\u6269\u5bb9\u5df2\u751f\u6548", launcher)
+        self.assertNotIn("Read-ProfileUInt64 $ini 'quickbar_expiry' 2099123123", launcher)
 
     def test_profile_values_have_managed_and_native_carriers(self):
         profile = (ROOT / 'managed/Services/DatabaseService.NativeDungeon.cs').read_text('utf-8-sig')

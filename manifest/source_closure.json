@@ -153,13 +153,13 @@
     },
     {
       "path": "managed-host/InventoryExpansionChecks.cs",
-      "size": 21340,
-      "sha256": "FCFFBAE122558220D3F8AAD47C66261D077F3C2BC6D1F2A7B8BF2C72BE265826"
+      "size": 24240,
+      "sha256": "8C0E77B8149B8317923CF15C624F1ADFE00669CCDC794BB8EE40EEB85135C7AB"
     },
     {
       "path": "managed-host/InventoryGameItemChecks.cs",
-      "size": 19948,
-      "sha256": "033874A0A37908834237838095B2603CE7A3F47E885C39E6F9264A255099ADE2"
+      "size": 20382,
+      "sha256": "85291C85A89E722AD54B9BEFD5C7AA0605E94129682B3836743F620C872476F4"
     },
     {
       "path": "managed-host/InventoryLifecycleChecks.cs",
@@ -168,8 +168,8 @@
     },
     {
       "path": "managed-host/InventoryProtocolChecks.cs",
-      "size": 22952,
-      "sha256": "4F6A0BD2410682C08BC37BE3A64AC2A27EC93A7219103F18E9F4B4579ED1E8E5"
+      "size": 24299,
+      "sha256": "B652889730DA6463D4C36EE39D345218524A880A32009CA87196556707FD265B"
     },
     {
       "path": "managed-host/InventoryQuickbarChecks.cs",
@@ -238,8 +238,8 @@
     },
     {
       "path": "managed-host/ShopDungeonChecks.cs",
-      "size": 11028,
-      "sha256": "A90AAC0556EB55E9EA65B832AE444A80DEB6BBBBF292843AFD9391D1A5B02987"
+      "size": 11520,
+      "sha256": "651014EA07F967CB640F6618B5DE79A73EA05041F5B19782FF8F1B2D8921A450"
     },
     {
       "path": "managed-host/TutorialAppearanceChecks.cs",
@@ -658,8 +658,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.InventoryExpansion.cs",
-      "size": 6432,
-      "sha256": "CB6FC8A3D64EFC8DD486E76B1FBB456745EF3D8DC9C77E40D124C186017A822D"
+      "size": 6827,
+      "sha256": "421A6DE1F96CFC9FA8657204E46A13CD9AEE298F5D144FFE7ABC1FB62013C3DE"
     },
     {
       "path": "managed/Services/NetworkAdapterService.InventoryIdentity.cs",
@@ -693,8 +693,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 942701,
-      "sha256": "F96C5F033B59912C07EE7C35BFE3946D38A17A1980E9926A6D780A98739D97DB"
+      "size": 943253,
+      "sha256": "766AB0FA65EB86E96F0466855AABC33CDFC0010387427AAF5810ED47843BE3EE"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1228,8 +1228,8 @@
     },
     {
       "path": "scripts/build_complete_adapter.ps1",
-      "size": 5243,
-      "sha256": "B97A6573727754537DF56F8F86FB685FBD01681E44DA71A1C2F8C369442C6419"
+      "size": 5408,
+      "sha256": "73759CCE42B61A03D57E01CE48039605DB309E2CD6770AC3D0B32B8D8A9E0E76"
     }
   ]
 }

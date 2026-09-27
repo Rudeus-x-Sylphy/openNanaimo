@@ -139,14 +139,18 @@ internal static class ShopDungeonChecks
             var useKeyRequest = new byte[8];
             BinaryPrimitives.WriteUInt32LittleEndian(useKeyRequest.AsSpan(0, 4), mysteryKeyBundle);
             BinaryPrimitives.WriteUInt32LittleEndian(useKeyRequest.AsSpan(4, 4), keyIdentity);
-            var useKey = await Request(0xC46D, useKeyRequest);
+            var useKeyFrames = InventoryDiscardChecks.SplitFrames(await Request(0xC46D, useKeyRequest));
+            var useKey = useKeyFrames[0];
+            var refreshedGameInventory = useKeyFrames[1];
+            var refreshedCount = BinaryPrimitives.ReadUInt16LittleEndian(refreshedGameInventory.AsSpan(10, 2));
             var afterKeyUse = (await db.GetCharacterAsync(account, token))!;
-            Check(useKey.Length == 20
+            Check(useKeyFrames.Count == 2 && useKey.Length == 20
                 && BinaryPrimitives.ReadUInt32LittleEndian(useKey.AsSpan(8, 4)) == 1
                 && BinaryPrimitives.ReadUInt32LittleEndian(useKey.AsSpan(12, 4)) == mysteryKeyBundle
                 && BinaryPrimitives.ReadUInt32LittleEndian(useKey.AsSpan(16, 4)) == keyIdentity
+                && Enumerable.Range(0, refreshedCount).All(index => BinaryPrimitives.ReadUInt32LittleEndian(refreshedGameInventory.AsSpan(12 + index * 8, 4)) != mysteryKeyBundle)
                 && afterKeyUse.CardMysteryKeyCount == beforeKeyUse.CardMysteryKeyCount + keyItem.TokenUseCount,
-                "C46D consumes the C430 key identity and credits 30 mystery-key uses");
+                "C46D consumes the C430 key identity, immediately refreshes the page and credits 30 mystery-key uses");
 
             var saved = (await new DatabaseService(directory).GetCharacterAsync(account, token))!;
             Check(saved.Hans == hans && saved.Cash == cash, "shop balances survive reopening the database");

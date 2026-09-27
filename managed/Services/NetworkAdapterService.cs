@@ -3100,11 +3100,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     AccountStateChanged?.Invoke();
                     AdoptPersistedInventoryVitals(session);
                     _log($"{channel}:{remote} backpack item used: item={tokenItemCode} identity={tokenSelector} remaining={consumeResult.RemainingQuantity} hp={session.Character?.CurrentHp}/{session.Character?.MaxHp} mp={session.Character?.CurrentMp}/{session.Character?.MaxMp}");
-                    return BuildNativeFrame(
+                    var foodAcknowledgement = BuildNativeFrame(
                         frame,
                         0xC46E,
                         BuildTokenUseResultPayload(true, tokenItemCode, tokenSelector),
                         session);
+                    return BuildInventoryMutationRefresh(frame, foodAcknowledgement, session, shoppingCoupon: false);
                 }
 
                 if (tokenCatalogItem.Category == 48)
@@ -3142,7 +3143,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     await RefreshSessionCharacterAsync(session, token);
                     var revivalUsePayload = BuildTokenUseResultPayload(true, tokenItemCode, tokenSelector);
                     _log($"{channel}:{remote} revival item activated: item={tokenItemCode} name={tokenCatalogItem.Name} slot={tokenSelector} added={tokenCatalogItem.TokenUseCount} activeUses={revivalResult.RevivalUseCount} remaining={revivalResult.Quantity}");
-                    return BuildNativeFrame(frame, 0xC46E, revivalUsePayload, session);
+                    var revivalAcknowledgement = BuildNativeFrame(frame, 0xC46E, revivalUsePayload, session);
+                    return BuildInventoryMutationRefresh(frame, revivalAcknowledgement, session, shoppingCoupon: false);
                 }
 
                 if (tokenCatalogItem.Category == 42)
@@ -3175,7 +3177,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     BinaryPrimitives.WriteUInt32LittleEndian(mikeUsePayload.AsSpan(4, 4), tokenItemCode);
                     BinaryPrimitives.WriteUInt32LittleEndian(mikeUsePayload.AsSpan(8, 4), tokenSelector);
                     _log($"{channel}:{remote} mike activated: item={tokenItemCode} name={tokenCatalogItem.Name} selector={tokenSelector} mode={tokenCatalogItem.TokenMode} uses={tokenCatalogItem.TokenUseCount} remaining={mikeResult.Quantity} channelUses={mikeResult.ChannelUseCount} globalUses={mikeResult.GlobalUseCount}");
-                    return BuildNativeFrame(frame, 0xC46E, mikeUsePayload, session);
+                    var mikeAcknowledgement = BuildNativeFrame(frame, 0xC46E, mikeUsePayload, session);
+                    return BuildInventoryMutationRefresh(frame, mikeAcknowledgement, session, shoppingCoupon: false);
                 }
 
                 await RefreshSessionCharacterAsync(session, token);
@@ -3216,7 +3219,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 BinaryPrimitives.WriteUInt32LittleEndian(tokenUsePayload.AsSpan(4, 4), tokenItemCode);
                 BinaryPrimitives.WriteUInt32LittleEndian(tokenUsePayload.AsSpan(8, 4), tokenSelector);
                 _log($"{channel}:{remote} token used: item={tokenItemCode} name={tokenCatalogItem.Name} identity={tokenSelector} remaining={useResult.Quantity} mysteryUses={useResult.MysteryKeyCount} goldenUses={useResult.GoldenKeyCount}");
-                return BuildNativeFrame(frame, 0xC46E, tokenUsePayload, session);
+                var tokenAcknowledgement = BuildNativeFrame(frame, 0xC46E, tokenUsePayload, session);
+                return BuildInventoryMutationRefresh(frame, tokenAcknowledgement, session, shoppingCoupon: false);
             }
 
             case 0xC46B: // REQ_DEL_TOKENITEM: domain 41 coupons and domain 42..48 game items

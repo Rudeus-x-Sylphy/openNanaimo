@@ -1,4 +1,6 @@
 # openNanaimo
+The September 27, 2026 inventory update makes completed item uses and inventory expansions appear immediately on the current inventory page. The launcher now provides a full-quickbar expiration control and an optional Z/X-slot expiration control, while preserving existing character values unless they are explicitly changed.
+
 
 面向韩国的飞行射击游戏 **Nanaimo** 的客户端行为研究与本地协议适配工程，包含 Windows 图形启动器、完整 adapter 源码、构建脚本、验证脚本和工程知识库。
 

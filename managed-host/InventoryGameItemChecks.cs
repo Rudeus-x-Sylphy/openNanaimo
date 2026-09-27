@@ -182,17 +182,23 @@ internal static class InventoryGameItemChecks
             await f.ExecuteAsync("DROP TRIGGER fail_expansion;");
             var before = DateTime.Now;
             ushort control = f.NextControl;
-            var answer = await f.DispatchAsync(0xC480, request);
+            var answerFrames = InventoryDiscardChecks.SplitFrames(await f.DispatchAsync(0xC480, request));
+            var answer = answerFrames[0];
             var after = DateTime.Now;
             uint expiry = U32(answer, 16);
-            Check(answer.Length == 20 && answer[8] == 0 && answer[10] == request[0] && answer[11] == handle
-                && U32(answer, 12) == ticket.ItemCode, "expansion success identifies exact consumed ticket");
+            Check(answerFrames.Count == 2 && answer.Length == 20 && answer[8] == 0 && answer[10] == request[0] && answer[11] == handle
+                && U32(answer, 12) == ticket.ItemCode
+                && U16(answerFrames[1], 6) == 0xC430
+                && U16(answerFrames[1], 10) == 1,
+                "expansion success identifies exact consumed ticket and immediately refreshes C430");
             Check(expiry >= SkillSlotExpansionTime.Encode(before.AddDays(ticket.DurationDays))
                 && expiry <= SkillSlotExpansionTime.Encode(after.AddDays(ticket.DurationDays)), "renewal starts at current time and uses catalog duration");
             string committed = await f.SnapshotAsync();
-            var replay = await f.DispatchAsync(0xC480, request, control);
-            Check(replay.AsSpan(8).SequenceEqual(answer.AsSpan(8)) && await f.SnapshotAsync() == committed,
-                "exact transport retry returns same expiration without additional consumption");
+            var replayFrames = InventoryDiscardChecks.SplitFrames(await f.DispatchAsync(0xC480, request, control));
+            var replay = replayFrames[0];
+            Check(replayFrames.Count == 2 && replay.AsSpan(8).SequenceEqual(answer.AsSpan(8))
+                && U16(replayFrames[1], 10) == 1 && await f.SnapshotAsync() == committed,
+                "exact transport retry returns same expiration and current inventory without additional consumption");
             var newRequest = await f.DispatchAsync(0xC480, request);
             Check(newRequest[8] != 0 && await f.SnapshotAsync() == committed, "new request using consumed handle cannot consume survivor");
             Check((await f.ReadAsync()).Items.Single(item => item.ItemCode == ticket.ItemCode).Quantity == 1, "one expansion coupon remains after reopen");
