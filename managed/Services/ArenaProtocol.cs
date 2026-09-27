@@ -36,7 +36,7 @@ internal readonly record struct ArenaPvpResultRecord(
     ushort UserUid,
     ushort Win,
     byte LevelUp,
-    byte Grade,
+    byte Grade, // persisted character dungeon-title grade
     byte PlayerLevel,
     byte ArenaRank,
     uint Star,

@@ -2,6 +2,8 @@
 #define NANAIMO_STAGE_DAMAGE_DAMAGE_RUNTIME_INC
 #include "../target_resources/lumineos_resource_identity.inc"
 #include "stage_damage_catalog.inc"
+#include "boss_contact_catalog.inc"
+#include "monster_contact_catalog.inc"
 
 #define STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT 1u
 #define STAGE_DAMAGE_DAMAGE_EXACT_ZERO 2u
@@ -9,6 +11,9 @@
 #define STAGE_DAMAGE_DAMAGE_SOURCE_OOB 4u
 #define STAGE_DAMAGE_DAMAGE_STAGE_AMBIGUOUS 5u
 #define STAGE_DAMAGE_DAMAGE_COLLISION_FIXED 6u
+#define STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_FIXED 9u
+#define STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE 10u
+#define STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE 11u
 #define STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND 7u
 #define STAGE_DAMAGE_DAMAGE_STAGE_MISSING 8u
 
@@ -17,6 +22,9 @@
 #endif
 #ifndef STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE
 #define STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE 100u
+#endif
+#ifndef STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE
+#define STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE STAGE_DAMAGE_PROJECTILE_FALLBACK_DAMAGE
 #endif
 
 struct stage_damage_damage_context {
@@ -88,12 +96,45 @@ static unsigned stage_damage_damage_projectile_lookup(const struct stage_damage_
     if(source>=(unsigned)r->row_count){if(out){out->status=STAGE_DAMAGE_DAMAGE_SOURCE_OOB;out->policy_damage=STAGE_DAMAGE_PROJECTILE_FALLBACK_DAMAGE;}return STAGE_DAMAGE_PROJECTILE_FALLBACK_DAMAGE;}
     {unsigned base=stage_damage_stage_attack_values[r->first_value+source];if(out)out->base=base;if(base){if(out){out->status=STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT;out->policy_damage=base;}return base;}if(out){out->status=STAGE_DAMAGE_DAMAGE_EXACT_ZERO;out->policy_damage=STAGE_DAMAGE_PROJECTILE_FALLBACK_DAMAGE;}return STAGE_DAMAGE_PROJECTILE_FALLBACK_DAMAGE;}
 }
+static unsigned stage_damage_boss_collision_component_index(const unsigned char *req){
+    return (unsigned)req[0x12]|((unsigned)req[0x13]<<8);
+}
+static unsigned stage_damage_boss_contact_lookup(const struct stage_damage_damage_context *ctx,const unsigned char *req){
+    unsigned key[8],lo=0u,hi=BOSS_CONTACT_ROW_COUNT,i;if(!ctx||!ctx->active)return 0u;
+    key[0]=ctx->resource_hd;key[1]=ctx->resource_episode;key[2]=ctx->resource_dungeon;
+    key[3]=ctx->resource_stage;key[4]=ctx->difficulty*3u+ctx->resource_stage;
+    key[5]=(unsigned)req[0x10];key[6]=(unsigned)req[0x11];key[7]=stage_damage_boss_collision_component_index(req);
+    while(lo<hi){unsigned mid=lo+(hi-lo)/2u;const unsigned *row=&boss_contact_rows[mid].hd;int cmp=0;
+        for(i=0;i<8u;i++){if(row[i]<key[i]){cmp=-1;break;}if(row[i]>key[i]){cmp=1;break;}}
+        if(cmp<0)lo=mid+1u;else if(cmp>0)hi=mid;else return boss_contact_rows[mid].attack;
+    }return 0u;
+}
+static unsigned stage_damage_monster_contact_lookup(const struct stage_damage_damage_context *ctx,unsigned selector){
+    unsigned key[5],lo=0u,hi=MONSTER_CONTACT_ROW_COUNT,i;if(!ctx||!ctx->active)return 0u;
+    key[0]=ctx->resource_hd;key[1]=ctx->resource_episode;key[2]=ctx->resource_dungeon;
+    key[3]=ctx->resource_stage;key[4]=ctx->difficulty*3u+ctx->resource_stage;
+    while(lo<hi){unsigned mid=lo+(hi-lo)/2u;const struct monster_contact_row *r=&monster_contact_rows[mid];const unsigned *row=&r->hd;int cmp=0;
+        for(i=0;i<5u;i++){if(row[i]<key[i]){cmp=-1;break;}if(row[i]>key[i]){cmp=1;break;}}
+        if(!cmp){if(selector<r->first)cmp=1;else if(selector>r->last)cmp=-1;else return r->attack;}
+        if(cmp<0)lo=mid+1u;else hi=mid;
+    }return 0u;
+}
 static unsigned stage_damage_player_d00f_damage(const struct stage_damage_damage_context *ctx,const unsigned char *req,unsigned kind,struct stage_damage_damage_lookup *out){
     unsigned owner=(unsigned)req[0x0A]|((unsigned)req[0x0B]<<8),source=(unsigned)req[0x0C]|((unsigned)req[0x0D]<<8);
     if(kind==10u)return stage_damage_damage_projectile_lookup(ctx,owner,source,out);
     stage_damage_damage_lookup_clear(out);stage_damage_damage_lookup_context(ctx,out);
-    if(out){out->kind=kind;out->owner=owner;out->source=source;out->resource=kind==20u?"<ordinary-collision-policy>":"<non-damaging-scene-event>";}
-    if(kind==20u){if(out){out->status=STAGE_DAMAGE_DAMAGE_COLLISION_FIXED;out->policy_damage=STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;}return STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;}
+    if(kind==40u)source=stage_damage_boss_collision_component_index(req);
+    if(out){out->kind=kind;out->owner=owner;out->source=source;out->resource=kind==20u?"<ordinary-collision-policy>":kind==40u?"<boss-collision-component>":"<non-damaging-scene-event>";}
+    if(kind==20u){unsigned damage=stage_damage_monster_contact_lookup(ctx,owner);
+        if(out){out->status=damage?STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_COLLISION_FIXED;
+            out->base=damage;out->policy_damage=damage?damage:STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;out->resource=damage?"<ordinary-collision-resource>":"<ordinary-collision-policy>";}
+        return damage?damage:STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;
+    }
+    if(kind==40u){unsigned damage=stage_damage_boss_contact_lookup(ctx,req);
+        if(out){out->status=damage?STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_FIXED;
+            out->base=damage;out->policy_damage=damage?damage:STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE;}
+        return damage?damage:STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE;
+    }
     /* Fixed-scene kinds 60/80 are metadata-only compatibility events. */
     if(out)out->status=STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND;return 0u;
 }

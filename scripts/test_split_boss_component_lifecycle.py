@@ -237,6 +237,12 @@ int main(void){verify_first_normal_split();verify_multi_child_split();verify_spl
         self.assertIn("if(r->child_first_terminal)teamplay_send_d013_boss_child_retire", protocol)
         self.assertIn("if((r->component_first_terminal&&!r->intermediate_terminal)||transition_target)boss_hp_sync_put16", runtime)
         self.assertIn("boss_hp_sync_project_multimode_recording(c,r)", runtime)
+        session = (ROOT / "release/components/game_session/gs_runtime.inc").read_text(encoding="utf-8")
+        self.assertIn("boss_hp_sync_apply_external_contact(&boss_ctx", session)
+        self.assertNotIn("boss_hp_sync_apply_external_damage(&boss_ctx", session)
+        self.assertNotIn("scripted_terminal_contact", session)
+        self.assertIn("req[0x10],req[0x11],boss_hp_sync_get16(req,0x12)", runtime)
+        self.assertIn("if(!meat_boss_result.scripted_report_suppressed)", session)
 
 
 if __name__ == "__main__":

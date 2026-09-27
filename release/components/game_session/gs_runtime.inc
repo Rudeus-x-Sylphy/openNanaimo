@@ -211,9 +211,13 @@ static void send_c46e_item_use_result(SOCKET c,int success,unsigned code,unsigne
    client 0x6EF06B -> 0x748990.  Do not zero it on injury. */
 static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,unsigned local_uid,unsigned hp,unsigned damage,int terminal,unsigned battle_score){
     char p[4096];mkpkt(p,0xD010,0x24,1);
-    stable_resource_put16(p,0x08,local_uid);stable_resource_put16(p,0x0A,terminal?200u:0u);
+    stable_resource_put16(p,0x08,local_uid);stable_resource_put16(p,0x0A,terminal?200u:100u);
     stable_put32(p,0x0C,battle_score);stable_resource_put16(p,0x10,hp);stable_resource_put16(p,0x12,damage);
     p[0x1A]=req[0x0A];p[0x1B]=req[0x0B];p[0x1D]=req[0x08];
+    if(req[0x08]==40u){
+        p[0x1A]=req[0x12];p[0x1B]=req[0x13];
+        p[0x1E]=req[0x10];p[0x1F]=req[0x11];p[0x20]=req[0x12];p[0x21]=req[0x13];
+    }
     sendbuf(c,p,0x24);
     printf("  S0xD010 INJURY_RESOURCE injury actor=%u hp=%u damage=%u terminal=%d score=%u meta=%u kind=%u len=36 t=%lds\n",local_uid,hp,damage,terminal,battle_score,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),(unsigned char)p[0x1D],sec());fflush(0);
 }
@@ -229,7 +233,7 @@ static int player_collision_apply_player_d00f_injury(SOCKET c,int port,const uns
     unsigned source_field_140=(unsigned char)req[0x0A]|((unsigned char)req[0x0B]<<8);
     unsigned collision_index=(unsigned char)req[0x0C]|((unsigned char)req[0x0D]<<8);
     unsigned source_field_14=(unsigned char)req[0x0E]|((unsigned char)req[0x0F]<<8);
-    unsigned raw_damage,damage,applied,wire_damage;struct stage_damage_damage_lookup resolved;struct stage_damage_damage_application damage_app;const char *route=request_kind==10u?"kind10":request_kind==20u?"ordinary-kind20":"unsupported";
+    unsigned raw_damage,damage,applied,wire_damage;struct stage_damage_damage_lookup resolved;struct stage_damage_damage_application damage_app;const char *route=request_kind==10u?"kind10":request_kind==20u?"ordinary-kind20":request_kind==40u?"boss-kind40":"unsupported";
 #if TEAMPLAY_FEATURE_MEAT_LIFECYCLE_COMPLETION
     if(skill_effect_cleanup_meat_invulnerable(skill_cleanup_ctx,dungeon_room_epoch,battle_epoch,injury_now)){
         printf("  [INJURY_SCENE] suppress route=%s kind=%u reason=meat-invulnerability actor=%u hp=%u meat_code=%u generation=%u elapsed_ms=%u no-D010 t=%lds\n",route,request_kind,multiplayer_current_uid(),*combat_hp,skill_cleanup_ctx->code,skill_cleanup_ctx->generation,(unsigned)(injury_now-skill_cleanup_ctx->armed_tick),sec());
@@ -252,7 +256,7 @@ static int player_collision_apply_player_d00f_injury(SOCKET c,int port,const uns
         printf("  [INJURY_SCENE] suppress route=%s kind=%u reason=already-dead actor=%u room=%u battle=%u source_field=%u collision_index=%u source_aux=%u no-D010 t=%lds\n",route,request_kind,multiplayer_current_uid(),injury_room_epoch,injury_battle_epoch,source_field_140,collision_index,source_field_14,sec());
         fflush(0);return 0;
     }
-    raw_damage=stage_damage_player_d00f_damage(damage_ctx,req,request_kind,&resolved);damage=multiplayer_combat_profile_reduce_damage(raw_damage);printf("  [INCOMING_COMBAT] wire=%u/%u/%u/st%u/d%u resource_tuple=%u/%u/%u/st%u kind=%u owner=%u source=%u resource=%s selected_smmo=%s rows=%u base=%u lookup_status=%u scope_incomplete=%u translated=%u raw_policy_damage=%u defense=%u final_policy_damage=%u provenance=%s defense_formula=private-flat-floor1\n",resolved.wire_hd,resolved.wire_episode,resolved.wire_dungeon,resolved.wire_stage,resolved.difficulty,resolved.resource_hd,resolved.resource_episode,resolved.resource_dungeon,resolved.resource_stage,request_kind,resolved.owner,resolved.source,resolved.resource?resolved.resource:"<none>",resolved.selected_smmo?resolved.selected_smmo:"<none>",resolved.row_count,resolved.base,resolved.status,resolved.scope_incomplete,resolved.identity_translated,raw_damage,g_profile_defense_flat,damage,(request_kind==10u&&resolved.status==STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT)?"stage-resource-exact":(request_kind==10u?"fallback":"collision-fixed-100"));fflush(0);damage_app=stage_damage_apply_actor_damage(*combat_hp,damage);applied=damage_app.actual_damage;*combat_hp=damage_app.hp_after;wire_damage=damage_app.wire_damage;*injury_dead=damage_app.terminal?1:0;
+    raw_damage=stage_damage_player_d00f_damage(damage_ctx,req,request_kind,&resolved);damage=multiplayer_combat_profile_reduce_damage(raw_damage);printf("  [INCOMING_COMBAT] wire=%u/%u/%u/st%u/d%u resource_tuple=%u/%u/%u/st%u kind=%u owner=%u source=%u resource=%s selected_smmo=%s rows=%u base=%u lookup_status=%u scope_incomplete=%u translated=%u raw_policy_damage=%u defense=%u final_policy_damage=%u provenance=%s defense_formula=private-flat-floor1\n",resolved.wire_hd,resolved.wire_episode,resolved.wire_dungeon,resolved.wire_stage,resolved.difficulty,resolved.resource_hd,resolved.resource_episode,resolved.resource_dungeon,resolved.resource_stage,request_kind,resolved.owner,resolved.source,resolved.resource?resolved.resource:"<none>",resolved.selected_smmo?resolved.selected_smmo:"<none>",resolved.row_count,resolved.base,resolved.status,resolved.scope_incomplete,resolved.identity_translated,raw_damage,g_profile_defense_flat,damage,(resolved.status==STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT||resolved.status==STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE||resolved.status==STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE)?"stage-resource-exact":"bounded-fallback");fflush(0);damage_app=stage_damage_apply_actor_damage(*combat_hp,damage);applied=damage_app.actual_damage;*combat_hp=damage_app.hp_after;wire_damage=damage_app.wire_damage;*injury_dead=damage_app.terminal?1:0;
 #ifdef MEAT_D010_DAMAGE_ZERO_PROBE
     if(*combat_hp!=0u)wire_damage=0u;
 #endif
@@ -382,7 +386,8 @@ static void gs_thread(void* arg){
 #endif
 #ifdef NANAIMO_GAMEPLAY_BRIDGE
                     if(type==0xF104){
-                        char ack[16];unsigned mode=0u,hp=0u,mp=0u;int ok=0;
+                        /* mkpkt clears its full 4096-byte construction buffer. */
+                        char ack[4096];unsigned mode=0u,hp=0u,mp=0u;int ok=0;
                         if(len==16){mode=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8);hp=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);mp=(unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8);ok=mode==0u&&hp>0u&&hp<=pet_crafting_pet_effective_hp_max()&&mp>0u&&mp<=g_profile_mp_max;}
                         if(ok){combat_hp=hp;g_profile_hp_current=hp;g_profile_mp_current=mp;injury_dead=0;death_latched=0;retry_acknowledged=0;lifesteal_remainder=0u;printf("  [REVIVE] internal F104 paid-continue sync hp=%u mp=%u battle=%u latch-cleared\n",hp,mp,boss_ctx.battle_epoch);fflush(0);}else{printf("  [REVIVE] internal F104 rejected len=%d mode=%u hp=%u mp=%u injury_dead=%d combat_hp=%u max_hp=%u max_mp=%u\n",len,mode,hp,mp,injury_dead,combat_hp,pet_crafting_pet_effective_hp_max(),g_profile_mp_max);fflush(0);}
                         mkpkt(ack,0xF105,16,1);ack[8]=(char)(ok?1:0);ack[9]=0;ack[10]=(char)mode;ack[11]=(char)(mode>>8);ack[12]=(char)hp;ack[13]=(char)(hp>>8);ack[14]=(char)mp;ack[15]=(char)(mp>>8);sendbuf(c,ack,16);
@@ -867,42 +872,46 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                 unsigned d10=(unsigned char)buf[off+0x10]|((unsigned char)buf[off+0x11]<<8)|((unsigned char)buf[off+0x12]<<16)|((unsigned char)buf[off+0x13]<<24);
                                 unsigned d14=(unsigned char)buf[off+0x14]|((unsigned char)buf[off+0x15]<<8)|((unsigned char)buf[off+0x16]<<16)|((unsigned char)buf[off+0x17]<<24);
                                 unsigned d18=(unsigned char)buf[off+0x18]|((unsigned char)buf[off+0x19]<<8)|((unsigned char)buf[off+0x1A]<<16)|((unsigned char)buf[off+0x1B]<<24);
-                                unsigned now=tickms(),candidate=(request_kind==20u)?w0a:0xFFFFFFFFu;const char *carrier=(request_kind==20u)?"kind20-w0A":"kind40-no-selector";int active,scripted_terminal_contact=0;struct meat_collision_apply_result mr;
+                                unsigned now=tickms(),candidate=(request_kind==20u)?w0a:0xFFFFFFFFu;const char *carrier=(request_kind==20u)?"kind20-w0A":"kind40-no-selector";int active;struct meat_collision_apply_result mr;
                                 g_meat_collision.report_count++;if(request_kind==20u)g_meat_collision.kind20_count++;else g_meat_collision.kind40_count++;
                                 active=meat_collision_active(dungeon_room_epoch,boss_ctx.battle_epoch,now);
-#if TEAMPLAY_FEATURE_MEAT_BOSS_DAMAGE && TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012 && TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
-                                scripted_terminal_contact=request_kind==40u&&boss_ctx.scripted_component_active&&boss_ctx.scripted_terminal_seen&&boss_ctx.phase==BOSS_HP_SYNC_PHASE_RUNNING&&!boss_ctx.awaiting_next_mode&&g_meat_collision.boss_damage_applied_count==0u&&meat_skill_code(g_meat_collision.code)&&g_meat_collision.grade>0u&&g_meat_collision.last_d011_valid&&g_meat_collision.last_d011_mode==boss_ctx.mode_index&&g_meat_collision.last_d011_child==boss_ctx.scripted_terminal_child&&meat_tick_delta(now,g_meat_collision.last_d011_tick)<=250u;
-#endif
                                 meat_collision_log_contact_fields(port,dungeon_room_epoch,boss_ctx.battle_epoch,now,request_kind,w0a,d0c,d10,d14,d18,candidate,carrier);
-#if TEAMPLAY_FEATURE_MEAT_BOSS_DAMAGE && TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012 && TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
-                                if(scripted_terminal_contact){struct boss_hp_sync_result contact_result;unsigned raw_attack=meat_skill_damage(g_meat_collision.code,g_meat_collision.grade);int contact_rc=boss_hp_sync_apply_scripted_terminal_external_attack(&boss_ctx,raw_attack,g_meat_collision.last_d011_ordinal,&contact_result);if(contact_rc==BOSS_HP_SYNC_OK&&contact_result.applied_damage){unsigned total=combat_economy_score_boss_terminal(&score_ctx,&boss_ctx,&contact_result);g_meat_collision.boss_damage_applied_count++;if(contact_result.scripted_report_suppressed){printf("  [GS %d] [MEAT_TARGET_ALIAS] terminal-component contact deferred ordinal=%u damage=%u component_hp=%u/%u body_bar_hp=%u total=%u response=none\n",port,contact_result.target_ordinal,contact_result.applied_damage,contact_result.component_hp,contact_result.component_max_hp,contact_result.hp,total);fflush(0);}else{printf("  [GS %d] [MEAT_TARGET_ALIAS] terminal-component contact retirement ordinal=%u damage=%u component_hp=%u/%u body_bar_hp=%u total=%u final=%u\n",port,contact_result.target_ordinal,contact_result.applied_damage,contact_result.component_hp,contact_result.component_max_hp,contact_result.hp,total,contact_result.final_terminal);fflush(0);teamplay_send_d013_boss_result_retirements(c,&contact_result);shop_catalogs_send_boss_result(c,&contact_result,score_ctx.total,&boss_final_retire_sent);}}else{printf("  [GS %d] [MEAT_TARGET_ALIAS] terminal-component contact rejected rc=%d raw_attack=%u phase=%u hp=%u\n",port,contact_rc,raw_attack,boss_ctx.phase,boss_ctx.hp);fflush(0);}if(contact_result.applied_damage)inventory_migration_apply_hp_absorb(c,contact_result.applied_damage,&combat_hp,&injury_dead,score_ctx.total,&lifesteal_remainder,"D00F-meat-boss");}
-                                else
-#endif
                                 if(active){
                                     handle_meat_collision_report(c,port,monster_hp_ctx,crate_policy,&score_ctx,teamplay_authoritative_stage(current_stage),dungeon_room_epoch,boss_ctx.battle_epoch,candidate,(unsigned)((unsigned char)buf[off]|((unsigned char)buf[off+1]<<8)),g_meat_collision.code,g_meat_collision.grade,carrier,&mr);
                                     if(mr.reject_reason==MEAT_REJECT_UNBOUND){int boss_meat_applied=0;
 #if TEAMPLAY_FEATURE_MEAT_BOSS_DAMAGE
+                                        if(request_kind==40u&&boss_ctx.phase==BOSS_HP_SYNC_PHASE_RUNNING&&!boss_ctx.awaiting_next_mode){
+                                            struct boss_hp_sync_result meat_boss_result;
+                                            unsigned meat_damage=meat_skill_damage(g_meat_collision.code,g_meat_collision.grade);
+                                            int meat_boss_rc=boss_hp_sync_apply_external_contact(&boss_ctx,(const unsigned char*)&buf[off],(unsigned)len,meat_damage,&meat_boss_result);
+                                            if(meat_boss_rc==BOSS_HP_SYNC_OK&&meat_boss_result.applied_damage){
+                                                unsigned total=combat_economy_score_boss_terminal(&score_ctx,&boss_ctx,&meat_boss_result);
+                                                g_meat_collision.boss_damage_applied_count++;boss_meat_applied=1;
+                                                printf("  [GS %d] [MEAT_DAMAGE] boss-contact policy=exact-current-component contact=%u mode=%u child=%u ordinal=%u damage=%u component_hp=%u child_hp=%u hp=%u total=%u final=%u\n",port,g_meat_collision.boss_damage_applied_count,meat_boss_result.wire_mode,meat_boss_result.wire_child,meat_boss_result.target_ordinal,meat_boss_result.applied_damage,meat_boss_result.component_hp,meat_boss_result.child_hp,meat_boss_result.hp,total,meat_boss_result.final_terminal);fflush(0);
+                                                if(!meat_boss_result.scripted_report_suppressed){
 #if TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
-                                        if(request_kind==40u&&boss_hp_sync_has_split_children(&boss_ctx)){printf("  [GS %d] [MEAT_ATTRIBUTION] split-child Boss contact has no child tuple -> aggregate damage suppressed\n",port);fflush(0);}
-                                        else
+                                                    teamplay_send_d013_boss_result_retirements(c,&meat_boss_result);
 #endif
-                                        if(request_kind==40u&&boss_ctx.phase==BOSS_HP_SYNC_PHASE_RUNNING&&!boss_ctx.awaiting_next_mode){struct boss_hp_sync_result meat_boss_result;unsigned meat_damage=meat_skill_damage(g_meat_collision.code,g_meat_collision.grade);int meat_boss_rc=boss_hp_sync_apply_external_damage(&boss_ctx,meat_damage,&meat_boss_result);if(meat_boss_rc==BOSS_HP_SYNC_OK&&meat_boss_result.applied_damage){unsigned total=combat_economy_score_boss_terminal(&score_ctx,&boss_ctx,&meat_boss_result);g_meat_collision.boss_damage_applied_count++;boss_meat_applied=1;printf("  [GS %d] [MEAT_DAMAGE] boss-contact policy=each-active-kind40-request contact=%u fields=0x%08X pre_d011=%u damage=%u hp=%u cumulative=%u total=%u final=%u\n",port,g_meat_collision.boss_damage_applied_count,d10,boss_ctx.request_count,meat_boss_result.applied_damage,meat_boss_result.hp,meat_boss_result.cumulative_damage,total,meat_boss_result.final_terminal);fflush(0);
-#if TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
-teamplay_send_d013_boss_result_retirements(c,&meat_boss_result);
-#else
-if(meat_boss_result.first_terminal&&current_hd==0u&&current_stage==7u&&current_dungeon==2u&&current_stage_index==0u&&!aux_retire_sent&&aux_retire_epoch==boss_ctx.battle_epoch){send_d013_retire_child(c,1u,0u,0u);aux_retire_sent=1;}
-#endif
-shop_catalogs_send_boss_result(c,&meat_boss_result,score_ctx.total,&boss_final_retire_sent);if(pending_super_cf87&&boss_hp_sync_final_terminal_seen(&boss_ctx)&&pending_super_cf87_epoch==boss_ctx.battle_epoch){select_reply_control0(pending_super_cf87_low);send_cf88_playable(c,score_ctx.total);settlement_sent=1;pending_super_cf87=0;boss_hp_sync_mark_settled(&boss_ctx);}}}
+                                                    shop_catalogs_send_boss_result(c,&meat_boss_result,score_ctx.total,&boss_final_retire_sent);
+                                                }
+                                                if(meat_boss_result.scripted_component_topology)inventory_migration_apply_hp_absorb(c,meat_boss_result.applied_damage,&combat_hp,&injury_dead,score_ctx.total,&lifesteal_remainder,"D00F-meat-boss");
+                                                if(pending_super_cf87&&boss_hp_sync_final_terminal_seen(&boss_ctx)&&pending_super_cf87_epoch==boss_ctx.battle_epoch){select_reply_control0(pending_super_cf87_low);send_cf88_playable(c,score_ctx.total);settlement_sent=1;pending_super_cf87=0;boss_hp_sync_mark_settled(&boss_ctx);}
+                                            }
+                                        }
 #endif
                                         g_meat_collision.pointer_echo_count++;printf("  [GS %d] [MEAT_DAMAGE] contact decision carrier=%s selector=none d0C_uninitialized=0x%08X initialized_d10=0x%08X phase_word=%u candidate_dispatched=0 damage_applied=%u boss_contacts=%u terminal_repeat=0 binding=0 reject=unbound pointer_or_unknown_echo=%u -> %s\n",port,carrier,d0c,d10,(d10>>16)&0xFFFFu,boss_meat_applied?1u:0u,g_meat_collision.boss_damage_applied_count,g_meat_collision.pointer_echo_count,boss_meat_applied?"boss-D012+D010-echo":"no-running-aggregate-boss-echo");fflush(0);}
                                     else if(mr.reject_reason==MEAT_REJECT_NONORDINARY||mr.reject_reason==MEAT_REJECT_NO_HP){printf("  [GS %d] [MEAT153] contact decision carrier=%s selector=%u candidate_dispatched=0 damage_applied=0 terminal_repeat=0 binding=%u reject=%u -> echo-only\n",port,carrier,candidate,mr.binding_kind,mr.reject_reason);fflush(0);}
                                 }else{
                                     int residual_grace_active=meat_residual_meat_residual_window_active(meat_activated_room_epoch,meat_activated_battle_epoch,meat_residual_until_tick,dungeon_room_epoch,boss_ctx.battle_epoch,now);
                                     g_meat_collision.inactive_count++;
-                                    if(request_kind==20u&&g_meat_collision.code==0u&&g_meat_collision.grade==0u&&!residual_grace_active){
+                                    if(request_kind==40u){
+                                        send_nonlocal_echo=0;
+                                        printf("  [INJURY_SCENE] inactive kind40 classified=boss-player-contact -> player-injury/no-echo t=%lds\n",sec());fflush(0);
+                                        player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
+                                    }else if(request_kind==20u&&!residual_grace_active){
                                         unsigned hp_before_293=combat_hp;
                                         send_nonlocal_echo=0;
-                                        printf("  [GS %d] [MEAT_RESIDUAL] inactive kind20 classified=ordinary-player-collision code=0 grade=0 residual-grace-active=0 inactive=%u -> player-injury/no-echo; COLLISION_DAMAGE also settles the collided target t=%lds\n",port,g_meat_collision.inactive_count,sec());fflush(0);
+                                        printf("  [GS %d] [MEAT_RESIDUAL] inactive kind20 classified=ordinary-player-collision active=0 residual-grace-active=0 inactive=%u -> player-injury/no-echo; COLLISION_DAMAGE also settles the collided target t=%lds\n",port,g_meat_collision.inactive_count,sec());fflush(0);
                                         player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
                                         collision_damage_collision_target_damage(c,port,monster_hp_ctx,crate_policy,&score_ctx,teamplay_authoritative_stage(current_stage),dungeon_room_epoch,boss_ctx.battle_epoch,now,candidate,(unsigned)((hp_before_293>combat_hp)?(hp_before_293-combat_hp):0u),(unsigned)((unsigned char)buf[off]|((unsigned char)buf[off+1]<<8)),carrier);
                                     }else{
@@ -982,7 +991,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                     } else if(type==0xCF99 && len==8){
 #if TEAMPLAY_FEATURE_CF99_SUPER_REARM_CLEAR
                         multiplayer_cf99_surrender_mark_current();
-                        printf("  [GS %d] GOT CF99 surrender-abuser -> CF9A; defer client go-village flag clear until authored Super-Boss CF8B\n",port);fflush(0);
+                        printf("  [GS %d] GOT CF99 surrender-abuser -> CF9A; defer client go-village flag clear until accepted CF8B\n",port);fflush(0);
                         sleep(0);send_cf9a_surrender_abuser(c);
 #else
                         printf("  [GS %d] GOT CF99 surrender-abuser -> no response (legacy)\n",port);fflush(0);
@@ -1012,7 +1021,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                             if(dungeon_room_phase==ROOM_READY){int same_pending=post_reset_pending && post_reset_epoch==dungeon_room_epoch && post_reset_real==effective_real && post_reset_show==reset_show && post_reset_mode==reset_mode;if(!same_pending){int superseded=post_reset_pending;post_reset_pending=1;post_reset_seen_c587=0;post_reset_seen_cf70=0;post_reset_real=effective_real;post_reset_show=reset_show;post_reset_mode=reset_mode;post_reset_epoch=dungeon_room_epoch;printf("  [GS %d] LATE_REARM armed requested=%u effective=%u show=%u mode=%u authored_super=%d epoch=%u superseded=%d phase=READY\n",port,reset_real,effective_real,reset_show,reset_mode,authored_super,dungeon_room_epoch,superseded);fflush(0);}else{printf("  [GS %d] LATE_REARM duplicate request retains pending effective=%u show=%u mode=%u seen=%d/%d epoch=%u\n",port,effective_real,reset_show,reset_mode,post_reset_seen_c587,post_reset_seen_cf70,dungeon_room_epoch);fflush(0);}}
                             printf("  [GS %d] GOT CF8B reset requested=%u effective=%u show=%u mode=%u authored_super=%d advance_dungeon=%d dungeon=%u -> CF8C difficulty=current\n",port,reset_real,effective_real,reset_show,reset_mode,authored_super,advance_dungeon,current_dungeon); fflush(0);
 #if TEAMPLAY_FEATURE_CF99_SUPER_REARM_CLEAR
-                            if(authored_super&&reset_mode==1u&&multiplayer_cf99_surrender_room_pending()){printf("  [GS %d] SURRENDER_REARM authored Super-Boss CF8B after CF99 -> broadcast CF6D clear before CF8C\n",port);fflush(0);sleep(0);multiplayer_broadcast_cf6d_super_rearm();}
+                            if(multiplayer_cf99_surrender_room_pending()){printf("  [GS %d] SURRENDER_REARM accepted CF8B after CF99 -> broadcast CF6D clear before CF8C\n",port);fflush(0);sleep(0);multiplayer_broadcast_cf6d_super_rearm();}
 #endif
                             sleep(0); multiplayer_broadcast_reset(effective_real,reset_show,current_difficulty,current_dungeon);
                         } else {

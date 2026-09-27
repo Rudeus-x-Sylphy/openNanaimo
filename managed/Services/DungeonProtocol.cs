@@ -108,7 +108,7 @@ internal static class DungeonProtocol
         payload[0x48 - 8] = (byte)Math.Clamp(character.Level, 0, 0x7F);
         // Retail CF71 frame+0x49 is the persisted dungeon grade/title, not
         // a level-derived icon band. Keep it coherent with C355 and CF88.
-        payload[0x49 - 8] = character.DungeonGrade;
+        payload[0x49 - 8] = CharacterTitleState.GetGrade(character);
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x4A - 8), ClampStat(character.MaxHp));
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x4C - 8), ClampStat(character.MaxMp));
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x4E - 8), ClampCurrent(character.CurrentHp, character.MaxHp));

@@ -375,6 +375,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte ResponseTransportTagIndex { get; set; }
         public bool ResponseTransportTagInitialized { get; set; }
         public InventoryIdentityMap GameInventoryIdentities { get; } = new();
+        public InventoryIdentityMap PetMaterialIdentities { get; } = new();
+        public ShoppingCouponIdentityMap ShoppingCouponIdentities { get; } = new();
         public ushort? LastSkillSlotExpansionRequestControl { get; set; }
         public byte[]? LastSkillSlotExpansionRequestPayload { get; set; }
         public DateTime LastSkillSlotExpansionRequestUtc { get; set; }
@@ -2420,6 +2422,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
                 var itemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
                 var slot = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(8, 2));
+                if (InventoryClassification.IsPetMaterial(itemCode))
+                    return await DeletePetMaterialAsync(frame, session, itemCode, slot, token);
                 if (itemCode / 1_000_000 != 15)
                 {
                     _log($"{channel}:{remote} 拒绝非宠物丢弃请求：item={itemCode} slot={slot}");
@@ -2452,14 +2456,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     _log($"{channel}:{remote} 宠物变更长度无效：期望 {PetChangeRequestPayloadLength}，实际 {payload.Length}");
                     return BuildNativeFrame(frame, 0xC450, BuildPetChangeResultPayload(0, 0, false), session);
                 }
+                await RefreshInventoryCharacterAsync(session, token);
                 var petChangeOperation = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(0, 2));
                 var responseOperation = petChangeOperation <= byte.MaxValue ? (byte)petChangeOperation : (byte)0;
                 var responseState = payload[3];
                 var materialWireIdentity = petChangeOperation == 2 ? payload[5] : payload[4];
                 var petChangePayload = payload.ToArray();
-                var materialIdentityValid = TryResolveSessionInventoryIdentity(session, materialWireIdentity,
+                var materialIdentityValid = TryResolveSessionPetMaterialIdentity(session, materialWireIdentity,
                     out var materialOrdinal, out _);
-                petChangePayload[petChangeOperation == 2 ? 5 : 4] = materialOrdinal;
+                petChangePayload[petChangeOperation == 2 ? 5 : 4] = checked((byte)(PetMaterialIdentityBase + materialOrdinal));
                 if (!materialIdentityValid || !TryResolvePetChangeRequest(
                         session.Character,
                         petChangePayload,
@@ -2495,7 +2500,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         materialItemCode,
                         token);
                 if (changeResult.Success)
-                    session.GameInventoryIdentities.Remove(materialWireIdentity);
+                    session.PetMaterialIdentities.Remove((uint)(materialWireIdentity - PetMaterialIdentityBase));
                 await RefreshInventoryCharacterAsync(session, token);
                 _log($"{channel}:{remote} Pet change: operation={petChangeOperation} pet={petItemCode} petHandle={petSlot} material={materialItemCode} itemIdentity={gameItemIdentity} position={payload[3]} result={(changeResult.Success ? "success" : "failed")} error={changeResult.Error}");
                 if (changeResult.Success)
@@ -3030,6 +3035,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
                 await RefreshInventoryCharacterAsync(session, token);
+                session.ShoppingCouponIdentities.Synchronize(GetShoppingCouponItemCodes(session.Character));
                 var tokenInventoryPayload = BuildTokenInventoryPayload(session.Character);
                 _log($"{channel}:{remote} restored token inventory: count={BinaryPrimitives.ReadUInt16LittleEndian(tokenInventoryPayload.AsSpan(2, 2))}");
                 return BuildNativeFrame(
@@ -3213,47 +3219,47 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return BuildNativeFrame(frame, 0xC46E, tokenUsePayload, session);
             }
 
-            case 0xC46B: // REQ_DEL_TOKENITEM
+            case 0xC46B: // REQ_DEL_TOKENITEM: domain 41 coupons and domain 42..48 game items
             {
                 if (!session.OnlineTracked || session.Character is null)
                     return null;
-                if (payload.Length != TokenDeleteRequestPayloadLength)
-                {
-                    _log($"{channel}:{remote} token delete request length invalid: expected {TokenDeleteRequestPayloadLength}, actual {payload.Length}; inventory unchanged");
-                    return null;
-                }
-
-                // C46B and C46D share the fixed item-code/inventory-identity fields.
-                // C46C reports a dword result followed by those same fields.
-                var tokenItemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
-                var tokenIdentity = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
                 var responsePayload = new byte[12];
-                BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(4, 4), tokenItemCode);
-                BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(8, 4), tokenIdentity);
-                await RefreshSessionCharacterAsync(session, token);
-                if (!ShopCatalog.TryGet(tokenItemCode, out var tokenCatalogItem)
-                    || tokenCatalogItem.Category != 47
-                    || !TryResolveSessionInventoryIdentity(session, tokenIdentity, out _, out var selectedTokenItemCode)
-                    || selectedTokenItemCode != tokenItemCode)
-                {
-                    _log($"{channel}:{remote} token delete fields invalid: item={tokenItemCode} identity={tokenIdentity}; inventory unchanged");
+                if (payload.Length != TokenDeleteRequestPayloadLength)
                     return BuildNativeFrame(frame, 0xC46C, responsePayload, session);
-                }
 
-                var deleteResult = await _database.ConsumeTokenItemAsync(
-                    session.AccountId,
-                    session.Character.Id,
-                    session.SessionId,
-                    tokenItemCode,
-                    token);
-                if (deleteResult.Success)
+                var itemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
+                var identity = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
+                BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(4, 4), itemCode);
+                BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(8, 4), identity);
+                await RefreshInventoryCharacterAsync(session, token);
+                bool coupon = ShopCatalog.TryGet(itemCode, out var catalogItem) && catalogItem.IsShoppingCoupon;
+                int ordinal = -1;
+                uint selectedCode = 0;
+                if (coupon)
                 {
-                    session.GameInventoryIdentities.Remove(tokenIdentity);
-                    BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(0, 4), 1);
-                    await RefreshSessionCharacterAsync(session, token);
+                    session.ShoppingCouponIdentities.Synchronize(GetShoppingCouponItemCodes(session.Character));
+                    session.ShoppingCouponIdentities.TryStorage(identity, out ordinal, out selectedCode);
                 }
-                _log($"{channel}:{remote} token delete: item={tokenItemCode} name={tokenCatalogItem.Name} identity={tokenIdentity} result={(deleteResult.Success ? "success" : "failure")} remaining={deleteResult.Quantity} error={deleteResult.Error}");
-                return BuildNativeFrame(frame, 0xC46C, responsePayload, session);
+                else if (TryResolveSessionInventoryIdentity(session, identity, out var gameOrdinal, out selectedCode))
+                    ordinal = gameOrdinal;
+                var deleted = catalogItem is not null && catalogItem.Category is >= 41 and <= 48
+                    && ordinal >= 0 && selectedCode == itemCode
+                    ? await _database.DeleteSpecialInventoryItemAsync(session.AccountId, session.Character.Id,
+                        session.SessionId, itemCode, ordinal, token)
+                    : (Success: false, Quantity: (ushort)0);
+                if (deleted.Success)
+                {
+                    if (coupon) session.ShoppingCouponIdentities.Remove(identity);
+                    else session.GameInventoryIdentities.Remove(identity);
+                    BinaryPrimitives.WriteUInt32LittleEndian(responsePayload.AsSpan(0, 4), 1);
+                    await RefreshInventoryCharacterAsync(session, token);
+                    AccountStateChanged?.Invoke();
+                }
+                _log($"{channel}:{remote} special-item delete: item={itemCode} identity={identity} coupon={coupon} success={deleted.Success} remaining={deleted.Quantity}");
+                var deleteResponse = BuildNativeFrame(frame, 0xC46C, responsePayload, session);
+                if (!deleted.Success || session.Character is null)
+                    return deleteResponse;
+                return BuildInventoryMutationRefresh(frame, deleteResponse, session, coupon);
             }
 
             case 0xC378: // REQ_MY_BOX_INFO
@@ -3879,78 +3885,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             }
 
             case 0xC480: // REQ_USE_INVENTORY_ADD_ITEM -> ANS_USE_INVENTORY_ADD_ITEM
-            {
-                if (!session.OnlineTracked || session.Character is null)
-                    return null;
-
-                var requestControl = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(0, 2));
-                if (session.LastSkillSlotExpansionRequestControl == requestControl
-                    && session.LastSkillSlotExpansionRequestPayload is { } cachedRequest
-                    && payload.AsSpan().SequenceEqual(cachedRequest)
-                    && session.LastSkillSlotExpansionResultPayload is { } cachedResult
-                    && DateTime.UtcNow - session.LastSkillSlotExpansionRequestUtc <= TimeSpan.FromSeconds(5))
-                {
-                    _log($"{channel}:{remote} replayed C480 transport frame; returning cached C481 without consuming another ticket");
-                    return BuildNativeFrame(frame, 0xC481, cachedResult, session);
-                }
-
-                var requestParsed = TryParseInventoryExpansionRequest(
-                    payload,
-                    out var requestedType,
-                    out var requestedIdentity);
-                uint itemCode = 0;
-                byte inventorySlot = 0;
-                byte[] resultPayload;
-                if (!requestParsed || requestedType > 6 || requestedIdentity > 83)
-                {
-                    _log($"{channel}:{remote} inventory expansion request invalid: payload={payload.Length} type={requestedType} identity={requestedIdentity}; inventory unchanged");
-                    resultPayload = BuildSkillSlotExpansionResultPayload(1, requestedType, inventorySlot, itemCode, 0);
-                }
-                else
-                {
-                    await RefreshInventoryCharacterAsync(session, token);
-                    if (session.Character is null
-                        || !TryResolveSessionInventoryIdentity(session, requestedIdentity, out _, out var requestedCode)
-                        || !ShopCatalog.TryGet(requestedCode, out var ticket)
-                        || ticket.Category != 44
-                        || InventoryExpansionWireAction(ticket.InventoryExpansionType) != requestedType)
-                    {
-                        _log($"{channel}:{remote} inventory expansion rejected: no type-{requestedType} ticket in the game-item inventory");
-                        resultPayload = BuildSkillSlotExpansionResultPayload(1, requestedType, 0, 0, 0);
-                    }
-                    else
-                    {
-                        itemCode = ticket.ItemCode;
-                        inventorySlot = checked((byte)requestedIdentity);
-                        var use = await _database.UseInventoryExpansionAsync(
-                            session.AccountId,
-                            session.Character.Id,
-                            session.SessionId,
-                            itemCode,
-                            DateTime.Now,
-                            token);
-                        if (use.Success)
-                        {
-                            session.GameInventoryIdentities.Remove(inventorySlot);
-                            await RefreshInventoryCharacterAsync(session, token);
-                            AccountStateChanged?.Invoke();
-                        }
-                        _log($"{channel}:{remote} inventory expansion: type={requestedType} item={itemCode} slot={inventorySlot} durationDays={ticket.DurationDays} result={(use.Success ? "success" : "failure")} expires={use.Expiration} remaining={use.RemainingQuantity} error={use.Error}");
-                        resultPayload = BuildSkillSlotExpansionResultPayload(
-                            use.Success ? (byte)0 : (byte)1,
-                            requestedType,
-                            inventorySlot,
-                            itemCode,
-                            use.Success ? use.Expiration : 0);
-                    }
-                }
-
-                session.LastSkillSlotExpansionRequestControl = requestControl;
-                session.LastSkillSlotExpansionRequestPayload = payload.ToArray();
-                session.LastSkillSlotExpansionRequestUtc = DateTime.UtcNow;
-                session.LastSkillSlotExpansionResultPayload = resultPayload.ToArray();
-                return BuildNativeFrame(frame, 0xC481, resultPayload, session);
-            }
+                return await HandleInventoryExpansionAsync(frame, payload, channel, remote, session, token);
 
             case 0xC3F3: // REQ_SELL_DDAKGI -> ANS_SELL_DDAKGI
             {
@@ -6786,7 +6721,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 int damage;
                 int componentEnergy;
                 bool componentResolvedNow;
-                bool hiddenSuperBossTailResolved = false;
                 uint bossDropCardCode = 0;
                 uint[] bossScores;
                 Dictionary<long, int> bossHansRewards = [];
@@ -6840,30 +6774,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             componentState.CurrentHp);
                     componentState.CurrentHp -= damage;
                     componentEnergy = componentState.CurrentHp;
-                    var hiddenComponentKey = new DungeonBossComponentKey(1, 0, 8);
-                    if (componentState.Defeated
-                        && !componentState.ResolutionAnnounced
-                        && bossRoom.HdIndex == 0
-                        && bossRoom.BattleEpisode == 0
-                        && bossRoom.BattleDungeon == 2
-                        && bossRoom.BattleStage == 1
-                        && bossTemplate.TotalHp == 25_000
-                        && bossTemplate.TotalScore == 11_000
-                        && bossTemplate.Components.Count == 2
-                        && componentKey == new DungeonBossComponentKey(0, 0, 9)
-                        && componentTemplate.Hp == 15_000
-                        && bossTemplate.Components.TryGetValue(hiddenComponentKey, out var hiddenComponentTemplate)
-                        && hiddenComponentTemplate.Hp == 10_000
-                        && bossState.Components.TryGetValue(hiddenComponentKey, out var hiddenComponentState)
-                        && hiddenComponentState.CurrentHp > 0)
-                    {
-                        // bbm_03 exposes only p0/b0/c9 to retail attacks. Its p1/b0/c8
-                        // tail never becomes targetable, so resolve that resource-only
-                        // HP when the visible component dies and let D012 clear the BOSS.
-                        hiddenComponentState.CurrentHp = 0;
-                        hiddenComponentState.ResolutionAnnounced = true;
-                        hiddenSuperBossTailResolved = true;
-                    }
                     bossEnergy = checked((uint)bossState.CurrentEnergy);
                     bossRoom.Battle.LastBossResourceUid = bossResourceUid;
                     componentResolvedNow = componentState.Defeated && !componentState.ResolutionAnnounced;
@@ -6987,7 +6897,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     }
                 }
                 var immediateHans = bossHansRewards.GetValueOrDefault(session.Character.Id);
-                _log($"{channel}:{remote} Dungeon BOSS component resolved: room={bossRoom.Id} map={mapIndex} mode={mode} secondary={secondary} object={bossObjectIndex} uid={bossResourceUid} source={attackSourceCode} projectile={projectileIndex} component={parentIndex}/{childIndex}/{componentIndex} category={componentTemplate.AttackCategory} attackSource={(activeSkillCode == 0 ? "pet" : "skill")} skill={activeSkillCode} grade={activeSkillGrade} attack={baseAttack}->{effectiveAttack} defense={componentTemplate.Defense}->{effectiveDefense} damage={damage} componentHp={componentEnergy}/{componentTemplate.Hp} bossEnergy={bossEnergy}/{bossTemplate.TotalHp} hiddenTailResolved={hiddenSuperBossTailResolved} cleared={clearedNow} bossBonusScore={(clearedNow ? bossTemplate.TotalScore : 0)} immediateHans={immediateHans} sceneDrop={bossDropCardCode}");
+                _log($"{channel}:{remote} Dungeon BOSS component resolved: room={bossRoom.Id} map={mapIndex} mode={mode} secondary={secondary} object={bossObjectIndex} uid={bossResourceUid} source={attackSourceCode} projectile={projectileIndex} component={parentIndex}/{childIndex}/{componentIndex} category={componentTemplate.AttackCategory} attackSource={(activeSkillCode == 0 ? "pet" : "skill")} skill={activeSkillCode} grade={activeSkillGrade} attack={baseAttack}->{effectiveAttack} defense={componentTemplate.Defense}->{effectiveDefense} damage={damage} componentHp={componentEnergy}/{componentTemplate.Hp} bossEnergy={bossEnergy}/{bossTemplate.TotalHp} cleared={clearedNow} bossBonusScore={(clearedNow ? bossTemplate.TotalScore : 0)} immediateHans={immediateHans} sceneDrop={bossDropCardCode}");
                 return BuildNativeFrame(frame, 0xD012, bossResponsePayload, session);
             }
 
@@ -7642,12 +7552,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     recordsStage = recordsRoom.BattleStage;
                     recordsDifficulty = recordsRoom.BattleLogicalDifficulty;
                 }
-                var stageRecords = await _database.GetDungeonStageLeaderboardAsync(
-                    recordsHdIndex, recordsEpisode, recordsDungeon, recordsStage, recordsDifficulty,
-                    limit: 10, cancellationToken: token);
-                var recordsPayload = BuildDungeonStageRecordsPayload(payload, stageRecords);
-                _log($"{channel}:{remote} Dungeon stage leaderboard returned: selectors={recordsHdIndex}/{recordsEpisode}/{recordsDungeon}/{recordsStage}/{recordsDifficulty} records={stageRecords.Count}");
-                return BuildNativeFrame(frame, 0xCF16, recordsPayload, session);
+                return await BuildDungeonStageRecordsResponseAsync(
+                    frame, session, recordsHdIndex, recordsEpisode, recordsDungeon,
+                    recordsStage, recordsDifficulty, token);
             }
 
             case 0xCF89: // REQ_FLYSHOOTING_END_PVPGAME_INFO -> ANS_FLYSHOOTING_END_PVPGAME_INFO
@@ -7785,8 +7692,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var reportedDamage = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2, 2));
                 var targetVectorIndex = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(4, 2));
                 var collisionActorUid = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(6, 2));
+                var collisionDescriptor = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(8, 4));
                 ushort damage = 0;
-                if (eventCode == 10)
+                if (eventCode is 10 or 40)
                 {
                     var damageRoom = GetDungeonRoom(session);
                     var damageBattle = damageRoom?.Battle;
@@ -7813,8 +7721,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             return null;
                         }
 
+                        var effectiveReportedDamage = eventCode == 40
+                            ? ResolveDungeonBossCollisionDamage(damageRoom, collisionDescriptor)
+                            : reportedDamage;
                         damage = (ushort)Math.Min(
-                            Math.Min(reportedDamage, session.Character.CurrentHp),
+                            Math.Min(effectiveReportedDamage, session.Character.CurrentHp),
                             ushort.MaxValue);
                         if (damage > 0)
                         {
@@ -7841,7 +7752,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                                     token);
                     _log($"{channel}:{remote} Dungeon player damage applied: room={session.DungeonRoomId} map={GetDungeonRoom(session)?.SelectedMapIndex?.ToString() ?? "none"} characterId={session.Character.Id} reportedDamage={reportedDamage} targetIndex={targetVectorIndex} actor={collisionActorUid} damage={damage} hp={session.Character.CurrentHp}/{session.Character.MaxHp} persisted={saved}");
                 }
-                var objectEventPayload = eventCode == 10
+                var objectEventPayload = eventCode is 10 or 40
                     ? BuildDungeonGameEventPayload(
                         session.Character,
                         eventCode,
@@ -7849,7 +7760,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         damage)
                     : DungeonProtocol.BuildObjectEvent(payload);
                 QueueDungeonBroadcast(session, 0xD010, objectEventPayload, false, "dungeon object event");
-                _log($"{channel}:{remote} Dungeon object event synchronized: characterId={session.Character.Id} event={eventCode} reportedDamage={reportedDamage} targetIndex={targetVectorIndex} actor={collisionActorUid} damage={damage} hp={session.Character.CurrentHp}/{session.Character.MaxHp} mode={(eventCode == 10 ? "authoritative-hp-result" : "retail-echo")}");
+                _log($"{channel}:{remote} Dungeon object event synchronized: characterId={session.Character.Id} event={eventCode} reportedDamage={reportedDamage} targetIndex={targetVectorIndex} actor={collisionActorUid} damage={damage} hp={session.Character.CurrentHp}/{session.Character.MaxHp} mode={(eventCode is 10 or 40 ? "authoritative-hp-result" : "retail-echo")}");
                 return BuildNativeFrame(frame, 0xD010, objectEventPayload, session);
             }
 
@@ -10285,7 +10196,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         }
 
         var petChoices = ShopCatalog.All
-            .Where(item => item.Section == InventorySection.Pet
+            .Where(item => item.Category == 15
                            && item.ItemCode / 1_000_000u == 15u)
             .ToArray();
         var pet = petChoices.Length == 0 ? null : petChoices[Random.Shared.Next(petChoices.Length)];
@@ -13650,6 +13561,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(6, 2), responseOpcode);
         payload.CopyTo(response.AsSpan(8));
         RewriteSessionInventoryIdentities(response, session);
+        RewriteSessionPetMaterialIdentities(response, session);
         return response;
     }
 
@@ -13919,9 +13831,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // The 271A consumer reads frame+12 and calls the same character-level
         // setter used by C355. This is payload+4 after the native header.
         payload[4] = session.Character is null ? (byte)0 : (byte)Math.Clamp(session.Character.Level, 1, 99);
-        // The standalone client routes packet+13 == 0 directly to
-        // CMakeCharState and packet+13 == 1 to the existing-character path.
-        payload[5] = (byte)(session.Character is null ? 0 : 1);
+        // 271A frame+0x0D is the persisted character title grade.
+        payload[5] = CharacterTitleState.GetGrade(session.Character);
         // The 271A consumer stores packet+14 as the persistent guide state.
         // A completed character must restore state 2; state 0 makes the card
         // book recreate its basic-help flow every time it is opened.
@@ -15558,7 +15469,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             GetSceneEntityId(character),
             win,
             0,
-            0,
+            CharacterTitleState.GetGrade(character),
             checked((byte)Math.Clamp(character.Level, 1, byte.MaxValue)),
             1,
             0,
@@ -15752,7 +15663,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // C355 frame+0x24 restores the persisted dungeon grade used by the
         // title renderer. The launcher fixed selection and native CF88 state
         // share this same managed snapshot.
-        payload[0x24 - NativeHeaderLength] = character?.DungeonGrade ?? 0;
+        payload[0x24 - NativeHeaderLength] = CharacterTitleState.GetGrade(character);
         // The retail C355 handler stores frame+40/+44/+48 as accumulated
         // experience, this level's start, and the next-level threshold. The
         // profile window reads those same three local-state values to compute
@@ -16073,42 +15984,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
-    internal static bool TryParseInventoryExpansionRequest(
-        ReadOnlySpan<byte> payload,
-        out byte expansionType,
-        out ushort inventoryIdentity)
-    {
-        expansionType = 0;
-        inventoryIdentity = 0;
-        if (payload.Length != InventoryExpansionRequestPayloadLength)
-            return false;
-        var rawType = BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(0, 2));
-        inventoryIdentity = BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(2, 2));
-        if (rawType > byte.MaxValue)
-            return false;
-        expansionType = checked((byte)rawType);
-        return true;
-    }
-
-    private static byte[] BuildSkillSlotExpansionResultPayload(
-        byte result,
-        byte expansionType,
-        byte inventorySlot,
-        uint itemCode,
-        uint expiration)
-    {
-        // C481 is consumed as result, reserved, type, slot, item and the
-        // YYYYMMDDHH expiration value. Only result zero removes the ticket
-        // and enables the extra skill slot.
-        var payload = new byte[InventoryExpansionResponsePayloadLength];
-        payload[0] = result;
-        payload[2] = expansionType;
-        payload[3] = inventorySlot;
-        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4, 4), itemCode);
-        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(8, 4), expiration);
-        return payload;
-    }
-
     private static byte[] BuildFaceCouponResultPayload(
         bool success,
         ReadOnlySpan<byte> appearance)
@@ -16231,7 +16106,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0, 2), GetSceneEntityId(character));
         _ = gameType;
         payload[2] = (byte)Math.Clamp(character.Level, 1, byte.MaxValue);
-        payload[3] = 1; // first valid qz_inter_lv_icon resource index
+        // CF0E frame+0x0B is the persisted character title grade.
+        payload[3] = CharacterTitleState.GetGrade(character);
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(4, 2), (ushort)Math.Clamp(character.CurrentHp, 0, ushort.MaxValue));
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(6, 2), (ushort)Math.Clamp(character.MaxHp, 1, ushort.MaxValue));
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(8, 2), (ushort)Math.Clamp(character.CurrentMp, 0, ushort.MaxValue));
@@ -16545,11 +16421,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         payload[0x0D] = (byte)Math.Min(
             PetProgression.GetCurrentStageMaximumLevel(petState),
             byte.MaxValue);
-        // Native CF88 consumes record+0x09 as the same ten-level-band icon
-        // used by the room/player state packets. record+0x0C below is the
-        // separate post-battle character level.
-        payload[0x0B] = (byte)GetDungeonLevelIcon(player.Level);
-        // Native CF88 record+0x0C is the player's post-battle level. The client
+        // CF88 record+0x07 is the persisted dungeon title grade.
+        payload[0x0B] = CharacterTitleState.GetGrade(player);
+        // Native CF88 record+0x0A is the player's post-battle level. The client
         // writes it straight back to the local character before drawing both
         // the settlement level and the following dungeon HUD.
         payload[0x0E] = (byte)Math.Clamp(player.Level, 1, byte.MaxValue);
@@ -16861,6 +16735,21 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         payload[0x72 - 8] = 1;
         payload[0x73 - 8] = character.RevivalUseCount;
         return payload;
+    }
+
+    private static ushort ResolveDungeonBossCollisionDamage(DungeonRoom room, uint collisionDescriptor)
+    {
+        if (room.Battle.LastBossResourceUid is not { } resourceUid
+            || !room.Battle.Bosses.TryGetValue(resourceUid, out var boss))
+            return 1;
+
+        var componentIndex = checked((int)(collisionDescriptor >> 16));
+        var damage = boss.Components
+            .Where(pair => pair.Key.ComponentIndex == componentIndex && !pair.Value.Defeated)
+            .Select(pair => pair.Value.Template.CollisionAttack)
+            .DefaultIfEmpty(1)
+            .Max();
+        return checked((ushort)Math.Clamp(damage, 1, ushort.MaxValue));
     }
 
     private static byte[] BuildDungeonGameEventPayload(
@@ -17189,7 +17078,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var petHandle = payload[2];
         materialIdentity = operation == 2 ? payload[5] : payload[4];
         if (petHandle >= pets.Length
-            || !TryResolveGameInventoryIdentity(character, materialIdentity, out materialItemCode))
+            || !TryResolvePetMaterialOrdinal(character, materialIdentity, out materialItemCode))
             return false;
         petItemCode = pets[petHandle];
         return true;
@@ -17347,14 +17236,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     internal static byte[] BuildTokenInventoryPayload(CharacterRecord? character)
     {
-        var itemCodes = character?.Items
-            .Where(item => item.Quantity > 0
-                && ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
-                && catalogItem.IsShoppingCoupon)
-            .OrderBy(item => item.ItemCode)
-            .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
-            .Take(ushort.MaxValue)
-            .ToArray() ?? [];
+        var itemCodes = GetShoppingCouponItemCodes(character);
 
         // C46A carries domain-41 shopping coupons. Microphones and card keys
         // remain C430 game-inventory rows with C430 identities in C46D.
@@ -17376,14 +17258,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var equippedPetItemCode = GetEquippedPetItemCode(character);
         if (equippedPetItemCode != 0 && !petItems.Contains(equippedPetItemCode))
             equippedPetItemCode = 0;
-        var hasPet = petItems.Length > 0;
+        var materials = GetPetMaterialWireItemCodes(character);
+        var hasPet = petItems.Length + materials.Length > 0;
         var expansionExpiration = GetActiveInventoryExpansionExpiration(character?.PetInventoryExpansionExpires ?? 0);
         // Current C44C contract: mode4 enables expansion; frame+2028
         // is its expiry. Selection compares header+11 with each record handle.
         var payload = new byte[hasPet || expansionExpiration != 0 ? 2024 : 4];
         payload[0] = 1; // status
         payload[1] = expansionExpiration != 0 ? (byte)4 : (byte)0;
-        payload[2] = (byte)petItems.Length;
+        payload[2] = checked((byte)(petItems.Length + materials.Length));
         payload[3] = equippedPetItemCode == 0 ? byte.MaxValue : checked((byte)Array.IndexOf(petItems, equippedPetItemCode));
         if (!hasPet || character is null)
         {
@@ -17409,6 +17292,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(24, 4), state.Accessory1);
             BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(28, 4), state.Accessory2);
             BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(32, 4), state.Level);
+        }
+        for (var index = 0; index < materials.Length; index++)
+        {
+            var record = payload.AsSpan(4 + (petItems.Length + index) * PetInventoryRecordLength, PetInventoryRecordLength);
+            BinaryPrimitives.WriteUInt32LittleEndian(record, materials[index]);
+            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4), PermanentItemExpiration);
+            BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(8), checked((ushort)(PetMaterialIdentityBase + index)));
+            // Non-PET rows have no growth, durability or socket state.
         }
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(2020, 4), expansionExpiration);
         return payload;
@@ -18381,6 +18272,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         var level = Math.Clamp(character?.Level ?? 1, 1, 99);
         payload[31] = (byte)level;
+        payload[33] = CharacterTitleState.GetGrade(character);
 
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(34, 2),

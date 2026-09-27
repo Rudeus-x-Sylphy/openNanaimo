@@ -44,6 +44,11 @@ internal static class ApartmentShopChecks
             async Task Refresh() => Set("Character", (await db.GetCharacterAsync(account))!);
             async Task Reset(long hans = 100000, long cash = 100000)
             {
+                // A reset seeds a new account snapshot, not an in-session mutation.
+                // Give it a fresh identity namespace just as a reconnect would.
+                session = Activator.CreateInstance(sessionType, nonPublic: true)!;
+                sessionId = (string)sessionType.GetProperty("SessionId")!.GetValue(session)!;
+                Set("AccountId", account); Set("OnlineTracked", true); Set("ChannelId", 1); Set("RemoteIp", "127.0.0.1");
                 await Execute($"DELETE FROM CharacterApartmentItems WHERE CharacterId={characterId}; DELETE FROM CharacterItems WHERE CharacterId={characterId}; DELETE FROM CharacterCashInboxItems WHERE CharacterId={characterId}; " +
                     $"UPDATE Characters SET Hans={hans},Cash={cash},IsOnline=1,ActiveSessionId='{sessionId}' WHERE Id={characterId}; " +
                     $"UPDATE Accounts SET IsOnline=1,ActiveSessionId='{sessionId}' WHERE Id={account};");

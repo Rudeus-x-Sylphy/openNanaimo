@@ -13,6 +13,9 @@ internal static class MigrationChecks
         await CompatibilityChecks.RunAsync();
 #endif
         await TutorialAppearanceChecks.RunAsync();
+        await InventoryDiscardChecks.RunAsync();
+        await InventoryExpansionChecks.RunAsync();
+        await PetMaterialClassificationChecks.RunAsync();
         await ChannelReentryChecks.RunAsync();
         await ShopCurrencyPaginationChecks.RunAsync();
         await DungeonRankingChecks.RunAsync();
@@ -206,7 +209,7 @@ internal static class MigrationChecks
             await client.ConnectAsync(IPAddress.Loopback, loginPort, token);
             await RequestAsync(client, 0x2730, new byte[360], 0x2731, token);
             var context = await RequestAsync(client, 0x2719, new byte[24], 0x271A, token);
-            Assert(context[5] == 1 && Encoding.ASCII.GetString(context, 8, 11) == "LocalCheckA",
+            Assert(context[5] == 0 && Encoding.ASCII.GetString(context, 8, 11) == "LocalCheckA",
                 "Passwordless relogin restores the original account character");
         }
         Assert(await db.OpenLocalAccountAsync(firstAccount.ToUpperInvariant(), token) == first, "Account case matches existing database rules");
@@ -250,7 +253,7 @@ internal static class MigrationChecks
             await client.ConnectAsync(IPAddress.Loopback, loginPort, token);
             await RequestAsync(client, 0x2730, new byte[360], 0x2731, token);
             var context = await RequestAsync(client, 0x2719, new byte[24], 0x271A, token);
-            Assert(context[5] == 1 && context[6] == 2, "Relogin skips both creation and completed tutorial");
+            Assert(context[5] == 0 && context[6] == 2, "Relogin skips both creation and completed tutorial");
         }
     }
 

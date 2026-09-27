@@ -79,7 +79,7 @@ public sealed class NativeDungeonState
         s.Put(72, petState.CurrentStage); s.Put(76, petState.MaximumStage);
         s.Put(PetLevelOffset, petState.Level);
         s.Put(PetExperienceOffset, petState.Experience);
-        s.Put(DungeonGradeOffset, Math.Min(c.DungeonGrade, (byte)42));
+        s.Put(DungeonGradeOffset, CharacterTitleState.GetGrade(c));
         // Keep the original adapter's zero additive damage and defense policy.
         s.Put(88, name.Length); s.Put(92, c.Gender); name.CopyTo(data, 96);
         ReadOnlySpan<int> equipmentAppearanceOffsets = [0, 4, 8, 12, 20];
@@ -115,17 +115,25 @@ public sealed class NativeDungeonState
             .OrderBy(item => item.ItemCode)
             .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
             .ToArray();
-        var nativeHandlesByInventoryIdentity = new Dictionary<int, int>();
+        // The native worker retains 14/17/19/21 in one legacy ledger even though
+        // client material inventory moved to C44C. Populate ALL native instances
+        // first, then crosswalk only the current C430 ordinals by same-code occurrence.
+        var handlesByCode = new Dictionary<uint, Queue<int>>();
         var nextNativeHandle = 1;
-        for (var inventoryIdentity = 0; inventoryIdentity < inventoryInstances.Length; inventoryIdentity++)
+        foreach (var item in items)
         {
-            var code = inventoryInstances[inventoryIdentity];
-            if (!IsNativeItem(code))
-                continue;
-            nativeHandlesByInventoryIdentity[inventoryIdentity] = nextNativeHandle;
-            s.Put(4000 + nextNativeHandle * 4, code);
-            nextNativeHandle++;
+            var handles = new Queue<int>();
+            handlesByCode.Add(item.ItemCode, handles);
+            for (int i = 0; i < item.Quantity; i++)
+            {
+                s.Put(4000 + nextNativeHandle * 4, item.ItemCode);
+                handles.Enqueue(nextNativeHandle++);
+            }
         }
+        var nativeHandlesByInventoryIdentity = new Dictionary<int, int>();
+        for (var inventoryIdentity = 0; inventoryIdentity < inventoryInstances.Length; inventoryIdentity++)
+            if (handlesByCode.TryGetValue(inventoryInstances[inventoryIdentity], out var handles) && handles.Count > 0)
+                nativeHandlesByInventoryIdentity[inventoryIdentity] = handles.Dequeue();
 
         var selectedHandles = new HashSet<int>();
         foreach (var slot in c.QuickSlots)

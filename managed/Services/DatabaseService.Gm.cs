@@ -153,7 +153,7 @@ public sealed partial class DatabaseService
         }
         else command.CommandText = $"INSERT INTO {table}(CharacterId,{key},{field},UpdatedAt) VALUES($id,$code,$value,$now) ON CONFLICT(CharacterId,{key}) DO UPDATE SET {field}=$value,UpdatedAt=$now";
         await command.ExecuteNonQueryAsync(token);
-        if (kind == "item" && after > 0 && ShopCatalog.TryGet(code, out var pet) && pet.Section == InventorySection.Pet)
+        if (kind == "item" && after > 0 && ShopCatalog.TryGet(code, out var pet) && pet.Category == 15)
         {
             command.CommandText = "UPDATE CharacterItems SET PetCurrentStage=MAX(PetCurrentStage,$stage),PetMaximumStage=MAX(PetMaximumStage,$maximum) WHERE CharacterId=$id AND ItemCode=$code";
             command.Parameters.AddWithValue("$stage", Math.Max(1,(int)pet.PetModelStage));

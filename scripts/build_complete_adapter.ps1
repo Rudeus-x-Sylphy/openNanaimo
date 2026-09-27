@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$OutputRoot = (Join-Path (Split-Path $PSScriptRoot -Parent) 'adapter_runtime'),
     [string]$TccPath,
     [string]$DotnetPath,
@@ -50,7 +50,8 @@ $manifest = [ordered]@{
     sdk = $sdk
     files = $files
 }
-[IO.File]::WriteAllText($manifestPath,($manifest | ConvertTo-Json -Depth 5),[Text.UTF8Encoding]::new($false))
+$manifestJson = ($manifest | ConvertTo-Json -Depth 5).Replace("`r`n", "`n")
+[IO.File]::WriteAllText($manifestPath,$manifestJson,[Text.UTF8Encoding]::new($false))
 if ($SelfTest) {
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
     $testRoot = [IO.Path]::GetFullPath((Join-Path $tempRoot ('open-nanaimo-full-adapter-' + [guid]::NewGuid().ToString('N'))))

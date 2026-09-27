@@ -74,7 +74,13 @@ public sealed partial class NetworkAdapterService
     private static void RewriteSessionInventoryIdentities(Span<byte> frame,ConnectionSession session)
     {
         ushort opcode=BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6,2));
-        if(session.Character is null || opcode is not (0xC430 or 0xC379)) return;
+        if(session.Character is null) return;
+        if(opcode == 0xC46A && frame.Length >= 12)
+        {
+            RewriteShoppingCouponIdentities(frame, session);
+            return;
+        }
+        if(opcode is not (0xC430 or 0xC379)) return;
         var identities=SessionInventory(session);
         if(opcode==0xC430 && frame.Length>=12)
         {

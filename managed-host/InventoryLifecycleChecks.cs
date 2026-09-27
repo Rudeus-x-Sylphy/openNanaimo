@@ -125,7 +125,7 @@ internal static class InventoryLifecycleChecks
             await RejectUnchanged(async () => (await db.DeleteGameInventoryItemAsync(account, character, session, 41_000_001, 0)).Success, "coupon is outside game identities");
             Check((await db.DeleteGameInventoryItemAsync(account, character, session, 42_000_002, 1)).Success,
                 "microphones occupy C430 identities and coupons do not");
-            await RejectUnchanged(async () => (await db.DeleteGameInventoryItemAsync(account, character, session, 47_000_004, 1)).Success, "keys keep no-discard policy");
+            await RejectUnchanged(async () => (await db.DeleteGameInventoryItemAsync(account, character, session, 47_000_004, 1)).Success, "keys reject ordinary C433 deletion; C46B owns special-item deletion");
 
             // Deleting equipped clothing used to restore the gender default instead of zero.
             await ResetItems();

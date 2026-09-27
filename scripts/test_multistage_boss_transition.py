@@ -159,6 +159,33 @@ int main(void){
         }
         assert(multimode_profiles>100u && transition_modes>100u && addressed_modes>100u);
     }
+    /* Stage 4 retires each first-mode part before entering its final mode. */
+    {
+        struct boss_hp_sync_context split;
+        struct boss_hp_sync_result hit;
+        unsigned n,i,indices[BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS];
+        boss_hp_sync_init(&split);
+        boss_hp_sync_begin_game_domain(&split,3u,0u,2u,1u,2u,7u);
+        assert(split.profile && split.mode_count==2u && split.positive_child_count==2u);
+        n=split.component_count;
+        for(i=0;i<n;i++)indices[i]=split.component_def_index[i];
+        for(i=0;i<n;i++){
+            const struct boss_component_boss_component *part=&boss_component_boss_components[indices[i]];
+            if(!part->scaled_hp)continue;
+            request(req,0u,part->child,part->ordinal);
+            assert(boss_hp_sync_apply_d011_attack(&split,req,sizeof(req),1000000u,1u,&hit)==BOSS_HP_SYNC_OK);
+            assert(hit.component_first_terminal);
+        }
+        assert(hit.intermediate_terminal && hit.phase_transition_retire);
+        assert(!hit.final_terminal && split.awaiting_next_mode);
+        memset(frame,0,sizeof(frame));
+        assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&hit)==BOSS_HP_SYNC_OK);
+        assert(frame[0x19]==hit.wire_child && boss_hp_sync_get16(frame,0x1A)==hit.target_ordinal);
+        assert(boss_hp_sync_get32(frame,0x28)==0u);
+        request(req,1u,0u,2u);
+        assert(boss_hp_sync_apply_d011_attack(&split,req,sizeof(req),1000000u,1u,&hit)==BOSS_HP_SYNC_OK);
+        assert(hit.final_terminal && hit.first_terminal);
+    }
     return 0;
 }
 '''

@@ -235,14 +235,17 @@ internal static class DungeonSaveChecks
             var cf72Payload = new byte[108];
             BinaryPrimitives.WriteUInt16LittleEndian(
                 cf72Payload.AsSpan(0, 2), checked((ushort)character.Id));
+            // CF72's native worker owns PET apply/level lifecycle. The managed
+            // resource patch must preserve those bytes, not synthesize levels
+            // from the profile's InitialAttackMode (which can already be stale).
+            cf72Payload[0x64 - 8] = 1;
+            cf72Payload[0x66 - 8] = 2;
+            cf72Payload[0x67 - 8] = 3;
             var cf72 = NativeDungeonClient.Frame(0xCF72, cf72Payload);
-            var expectedCombatLevel = checked((byte)Math.Clamp(
-                progressedCharacter.InitialAttackMode + 1, 1, 3));
             Check(NetworkAdapterService.PatchNativePetActorFrame(cf72, progressedCharacter)
-                && cf72[0x66] == expectedCombatLevel
-                && cf72[0x67] == expectedCombatLevel
+                && cf72[0x64] == 1 && cf72[0x66] == 2 && cf72[0x67] == 3
                 && HasValidChecksum(cf72),
-                "CF72 forwarding preserves the independent pet combat/attack-mode level");
+                "CF72 forwarding preserves native PET apply/level bytes independently of the profile");
 
             var cf88Payload = new byte[56];
             BinaryPrimitives.WriteUInt16LittleEndian(cf88Payload.AsSpan(0, 2), 1);

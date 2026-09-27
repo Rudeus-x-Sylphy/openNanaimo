@@ -53,18 +53,18 @@ if(Test-Path -LiteralPath $AdapterManifest){
 }
 $ReleaseIdentity=if($ExpectedAdapterDllHash){'Adapter.dll '+$ExpectedAdapterDllHash.Substring(0,[Math]::Min(12,$ExpectedAdapterDllHash.Length))}else{'Adapter.dll UNVERIFIED'}
 $GbK=[Text.Encoding]::GetEncoding(936)
-$KnownDungeonTitles=@{0='修炼中的初级收集者';2='打败大机械熊偶的收集者';23='打败头脑胶囊的收集者'}
-function Get-DungeonTitleIconResource([int]$grade){if($grade-lt0-or$grade-gt42){throw 'dungeon grade must be 0..42'};if($grade-le20){return 2038+$grade};if($grade-le38){return 2394+($grade-21)};return 2412}
+$KnownDungeonTitles=@{0='修炼中的初级收集者';2='打败大机械熊偶的收集者';23='打败头脑胶囊的收集者';24='打败马斯特洛克的收集者'}
+function Get-DungeonTitleIconResource([int]$grade){if($grade-lt0-or$grade-gt42){throw '称号档位必须为0～42。'};return 1243+$grade}
+function Get-DungeonTitleTextResource([int]$grade){if($grade-lt0-or$grade-gt42){throw '称号档位必须为0～42。'};if($grade-le20){return 2038+$grade};if($grade-le38){return 2394+($grade-21)};return 2412}
 function New-DungeonTitleChoices([int]$currentGrade=-1){
-    $rows=New-Object Collections.ArrayList;$current=if($currentGrade-ge0-and$currentGrade-le42){"（当前进度 grade $currentGrade）"}else{''}
-    [void]$rows.Add([pscustomobject]@{Grade=-1;ResourceId=$null;IconResource=$null;Rank='';Name='跟随进度档';Display="跟随已有地宫进度，不覆盖称号$current"})
+    $rows=New-Object Collections.ArrayList
+    [void]$rows.Add([pscustomobject]@{Grade=-1;ResourceId=$null;IconResource=$null;TextResource=$null;Rank='';Name='跟随进度档';Display='跟随已有地宫进度，不覆盖称号'})
     for($g=0;$g-le42;$g++){
-        $resource=1243+$g;$icon=Get-DungeonTitleIconResource $g
-        $rank=if($g-ge17-and$g-le39){'R'+($g-16)}elseif($g-ge40){'R23共享'}else{''}
-        $iconText=if($rank){"$icon/$rank"}else{[string]$icon}
-        $name=if($KnownDungeonTitles.ContainsKey($g)){[string]$KnownDungeonTitles[$g]}elseif($rank){"客户端图标$rank 测试档"}else{'中文名尚未逐档闭环'}
-        $proof=if($g-eq23){'用户目视校准：原R4位置实际R7'}elseif($g-eq39){'用户目视校准：原R20位置实际R23'}elseif($g-ge40){'静态闭环：grade39..42共享图标2412/R23'}elseif($rank){'由grade23=R7、grade39=R23及连续资源序列推定'}elseif($KnownDungeonTitles.ContainsKey($g)){'已精确映射中文称号'}else{'仅grade/资源槽位已闭环'}
-        [void]$rows.Add([pscustomobject]@{Grade=$g;ResourceId=$resource;IconResource=$icon;Rank=$rank;Name=$name;Display=("grade {0,2} | text {1} | icon {2} | {3}（{4}）"-f$g,$resource,$iconText,$name,$proof)})
+        $icon=Get-DungeonTitleIconResource $g;$text=Get-DungeonTitleTextResource $g
+        $rank=if($g-ge17-and$g-le39){'R'+($g-16)}else{''}
+        $name=if($KnownDungeonTitles.ContainsKey($g)){[string]$KnownDungeonTitles[$g]}else{"称号档位 $g"}
+        $suffix=if($g-ge40){'（无配套图标）'}elseif($rank){"（$rank）"}else{''}
+        [void]$rows.Add([pscustomobject]@{Grade=$g;ResourceId=$icon;IconResource=$icon;TextResource=$text;Rank=$rank;Name=$name;Display=("档位 {0,2} | {1}{2}"-f$g,$name,$suffix)})
     }
     return ,$rows
 }
@@ -289,7 +289,15 @@ foreach($k in @($defaults.Keys)){if($ini.ContainsKey($(if($k-eq'pet'){'pet'}else
 $defaultBody=$equipById[[uint32]$defaults.body];$defaultGender=if($ini.gender){[int]$ini.gender}elseif($defaultBody-and$defaultBody.gender-eq'M'){1}else{0}
 if($SelfTestTitleIO){
     $tmp=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo_title_'+[guid]::NewGuid().ToString('N'));New-Item -ItemType Directory -Force -Path $tmp|Out-Null
-    try{if($titleChoices.Count-ne44){throw 'title choice count'};$r1=@($titleChoices|Where-Object Grade -eq 17)[0];$r7=@($titleChoices|Where-Object Grade -eq 23)[0];$r23=@($titleChoices|Where-Object Grade -eq 39)[0];$shared=@($titleChoices|Where-Object Grade -eq 42)[0];if($r1.Rank-ne'R1'-or$r7.Rank-ne'R7'-or$r7.IconResource-ne2396-or$r23.Rank-ne'R23'-or$r23.ResourceId-ne1282-or$r23.IconResource-ne2412-or$shared.Rank-ne'R23共享'-or$shared.ResourceId-ne1285-or$shared.IconResource-ne2412){throw 'rank calibration mapping'};$path=Write-DungeonGradeState $tmp '5449544C4554455354' 42;$state=Read-KeyValueFile $path;if([int]$state.grade-ne42-or[int]$state.frontier_valid-ne0-or(Read-DungeonGradeState $tmp '5449544C4554455354')-ne42){throw 'grade42 state roundtrip'};Write-Output 'NETWORK_TITLE_IO_PASS choices=44 fixed_grades=43 grade_range=0..42 R1_grade=17 R7_grade=23 R23_grade=39 shared_R23_grades=40..42 text_resources=1243..1285 state_roundtrip=PASS'}finally{if(Test-Path -LiteralPath $tmp){[IO.Directory]::Delete($tmp,$true)}};exit 0
+    try{
+        if($titleChoices.Count-ne44){throw 'title choice count'}
+        foreach($g in 0..42){$row=@($titleChoices|Where-Object Grade -eq $g)[0];if($row.IconResource-ne(1243+$g)-or$row.ResourceId-ne$row.IconResource-or$row.TextResource-ne(Get-DungeonTitleTextResource $g)){throw "title resources $g"}}
+        $r7=@($titleChoices|Where-Object Grade -eq 23)[0];$r8=@($titleChoices|Where-Object Grade -eq 24)[0];$r23=@($titleChoices|Where-Object Grade -eq 39)[0];$last=@($titleChoices|Where-Object Grade -eq 42)[0]
+        if($r7.Rank-ne'R7'-or$r7.IconResource-ne1266-or$r7.TextResource-ne2396-or$r8.Rank-ne'R8'-or$r8.TextResource-ne2397-or$r23.Rank-ne'R23'-or$r23.IconResource-ne1282-or$last.Rank-ne''-or$last.IconResource-ne1285-or$last.TextResource-ne2412){throw 'title choice mapping'}
+        $path=Write-DungeonGradeState $tmp '5449544C4554455354' 42;$state=Read-KeyValueFile $path
+        if([int]$state.grade-ne42-or[int]$state.frontier_valid-ne0-or(Read-DungeonGradeState $tmp '5449544C4554455354')-ne42){throw 'grade42 state roundtrip'}
+        Write-Output 'CHARACTER_TITLE_IO_PASS choices=44 grade_range=0..42 images=1243..1285 unavailable_images=1283..1285 state_roundtrip=PASS'
+    }finally{if(Test-Path -LiteralPath $tmp){[IO.Directory]::Delete($tmp,$true)}};exit 0
 }
 if($SelfTestInventoryIO){Write-Output (Test-InventoryAdminInstallation $Root);exit 0}
 if($ValidateOnly){
@@ -305,7 +313,7 @@ if($ValidateOnly){
     $networkInfo=Get-LaunchModeInfo 'network' '127.0.0.1'
     [void](Test-LaunchModeTemplate $networkInfo)
     if(($networkInfo.ClientArgs-join' ')-ne'-q :1:1:0:3:4:-i 5:-r 6:7:1:127.0.0.1:'){throw 'network client arguments'}
-    if($defaultCardKeyNormal-ne99-or$defaultCardKeyGold-ne99-or$defaultCardKeyMystery-ne99-or$defaultCardKeySpecial-ne99-or$defaultFreeMagicKeyExpiry-ne2099123123){throw 'card key defaults'};if($titleChoices.Count-ne44-or@($titleChoices|Where-Object Grade -eq 23)[0].Rank-ne'R7'-or@($titleChoices|Where-Object Grade -eq 39)[0].Rank-ne'R23'-or@($titleChoices|Where-Object Grade -eq 42)[0].Rank-ne'R23共享'){throw 'title choices'}
+    if($defaultCardKeyNormal-ne99-or$defaultCardKeyGold-ne99-or$defaultCardKeyMystery-ne99-or$defaultCardKeySpecial-ne99-or$defaultFreeMagicKeyExpiry-ne2099123123){throw 'card key defaults'};if($titleChoices.Count-ne44-or@($titleChoices|Where-Object Grade -eq 23)[0].Rank-ne'R7'-or@($titleChoices|Where-Object Grade -eq 39)[0].Rank-ne'R23'-or@($titleChoices|Where-Object Grade -eq 42)[0].Rank-ne''){throw 'title choices'}
     Write-Host ('NETWORK_VALIDATE_PASS titles=43+auto pets={0} equipment={1} profile={2}/{3} hp={4}/{5} mp={6}/{7} attack={8} defense={9} coin={10} nana_point={11} skip_tutorial={12} launch_mode={13} network_ip={14} templates=PASS filters=PASS inventory_admin=PASS'-f$pets.Count,$equips.Count,$defaultName,$defaultLevel,$defaultHpMax,$defaultHpMax,$defaultMpMax,$defaultMpMax,$defaultAttack,$defaultDefense,$defaultCoin,$defaultNanaPoint,[int]$defaultSkipTutorial,$defaultLaunchMode,$defaultNetworkIp);exit 0
 }
 if($SelfTestLaunchModes){
@@ -651,7 +659,7 @@ function Save-Profile {
     $adminShop=[ordered]@{coin=[uint64]$resources.coin;nana=[uint64]$resources.nana_point;equipped=@([uint32]$selected.hair.id,[uint32]$selected.body.id,[uint32]$selected.top.id,[uint32]$selected.bottom.id,[uint32]$selected.accessory.id);effect=[uint32]$selected.effect.id;selected_pet=[uint32]$pet.id}
     $adminResult=Save-InventoryAdminState $inventoryAdmin $hex $adminShop
     $titleStatePath=$null;if([int]$titleSelection.Grade-ge0){$titleStatePath=Write-DungeonGradeState $ProfileStateRoot $hex ([int]$titleSelection.Grade)}
-    $view=[ordered]@{launch_mode=$launchMode;network_ip=$networkIp;start_local_adapter=$launchModeInfo.StartLocalAdapter;skip_tutorial=[bool]$skipTutorialBox.Checked;name=$name;level=[int]$levelBox.Value;title=[ordered]@{mode=if([int]$titleSelection.Grade-ge0){'fixed'}else{'progress'};grade=[int]$titleSelection.Grade;rank=[string]$titleSelection.Rank;resource_id=$titleSelection.ResourceId;icon_resource=$titleSelection.IconResource;name=[string]$titleSelection.Name;state_file=$titleStatePath};gender=if($genderCombo.SelectedIndex-eq1){'M'}else{'F'};pet=$pet;pet_selected_age=$age;initial_attack_mode=Selected-AttackMode;equipment=[ordered]@{hair=$selected.hair;body=$selected.body;top=$selected.top;bottom=$selected.bottom;accessory=$selected.accessory;effect=$selected.effect};resources=[ordered]@{hp_max=$resources.hp_max;mp_max=$resources.mp_max;attack=$resources.attack;defense=$resources.defense;attack_carrier='CFEC+0x2E0';defense_policy='local max(1, raw-defense) before D010/D015';coin=$resources.coin;nana_point=$resources.nana_point;apartment_recommendation_points=$resources.apartment_recommendation_points;card_key_normal=$resources.card_key_normal;card_key_gold=$resources.card_key_gold;card_key_mystery=$resources.card_key_mystery;card_key_special=$resources.card_key_special;free_magic_key_expiry=$resources.free_magic_key_expiry;quickbar_expiry=$resources.quickbar_expiry;currency_carriers='C37B+C379';item_carriers='C3E8+C430+C474'};inventory_admin=[ordered]@{account_suffix=$adminResult.account_suffix;backup=$adminResult.backup;clothing=$inventoryAdmin.Clothing.Count;pets=$inventoryAdmin.Pets.Count;game_item_kinds=$inventoryAdmin.GameItems.Count;furniture=$inventoryAdmin.Furniture.Count;cards=$inventoryAdmin.Cards.Count};skills=[ordered]@{projectile_route=$skills.projectile_route;meat_route=$skills.meat_route;slot_z=$skills.slot_z;slot_x=$skills.slot_x;grades=@($skills.grades)};saved_at=(Get-Date).ToString('s')}
+    $view=[ordered]@{launch_mode=$launchMode;network_ip=$networkIp;start_local_adapter=$launchModeInfo.StartLocalAdapter;skip_tutorial=[bool]$skipTutorialBox.Checked;name=$name;level=[int]$levelBox.Value;title=[ordered]@{mode=if([int]$titleSelection.Grade-ge0){'fixed'}else{'progress'};grade=[int]$titleSelection.Grade;rank=[string]$titleSelection.Rank;resource_id=$titleSelection.ResourceId;icon_resource=$titleSelection.IconResource;text_resource=$titleSelection.TextResource;name=[string]$titleSelection.Name;state_file=$titleStatePath};gender=if($genderCombo.SelectedIndex-eq1){'M'}else{'F'};pet=$pet;pet_selected_age=$age;initial_attack_mode=Selected-AttackMode;equipment=[ordered]@{hair=$selected.hair;body=$selected.body;top=$selected.top;bottom=$selected.bottom;accessory=$selected.accessory;effect=$selected.effect};resources=[ordered]@{hp_max=$resources.hp_max;mp_max=$resources.mp_max;attack=$resources.attack;defense=$resources.defense;attack_carrier='CFEC+0x2E0';defense_policy='local max(1, raw-defense) before D010/D015';coin=$resources.coin;nana_point=$resources.nana_point;apartment_recommendation_points=$resources.apartment_recommendation_points;card_key_normal=$resources.card_key_normal;card_key_gold=$resources.card_key_gold;card_key_mystery=$resources.card_key_mystery;card_key_special=$resources.card_key_special;free_magic_key_expiry=$resources.free_magic_key_expiry;quickbar_expiry=$resources.quickbar_expiry;currency_carriers='C37B+C379';item_carriers='C3E8+C430+C474'};inventory_admin=[ordered]@{account_suffix=$adminResult.account_suffix;backup=$adminResult.backup;clothing=$inventoryAdmin.Clothing.Count;pets=$inventoryAdmin.Pets.Count;game_item_kinds=$inventoryAdmin.GameItems.Count;furniture=$inventoryAdmin.Furniture.Count;cards=$inventoryAdmin.Cards.Count};skills=[ordered]@{projectile_route=$skills.projectile_route;meat_route=$skills.meat_route;slot_z=$skills.slot_z;slot_x=$skills.slot_x;grades=@($skills.grades)};saved_at=(Get-Date).ToString('s')}
     [IO.File]::WriteAllText($ProfileJson,($view|ConvertTo-Json -Depth 6),(New-Object Text.UTF8Encoding($false)))
     $status.Text="Saved profile + title selection + five inventory domains (backup: $($adminResult.backup)).`r`nMax HP $($resources.hp_max), Max MP $($resources.mp_max), attack +$($resources.attack), defense $($resources.defense); Title=$($titleSelection.Display); Z=$(Skill-CodeName $skills.slot_z), X=$(Skill-CodeName $skills.slot_x).";Update-LaunchPreview
 }

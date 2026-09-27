@@ -17,9 +17,43 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--native-continuation-hp-self-test"))
+    {
+        await NativeDungeonRevivalChecks.RunContinuationAsync();
+        return;
+    }
+    if (args.Contains("--native-dungeon-revival-self-test"))
+    {
+        await PetRevivalVillageChecks.RunAsync();
+        await NativeDungeonRevivalChecks.RunAsync();
+        await NativeDungeonRevivalWorkerChecks.RunAsync(
+            Option("--native", Path.Combine(AppContext.BaseDirectory, "nanaimo_gameplay_bridge.exe")),
+            Option("--revival-test-data", Path.Combine(Path.GetTempPath(), "nanaimo-revival-worker-" + Guid.NewGuid().ToString("N"))));
+        return;
+    }
     if (args.Contains("--tutorial-appearance-self-test"))
     {
         await TutorialAppearanceChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--inventory-expansion-self-test"))
+    {
+        await InventoryExpansionChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--pet-material-classification-self-test"))
+    {
+        await PetMaterialClassificationChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--inventory-discard-self-test"))
+    {
+        await InventoryDiscardChecks.RunAsync();
+        return;
+    }
+    if (args.Contains("--inventory-discard-refresh-self-test"))
+    {
+        await InventoryDiscardRefreshChecks.RunAsync();
         return;
     }
     if (args.Contains("--inventory-gameitem-self-test"))

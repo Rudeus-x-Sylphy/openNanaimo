@@ -274,15 +274,15 @@ internal static class PetRevivalVillageChecks
         };
         var action3 = new byte[16];
         BinaryPrimitives.WriteUInt16LittleEndian(action3, 3);
-        action3[2] = 0; action3[3] = 1; action3[4] = 0;
+        action3[2] = 0; action3[3] = 1; action3[4] = 56;
         Check(NetworkAdapterService.TryResolvePetChangeRequest(petChangeCharacter, action3, out var op3, out _, out var stone3, out var identity3)
-            && op3 == 3 && stone3 == 18_000_001 && identity3 == 0,
-            "C44F action3 resolves current C430 identity");
+            && op3 == 3 && stone3 == 18_000_001 && identity3 == 56,
+            "C44F action3 resolves current C44C material identity");
         var action4 = action3.ToArray();
-        BinaryPrimitives.WriteUInt16LittleEndian(action4, 4); action4[4] = 1;
+        BinaryPrimitives.WriteUInt16LittleEndian(action4, 4); action4[4] = 57;
         Check(NetworkAdapterService.TryResolvePetChangeRequest(petChangeCharacter, action4, out var op4, out _, out var stone4, out var identity4)
-            && op4 == 4 && stone4 == 18_000_002 && identity4 == 1,
-            "C44F action4 resolves current C430 identity");
+            && op4 == 4 && stone4 == 18_000_002 && identity4 == 57,
+            "C44F action4 resolves current C44C material identity");
 
         var identityZeroCharacter = new CharacterRecord
         {
@@ -379,6 +379,14 @@ internal static class PetRevivalVillageChecks
             && cf72[0x73 - 8] == character.RevivalUseCount,
             "CF72 refresh carries current HP and the owner's revival ledger for the separate CF95 retry family");
 
+        foreach (ushort echoKind in new ushort[] { 60, 80, 120 })
+        {
+            var echoedD010 = NativeDungeonClient.Frame(0xD010, new byte[20]);
+            BinaryPrimitives.WriteUInt16LittleEndian(echoedD010.AsSpan(8, 2), echoKind);
+            RewriteChecksum(echoedD010);
+            Check(!NetworkAdapterService.TryReadNativeDungeonLocalHp(echoedD010, echoKind, out _),
+                "28-byte D010 echo is not HP even when its kind matches the local actor UID");
+        }
         var localD010 = NativeDungeonClient.Frame(0xD010, new byte[28]);
         BinaryPrimitives.WriteUInt16LittleEndian(localD010.AsSpan(8, 2), 1);
         BinaryPrimitives.WriteUInt16LittleEndian(localD010.AsSpan(0x10, 2), 0);

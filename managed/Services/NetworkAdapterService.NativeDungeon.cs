@@ -122,6 +122,7 @@ public sealed partial class NetworkAdapterService
             LeaveTradeRoomScene(session, "native dungeon"); LeaveApartmentScene(session, "native dungeon");
             LeaveVillageShopScene(session, "native dungeon"); LeaveTownScene(session, "native dungeon");
             session.NativeForwarding = true;
+            ArmNativeDungeonRevivalCycle(session);
             await bridge.SendAsync(frame, token);
             _log($"Native dungeon connected: character={character.Name} uid={state.Get(4)}");
             return true;
@@ -142,6 +143,7 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonDungeon = nativeDungeon;
             session.NativeDungeonStage = nativeStage;
             session.NativeDungeonLogicalDifficulty = nativeLogicalDifficulty;
+            ResetNativeDungeonContinuationRoom(session);
             _log($"NativeDungeon selected ready-room tuple: character={session.Character?.Id ?? 0} selectors={nativeHdIndex}/{nativeEpisode}/{nativeDungeon}/{nativeStage}/{nativeLogicalDifficulty}");
         }
         if (opcode == 0x044C && frame.Length == 8 + ShootingSyncPayloadLength)
@@ -159,6 +161,14 @@ public sealed partial class NetworkAdapterService
         if (opcode == 0xCF83
             && TryParseNativeDungeonContinueFrame(frame, out var continueMode, out var clientCostField))
         {
+            if (await TryHandleNativeDungeonContinueBillingAsync(
+                    frame,
+                    channel,
+                    session,
+                    clientCostField,
+                    token))
+                return true;
+
             await HandleNativeDungeonContinueAsync(
                 frame,
                 channel,
@@ -176,9 +186,27 @@ public sealed partial class NetworkAdapterService
               BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(8)) is 110u or 120u or 130u or 140u or 150u));
         if (enteringShop) await CloseNativeDungeonAsync(session, BattleResourceBoundary.TownReturn);
         if (session.NativeDungeon is null) return false;
+        if (opcode == 0xCF15)
+        {
+            // Managed persistence owns ranking requests, including rejection.
+            // Never forward CF15 to the worker's fixed sample leaderboard.
+            await HandleNativeDungeonStageRecordsAsync(frame, session, token);
+            return true;
+        }
         bool dungeonOpcode = opcode is >= 0xCF00 and <= 0xD03F or 0xC587 or 0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640;
         if (dungeonOpcode)
         {
+            if (ShouldConsumeNativeDungeonContinuationLeave(
+                    session.NativeDungeonNextTransitionAuthorized,
+                    session.NativeDungeonTownTransitionAuthorized,
+                    session.NativeDungeonDeathLatched,
+                    frame, opcode))
+            {
+                // The retained worker already applied CF8B. Forwarding CF73
+                // clears its room/rearm; CF1D additionally emits village data.
+                _log($"NativeDungeon continuation teardown consumed: request=0x{opcode:X4}; retaining worker until next ready room");
+                return true;
+            }
             if (ShouldSuppressUnarmedNativeDungeonSettlementLeave(
                     session.NativeDungeonSettlementAwaitingAction,
                     session.NativeDungeonNextTransitionAuthorized,
@@ -217,6 +245,7 @@ public sealed partial class NetworkAdapterService
                 frame,
                 opcode))
             {
+                PrepareNativeDungeonRevivalTransition(session, frame);
                 session.NativeDungeonSettlementAwaitingAction = false;
                 session.NativeDungeonNextTransitionAuthorized = true;
                 session.NativeDungeonTownTransitionAuthorized = false;
@@ -230,14 +259,16 @@ public sealed partial class NetworkAdapterService
             {
                 session.NativeDungeonSettlementAwaitingAction = false;
                 session.NativeDungeonTownTransitionAuthorized = true;
-                // A CF73 leave request outranks a pending CF8B continuation:
-                // the ready-room town button is available before CF7F, so the
-                // next-stage carry ends here and CF1D closes with TownReturn.
+                // Only an unarmed (or death) CF73 selects town return. During
+                // an authorized CF8B rebuild, CF73 is transport teardown and
+                // must not clear the next-stage carry or synthesize CF74.
                 session.NativeDungeonNextTransitionAuthorized = false;
                 _log("NativeDungeon CF73 armed an explicit town-return chain; awaiting CF1D");
             }
             else if (opcode == 0xCF7F)
             {
+                if (TryBeginNativeDungeonRevivalBattle(session, frame))
+                    ArmNativeDungeonCombatResources(session);
                 session.NativeDungeonNextTransitionAuthorized = false;
                 session.NativeDungeonTownTransitionAuthorized = false;
             }
@@ -250,6 +281,8 @@ public sealed partial class NetworkAdapterService
                 if (opcode == 0xCF87)
                     session.NativeDungeonSettlementAwaitingAction = true;
             }
+            else if (IsNativeDungeonContinuationProfileRequest(session, frame))
+                await HandleNativeDungeonContinuationProfileAsync(session, frame, token);
             else await session.NativeDungeon.SendAsync(frame, token);
             if (ShouldAcknowledgeExplicitNativeDungeonTownLeave(
                     session.NativeDungeonTownTransitionAuthorized,
@@ -385,9 +418,9 @@ public sealed partial class NetworkAdapterService
             || BinaryPrimitives.ReadUInt16LittleEndian(response.Slice(6, 2)) != 0xCF8C)
             return false;
 
-        var requestedRealStage = BinaryPrimitives.ReadUInt16LittleEndian(request.Slice(8, 2));
+        var requestedRealStage = request[8];
         var mode = BinaryPrimitives.ReadUInt16LittleEndian(request.Slice(10, 2));
-        var responseRealStage = BinaryPrimitives.ReadUInt16LittleEndian(response.Slice(0x28, 2));
+        var responseRealStage = response[0x28];
         var responseDungeon = BinaryPrimitives.ReadUInt16LittleEndian(response.Slice(0x2E, 2));
         if (responseRealStage > 1 || responseDungeon > 2)
             return false;
@@ -434,6 +467,18 @@ public sealed partial class NetworkAdapterService
         return false;
     }
 
+    internal static bool ShouldConsumeNativeDungeonContinuationLeave(
+        bool nextTransitionAuthorized,
+        bool townTransitionAuthorized,
+        bool deathLatched,
+        ReadOnlySpan<byte> frame,
+        ushort opcode)
+        => nextTransitionAuthorized && !townTransitionAuthorized && !deathLatched
+            && opcode is 0xCF73 or 0xCF1D
+            && frame.Length == 8
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) == 8
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) == opcode;
+
     internal static bool ShouldAcknowledgeExplicitNativeDungeonTownLeave(
         bool townTransitionAuthorized,
         ushort opcode)
@@ -457,10 +502,12 @@ public sealed partial class NetworkAdapterService
             && !townTransitionAuthorized
             && opcode == 0xCF1D;
 
-    // The ready-room town button is available at every point of the room
-    // lifecycle: straight after the settlement, after a CF8B continuation was
-    // accepted, or on a death settlement. Each of those states arms the
-    // town-return chain so the following CF1D completes the village return.
+    // CF73 is shared by explicit town leave and the CF8B/CF8C -> CF73/CF1D
+    // next-stage transport rebuild. A live continuation owns that teardown;
+    // treating it as a new town action injects CF74 and drops the room/carry.
+    // CF71 ready-room arrival (also CF09/CF7F) clears authorization, so
+    // subsequent ready-room/battle town leave remains available. Death wins
+    // over a stale continuation flag and keeps its separate return boundary.
     internal static bool IsNativeDungeonManualTownLeavePrecursor(
         bool awaitingAction,
         bool nextTransitionAuthorized,
@@ -468,6 +515,7 @@ public sealed partial class NetworkAdapterService
         bool deathLatched,
         ushort opcode)
         => !townTransitionAuthorized
+            && (!nextTransitionAuthorized || deathLatched)
             && opcode == 0xCF73;
 
     internal static BattleResourceBoundary ResolveNativeDungeonDisconnectBoundary(
@@ -505,9 +553,6 @@ public sealed partial class NetworkAdapterService
                     requestOpcode,
                     BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2))))
             .ToArray();
-
-    internal static bool ShouldWithholdNativeDungeonStageRecordAnswer(ushort responseOpcode)
-        => responseOpcode == 0xCF16;
 
     internal static bool IsNativeDungeonTransitionFrame(ushort opcode)
         => opcode is 0xCF09 or 0xCF1D or 0xCF1E
@@ -603,7 +648,7 @@ public sealed partial class NetworkAdapterService
         out ushort currentHp)
     {
         currentHp = 0;
-        if (frame.Length < 0x12
+        if (frame.Length != 0x24
             || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) != frame.Length
             || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) != 0xD010
             || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(8, 2)) != localActorUid)
@@ -702,13 +747,13 @@ public sealed partial class NetworkAdapterService
         }
 
         session.NativeDungeonDeathLatched = false;
-        var revivePayload = BuildRevivalApplyPayload(character);
+        var revivePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 60);
         var revive = BuildNativeFrame(frame, 0xCF84, revivePayload, session);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
             revive,
             "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
             true, false, "native revival complete CF84 variant60"), token);
-        _log($"{channel}: native dungeon revival continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} cf84Aux=(0,0) hans={character.Hans} hansDebited=0 workerAck=CF95-captured clientResponse=CF84-variant60");
+        _log($"{channel}: native dungeon revival continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} cf84Hans={character.Hans} hans={character.Hans} hansDebited=0 workerAck=CF95-captured clientResponse=CF84-variant60");
     }
 
     private async Task HandleNativeDungeonPaidContinueAsync(
@@ -736,8 +781,8 @@ public sealed partial class NetworkAdapterService
             return;
         }
 
-        var restoredHp = Math.Max(1, (character.MaxHp + 1) / 2);
-        var restoredMp = Math.Max(1, (character.MaxMp + 1) / 2);
+        var restoredHp = Math.Max(1, character.MaxHp);
+        var restoredMp = Math.Max(1, character.MaxMp);
         var consumed = await _database.ConsumeDungeonContinueAsync(
             session.AccountId,
             character.Id,
@@ -786,13 +831,13 @@ public sealed partial class NetworkAdapterService
         session.NativeBattleResources = RestoreNativeDungeonContinueResources(
             session.NativeBattleResources, exchange.State);
         session.NativeDungeonDeathLatched = false;
-        var continuePayload = BuildDungeonContinueApplyPayload(character, variant: 20);
+        var continuePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 20);
         var response = BuildNativeFrame(frame, 0xCF84, continuePayload, session);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(
             response,
             "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
             true, false, "native paid continue complete CF84 variant20"), token);
-        _log($"{channel}: native dungeon paid continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} cf84Aux=(0,0) hans={character.Hans} hansDebited={clientCostField} workerAck=F105 clientResponse=CF84-variant20");
+        _log($"{channel}: native dungeon paid continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} cf84Hans={character.Hans} hans={character.Hans} hansDebited={clientCostField} workerAck=F105 clientResponse=CF84-variant20");
     }
 
     private async Task CommitNativeCheckpointAsync(
@@ -816,6 +861,9 @@ public sealed partial class NetworkAdapterService
     {
         if (session.NativeDungeon is null || session.NativeCheckpoint is null || session.Character is null)
             throw new InvalidOperationException("Native dungeon checkpoint capture requires an active owned worker session.");
+        // Snapshot pending ranking before a CF8B acknowledgement can advance
+        // the selection tuple; the result belongs to the completed stage.
+        var pendingRanking = GetPendingNativeDungeonRanking(session);
         var exchange = await session.NativeDungeon.ExchangeCapturedAsync(frame, null, token);
         var requestOpcode = frame is { Length: >= 8 }
             ? BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2))
@@ -855,7 +903,7 @@ public sealed partial class NetworkAdapterService
             session.NativeBattleResources, frame, exchange.Frames,
             GetSceneEntityId(session.Character));
         session.NativeBattleResources?.ApplyTo(next);
-        NativeDungeonSettlementRecord? settlement = null;
+        NativeDungeonSettlementRecord? settlement = pendingRanking;
         if (persistSettlementRank && session.NativeDungeonSelectionValid)
         {
             var memberUid = checked((ushort)Math.Clamp(next.Get(4), 1u, ushort.MaxValue));
@@ -870,7 +918,9 @@ public sealed partial class NetworkAdapterService
                     session.NativeDungeonStage,
                     session.NativeDungeonLogicalDifficulty,
                     rating,
-                    score);
+                    score,
+                    TryReadNativeDungeonStageRecordScore(response, out var stageRecordScore)
+                        ? stageRecordScore : null);
                 break;
             }
         }
@@ -885,13 +935,19 @@ public sealed partial class NetworkAdapterService
         var applied = await _database.ApplyNativeDungeonDeltaAsync(
             session.AccountId, session.Character.Id, session.SessionId,
             session.NativeCheckpoint, next, token, commitId, settlement: settlement);
+        if (applied.Applied)
+            MarkNativeDungeonRankingCommitted(session, settlement);
+        CompleteNativeDungeonRevivalTransition(session, frame, exchange.Frames);
         if (settlement is { } persisted)
             _log($"NativeDungeon settlement rank persisted: character={session.Character.Id} rating={persisted.Rating} score={persisted.Score} tuple={persisted.HdIndex}/{persisted.Episode}/{persisted.Dungeon}/{persisted.Stage}/{persisted.LogicalDifficulty}");
         session.NativeCheckpoint = next;
         File.Delete(journal);
         await RefreshSessionCharacterAsync(session, token);
         foreach (var response in exchange.Frames)
+        {
             PatchNativePetSettlementFrame(response, next.Get(4), applied);
+            PatchNativeDungeonTitleFrame(response, next.Get(4), CharacterTitleState.GetGrade(session.Character));
+        }
         return exchange;
     }
 
@@ -909,23 +965,30 @@ public sealed partial class NetworkAdapterService
             return;
         }
         var responseOpcode = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6, 2));
+        if (session.NativeDungeonNextTransitionAuthorized
+            && responseOpcode == 0xCF71 && response.Length == 0xB8
+            && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(4, 2)) == response.Length)
+        {
+            // The continuation has reached its ready room. End only the
+            // teardown protection, not HP/MP/P carry; town leave is available
+            // here, before CF7F, and must not be swallowed as old teardown.
+            session.NativeDungeonNextTransitionAuthorized = false;
+            _log("NativeDungeon continuation reached CF71 ready room; explicit town leave enabled");
+        }
         if (session.NativeDungeonSettlementAwaitingAction
             && IsNativeDungeonTransitionFrame(responseOpcode))
         {
             _log($"NativeDungeon unsolicited settlement transition suppressed: response=0x{responseOpcode:X4}");
             return;
         }
-        // CF16 answers the client's END_GAME_INFO request with the stage record
-        // and the client reads that answer as the end of the result screen: it
-        // plays the walk-out escort and then issues REQ_FLYSHOOTING_RESETTING by
-        // itself. The result screen is driven by the player's own continue/return
-        // request, so the stage-record answer is held back here. The ranking
-        // payload builder stays in place for the self-tests.
-        if (ShouldWithholdNativeDungeonStageRecordAnswer(responseOpcode))
+        // CF15 is answered directly from managed persistence. The retained
+        // worker's CF16 is a fixed sample, never a second leaderboard response.
+        if (responseOpcode == 0xCF16)
         {
-            _log("NativeDungeon CF16 stage-record answer held: result screen waits for the player's transition request");
+            _log("NativeDungeon legacy CF16 sample suppressed: managed CF15 owns the leaderboard response");
             return;
         }
+        ObserveNativeDungeonCombatStart(session, response);
         await PatchNativeReadyRoomRankFrameAsync(session, response, token);
         if (session.NativeBattleResources is { } actorResources
             && session.Character is { } actorCharacter
@@ -983,6 +1046,8 @@ public sealed partial class NetworkAdapterService
             return;
         }
         if (!session.NativeForwarding) return;
+        if (responseOpcode == 0xCF88)
+            RememberNativeDungeonRanking(session, response);
         var revivalOwner = ResolveNativeRevivalOwner(session, response);
         PatchNativeRevivalCountFrame(response, revivalOwner);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(response, "NativeDungeon",
@@ -1243,6 +1308,7 @@ public sealed partial class NetworkAdapterService
         {
             if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleResources = null; session.NativeBattleAttackMode = null; }
             session.NativeForwarding = false;
+            ResetNativeDungeonContinuationRoom(session);
             session.NativeDungeonDeathLatched = false;
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;

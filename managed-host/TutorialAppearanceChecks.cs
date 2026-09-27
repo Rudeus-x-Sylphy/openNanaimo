@@ -107,7 +107,7 @@ internal static class TutorialAppearanceChecks
                 await (Task)disconnect.Invoke(service, [session])!;
                 var relog = await db.ImportLocalProfileAsync(profile, root);
                 var context = LoginPayload(NewSession(relog));
-                Check(relog.TutorialCompleted && context[5] == 1 && context[6] == 2
+                Check(relog.TutorialCompleted && context[5] == 0 && context[6] == 2
                     && context.AsSpan(24, 36).SequenceEqual(expected), "completed relogin immediately restores configured appearance");
                 Check(await File.ReadAllTextAsync(profilePath) == profile && await File.ReadAllTextAsync(sidecarPath) == sidecar,
                     "INI and sidecar are unchanged throughout tutorial lifecycle");
@@ -129,7 +129,7 @@ internal static class TutorialAppearanceChecks
         var character = (CharacterRecord)Get(session, "Character")!;
         byte[] before = character.Appearance.ToArray();
         byte[] payload = LoginPayload(session);
-        Check(payload.Length == 60 && payload[5] == 1 && payload[6] == 0
+        Check(payload.Length == 60 && payload[5] == character.DungeonGrade && payload[6] == 0
             && payload.AsSpan(24, 36).SequenceEqual(DatabaseService.CreateDefaultAppearance(gender)),
             "271A main-guide uses gender-correct starter appearance, no custom slots or pet");
         Check(character.Appearance.SequenceEqual(before), "login projection does not mutate session character");

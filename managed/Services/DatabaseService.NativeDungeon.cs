@@ -23,7 +23,8 @@ public readonly record struct NativeDungeonSettlementRecord(
     byte Stage,
     byte LogicalDifficulty,
     byte Rating,
-    int Score);
+    int Score,
+    int? StageRecordScore = null);
 
 public sealed partial class DatabaseService
 {
@@ -505,7 +506,8 @@ public sealed partial class DatabaseService
             {
                 if (quantity == 0 || quantity > ushort.MaxValue)
                     throw new InvalidDataException($"GUI game item quantity is outside the database range: {code}={quantity}.");
-                if (!ShopCatalog.TryGet(code, out var item) || item.Section != InventorySection.GameItem)
+                if (!ShopCatalog.TryGet(code, out var item)
+                    || item.Section != InventorySection.GameItem && !item.IsPetMaterial)
                     throw new InvalidDataException($"GUI game item sidecar contains an invalid item: {code}.");
                 await UpsertItem(code, checked((ushort)quantity));
             }
@@ -821,7 +823,8 @@ public sealed partial class DatabaseService
                 || result.Dungeon + result.Stage > 3
                 || result.LogicalDifficulty >= 3
                 || result.Rating > DungeonRewardPolicy.ClearRatingS
-                || result.Score < 0)
+                || result.Score < 0
+                || result.StageRecordScore < result.Score)
                 throw new InvalidDataException("Native dungeon settlement tuple is invalid.");
 
             // The retained worker's CF88 is the visible result authority on the
@@ -868,6 +871,22 @@ public sealed partial class DatabaseService
                     ("$bestRatings", clientBestRating << ratingShift),
                     ("$ratingFieldMask", ratingFieldMask), ("$ratingClearMask", ratingClearMask),
                     ("$score", result.Score), ("$now", now));
+            }
+            if (result.StageRecordScore is { } stageRecordScore)
+            {
+                // CF88 supplies slot scores but no proven elapsed-time field.
+                // Reuse the existing stage leaderboard and best-score policy;
+                // never invent a time or backfill a stage from aggregate history.
+                var table = result.HdIndex == 0 ? "DungeonStagePerformance" : "DungeonSecretStagePerformance";
+                await Execute($"""
+                    INSERT INTO {table}(CharacterId,Episode,Difficulty,ArchiveSlot,BestScore,
+                        BestElapsedMinutes,ClearedAt,UpdatedAt)
+                    VALUES($id,$episode,$difficulty,$slot,$score,NULL,$now,$now)
+                    ON CONFLICT(CharacterId,Episode,Difficulty,ArchiveSlot) DO UPDATE SET
+                        BestScore=MAX({table}.BestScore,excluded.BestScore),
+                        UpdatedAt=excluded.UpdatedAt
+                    """, ("$episode", result.Episode), ("$difficulty", result.LogicalDifficulty),
+                    ("$slot", archiveSlot), ("$score", stageRecordScore), ("$now", now));
             }
         }
         await Execute("CREATE TABLE IF NOT EXISTS NativeDungeonProfiles(CharacterId INTEGER PRIMARY KEY REFERENCES Characters(Id), State BLOB NOT NULL)");
@@ -1028,6 +1047,9 @@ public sealed partial class DatabaseService
             element.GetProperty(nameof(NativeDungeonSettlementRecord.Stage)).GetByte(),
             element.GetProperty(nameof(NativeDungeonSettlementRecord.LogicalDifficulty)).GetByte(),
             element.GetProperty(nameof(NativeDungeonSettlementRecord.Rating)).GetByte(),
-            element.GetProperty(nameof(NativeDungeonSettlementRecord.Score)).GetInt32());
+            element.GetProperty(nameof(NativeDungeonSettlementRecord.Score)).GetInt32(),
+            element.TryGetProperty(nameof(NativeDungeonSettlementRecord.StageRecordScore), out var stageScore)
+                && stageScore.ValueKind != System.Text.Json.JsonValueKind.Null
+                ? stageScore.GetInt32() : null);
     }
 }

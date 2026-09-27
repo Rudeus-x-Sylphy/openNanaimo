@@ -225,8 +225,8 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn('ApplyLauncherDungeonGradeAsync', importer)
         self.assertIn('NativeDungeonState.DungeonGradeOffset', importer)
         self.assertIn('public const int DungeonGradeOffset = 5024;', state)
-        self.assertIn('payload[0x24 - NativeHeaderLength] = character?.DungeonGrade ?? 0;', village)
-        self.assertIn('payload[0x49 - 8] = character.DungeonGrade;', room)
+        self.assertIn('payload[0x24 - NativeHeaderLength] = CharacterTitleState.GetGrade(character);', village)
+        self.assertIn('payload[0x49 - 8] = CharacterTitleState.GetGrade(character);', room)
 
     def test_profile_values_have_managed_and_native_carriers(self):
         profile = (ROOT / 'managed/Services/DatabaseService.NativeDungeon.cs').read_text('utf-8-sig')

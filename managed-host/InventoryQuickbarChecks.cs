@@ -207,12 +207,12 @@ internal static class InventoryQuickbarChecks
             ],
             QuickSlots =
             [
-                new CharacterQuickSlotRecord { Slot = 0, ItemCode = addedCode, InventoryIndex = 2 }
+                new CharacterQuickSlotRecord { Slot = 0, ItemCode = addedCode, InventoryIndex = 1 }
             ]
         };
         var filteredNative = NativeDungeonState.Create(filteredIdentityCharacter, [], []);
         Check(filteredNative.Get(228) == 2 && filteredNative.Get(4000 + 2 * 4) == addedCode,
-            "non-native C430 rows do not shift native quick-slot identity mapping");
+            "C44C special materials do not occupy C430 quick-slot ordinals");
 
         var survivor = NativeDungeonState.Create(new CharacterRecord
         {

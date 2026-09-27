@@ -13,26 +13,26 @@ public sealed partial class NetworkAdapterService
         byte[] Reply(byte code, IReadOnlyList<(uint ItemCode, ushort InventoryIndex)> items, long cash, long hans)
             => BuildNativeFrame(frame, 0xC40C, BuildApartmentShopPurchaseResultPayload(code, mode, items, cash, hans), session);
         if (payload.Length != 208 || modeValue is not (0 or 4)
-            || payload[4] > 1 || payload[6] != 0 || payload[7] is < 1 or > 40)
+            || payload[4] > 1 || payload[4] == 1 && modeValue != 0 || payload[6] != 0 || payload[7] is < 1 or > 40)
             return Reply(40, [], session.Character.Cash, session.Character.Hans);
 
         var items = new List<(uint ItemCode, ushort Quantity)>();
         for (var i = 0; i < payload[7]; i++)
             items.Add((BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(48 + 4 * i, 4)), payload[8 + i]));
-        byte? couponIndex = payload[4] == 1 ? payload[5] : null;
+        byte? couponWire = payload[4] == 1 ? payload[5] : null;
+        byte? couponIndex = null;
         uint couponCode = 0;
-        if (couponIndex is byte selected)
+        if (couponWire is byte selected)
         {
-            var coupons = session.Character.Items
-                .Where(item => item.Quantity > 0 && ShopCatalog.TryGet(item.ItemCode, out var catalog) && catalog.IsShoppingCoupon)
-                .OrderBy(item => item.ItemCode)
-                .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
-                .Take(byte.MaxValue + 1).ToArray();
-            if (selected >= coupons.Length) return Reply(20, [], session.Character.Cash, session.Character.Hans);
-            couponCode = coupons[selected];
+            session.ShoppingCouponIdentities.Synchronize(GetShoppingCouponItemCodes(session.Character));
+            if (!session.ShoppingCouponIdentities.TryStorage(selected, out var ordinal, out couponCode))
+                return Reply(20, [], session.Character.Cash, session.Character.Hans);
+            couponIndex = checked((byte)ordinal);
         }
         var purchase = await _database.PurchaseApartmentShopItemsAsync(
             session.AccountId, session.Character.Id, session.SessionId, mode, items, couponIndex, couponCode, token);
+        if (purchase.Success && couponWire.HasValue)
+            session.ShoppingCouponIdentities.Remove(couponWire.Value);
         await RefreshSessionCharacterAsync(session, token);
         if (purchase.Success) AccountStateChanged?.Invoke();
         // An inbox purchase carries no direct-inventory rows: C475 performs the ownership transfer.

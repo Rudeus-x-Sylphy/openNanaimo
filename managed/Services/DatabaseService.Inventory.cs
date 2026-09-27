@@ -10,7 +10,7 @@ public sealed partial class DatabaseService
     /// quantities expanded, Category 41 excluded). inventoryIndex is zero-based, NOT a
     /// stable client handle. The caller must map sparse client identities or refresh its
     /// snapshot after mutations. Index and code are checked together under a write lock.
-    /// Category 47 keys retain their existing no-discard policy.
+    /// Category 47 keys are deleted only through the separate C46B special-item route.
     /// </summary>
     public Task<(bool Success, ushort Quantity)> DeleteGameInventoryItemAsync(
         long accountId,
@@ -66,16 +66,20 @@ public sealed partial class DatabaseService
         long characterId,
         string sessionId,
         uint itemCode,
-        byte? inventoryIndex,
+        int? inventoryIndex,
         bool restoreFood,
         CancellationToken cancellationToken,
         int? authoritativeCurrentHp = null,
-        int? authoritativeCurrentMp = null)
+        int? authoritativeCurrentMp = null,
+        bool specialDelete = false)
     {
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId)
-            || inventoryIndex is > 83
             || !ShopCatalog.TryGet(itemCode, out var item)
-            || !item.IsGameInventoryItem || item.Category == 47
+            || inventoryIndex is < 0
+            || inventoryIndex > (item.IsShoppingCoupon ? 255 : 83)
+            || (specialDelete
+                ? item.Category is < 41 or > 48
+                : !item.IsGameInventoryItem || item.Category == 47)
             || restoreFood && (item.Category != 14 || !item.QuickUsable
                 || item.QuickHpRestore == 0 && item.QuickMpRestore == 0))
             return (false, 0, null);
@@ -143,10 +147,12 @@ public sealed partial class DatabaseService
             }
         }
 
-        var before = await GetGameInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken);
+        var before = item.IsShoppingCoupon
+            ? await GetShoppingCouponItemCodesAsync(connection, transaction, characterId, cancellationToken)
+            : await GetGameInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken);
         // Compatibility with the old code-only API: deterministically choose the first
         // matching visible instance, never clear every binding with the same item code.
-        var removedIndex = inventoryIndex is byte selected ? selected : before.IndexOf(itemCode);
+        var removedIndex = inventoryIndex is int selected ? selected : before.IndexOf(itemCode);
         if (removedIndex < 0 || removedIndex >= before.Count || before[removedIndex] != itemCode)
             return (false, checked((ushort)Math.Min(quantity, ushort.MaxValue)), null);
 
@@ -170,8 +176,9 @@ public sealed partial class DatabaseService
                 return (false, checked((ushort)Math.Min(quantity, ushort.MaxValue)), null);
         }
 
-        await ReindexGameQuickSlotsAfterRemovalAsync(
-            connection, transaction, characterId, before, removedIndex, cancellationToken);
+        if (!item.IsShoppingCoupon)
+            await ReindexGameQuickSlotsAfterRemovalAsync(
+                connection, transaction, characterId, before, removedIndex, cancellationToken);
         await using (var touch = connection.CreateCommand())
         {
             touch.Transaction = transaction;

@@ -53,7 +53,8 @@ public sealed class ShopCatalogItem
 
     // C46A is the shopping-coupon (domain 41) page. Other ordinary items,
     // including microphones (42) and card keys (47), share C430 identities.
-    public bool IsGameInventoryItem => Section == InventorySection.GameItem && Category != 41;
+    public bool IsPetMaterial => InventoryClassification.IsPetMaterial(ItemCode);
+    public bool IsGameInventoryItem => InventoryClassification.UsesGameItemCarrier(ItemCode, Section);
     public bool IsShoppingCoupon => Category == 41;
     public byte ShoppingCouponDomain { get; init; } = byte.MaxValue;
     public uint ShoppingCouponValue { get; init; }
@@ -233,7 +234,7 @@ internal static class ShopCatalog
             {
                 10 => InventorySection.Clothing,
                 11 => InventorySection.Furniture,
-                15 => InventorySection.Pet,
+                15 or 17 or 18 or 19 => InventorySection.Pet,
                 _ => InventorySection.GameItem
             };
             result.Add(card.SynthesisItemCode, new ShopCatalogItem
@@ -374,7 +375,7 @@ internal static class ShopCatalog
             var offset = headerFields + index * recordFields;
             AddItem(
                 result, fields, offset, 0, 1, 19, null,
-                InventorySection.GameItem, "PA._D9", index,
+                InventorySection.Pet, "PA._D9", index,
                 // 960B90: field19 -> +0x1A0 Hans, field20 -> +0x1A4 Cash.
                 cashPriceField: 20,
                 iconPathField: 22,
@@ -415,7 +416,7 @@ internal static class ShopCatalog
                 Category = checked((byte)(itemCode / 1_000_000)),
                 ItemCode = itemCode,
                 Name = fields[offset + 2],
-                Section = InventorySection.GameItem,
+                Section = InventorySection.Pet,
                 SupportedPetGrowthClasses = growthClasses,
                 IconPath = fields[offset + 1],
                 Source = "GoldDust._D17"
@@ -482,7 +483,7 @@ internal static class ShopCatalog
         for (var index = 0; index < count; index++)
         {
             var offset = headerFields + index * recordFields;
-            AddItem(result, fields, offset, 0, 1, null, null, InventorySection.GameItem, "SP._D34", index, iconPathField: 3, cashPriceField: 8);
+            AddItem(result, fields, offset, 0, 1, null, null, InventorySection.Pet, "SP._D34", index, iconPathField: 3, cashPriceField: 8);
         }
     }
 

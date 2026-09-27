@@ -99,8 +99,9 @@ static void boss_hp_sync_put16(unsigned char*p,unsigned off,unsigned v){p[off]=(
 static void boss_hp_sync_put32(unsigned char*p,unsigned off,unsigned v){p[off]=(unsigned char)v;p[off+1]=(unsigned char)(v>>8);p[off+2]=(unsigned char)(v>>16);p[off+3]=(unsigned char)(v>>24);}
 static void boss_hp_sync_zero_result(struct boss_hp_sync_result*r){memset(r,0,sizeof(*r));}
 static int boss_hp_sync_mode_transition_needs_component_retire(const struct boss_hp_sync_context*c,const struct boss_hp_sync_result*r){
-#if TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
-    return c&&r&&c->positive_child_count==1u&&!r->child_first_terminal;
+#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+    /* A child terminal does not replace the exact component terminal edge. */
+    return c&&r&&r->intermediate_terminal&&r->component_first_terminal;
 #else
     return c&&r;
 #endif
@@ -203,6 +204,7 @@ static int boss_component_boss_load_mode(struct boss_hp_sync_context*c,unsigned 
     const struct boss_component_boss_mode*m=boss_component_boss_mode_def(c->profile,mode);unsigned i,count=0u,resource_total=0u,first_basis=0u,first_ordinal=0u,have_positive=0u;
     if(!m||m->first_component+m->component_count>BOSS_COMPONENT_BOSS_COMPONENT_COUNT)return 0;
     memset(c->component_def_index,0,sizeof(c->component_def_index));
+    memset(c->runtime_selector,0,sizeof(c->runtime_selector));memset(c->runtime_selector_bound,0,sizeof(c->runtime_selector_bound));
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
     memset(c->component_max_hp,0,sizeof(c->component_max_hp));memset(c->component_hp,0,sizeof(c->component_hp));memset(c->component_terminal_sent,0,sizeof(c->component_terminal_sent));
 #endif
@@ -502,49 +504,65 @@ static int boss_hp_sync_apply_d011(struct boss_hp_sync_context*c,const unsigned 
    D00D targets instead of D011. Only a pure, same-child, positive type3 mode
    is eligible; mixed/zero-HP/child-phase topologies remain on D011/D013. */
 static int boss_hp_sync_runtime_component_mode(const struct boss_hp_sync_context*c,unsigned static_target_count,unsigned*count_out){
-    unsigned child=0u;(void)static_target_count;if(!c||c->phase!=BOSS_HP_SYNC_PHASE_RUNNING)return 0;return boss_hp_sync_parallel_component_mode(c,&child,count_out);
+    unsigned child=0u;(void)static_target_count;if(!c||c->phase!=BOSS_HP_SYNC_PHASE_RUNNING||c->awaiting_next_mode)return 0;return boss_hp_sync_parallel_component_mode(c,&child,count_out);
 }
 static int boss_hp_sync_apply_runtime_component(struct boss_hp_sync_context*c,unsigned selector,unsigned static_target_count,unsigned attack_value,struct boss_hp_sync_result*r){
-    unsigned i,slot=BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS,n=0u,damage;if(!boss_hp_sync_runtime_component_mode(c,static_target_count,&n)||selector<static_target_count||!attack_value)return BOSS_HP_SYNC_BAD_TARGET;
+    const struct boss_component_boss_component*def;unsigned i,slot=BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS,n=0u,damage;if(!boss_hp_sync_runtime_component_mode(c,static_target_count,&n)||selector<static_target_count||!attack_value)return BOSS_HP_SYNC_BAD_TARGET;
     for(i=0u;i<n;i++)if(c->runtime_selector_bound[i]&&c->runtime_selector[i]==selector){slot=i;break;}
     if(slot==BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS){for(i=0u;i<n;i++)if(!c->runtime_selector_bound[i]){slot=i;c->runtime_selector_bound[i]=1u;c->runtime_selector[i]=selector;break;}}
     if(slot==BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS)return BOSS_HP_SYNC_BAD_TARGET;
-    boss_hp_sync_zero_result(r);r->stage=c->stage;r->battle_epoch=c->battle_epoch;r->request_count=++c->request_count;r->target_ordinal=slot;r->mode_index=c->mode_index;r->mode_count=c->mode_count;r->profile_kind=c->profile_kind;r->absolute_slot=c->absolute_slot;r->component_slot=slot;r->component_max_hp=c->component_max_hp[slot];r->component_hp=c->component_hp[slot];r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;r->have_attack=1u;r->attack_value=attack_value;r->basis=19u;
+    def=&boss_component_boss_components[c->component_def_index[slot]];
+    boss_hp_sync_zero_result(r);r->stage=c->stage;r->battle_epoch=c->battle_epoch;r->request_count=++c->request_count;r->wire_mode=c->mode_index;r->wire_child=def->child;r->wire_ordinal=def->ordinal;r->target_ordinal=def->ordinal;r->retire_child=def->child;r->child_max_hp=c->child_max_hp[def->child];r->child_hp=c->child_hp[def->child];r->mode_index=c->mode_index;r->mode_count=c->mode_count;r->profile_kind=c->profile_kind;r->absolute_slot=c->absolute_slot;r->component_slot=slot;r->component_max_hp=c->component_max_hp[slot];r->component_hp=c->component_hp[slot];r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;r->have_attack=1u;r->attack_value=attack_value;r->basis=def->basis;
     if(c->component_terminal_sent[slot]){r->component_repeated_terminal=1u;return BOSS_HP_SYNC_OK;}
-    damage=attack_value>19u?attack_value-19u:1u;if(damage>c->component_hp[slot])damage=c->component_hp[slot];c->component_hp[slot]-=damage;c->hp=c->hp>damage?c->hp-damage:0u;c->cumulative_damage=c->mode_max_hp-c->hp;c->applied_hit_count++;r->applied_damage=damage;r->component_hp=c->component_hp[slot];r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;
+    damage=attack_value>def->basis?attack_value-def->basis:1u;if(damage>c->component_hp[slot])damage=c->component_hp[slot];c->component_hp[slot]-=damage;c->child_hp[def->child]-=damage;r->child_hp=c->child_hp[def->child];c->hp=c->hp>damage?c->hp-damage:0u;c->cumulative_damage=c->mode_max_hp-c->hp;c->applied_hit_count++;r->applied_damage=damage;r->component_hp=c->component_hp[slot];r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;
     if(c->component_hp[slot]==0u){c->component_terminal_sent[slot]=1u;r->component_first_terminal=1u;}
     for(i=0u;i<n;i++)if(c->component_hp[i])return BOSS_HP_SYNC_OK;
     c->phase=BOSS_HP_SYNC_PHASE_TERMINAL;c->final_terminal_seen=1u;c->terminal_response_count=1u;r->first_terminal=1u;r->final_terminal=1u;boss_hp_sync_project_multimode_recording(c,r);return BOSS_HP_SYNC_OK;
 }
 
 #if TEAMPLAY_FEATURE_MEAT_BOSS_DAMAGE
-#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012 && TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
-/* BOSS_CHILD_RETIREMENT: a kind40 contact may damage Boss HP only when immediately
-   correlated with the authoritative primary-body D011. Contacts correlated
-   with auxiliary objects remain echo/local and cannot drain or clear Boss HP. */
-static int boss_hp_sync_apply_scripted_terminal_external_attack(struct boss_hp_sync_context*c,unsigned attack_value,unsigned ordinal,struct boss_hp_sync_result*r){
-    unsigned damage,slot=0u,component_damage;const struct boss_component_boss_component*def=0;boss_hp_sync_zero_result(r);if(!c||!c->scripted_component_active||c->phase!=BOSS_HP_SYNC_PHASE_RUNNING||c->awaiting_next_mode)return BOSS_HP_SYNC_BAD_PHASE;
-    if(!boss_component_boss_find_loaded_component(c,c->scripted_terminal_child,ordinal,&def,&slot))return BOSS_HP_SYNC_BAD_TARGET;
-    r->stage=c->stage;r->battle_epoch=c->battle_epoch;r->request_count=c->request_count;r->attack_value=attack_value;r->have_attack=attack_value?1u:0u;r->basis=def->basis;r->mode_index=c->mode_index;r->mode_count=c->mode_count;r->profile_kind=c->profile_kind;r->absolute_slot=c->absolute_slot;r->resource_mode_hp=c->resource_mode_hp;r->wire_mode=c->mode_index;r->wire_child=c->scripted_terminal_child;r->target_ordinal=ordinal;r->scripted_component_topology=1u;r->scripted_shell_child=c->scripted_shell_child;r->scripted_terminal_child=c->scripted_terminal_child;r->retire_child=c->scripted_terminal_child;r->child_max_hp=c->child_max_hp[c->scripted_terminal_child];r->child_hp=c->child_hp[c->scripted_terminal_child];r->component_slot=slot;r->component_max_hp=c->component_max_hp[slot];r->component_hp=c->component_hp[slot];
-    if(!attack_value||!c->component_max_hp[slot]){r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;return BOSS_HP_SYNC_BAD_TARGET;}
-    if(c->component_hp[slot]==0u){r->scripted_report_suppressed=1u;r->component_repeated_terminal=1u;r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;return BOSS_HP_SYNC_OK;}
-    damage=attack_value>def->basis?attack_value-def->basis:1u;component_damage=damage>c->component_hp[slot]?c->component_hp[slot]:damage;if(component_damage>c->child_hp[c->scripted_terminal_child])component_damage=c->child_hp[c->scripted_terminal_child];c->component_hp[slot]-=component_damage;c->child_hp[c->scripted_terminal_child]-=component_damage;c->cumulative_damage=c->mode_max_hp-c->hp;c->applied_hit_count++;r->applied_damage=component_damage;r->component_hp=c->component_hp[slot];r->child_hp=c->child_hp[c->scripted_terminal_child];r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;r->fixed_damage_policy=0u;
-    if(c->component_hp[slot]==0u&&!c->component_terminal_sent[slot]){c->component_terminal_sent[slot]=1u;r->component_first_terminal=1u;}else r->scripted_report_suppressed=1u;
-    if(c->child_hp[c->scripted_terminal_child]==0u&&!c->child_terminal_sent[c->scripted_terminal_child]){c->child_terminal_sent[c->scripted_terminal_child]=1u;r->child_first_terminal=1u;}
-    boss_hp_sync_scripted_finish_if_complete(c,r);boss_hp_sync_project_multimode_recording(c,r);return BOSS_HP_SYNC_OK;
+/* External damage is already resolved by the caller. It has an exact current
+   mode/component identity and shares all three HP ledgers with ordinary hits.
+   It cannot open a new mode or redirect a completed component to a sibling. */
+static int boss_hp_sync_apply_external_component_damage(struct boss_hp_sync_context*c,unsigned mode,unsigned child,unsigned ordinal,unsigned damage,struct boss_hp_sync_result*r){
+    const struct boss_component_boss_component*def=0;unsigned slot=0u,requests;unsigned char req[BOSS_HP_SYNC_D011_LEN];int rc;
+    boss_hp_sync_zero_result(r);
+    if(!c||c->phase!=BOSS_HP_SYNC_PHASE_RUNNING)return BOSS_HP_SYNC_BAD_PHASE;
+    if(c->invalid_slot)return BOSS_HP_SYNC_INVALID_SLOT;
+    if(c->lookup_miss||!c->profile)return BOSS_HP_SYNC_LOOKUP_MISS;
+    if(c->awaiting_next_mode||mode!=c->mode_index)return BOSS_HP_SYNC_BAD_MODE;
+    if(!damage||!boss_component_boss_find_loaded_component(c,child,ordinal,&def,&slot)||!def->scaled_hp)return BOSS_HP_SYNC_BAD_TARGET;
+    r->stage=c->stage;r->battle_epoch=c->battle_epoch;r->request_count=c->request_count;
+    r->mode_index=mode;r->mode_count=c->mode_count;r->wire_mode=mode;r->wire_child=child;r->wire_ordinal=ordinal;r->target_ordinal=ordinal;
+    r->component_slot=slot;r->component_max_hp=c->component_max_hp[slot];r->component_hp=c->component_hp[slot];
+    r->retire_child=child;r->child_max_hp=c->child_max_hp[child];r->child_hp=c->child_hp[child];
+    if(!c->component_hp[slot]){r->component_repeated_terminal=1u;r->scripted_report_suppressed=1u;boss_hp_sync_project_multimode_recording(c,r);return BOSS_HP_SYNC_OK;}
+    /* Clamp before adding basis, keeping the configured damage and avoiding overflow. */
+    if(damage>c->component_hp[slot])damage=c->component_hp[slot];
+    memset(req,0,sizeof(req));req[0x12]=(unsigned char)mode;req[0x13]=(unsigned char)child;boss_hp_sync_put32(req,0x14,ordinal);
+    requests=c->request_count;rc=boss_hp_sync_apply_d011_attack(c,req,sizeof(req),damage+def->basis,1u,r);
+    c->request_count=requests;r->request_count=requests;boss_hp_sync_project_multimode_recording(c,r);return rc;
 }
-#endif
-/* Local adapter policy: a verified active meat-contact report has no D011
-   topology tuple, so it may only damage the already-established current mode.
-   It never advances an awaiting multimode topology without the next D011. */
-static int boss_hp_sync_apply_external_damage(struct boss_hp_sync_context*c,unsigned attack_value,struct boss_hp_sync_result*r){
-    unsigned damage;boss_hp_sync_zero_result(r);if(c->phase!=BOSS_HP_SYNC_PHASE_RUNNING)return BOSS_HP_SYNC_BAD_PHASE;r->stage=c->stage;r->battle_epoch=c->battle_epoch;r->request_count=c->request_count;r->attack_value=attack_value;r->have_attack=attack_value?1u:0u;r->mode_index=c->mode_index;r->mode_count=c->mode_count;r->basis=c->mode_basis;r->expected_ordinal=c->expected_ordinal;r->target_ordinal=c->expected_ordinal;r->profile_kind=c->profile_kind;r->absolute_slot=c->absolute_slot;r->lookup_miss=c->lookup_miss;r->invalid_slot=c->invalid_slot;r->resource_mode_hp=c->resource_mode_hp;
-    if(c->invalid_slot)return BOSS_HP_SYNC_INVALID_SLOT;if(c->lookup_miss||!c->profile)return BOSS_HP_SYNC_LOOKUP_MISS;if(c->awaiting_next_mode)return BOSS_HP_SYNC_BAD_MODE;damage=attack_value<c->hp?attack_value:c->hp;if(damage){c->hp-=damage;c->cumulative_damage=c->mode_max_hp-c->hp;c->applied_hit_count++;}r->applied_damage=damage;r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;
-    if(c->hp==0u){if(c->mode_index+1u<c->mode_count){c->awaiting_next_mode=1u;r->intermediate_terminal=1u;}else{c->phase=BOSS_HP_SYNC_PHASE_TERMINAL;c->terminal_response_count=1u;c->final_terminal_seen=1u;r->first_terminal=1u;r->final_terminal=1u;}}boss_hp_sync_project_multimode_recording(c,r);return BOSS_HP_SYNC_OK;
+static int boss_hp_sync_apply_external_contact(struct boss_hp_sync_context*c,const unsigned char*req,unsigned len,unsigned damage,struct boss_hp_sync_result*r){
+    boss_hp_sync_zero_result(r);if(len!=0x1Cu)return BOSS_HP_SYNC_BAD_LENGTH;
+    if(boss_hp_sync_get16(req,0x08)!=40u)return BOSS_HP_SYNC_BAD_TARGET;
+    return boss_hp_sync_apply_external_component_damage(c,req[0x10],req[0x11],boss_hp_sync_get16(req,0x12),damage,r);
+}
+/* Compatibility entry for a single authored positive component only. A scalar
+   damage value must never be distributed over an ambiguous component topology. */
+static int boss_hp_sync_apply_external_damage(struct boss_hp_sync_context*c,unsigned damage,struct boss_hp_sync_result*r){
+    unsigned i,n=0u;const struct boss_component_boss_component*def=0;int rc;
+    boss_hp_sync_zero_result(r);if(!c||c->phase!=BOSS_HP_SYNC_PHASE_RUNNING)return BOSS_HP_SYNC_BAD_PHASE;
+    if(c->invalid_slot)return BOSS_HP_SYNC_INVALID_SLOT;if(c->lookup_miss||!c->profile)return BOSS_HP_SYNC_LOOKUP_MISS;if(c->awaiting_next_mode)return BOSS_HP_SYNC_BAD_MODE;
+    for(i=0;i<c->component_count;i++)if(c->component_max_hp[i]){def=&boss_component_boss_components[c->component_def_index[i]];n++;}
+    if(n!=1u)return BOSS_HP_SYNC_BAD_TARGET;
+    rc=boss_hp_sync_apply_external_component_damage(c,c->mode_index,def->child,def->ordinal,damage,r);
+    r->component_first_terminal=0u;r->phase_transition_retire=0u;return rc;
 }
 #endif
 static int boss_hp_sync_encode_d012_payload(unsigned char*frame,unsigned len,const struct boss_hp_sync_result*r){
     if(len!=BOSS_HP_SYNC_D012_LEN)return BOSS_HP_SYNC_BAD_LENGTH;
+    memset(frame+0x18,0,BOSS_HP_SYNC_D012_LEN-0x18u);
     /* D012 DWORD+0x28 updates the owner/group recording before BYTE+0x19
        selects a child. A matched child then passes WORD+0x1A to the component
        retirement path. Ordinary recording, child-level D013, final and repeat
