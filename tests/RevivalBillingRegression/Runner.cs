@@ -33,6 +33,7 @@ internal static class RevivalBillingChecks
         await CheckLiveBilling();
         await CheckCommittedPaymentRetry();
         await CheckInsufficientFunds();
+        await CheckDeathSettlementFlow();
         await CheckRejectedTransitions();
         Console.WriteLine($"REVIVAL_BILLING_REGRESSION_PASS checks={checks}");
     }
@@ -65,32 +66,35 @@ internal static class RevivalBillingChecks
 
     private static async Task CheckLiveBilling()
     {
-        await using var f = await Fixture.Create(1000, 12);
+        const long wallet = 999_999_999;
+        await using var f = await Fixture.Create(wallet, 12);
         await f.Hp(0);
         await f.Revive(1, 1280);
-        await f.Balance(1000, 12, "recovery before the first start does not pay");
+        await f.Balance(wallet, 12, "recovery before the first start does not pay");
         Check(f.Dead && f.Drain().Count == 0, "unstarted recovery remains dead");
 
         await f.Hp(2000);
         await f.Start();
-        f.Character.Hans = 99999;
+
+        // Exact observed three-death selector order: egg, 1280 Hans, egg.
         await f.Hp(0);
         await f.Revive(1, 1280);
-        await f.Balance(950, 12, "first recovery costs exactly 50 Hans regardless of client mode/value");
-        f.Recovered(20, 2000, 800);
+        await f.Balance(wallet, 11, "first mode1/value1280 death consumes one service egg and no Hans");
+        f.Recovered(60, 2000, 800);
 
-        await f.Revive(0, 50);
-        await f.Balance(950, 12, "repeated recovery while alive pays nothing");
+        await f.Revive(0, 1280);
+        await f.Balance(wallet, 11, "repeated recovery while alive pays nothing");
         Check(f.Drain().Count == 0, "repeated recovery has no second success");
 
         await f.Hp(0);
-        await f.Revive(0, 50);
-        await f.Balance(950, 11, "second recovery consumes one revival egg even when the client sends mode0");
-        f.Recovered(60, 2000, 800);
+        f.Character.Hans = 0; // persisted 64-bit wallet, not the stale cache, owns affordability.
+        await f.Revive(0, 1280);
+        await f.Balance(wallet - 1280, 11, "second mode0/value1280 death debits the persisted Hans wallet");
+        f.Recovered(20, 2000, 800);
 
         await f.Hp(0);
-        await f.Revive(1, 1400);
-        await f.Balance(950, 10, "later recoveries keep consuming exactly one egg");
+        await f.Revive(1, 1280);
+        await f.Balance(wallet - 1280, 10, "third mode1/value1280 death consumes the next service egg");
         f.Recovered(60, 2000, 800);
     }
 
@@ -117,56 +121,75 @@ internal static class RevivalBillingChecks
             await f.Start();
             await f.Hp(0);
             await f.Revive(0, 50);
-            await f.Balance(49, 2, "insufficient first-payment Hans leaves both ledgers unchanged");
-            Check(f.Dead && f.Drain().Count == 0, "insufficient first payment retains the death latch");
+            await f.Balance(49, 2, "insufficient mode0 Hans leaves both ledgers unchanged");
+            Check(f.Dead && f.Drain().Count == 0,
+                "insufficient mode0 returns normally, retains the death latch and emits no fabricated success");
+
             await f.Revive(1, 1280);
-            await f.Balance(49, 2, "changing client mode cannot bypass the first 50-Hans payment");
-            Check(f.Dead && f.Drain().Count == 0, "client selector changes do not consume an egg before the first success");
-            await f.Coins(50);
-            f.Character.Hans = 0;
-            await f.Revive(1, 65535);
-            await f.Balance(0, 2, "retry after funding uses exactly 50 Hans from persistence");
-            f.Recovered(20, 2000, 800);
+            await f.Balance(49, 1, "mode1 can still consume the selected service egg after a rejected Hans attempt");
+            f.Recovered(60, 2000, 800);
         }
+
         await using (var f = await Fixture.Create(1000, 0))
         {
             await f.Start();
             await f.Hp(0);
             await f.Revive(1, 1280);
-            await f.Balance(950, 0, "first recovery still uses 50 Hans when no eggs exist");
-            f.Recovered(20, 2000, 800);
-            await f.Hp(0);
-            await f.Revive(0, 50);
-            await f.Balance(950, 0, "later recovery without eggs never falls back to Hans");
-            Check(f.Dead && f.Drain().Count == 0, "missing revival egg keeps death and grants no recovery");
+            await f.Balance(1000, 0, "mode1 without eggs never falls back to Hans");
+            Check(f.Dead && f.Drain().Count == 0,
+                "missing service egg keeps death and grants no recovery");
         }
+    }
+
+    private static async Task CheckDeathSettlementFlow()
+    {
+        await using var f = await Fixture.Create(1000, 2);
+        await f.Start();
+        await f.Hp(0);
+
+        await f.Settle();
+        var settlement = f.Drain();
+        Check(f.Worker.SettlementRequests == 1
+            && settlement.Count == 1
+            && U16(settlement[0], 6) == 0xCF88,
+            "death timeout CF87 reaches the worker and returns the CF88 result frame");
+        Check(f.Dead && (bool)Get(f.Session, "NativeDungeonSettlementAwaitingAction")!,
+            "death settlement keeps the death latch while the result page awaits exit");
+
+        var resetRequests = f.Worker.ResetRequests;
+        await f.Send(0xCF8B, [0, 0, 1, 0]);
+        Check(f.Worker.ResetRequests == resetRequests && f.Drain().Count == 0,
+            "death-result timer CF8B is consumed before the worker can rebuild gameplay");
+        Check(f.Dead && (bool)Get(f.Session, "NativeDungeonSettlementAwaitingAction")!,
+            "suppressed death-result CF8B preserves the CF88 result state");
     }
 
     private static async Task CheckRejectedTransitions()
     {
-        await using (var f = await Fixture.Create(1000, 5))
-        {
-            await f.Start(); await f.Hp(0); await f.Revive(0, 50);
-            f.Recovered(20, 2000, 800);
-            await f.Settle();
-            f.Worker.RejectTransition = true;
-            await f.Send(0xCF8B, [0, 0, 1, 0]);
-            f.Drain(); await f.ReadyRoom(); await f.Start(); await f.Hp(0);
-            await f.Revive(0, 50);
-            await f.Balance(950, 4, "rejected transition does not reset the active battle billing ordinal");
-            f.Recovered(60, 2000, 800);
-        }
-        await using (var f = await Fixture.Create(1000, 5))
-        {
-            await f.Start(); await f.Hp(0); await f.Revive(0, 50);
-            f.Recovered(20, 2000, 800);
-            await f.Settle();
-            await f.Send(0xCF8B, [0, 0, 1, 0]);
-            f.Drain(); await f.ReadyRoom(); await f.Start(); await f.Hp(0);
-            await f.Revive(1, 1400);
-            await f.Balance(900, 5, "accepted new battle resets to the first 50-Hans ordinal");
-            f.Recovered(20, 2000, 800);
-        }
+        await using var f = await Fixture.Create(1000, 5);
+        await f.Start();
+        await f.Hp(0);
+        await f.Revive(0, 50);
+        f.Recovered(20, 2000, 800);
+        await f.Settle();
+        f.Worker.RejectTransition = true;
+        await f.Send(0xCF8B, [0, 0, 1, 0]);
+        f.Drain();
+        await f.ReadyRoom();
+        await f.Start();
+        await f.Hp(0);
+        await f.Revive(0, 50);
+        await f.Balance(900, 5, "invalid transition does not change mode0 Hans selector semantics");
+        f.Recovered(20, 2000, 800);
+        await f.Settle();
+        await f.Send(0xCF8B, [0, 0, 0, 0]);
+        f.Drain();
+        await f.Start();
+        Set(f.Session, "NativeDungeonSettlementAwaitingAction", false);
+        await f.Hp(0);
+        await f.Revive(0, 50);
+        await f.Balance(850, 5, "invalid transition mode still leaves mode0 on the Hans path");
+        f.Recovered(20, 2000, 800);
     }
 
     private sealed class Fixture : IAsyncDisposable
@@ -307,6 +330,10 @@ internal static class RevivalBillingChecks
         private readonly object gate = new();
         public bool RejectTransition;
         public bool RejectNextPaidSync;
+        private int settlementRequests;
+        private int resetRequests;
+        public int SettlementRequests => Volatile.Read(ref settlementRequests);
+        public int ResetRequests => Volatile.Read(ref resetRequests);
         private byte dungeon, stage;
         public int Port => ((IPEndPoint)Listener.LocalEndpoint).Port;
         public Worker(NativeDungeonState initial) { state = new NativeDungeonState(initial.Bytes.ToArray()); Listener.Start(); }
@@ -353,6 +380,7 @@ internal static class RevivalBillingChecks
                             await stream.WriteAsync(NativeDungeonClient.Frame(0xCF96,[]));
                             break;
                         case 0xCF8B:
+                            Interlocked.Increment(ref resetRequests);
                             var mode=U16(frame,10);
                             var targetDungeon=dungeon; var targetStage=stage;
                             if(mode==2) targetDungeon=(byte)Math.Min(2,dungeon+1);
@@ -361,7 +389,24 @@ internal static class RevivalBillingChecks
                             if(!RejectTransition) { dungeon=targetDungeon; stage=targetStage; }
                             await stream.WriteAsync(NativeDungeonClient.Frame(0xCF8C,response));
                             break;
-                        case 0xCF7F: case 0xCF87: break;
+                        case 0xCF87:
+                            Interlocked.Increment(ref settlementRequests);
+                            var settlement = new byte[56];
+                            Put(settlement, 0, 1);
+                            ushort memberUid;
+                            bool alive;
+                            lock (gate)
+                            {
+                                memberUid = checked((ushort)state.Get(4));
+                                alive = state.Get(20) > 0;
+                            }
+                            Put(settlement, 4, memberUid);
+                            settlement[4 + 0x0B] = alive ? (byte)5 : (byte)0;
+                            Put32(settlement, 4 + 0x1C, alive ? 100u : 0u);
+                            await stream.WriteAsync(NativeDungeonClient.Frame(0xCF88, settlement));
+                            break;
+                        case 0xCF7F:
+                            break;
                         default: throw new InvalidOperationException($"Unexpected component operation {U16(frame,6):X4}");
                     }
                 }

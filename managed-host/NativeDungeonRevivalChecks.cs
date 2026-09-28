@@ -39,13 +39,15 @@ internal static class NativeDungeonRevivalChecks
                     "continuation payload retains variant, HP/MP and both wallet words");
             }
         Check(NetworkAdapterService.ResolveNativeDungeonRevivalBilling(true, 0)
-            == NetworkAdapterService.NativeDungeonRevivalBillingMode.Hans, "first successful recovery bills coins");
+            == NetworkAdapterService.NativeDungeonRevivalBillingMode.Hans, "mode0 selects Hans billing");
         Check(NetworkAdapterService.ResolveNativeDungeonRevivalBilling(true, 1)
-            == NetworkAdapterService.NativeDungeonRevivalBillingMode.RevivalEgg, "later recovery bills an egg");
+            == NetworkAdapterService.NativeDungeonRevivalBillingMode.RevivalEgg, "mode1 selects service-egg billing");
         Check(NetworkAdapterService.ResolveNativeDungeonRevivalBilling(false, 0)
-            == NetworkAdapterService.NativeDungeonRevivalBillingMode.None, "alive requests never bill coins");
+            == NetworkAdapterService.NativeDungeonRevivalBillingMode.None, "alive mode0 requests never bill");
         Check(NetworkAdapterService.ResolveNativeDungeonRevivalBilling(false, 1)
-            == NetworkAdapterService.NativeDungeonRevivalBillingMode.None, "alive requests never bill eggs");
+            == NetworkAdapterService.NativeDungeonRevivalBillingMode.None, "alive mode1 requests never bill");
+        Check(NetworkAdapterService.ResolveNativeDungeonRevivalBilling(true, 2)
+            == NetworkAdapterService.NativeDungeonRevivalBillingMode.None, "unknown CF83 mode has no billing route");
         await CheckEchoGate();
         await CheckCoinsThenEggs();
         await CheckEggFirst();
@@ -94,11 +96,11 @@ internal static class NativeDungeonRevivalChecks
             await f.Deliver(f.LocalHp(100), 6);
             Check(f.Resources.CurrentHp == 1812 && f.Drain().Count == 0, "stale worker epoch remains suppressed");
             await f.Hp(0); await f.Revive(1, 50);
-            await f.Balance(900, 5, "reload resets first-revival billing once"); f.Recovered(20, 2000, 800);
+            await f.Balance(950, 4, "mode1 remains the revival-egg path after reload"); f.Recovered(60, 2000, 800);
             await f.Send(0xCFEB, [0, 0, 0, 0]);
             await f.Start(); await f.Deliver(NativeDungeonClient.Frame(0xCF80, [])); f.Drain();
             await f.Hp(0); await f.Revive(0, 50);
-            await f.Balance(900, 4, "duplicate profile/start cannot reset revival billing"); f.Recovered(60, 2000, 800);
+            await f.Balance(900, 4, "mode0 remains the Hans path after duplicate profile/start"); f.Recovered(20, 2000, 800);
             await f.Settle(); f.Drain();
             f.Worker.RejectTransition = true;
             await f.Send(0xCF8B, [0, 0, 1, 0]); f.Drain();
@@ -133,45 +135,58 @@ internal static class NativeDungeonRevivalChecks
 
     private static async Task CheckCoinsThenEggs()
     {
-        await using var f = await Fixture.Create(0x123456789L, 5);
-        await f.Hp(0); await f.Revive(1, 1280);
-        await f.Balance(0x123456789L, 5, "pre-start recovery cannot bill");
+        const long wallet = 0x123456789L;
+        await using var f = await Fixture.Create(wallet, 5);
+        await f.Hp(0);
+        await f.Revive(1, 1280);
+        await f.Balance(wallet, 5, "pre-start recovery cannot bill");
         Check(f.Dead && f.Drain().Count == 0, "pre-start recovery has no success");
-        await f.Hp(2000); await f.Start();
-        await f.Hp(0); await f.Revive(1, 1280);
-        await f.Balance(0x123456789L - 50, 5, "first recovery spends exactly 50 Hans for either client mode");
-        f.Recovered(20, 2000, 800);
-        await f.Hp(0); await f.Revive(0, 50);
-        await f.Balance(0x123456789L - 50, 4, "second recovery spends one egg for either client mode");
+        await f.Hp(2000);
+        await f.Start();
+
+        // Preserve the exact observed selector order across three deaths.
+        await f.Hp(0);
+        await f.Revive(1, 1280);
+        await f.Balance(wallet, 4, "first mode1/value1280 death spends one service egg and no Hans");
         f.Recovered(60, 2000, 800);
-        await f.Hp(0); await f.Revive(1, 1400);
-        await f.Balance(0x123456789L - 50, 3, "later recovery keeps spending one egg");
+
+        await f.Hp(0);
+        f.Character.Hans = 0;
+        await f.Revive(0, 1280);
+        await f.Balance(wallet - 1280, 4, "second mode0/value1280 death spends the persisted 64-bit Hans balance");
+        f.Recovered(20, 2000, 800);
+
+        await f.Hp(0);
+        await f.Revive(1, 1280);
+        await f.Balance(wallet - 1280, 3, "third mode1/value1280 death spends the next service egg");
         f.Recovered(60, 2000, 800);
     }
 
     private static async Task CheckEggFirst()
     {
         await using var f = await Fixture.Create(0, 1);
-        await f.Start(); await f.Hp(0); await f.Revive(1, 1400);
-        await f.Balance(0, 1, "first request cannot spend an egg before the 50-Hans recovery");
-        Check(f.Dead && f.Drain().Count == 0, "zero Hans retains the first-payment death latch");
-        await f.Coins(50); await f.Revive(0, 65535);
-        await f.Balance(0, 1, "funded retry spends exactly 50 Hans despite client mode/value");
-        f.Recovered(20, 2000, 800);
-        await f.Hp(0); await f.Revive(0, 50);
-        await f.Balance(0, 0, "the next recovery consumes the one available egg");
+        await f.Start();
+        await f.Hp(0);
+        await f.Revive(1, 1400);
+        await f.Balance(0, 0, "first mode1 request consumes the selected service egg without Hans");
         f.Recovered(60, 2000, 800);
+        await f.Hp(0);
+        await f.Revive(1, 50);
+        Check(f.Dead && f.Drain().Count == 0, "no egg cannot mint health or a success response");
+        await f.Balance(0, 0, "empty service-egg ledger remains unchanged");
     }
 
     private static async Task CheckInsufficientCoins()
     {
         await using var f = await Fixture.Create(49, 2);
-        await f.Start(); await f.Hp(0); await f.Revive(0, 50);
-        await f.Balance(49, 2, "insufficient first Hans payment does not consume an egg");
-        Check(f.Dead && f.Drain().Count == 0, "rejected first payment returns without disconnecting the route");
+        await f.Start();
+        await f.Hp(0);
+        await f.Revive(0, 50);
+        await f.Balance(49, 2, "insufficient mode0 Hans does not consume an egg");
+        Check(f.Dead && f.Drain().Count == 0, "rejected coin payment returns without disconnecting the route");
         await f.Revive(1, 1280);
-        await f.Balance(49, 2, "mode1 cannot bypass the server-owned first-payment ordinal");
-        Check(f.Dead && f.Drain().Count == 0, "failed alternate selector still grants no recovery");
+        await f.Balance(49, 1, "mode1 remains available after a rejected mode0 payment");
+        f.Recovered(60, 2000, 800);
     }
 
     private sealed class Fixture : IAsyncDisposable

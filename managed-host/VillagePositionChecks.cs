@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Reflection;
 using System.Text;
 using Microsoft.Data.Sqlite;
@@ -73,6 +73,10 @@ internal static class VillagePositionChecks
                 "native FFFF/FFFF sentinel is not persistable");
             Check(!TownPositionPolicy.IsPersistable(0x3FF, 0x3FF),
                 "legacy clamp image 03FF/03FF is not persistable");
+            Check(TownPositionPolicy.IsMapBoundaryEntry(9999, 396)
+                  && TownPositionPolicy.IsMapBoundaryEntry(32, 9999)
+                  && !TownPositionPolicy.IsPersistable(9999, 396),
+                "C367 map-boundary 9999 is wire-valid in one axis but never persistable");
 
             foreach (var (label, selector, requestedPage, mode, expectedPage) in new[]
                      {
@@ -325,12 +329,62 @@ internal static class VillagePositionChecks
                   && BinaryPrimitives.ReadUInt16LittleEndian(destinationC368.AsSpan(0x32, 2)) == 32,
                 "destination C367/C368 remains authoritative after C365 and carries its own page/landing coordinates");
 
+            byte[] capturedDungeonLandingC367 = new byte[8];
+            BinaryPrimitives.WriteInt32LittleEndian(capturedDungeonLandingC367, 31);
+            BinaryPrimitives.WriteUInt16LittleEndian(capturedDungeonLandingC367.AsSpan(4, 2), 364);
+            BinaryPrimitives.WriteUInt16LittleEndian(capturedDungeonLandingC367.AsSpan(6, 2), 528);
+            byte[] capturedDungeonLandingC368 = (await Dispatch(0xC367, capturedDungeonLandingC367))!;
+            Check(ReadOpcode(capturedDungeonLandingC368) == 0xC368
+                  && capturedDungeonLandingC368[9] == 31
+                  && BinaryPrimitives.ReadUInt16LittleEndian(capturedDungeonLandingC368.AsSpan(0x30, 2)) == 364
+                  && BinaryPrimitives.ReadUInt16LittleEndian(capturedDungeonLandingC368.AsSpan(0x32, 2)) == 528
+                  && runtimeCharacter.CurrentTownPage == 31
+                  && runtimeCharacter.PositionX == 364
+                  && runtimeCharacter.PositionY == 528,
+                "captured page31 C367 landing 364/528 survives C368 and persistence without 400/96 fallback");
+
+            byte[] lowDungeonBoundaryC367 = new byte[8];
+            BinaryPrimitives.WriteInt32LittleEndian(lowDungeonBoundaryC367, 93);
+            BinaryPrimitives.WriteUInt16LittleEndian(
+                lowDungeonBoundaryC367.AsSpan(4, 2),
+                TownPositionPolicy.MapBoundarySentinel);
+            BinaryPrimitives.WriteUInt16LittleEndian(lowDungeonBoundaryC367.AsSpan(6, 2), 396);
+            byte[] lowDungeonBoundaryC368 = (await Dispatch(0xC367, lowDungeonBoundaryC367))!;
+            Check(ReadOpcode(lowDungeonBoundaryC368) == 0xC368
+                  && lowDungeonBoundaryC368[9] == 93
+                  && BinaryPrimitives.ReadUInt16LittleEndian(lowDungeonBoundaryC368.AsSpan(0x30, 2)) == 9999
+                  && BinaryPrimitives.ReadUInt16LittleEndian(lowDungeonBoundaryC368.AsSpan(0x32, 2)) == 396,
+                "page93 C367/C368 echoes the retail 9999/396 map-boundary handoff exactly");
+            Check(runtimeCharacter.CurrentTownPage == 93
+                  && runtimeCharacter.PositionX == 364
+                  && runtimeCharacter.PositionY == 528
+                  && (ushort)sessionType.GetProperty("LastReportedPositionX")!.GetValue(session)! == 364
+                  && (ushort)sessionType.GetProperty("LastReportedPositionY")!.GetValue(session)! == 528,
+                "page93 map-boundary handoff changes page without polluting persistent or CB21 position carriers");
+
+            byte[] lowDungeonLandingC367 = new byte[8];
+            BinaryPrimitives.WriteInt32LittleEndian(lowDungeonLandingC367, 94);
+            BinaryPrimitives.WriteUInt16LittleEndian(lowDungeonLandingC367.AsSpan(4, 2), 32);
+            BinaryPrimitives.WriteUInt16LittleEndian(lowDungeonLandingC367.AsSpan(6, 2), 396);
+            byte[] lowDungeonLandingC368 = (await Dispatch(0xC367, lowDungeonLandingC367))!;
+            Check(ReadOpcode(lowDungeonLandingC368) == 0xC368
+                  && lowDungeonLandingC368[9] == 94
+                  && BinaryPrimitives.ReadUInt16LittleEndian(lowDungeonLandingC368.AsSpan(0x30, 2)) == 32
+                  && BinaryPrimitives.ReadUInt16LittleEndian(lowDungeonLandingC368.AsSpan(0x32, 2)) == 396,
+                "page94 C367/C368 carries the next legal 32/396 landing point");
+            Check(runtimeCharacter.CurrentTownPage == 94
+                  && runtimeCharacter.PositionX == 32
+                  && runtimeCharacter.PositionY == 396
+                  && (ushort)sessionType.GetProperty("LastReportedPositionX")!.GetValue(session)! == 32
+                  && (ushort)sessionType.GetProperty("LastReportedPositionY")!.GetValue(session)! == 396,
+                "page94 legal landing becomes the new persistent and CB21 position carrier");
+
             byte[] cb21Sentinel = new byte[16];
             BinaryPrimitives.WriteUInt16LittleEndian(cb21Sentinel.AsSpan(8, 2), ushort.MaxValue);
             BinaryPrimitives.WriteUInt16LittleEndian(cb21Sentinel.AsSpan(10, 2), ushort.MaxValue);
             Check(await Dispatch(0xCB21, cb21Sentinel) is null,
                 "CB21 activity sentinel remains response-free");
-            Check(runtimeCharacter.PositionX == 368 && runtimeCharacter.PositionY == 32,
+            Check(runtimeCharacter.PositionX == 32 && runtimeCharacter.PositionY == 396,
                 "CB21 FFFF/FFFF is relayed as activity but cannot overwrite the last legal C367 position");
 
             byte[] cb21Move = new byte[16];
@@ -340,7 +394,7 @@ internal static class VillagePositionChecks
             Check(runtimeCharacter.PositionX == 512 && runtimeCharacter.PositionY == 288,
                 "CB21 legal movement still updates the persistent carrier");
 
-            Console.WriteLine("VILLAGE_POSITION_CHECKS_PASS c355-bootstrap c365-c366-transition-matrix travel-fare atomic-debit insufficient-balance stale-session c367 c368-offsets cb21 sentinel persistence startup-self-heal");
+            Console.WriteLine("VILLAGE_POSITION_CHECKS_PASS c355-bootstrap c365-c366-transition-matrix travel-fare atomic-debit insufficient-balance stale-session c367 map-boundary-9999 c368-offsets cb21 sentinel persistence startup-self-heal");
         }
         finally
         {

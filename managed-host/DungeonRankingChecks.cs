@@ -120,11 +120,11 @@ internal static class DungeonRankingChecks
                     awaitingAction: true, deathLatched: false, nextDungeonMode1, 0xCF8B)
                 && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
                     awaitingAction: false, deathLatched: false, nextDungeonMode1, 0xCF8B)
-                && NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
-                     awaitingAction: true, deathLatched: true, nextDungeonMode1, 0xCF8B)
+                && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
+                    awaitingAction: true, deathLatched: true, nextDungeonMode1, 0xCF8B)
                 && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
                     awaitingAction: true, deathLatched: false, invalidNextDungeonMode, 0xCF8B),
-                "ordinary stage-to-stage, super-boss, and death retry require an awaiting settlement action");
+                "ordinary stage-to-stage and super-boss require a live non-death settlement action");
             Check(!NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF73)

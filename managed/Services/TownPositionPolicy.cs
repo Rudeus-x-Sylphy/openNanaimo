@@ -10,6 +10,13 @@ internal readonly record struct TownTransitionResolution(
     byte Flag,
     bool Canonicalized);
 
+internal readonly record struct TownRoomEntryResolution(
+    ushort WireX,
+    ushort WireY,
+    bool PersistPosition,
+    bool Repaired,
+    bool MapBoundarySentinel);
+
 internal static class TownPositionPolicy
 {
     // Every fresh client process promotes its first C355 into FirstVillageFlag=1.
@@ -20,6 +27,7 @@ internal static class TownPositionPolicy
     internal const byte LoginBootstrapTownPage = 0;
     internal const ushort FallbackX = 400;
     internal const ushort FallbackY = 96;
+    internal const ushort MapBoundarySentinel = 9999;
     internal const int MaximumPackedCoordinate = 0x3FF;
 
     internal static bool IsPersistable(int x, int y)
@@ -33,6 +41,37 @@ internal static class TownPositionPolicy
         => IsPersistable(x, y)
             ? new TownPositionResolution((ushort)x, (ushort)y, false)
             : new TownPositionResolution(FallbackX, FallbackY, true);
+
+    internal static bool IsMapBoundaryEntry(int x, int y)
+        => (x == MapBoundarySentinel && IsPackedCoordinate(y))
+           || (y == MapBoundarySentinel && IsPackedCoordinate(x));
+
+    internal static TownRoomEntryResolution ResolveRoomEntry(int requestedX, int requestedY)
+    {
+        // Retail uses 9999 on one axis as a page-boundary handoff coordinate.
+        // It is meaningful to C367/C368 and must be echoed on the wire, but it
+        // cannot be packed into CB21/C36A or persisted as a character position.
+        if (IsMapBoundaryEntry(requestedX, requestedY))
+        {
+            return new TownRoomEntryResolution(
+                checked((ushort)requestedX),
+                checked((ushort)requestedY),
+                PersistPosition: false,
+                Repaired: false,
+                MapBoundarySentinel: true);
+        }
+
+        var normalized = Normalize(requestedX, requestedY);
+        return new TownRoomEntryResolution(
+            normalized.X,
+            normalized.Y,
+            PersistPosition: true,
+            normalized.Repaired,
+            MapBoundarySentinel: false);
+    }
+
+    private static bool IsPackedCoordinate(int value)
+        => value is >= 0 and <= MaximumPackedCoordinate;
 
     internal static TownTransitionResolution ResolveTransition(
         byte selector,

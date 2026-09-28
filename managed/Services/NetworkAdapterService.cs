@@ -435,7 +435,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public bool NativeDungeonSettlementAwaitingAction { get; set; }
         public bool NativeDungeonNextTransitionAuthorized { get; set; }
         public bool NativeDungeonTownTransitionAuthorized { get; set; }
-        public bool NativeDungeonDeathRetryTransitionAuthorized { get; set; }
         public bool NativeDungeonSelectionValid { get; set; }
         public byte NativeDungeonHdIndex { get; set; }
         public byte NativeDungeonEpisode { get; set; }
@@ -4660,22 +4659,25 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     // C368 is consumed before that page finishes initializing, so
                     // wait for the page to finish before the client opens the
                     // game-service handshake and re-enters the retained room.
-                    var transitionPosition = TownPositionPolicy.Normalize(
+                    var transitionPosition = TownPositionPolicy.ResolveRoomEntry(
                         requestedPositionX,
                         requestedPositionY);
-                    session.LastReportedPositionX = transitionPosition.X;
-                    session.LastReportedPositionY = transitionPosition.Y;
+                    if (transitionPosition.PersistPosition)
+                    {
+                        session.LastReportedPositionX = transitionPosition.WireX;
+                        session.LastReportedPositionY = transitionPosition.WireY;
+                    }
                     session.TownPage = (byte)roomIndex;
                     session.TownSceneActive = false;
-                    _log($"{channel}:{remote} Dungeon transition bridge entered: room={bridgeRoomId} action={bridgeAction} townPage={roomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({transitionPosition.X},{transitionPosition.Y}); returned C368 and awaiting C36C before the client-driven game-service handshake");
+                    _log($"{channel}:{remote} Dungeon transition bridge entered: room={bridgeRoomId} action={bridgeAction} townPage={roomIndex} requested=({requestedPositionX},{requestedPositionY}) wirePosition=({transitionPosition.WireX},{transitionPosition.WireY}) persisted={transitionPosition.PersistPosition}; returned C368 and awaiting C36C before the client-driven game-service handshake");
                     return BuildNativeFrame(
                         frame,
                         0xC368,
                         BuildRoomEnterPayloadWithResources(
                             session.Character,
                             (byte)roomIndex,
-                            transitionPosition.X,
-                            transitionPosition.Y,
+                            transitionPosition.WireX,
+                            transitionPosition.WireY,
                             session.NonCombatResourceSnapshot),
                         session);
                 }
@@ -4685,34 +4687,37 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 // the loaded page's built-in first-entry point. Do not replace the
                 // client's safe bootstrap C367 page with an arbitrary persisted page.
                 var effectiveRoomIndex = roomIndex;
-                var entryPosition = TownPositionPolicy.Normalize(
+                var entryPosition = TownPositionPolicy.ResolveRoomEntry(
                     requestedPositionX,
                     requestedPositionY);
-                var positionX = entryPosition.X;
-                var positionY = entryPosition.Y;
 
                 LeaveTradeRoomScene(session, "town page enter");
                 LeaveApartmentScene(session, "town page enter");
                 LeaveVillageShopScene(session, "town page enter");
                 LeaveTownScene(session, "town page change");
                 session.TownPage = (byte)effectiveRoomIndex;
-                session.LastReportedPositionX = positionX;
-                session.LastReportedPositionY = positionY;
                 session.Character.CurrentMapId = session.TownId;
                 session.Character.CurrentTownPage = effectiveRoomIndex;
-                session.Character.PositionX = positionX;
-                session.Character.PositionY = positionY;
-                _log(entryPosition.Repaired
-                    ? $"{channel}:{remote} C367 village-entry sentinel normalized: town={session.TownId} room={effectiveRoomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({positionX},{positionY}); FFFF/FFFF and legacy 03FF/03FF are not persisted"
-                    : $"{channel}:{remote} C367 accepted village-entry position: room={effectiveRoomIndex} position=({positionX},{positionY})");
+                if (entryPosition.PersistPosition)
+                {
+                    session.LastReportedPositionX = entryPosition.WireX;
+                    session.LastReportedPositionY = entryPosition.WireY;
+                    session.Character.PositionX = entryPosition.WireX;
+                    session.Character.PositionY = entryPosition.WireY;
+                }
+                _log(entryPosition.MapBoundarySentinel
+                    ? $"{channel}:{remote} C367 map-boundary entry echoed without persistence: town={session.TownId} room={effectiveRoomIndex} wirePosition=({entryPosition.WireX},{entryPosition.WireY}) retainedPosition=({session.LastReportedPositionX},{session.LastReportedPositionY})"
+                    : entryPosition.Repaired
+                        ? $"{channel}:{remote} C367 village-entry sentinel normalized: town={session.TownId} room={effectiveRoomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({entryPosition.WireX},{entryPosition.WireY}); FFFF/FFFF and legacy 03FF/03FF are not persisted"
+                        : $"{channel}:{remote} C367 accepted village-entry position: room={effectiveRoomIndex} position=({entryPosition.WireX},{entryPosition.WireY})");
                 return BuildNativeFrame(
                     frame,
                     0xC368,
                     BuildRoomEnterPayloadWithResources(
                         session.Character,
                         (byte)effectiveRoomIndex,
-                        positionX,
-                        positionY,
+                        entryPosition.WireX,
+                        entryPosition.WireY,
                         session.NonCombatResourceSnapshot),
                     session);
             }
