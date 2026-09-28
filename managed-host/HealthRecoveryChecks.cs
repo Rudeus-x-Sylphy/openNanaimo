@@ -10,7 +10,7 @@ internal static class HealthRecoveryChecks
     {
         CheckPolicyAndSchedule();
         await CheckPersistenceSceneDeathAndReconnectAsync();
-        Console.WriteLine("HEALTH_RECOVERY_CHECKS_PASS five-second-tick town apartment scene-sync persistence cap reconnect death-return battle-suspend");
+        Console.WriteLine("HEALTH_RECOVERY_CHECKS_PASS five-second-tick town apartment metadata-independent scene-sync persistence cap reconnect death-return battle-suspend");
     }
 
     private static void CheckPolicyAndSchedule()
@@ -21,6 +21,22 @@ internal static class HealthRecoveryChecks
         Check(HealthRecoveryPolicy.Town == new HealthRecoveryParameters(100, 10)
               && HealthRecoveryPolicy.Apartment == new HealthRecoveryParameters(100, 10),
             "town and apartment use 100 HP / 10 MP ticks");
+
+        var ownerWithPopularHouse = new ApartmentRecoveryContext(
+            IsOwner: true,
+            RecommendationPoints: 999_999,
+            HasStreetAddress: true,
+            ExteriorCode: 11_070_001,
+            BannerCode: 11_080_001);
+        var visitorWithoutHouse = new ApartmentRecoveryContext(
+            IsOwner: false,
+            RecommendationPoints: 0,
+            HasStreetAddress: false,
+            ExteriorCode: 0,
+            BannerCode: 0);
+        Check(HealthRecoveryPolicy.GetApartmentParameters(ownerWithPopularHouse) == new HealthRecoveryParameters(100, 10)
+              && HealthRecoveryPolicy.GetApartmentParameters(visitorWithoutHouse) == new HealthRecoveryParameters(100, 10),
+            "current policy keeps owner visitor recommendation and house metadata separate from recovery");
 
         var town = HealthRecoveryPolicy.Resolve(character, HealthRecoveryScene.Town, true, false);
         Check(town.Eligible && town.Changed && town.CurrentHp == 1000 && town.CurrentMp == 385,

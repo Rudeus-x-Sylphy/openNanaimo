@@ -10,6 +10,23 @@ internal enum HealthRecoveryScene
 
 internal readonly record struct HealthRecoveryParameters(int HpStep, int MpStep);
 
+/// <summary>
+/// Apartment metadata is deliberately separated from the recovery quantum.
+/// The exact 2026-09-27 client (SHA-256 EA2D71F570B9CB9E0BA8C5E9EAAC37656A9FBCB0131893D87AEEDB7C7C413CF3) stores room
+/// recommendation data in the C38E handler at 0x00531BD0, while the D8FF
+/// consumer at 0x005408D0 reads only frame +0x10/+0x12/+0x14/+0x16 for
+/// maximum/current HP/MP. No client call chain connects ownership,
+/// recommendation points, lease/address, exterior, or banner fields to HP/MP.
+/// Keep these inputs explicit so a future original-server formula can be
+/// introduced without inferring one from unrelated apartment fields.
+/// </summary>
+internal readonly record struct ApartmentRecoveryContext(
+    bool IsOwner,
+    long RecommendationPoints,
+    bool HasStreetAddress,
+    uint ExteriorCode,
+    uint BannerCode);
+
 internal readonly record struct HealthRecoveryResolution(
     bool Eligible,
     bool Changed,
@@ -95,13 +112,24 @@ internal static class HealthRecoveryPolicy
     internal static HealthRecoveryParameters Town { get; } = new(100, 10);
     internal static HealthRecoveryParameters Apartment { get; } = new(100, 10);
 
-    internal static HealthRecoveryParameters GetParameters(HealthRecoveryScene scene)
+    internal static HealthRecoveryParameters GetParameters(
+        HealthRecoveryScene scene,
+        ApartmentRecoveryContext apartmentContext = default)
         => scene switch
         {
             HealthRecoveryScene.Town => Town,
-            HealthRecoveryScene.Apartment => Apartment,
+            HealthRecoveryScene.Apartment => GetApartmentParameters(apartmentContext),
             _ => throw new ArgumentOutOfRangeException(nameof(scene))
         };
+
+    internal static HealthRecoveryParameters GetApartmentParameters(ApartmentRecoveryContext context)
+    {
+        // Static client closure proves these fields are display/room-state data,
+        // not recovery operands. The observed D8FF stream remains server-owned:
+        // one 100 HP / 10 MP step at the established five-second cadence.
+        _ = context;
+        return Apartment;
+    }
 
     internal static HealthRecoveryResolution Resolve(
         CharacterRecord character,
