@@ -2221,6 +2221,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     session.AccountId, session.Character.Id, session.SessionId, token);
                 if (!storyGuideState.Authorized)
                     return null;
+                if (session.Character.TutorialCompleted)
+                    await EnsureSessionStoryQuestAsync(session, token);
                 var loadNecessityFrames = BuildLoadNecessityResponse(
                     frame,
                     session,
@@ -2233,7 +2235,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 // scratch data or a localized reward label.
                 loadNecessityFrames[C355StoryMedalFrameOffset] = storyGuideState.Medals;
                 _log($"{channel}:{remote} load necessities restored: {FormatCharacterRestoreSummary(session.Character)}; storyMedals={storyGuideState.Medals}; C355 followed by C476 inventory initialization");
-                return loadNecessityFrames;
+                return CombineNativeFrames(
+                    BuildLoadNecessityReadinessResponse(frame, session, storyGuideState.Mask),
+                    loadNecessityFrames);
 
             case 0xC358: // ENTER_OZVILL one-way notification
                 if (!session.OnlineTracked || session.Character is null)
@@ -4992,8 +4996,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
                 if (session.Character.TutorialCompleted)
                 {
+                    await EnsureSessionStoryQuestAsync(session, token);
                     _log($"{channel}:{remote} 忽略已完成角色的重复主线引导事件；保留当前位置=({session.Character.PositionX},{session.Character.PositionY}) 与宠物变体={session.Character.PetVariant}");
-                    return BuildLoadNecessityReadinessResponse(frame, session);
+                    var existingGuide = await _database.GetStoryGuideStateAsync(
+                        session.AccountId, session.Character.Id, session.SessionId, token);
+                    return existingGuide.Authorized
+                        ? BuildLoadNecessityReadinessResponse(frame, session, existingGuide.Mask)
+                        : null;
                 }
 
                 var persisted = await _database.MarkTutorialCompletedAsync(
@@ -5005,11 +5014,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 await RefreshSessionCharacterAsync(session, token);
                 if (persisted)
                 {
+                    await EnsureSessionStoryQuestAsync(session, token);
                     _log($"{channel}:{remote} 已原子保存主线引导完成、出生点与宠物变体：petVariant={session.Character?.PetVariant ?? petVariant}");
                     AccountStateChanged?.Invoke();
-                    return BuildLoadNecessityReadinessResponse(
-                        frame,
-                        session);
+                    var guideState = await _database.GetStoryGuideStateAsync(
+                        session.AccountId, session.Character!.Id, session.SessionId, token);
+                    return guideState.Authorized
+                        ? BuildLoadNecessityReadinessResponse(frame, session, guideState.Mask)
+                        : null;
                 }
 
                 _log($"{channel}:{remote} 主线引导完成状态未保存：账号、角色或活动世界会话已失效");
@@ -13855,11 +13867,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     private static byte[] BuildLoadNecessityReadinessResponse(
         byte[] request,
-        ConnectionSession session)
+        ConnectionSession session,
+        uint storyGuideMask)
         => BuildNativeFrame(
             request,
             0xC594,
-            BuildLoadNecessityReadinessPayload(),
+            BuildLoadNecessityReadinessPayload(storyGuideMask),
             session);
 
     private static IEnumerable<byte[]> SplitNativeFrames(byte[] response)
@@ -15778,13 +15791,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
-    private static byte[] BuildLoadNecessityReadinessPayload()
+    private static byte[] BuildLoadNecessityReadinessPayload(uint storyGuideMask)
     {
         var payload = new byte[4];
-        // C594 is a fixed 12-byte packet. The client extracts exactly eight
-        // one-bit scene readiness flags from this dword. Send it in response
-        // to C353 so it cannot reuse the following C354/C355 control word.
-        BinaryPrimitives.WriteUInt32LittleEndian(payload, 0xFFu);
+        // Restore the character's actual story-guide completion bits so unfinished
+        // Nemo dialogue and route guidance remain available after reconnect.
+        BinaryPrimitives.WriteUInt32LittleEndian(payload, storyGuideMask & 0xFFu);
         return payload;
     }
 

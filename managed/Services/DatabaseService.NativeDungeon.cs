@@ -724,24 +724,78 @@ public sealed partial class DatabaseService
             await transaction.RollbackAsync(token);
             return default;
         }
+        int storedLevel;
+        long storedExperience;
+        int vitality;
+        int intelligence;
+        int storedMaxHp;
+        int storedMaxMp;
+        await using (var progression = connection.CreateCommand())
+        {
+            progression.Transaction = transaction;
+            progression.CommandText = """
+                SELECT Level, Experience, Vitality, Intelligence, MaxHp, MaxMp
+                FROM Characters
+                WHERE Id=$id AND AccountId=$account
+                  AND (ActiveSessionId=$session OR ($recover=1 AND ActiveSessionId IS NULL))
+                """;
+            progression.Parameters.AddWithValue("$id", characterId);
+            progression.Parameters.AddWithValue("$account", accountId);
+            progression.Parameters.AddWithValue("$session", sessionId);
+            progression.Parameters.AddWithValue("$recover", recovering ? 1 : 0);
+            await using var reader = await progression.ExecuteReaderAsync(token);
+            if (!await reader.ReadAsync(token))
+                throw new InvalidOperationException("Dungeon session no longer owns its character.");
+            storedLevel = reader.GetInt32(0);
+            storedExperience = reader.GetInt64(1);
+            vitality = reader.GetInt32(2);
+            intelligence = reader.GetInt32(3);
+            storedMaxHp = reader.GetInt32(4);
+            storedMaxMp = reader.GetInt32(5);
+        }
+
+        // Only the settlement snapshot can advance character experience. Commit its
+        // positive delta onto the managed cumulative total and derive the level from
+        // the shared threshold table; stale worker snapshots cannot regress either.
+        var experienceDelta = after.Get(12) > before.Get(12)
+            ? after.Get(12) - before.Get(12)
+            : 0u;
+        var experience = storedExperience >= uint.MaxValue
+            ? uint.MaxValue
+            : Math.Min((long)uint.MaxValue, Math.Max(0L, storedExperience) + experienceDelta);
+        var level = Math.Max(Math.Clamp(storedLevel, 1, CharacterProgression.MaximumLevel),
+            CharacterProgression.CalculateLevel(experience));
+        var gainedLevels = Math.Max(0, level - storedLevel);
+        var maxHp = Math.Max(storedMaxHp, CharacterProgression.CalculateMaxHp(level, vitality));
+        var maxMp = Math.Max(storedMaxMp, CharacterProgression.CalculateMaxMp(level, intelligence));
+        var currentHp = gainedLevels > 0 ? maxHp : Math.Min(checked((int)after.Get(20)), maxHp);
+        var currentMp = gainedLevels > 0 ? maxMp : Math.Min(checked((int)after.Get(28)), maxMp);
+        BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(8, 4), checked((uint)level));
+        BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(12, 4), checked((uint)experience));
+        BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(16, 4), checked((uint)maxHp));
+        BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(20, 4), checked((uint)currentHp));
+        BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(24, 4), checked((uint)maxMp));
+        BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(28, 4), checked((uint)currentMp));
+
         // Deltas retain deposits and gifts committed by other online players.
         int changed = await Execute("""
             UPDATE Characters SET Hans=Hans+$hans, Cash=Cash+$cash,
-              Level=$level, Experience=$exp, CurrentHp=$hp, CurrentMp=$mp,
+              Level=$level, Experience=$exp, AttributePoints=AttributePoints+$points,
+              MaxHp=$maxHp, MaxMp=$maxMp, CurrentHp=$hp, CurrentMp=$mp,
               RevivalUseCount=$revives, LastSavedAt=$now
             WHERE Id=$id AND AccountId=$account AND (ActiveSessionId=$session OR ($recover=1 AND ActiveSessionId IS NULL))
               AND Hans+$hans>=0 AND Cash+$cash>=0
             """, ("$hans", checked(after.GetBalance(32) - before.GetBalance(32))),
             ("$cash", checked(after.GetBalance(40) - before.GetBalance(40))),
-            ("$level", after.Get(8)), ("$exp", after.Get(12)), ("$hp", after.Get(20)), ("$mp", after.Get(28)),
+            ("$level", level), ("$exp", experience),
+            ("$points", gainedLevels * CharacterProgression.AttributePointsPerLevel),
+            ("$maxHp", maxHp), ("$maxMp", maxMp), ("$hp", currentHp), ("$mp", currentMp),
             ("$revives", after.Get(60)), ("$now", DateTime.UtcNow.ToString("O")), ("$account", accountId), ("$session", sessionId), ("$recover", recovering ? 1 : 0));
         if (changed != 1) throw new InvalidOperationException("Dungeon session no longer owns its character.");
 
         var petApply = default(NativeDungeonApplyResult);
         var petItemCode = after.Get(68);
-        var petExperienceReward = after.Get(12) > before.Get(12)
-            ? after.Get(12) - before.Get(12)
-            : 0u;
+        var petExperienceReward = experienceDelta;
         if (petExperienceReward > 0
             && petItemCode != 0
             && ShopCatalog.TryGet(15, petItemCode, out var petCatalogItem))

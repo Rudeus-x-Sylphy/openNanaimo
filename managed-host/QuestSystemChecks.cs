@@ -69,6 +69,12 @@ internal static class QuestSystemChecks
                 && NetworkAdapterService.ResolveTaskCompletionKind(70_000_007u, 6) == 6,
                 "C59A completion kind keeps ordinary task categories and maps only exact story-medal rewards to one");
 
+            var firstVillage = await Dispatch(0xC354, []);
+            var firstVillageReady = FindFrame(firstVillage, 0xC594);
+            Check(Opcodes(firstVillage).SequenceEqual(new ushort[] { 0xC594, 0xC355, 0xC476, 0xC44C })
+                && BinaryPrimitives.ReadUInt32LittleEndian(firstVillageReady.AsSpan(8, 4)) == 0,
+                "first village entry restores zero completed story guides so Nemo and route guidance can start");
+
             var listFrames = await Dispatch(0xC59B, []);
             Check(ReadOpcode(listFrames) == 0xC59C && BinaryPrimitives.ReadUInt16LittleEndian(listFrames.AsSpan(4)) == 252,
                 "C59B returns the fixed 252-byte C59C task list");
@@ -101,8 +107,12 @@ internal static class QuestSystemChecks
             Check(storyState.Authorized && storyState.Medals == 1,
                 "the committed story-claim ledger persists one earned medal");
             var restoredProfile = await Dispatch(0xC354, []);
-            Check(ReadOpcode(restoredProfile) == 0xC355 && restoredProfile[0xF3] == 1,
-                "C354 reconnect/profile refresh restores the persisted medal count at C355 frame+0xF3");
+            var restoredReady = FindFrame(restoredProfile, 0xC594);
+            var restoredC355 = FindFrame(restoredProfile, 0xC355);
+            Check(Opcodes(restoredProfile).Take(2).SequenceEqual(new ushort[] { 0xC594, 0xC355 })
+                && BinaryPrimitives.ReadUInt32LittleEndian(restoredReady.AsSpan(8, 4)) == 0x80
+                && restoredC355[0xF3] == 1,
+                "C354 reconnect restores story-guide progress before C355 and the persisted medal count");
             var tasks = await db.GetCharacterTasksAsync(account, characterId, sessionId);
             Check(tasks.Any(task => task.SlotType == 1 && task.QuestId == 71_000_001u),
                 "hand-in atomically advances the fixed mainline slot");
@@ -205,6 +215,30 @@ internal static class QuestSystemChecks
 
     private static ushort ReadOpcode(ReadOnlySpan<byte> frame)
         => frame.Length >= 8 ? BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) : (ushort)0;
+
+    private static ushort[] Opcodes(byte[] response)
+    {
+        var result = new List<ushort>();
+        for (var offset = 0; offset < response.Length;)
+        {
+            var length = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(offset + 4, 2));
+            result.Add(BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(offset + 6, 2)));
+            offset += length;
+        }
+        return result.ToArray();
+    }
+
+    private static byte[] FindFrame(byte[] response, ushort opcode)
+    {
+        for (var offset = 0; offset < response.Length;)
+        {
+            var length = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(offset + 4, 2));
+            if (BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(offset + 6, 2)) == opcode)
+                return response.AsSpan(offset, length).ToArray();
+            offset += length;
+        }
+        throw new InvalidDataException($"Missing response frame {opcode:X4}");
+    }
 
     private static object? Get(object instance, string name)
         => instance.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!.GetValue(instance);

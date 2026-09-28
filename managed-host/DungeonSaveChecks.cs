@@ -179,6 +179,32 @@ internal static class DungeonSaveChecks
             Check(!replies.Any(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF88)
                 && premature.Get(12) == imported.Get(12), "premature settlement before Boss defeat grants no experience");
 
+            await db.GrantExperienceAsync(character.Id, 90, token);
+            var thresholdCharacter = (await db.GetCharacterAsync(account, token))!;
+            var thresholdBefore = NativeDungeonState.Create(thresholdCharacter, [], []);
+            var thresholdAfterBytes = thresholdBefore.Bytes.ToArray();
+            Put(thresholdAfterBytes, 12, 110);
+            Put(thresholdAfterBytes, 8, 1); // deliberately stale worker level
+            var thresholdAfter = new NativeDungeonState(thresholdAfterBytes);
+            await db.ApplyNativeDungeonDeltaAsync(
+                account, character.Id, session, thresholdBefore, thresholdAfter, token,
+                "character-threshold-crossing");
+            var thresholdPersisted = (await db.GetCharacterAsync(account, token))!;
+            Check(thresholdPersisted.Experience == 110 && thresholdPersisted.Level == 2
+                && thresholdPersisted.AttributePoints == CharacterProgression.AttributePointsPerLevel,
+                "native settlement derives a level-up from cumulative experience at the shared threshold");
+
+            var staleAfterBytes = thresholdAfter.Bytes.ToArray();
+            Put(staleAfterBytes, 12, 100);
+            Put(staleAfterBytes, 8, 1);
+            await db.ApplyNativeDungeonDeltaAsync(
+                account, character.Id, session, thresholdAfter, new NativeDungeonState(staleAfterBytes), token,
+                "character-stale-progression");
+            var stalePersisted = (await db.GetCharacterAsync(account, token))!;
+            Check(stalePersisted.Experience == 110 && stalePersisted.Level == 2
+                && stalePersisted.AttributePoints == CharacterProgression.AttributePointsPerLevel,
+                "stale dungeon checkpoints cannot regress experience, level or duplicate level points");
+
             ShopCatalog.TryGetPetGrowthStage(petCatalog.PetGrowthClass, 1, out var firstGrowth);
             await SetPetStateAsync(
                 db, account, petCatalog, 1, firstGrowth.MaximumLevel, 0, token);

@@ -69,8 +69,12 @@ internal static class TutorialAppearanceChecks
                 var channel = (byte[])Channel.Invoke(null, [character, true])!;
                 Check(channel[0] == 100 && channel[1] == 1, "C352 keeps native guide entry");
                 var preGuide = (await Send(service, session, 0xC354, []))!;
-                Check(Opcodes(preGuide).SequenceEqual(new ushort[] { 0xC355 }) && preGuide.Length == 728
-                    && preGuide[13] == 0, "pre-guide C354 does not inject C476, C44C or equipped-pet flag");
+                var preGuideReady = Frame(preGuide, 0xC594);
+                var preGuideProfile = Frame(preGuide, 0xC355);
+                Check(Opcodes(preGuide).SequenceEqual(new ushort[] { 0xC594, 0xC355 })
+                    && Read(preGuideReady, 8) == 0
+                    && preGuideProfile.Length == 728 && preGuideProfile[13] == 0,
+                    "pre-guide C354 restores zero story progress without inventory or equipped-pet state");
                 Check(await Send(service, session, 0xC353, []) is null, "short guide completion rejected");
                 var guide = new byte[20];
                 Encoding.ASCII.GetBytes(name).CopyTo(guide, 0);
@@ -80,16 +84,20 @@ internal static class TutorialAppearanceChecks
                 Check(!(await db.GetCharacterAsync(character.AccountId))!.TutorialCompleted,
                     "invalid guide messages never bypass tutorial");
                 var ready = (await Send(service, session, 0xC353, guide))!;
-                Check(ready.Length == 12 && Opcodes(ready).SequenceEqual(new ushort[] { 0xC594 }),
-                    "valid completion emits only native readiness, not unsolicited appearance");
+                Check(ready.Length == 12 && Opcodes(ready).SequenceEqual(new ushort[] { 0xC594 })
+                    && Read(ready, 8) == 0,
+                    "valid completion keeps unfinished village story guidance available");
                 var completed = (await db.GetCharacterAsync(character.AccountId))!;
                 Check(completed.TutorialCompleted && completed.Appearance.SequenceEqual(stored)
                     && completed.EquippedPetItemCode == 15009205 && inventory.All(Owned(completed).Contains),
                     "completion preserves deferred loadout, pet and all owned equipment");
                 byte[] expected = DatabaseService.NormalizeAppearanceForGender(stored, gender, 15009205);
                 var village = (await Send(service, session, 0xC354, []))!;
-                Check(Opcodes(village).SequenceEqual(new ushort[] { 0xC355, 0xC476, 0xC44C })
-                    && village[13] == 1, "post-guide C354 restores normal inventory and configured pet");
+                var villageReady = Frame(village, 0xC594);
+                var villageProfile = Frame(village, 0xC355);
+                Check(Opcodes(village).SequenceEqual(new ushort[] { 0xC594, 0xC355, 0xC476, 0xC44C })
+                    && Read(villageReady, 8) == 0 && villageProfile[13] == 1,
+                    "post-guide C354 restores unfinished story guidance, inventory and configured pet");
                 var move = new byte[8];
                 BinaryPrimitives.WriteUInt16LittleEndian(move.AsSpan(4), ushort.MaxValue);
                 BinaryPrimitives.WriteUInt16LittleEndian(move.AsSpan(6), ushort.MaxValue);
@@ -151,6 +159,17 @@ internal static class TutorialAppearanceChecks
         => (Task<byte[]?>)Dispatch.Invoke(service,
             [NativeDungeonClient.Frame(opcode, payload), opcode, "WorldAdapter", "127.0.0.1:30000", "127.0.0.1", session, CancellationToken.None])!;
     private static uint Read(byte[] bytes, int offset) => BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(offset, 4));
+    private static byte[] Frame(byte[] response, ushort opcode)
+    {
+        for (int offset = 0; offset < response.Length;)
+        {
+            int length = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(offset + 4, 2));
+            if (BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(offset + 6, 2)) == opcode)
+                return response.AsSpan(offset, length).ToArray();
+            offset += length;
+        }
+        throw new InvalidDataException($"Missing response frame {opcode:X4}");
+    }
     private static string[] Owned(CharacterRecord character) => character.Items.Select(i => $"{i.ItemCode}:{i.Quantity}").OrderBy(x => x).ToArray();
     private static ushort[] Opcodes(byte[] response)
     {
