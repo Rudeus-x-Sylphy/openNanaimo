@@ -67,8 +67,9 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0x190000, 0x60000, 0x89400),
         (0x1000, 0xF000, 0xE9400),
         (0x840000, 0x10000, 0xF8400),
+        (0x18C000, 0x10000, 0x108400),
     ]
-    data = bytearray(0x108400)
+    data = bytearray(0x118400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -88,6 +89,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
     put(compat.LAND_PURCHASE_VTABLE_VA, compat.LAND_PURCHASE_VTABLE_OLD)
     put(compat.LAND_PURCHASE_CAVE_VA, compat.LAND_PURCHASE_CAVE_OLD)
     put(compat.LAND_BALANCE_YIELD_VA, compat.LAND_BALANCE_YIELD_OLD)
+    put(compat.APARTMENT_RECOMMEND_SUCCESS_VA, compat.APARTMENT_RECOMMEND_SUCCESS_OLD)
+    put(compat.APARTMENT_RECOMMEND_DUPLICATE_LINES_VA, compat.APARTMENT_RECOMMEND_DUPLICATE_LINES_OLD)
     put(compat.APARTMENT_EXTERIOR_CALL_VA, compat.APARTMENT_EXTERIOR_CALL_OLD)
     put(compat.APARTMENT_EXTERIOR_CAVE_VA, compat.APARTMENT_EXTERIOR_CAVE_OLD)
     for _, va, old, _ in compat.APARTMENT_EXTERIOR_LAYOUT_SITES:
@@ -271,6 +274,44 @@ def replace_site(data, va, blob):
     offset = compat._va_offset(data, va, len(blob))
     out[offset:offset + len(blob)] = blob
     return bytes(out)
+
+
+class ApartmentRecommendationClientTests(unittest.TestCase):
+    def setUp(self):
+        self.original = synthetic_pe()[0]
+
+    def test_success_updates_local_points_and_duplicate_draws_only_defined_lines(self):
+        patched, report = compat.patch_apartment_recommendation(self.original)
+        success = compat._va_offset(patched, compat.APARTMENT_RECOMMEND_SUCCESS_VA,
+                                    len(compat.APARTMENT_RECOMMEND_SUCCESS_NEW))
+        lines = compat._va_offset(patched, compat.APARTMENT_RECOMMEND_DUPLICATE_LINES_VA,
+                                  len(compat.APARTMENT_RECOMMEND_DUPLICATE_LINES_NEW))
+        self.assertEqual(patched[success:success + len(compat.APARTMENT_RECOMMEND_SUCCESS_NEW)],
+                         compat.APARTMENT_RECOMMEND_SUCCESS_NEW)
+        self.assertEqual(patched[lines:lines + len(compat.APARTMENT_RECOMMEND_DUPLICATE_LINES_NEW)],
+                         compat.APARTMENT_RECOMMEND_DUPLICATE_LINES_NEW)
+        self.assertTrue(report['changed'])
+        self.assertEqual([row['status'] for row in report['sites']], ['patched', 'patched'])
+        second, second_report = compat.patch_apartment_recommendation(patched)
+        self.assertEqual(second, patched)
+        self.assertFalse(second_report['changed'])
+
+    def test_unknown_recommendation_site_is_rejected(self):
+        damaged = replace_site(self.original, compat.APARTMENT_RECOMMEND_SUCCESS_VA,
+                               b'\x90' * len(compat.APARTMENT_RECOMMEND_SUCCESS_OLD))
+        with self.assertRaisesRegex(compat.CompatibilityError, 'success_points differs'):
+            compat.patch_apartment_recommendation(damaged)
+
+    def test_prepare_verifies_recommendation_only_overlay(self):
+        with tempfile.TemporaryDirectory(prefix='nanaimo-recommend-compat-') as temp:
+            root = Path(temp) / 'client'
+            out = Path(temp) / 'overlay'
+            make_client_tree(root)
+            report = compat.prepare(root, out, furniture=False, dungeon7=False,
+                                    apartment_recommendation=True)
+            self.assertEqual(report['planned_files'], ['game.exe'])
+            self.assertTrue(report['verification']['all_pass'])
+            self.assertTrue(all(row['ok'] for row in report['verification']['checks']))
 
 
 class NativeStateMigrationTests(unittest.TestCase):

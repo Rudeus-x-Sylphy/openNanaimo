@@ -120,11 +120,11 @@ internal static class DungeonRankingChecks
                     awaitingAction: true, deathLatched: false, nextDungeonMode1, 0xCF8B)
                 && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
                     awaitingAction: false, deathLatched: false, nextDungeonMode1, 0xCF8B)
-                && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
-                    awaitingAction: true, deathLatched: true, nextDungeonMode1, 0xCF8B)
+                && NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
+                     awaitingAction: true, deathLatched: true, nextDungeonMode1, 0xCF8B)
                 && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(
                     awaitingAction: true, deathLatched: false, invalidNextDungeonMode, 0xCF8B),
-                "ordinary stage-to-stage and third-stage-to-superboss require a live non-death settlement action");
+                "ordinary stage-to-stage, super-boss, and death retry require an awaiting settlement action");
             Check(!NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF73)
@@ -320,7 +320,7 @@ internal static class DungeonRankingChecks
             Check(DecodeGbk(payload.AsSpan(4, 16)) == "Rank11"
                 && BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(20, 4)) == 2_100
                 && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(24, 2)) == 1
-                && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(26, 2)) == 23,
+                && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(26, 2)) == leaderboard[0].DungeonGrade,
                 "CF16 first record uses name/score/character-level/exact-title-grade at the proven offsets");
             await DungeonRankingRouteChecks.RunAsync(db, root, characters[11], payload);
 

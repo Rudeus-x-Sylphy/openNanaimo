@@ -32,16 +32,23 @@ public sealed partial class NetworkAdapterService
                     if (size is < 1 or > 4095) throw new InvalidDataException("Invalid profile size.");
                     var data = new byte[size]; await stream.ReadExactlyAsync(data, timeout.Token);
                     long accountId;
+                    var pureNewPlayer = false;
                     if (data[0] == (byte)'{')
                     {
                         using var request = System.Text.Json.JsonDocument.Parse(data);
-                        accountId = await _database.OpenLocalAccountAsync(request.RootElement.GetProperty("LocalAccount").GetString() ?? "", timeout.Token);
+                        var root = request.RootElement;
+                        var username = root.GetProperty("LocalAccount").GetString() ?? "";
+                        pureNewPlayer = root.TryGetProperty("PureNewPlayer", out var pure)
+                            && pure.ValueKind == System.Text.Json.JsonValueKind.True;
+                        accountId = pureNewPlayer
+                            ? await _database.OpenPureNewLocalAccountAsync(username, timeout.Token)
+                            : await _database.OpenLocalAccountAsync(username, timeout.Token);
                     }
                     else
                         accountId = (await _database.ImportLocalProfileAsync(Encoding.ASCII.GetString(data), profileRoot, timeout.Token)).AccountId;
                     _localLaunches.Enqueue((accountId, DateTime.UtcNow.AddMinutes(2)));
                     await stream.WriteAsync("OK\n"u8.ToArray(), timeout.Token);
-                    _log($"Local launcher account ready: account={accountId}");
+                    _log($"Local launcher account ready: account={accountId} mode={(pureNewPlayer ? "pure-new-player" : "profile/default")}");
                 }
                 catch (Exception ex) when (!token.IsCancellationRequested)
                 {
@@ -85,6 +92,7 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
+            session.NativeDungeonDeathRetryTransitionAuthorized = false;
             var townResources = session.NonCombatResourceSnapshot;
             await CloseNativeDungeonAsync(session, boundary);
             session.NativeBattleEpoch = checked(session.NativeBattleEpoch + 1);
@@ -152,9 +160,9 @@ public sealed partial class NetworkAdapterService
             session.LastReportedPositionY = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(20, 2));
             session.HasReportedDungeonPosition = true;
         }
-        // CF83 mode is the proven selector: mode1 is the service-egg/CF95
-        // path; mode0 is the Hans/F104 path and its second WORD is the price.
-        // Never reinterpret a mode1 egg click as the first Hans payment.
+        // CF83 mode/value describe the client presentation branch. Billing is
+        // server-owned per battle: first success is 50 Hans, later successes
+        // consume one activated revival egg regardless of client mode/value.
         if (opcode == 0xCF83
             && TryParseNativeDungeonContinueFrame(frame, out var continueMode, out var clientCostField))
         {
@@ -233,6 +241,7 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonSettlementAwaitingAction = false;
                 session.NativeDungeonNextTransitionAuthorized = true;
                 session.NativeDungeonTownTransitionAuthorized = false;
+                session.NativeDungeonDeathRetryTransitionAuthorized = session.NativeDungeonDeathLatched;
             }
             else if (IsNativeDungeonManualTownLeavePrecursor(
                 session.NativeDungeonSettlementAwaitingAction,
@@ -340,11 +349,12 @@ public sealed partial class NetworkAdapterService
             dungeon,
             stage,
             BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(0x26, 2)));
-        var episodeValid = hdIndex == 0
-            ? episode < DungeonEpisodeCount
-            : hdIndex == 1 && episode < 4;
-        return episodeValid
-            && dungeon + stage <= 3
+        var standardTuple = (hdIndex == 0 && episode < DungeonEpisodeCount
+                || hdIndex == 1 && episode < 4)
+            && dungeon + stage <= 3;
+        var lumineosTuple = DungeonTitleProgression.IsLumineosTuple(
+            hdIndex, episode, dungeon, stage);
+        return (standardTuple || lumineosTuple)
             && logicalDifficulty < DungeonDifficultyCount;
     }
 
@@ -380,7 +390,6 @@ public sealed partial class NetworkAdapterService
         ReadOnlySpan<byte> frame,
         ushort opcode)
         => awaitingAction
-            && !deathLatched
             && IsAuthorizedNativeDungeonNextAction(frame, opcode);
 
     internal static bool TryResolveNativeDungeonTransition(
@@ -406,14 +415,16 @@ public sealed partial class NetworkAdapterService
         var mode = BinaryPrimitives.ReadUInt16LittleEndian(request.Slice(10, 2));
         var responseRealStage = response[0x28];
         var responseDungeon = BinaryPrimitives.ReadUInt16LittleEndian(response.Slice(0x2E, 2));
-        if (responseRealStage > 1 || responseDungeon > 2)
+        // Ordinary villages use dungeon 0..2; Lumineos uses 0..6 and its
+        // stage1 Super-BOSS is a legal continuation target.
+        if (responseRealStage > 1 || responseDungeon > 6)
             return false;
 
         if (mode == 1
-            && currentDungeon == 2
+            && (currentDungeon == 2 || currentDungeon == 6)
             && currentStage == 0
             && requestedRealStage == 1
-            && responseDungeon == 2
+            && responseDungeon == currentDungeon
             && responseRealStage == 1)
         {
             nextStage = 1;
@@ -666,7 +677,9 @@ public sealed partial class NetworkAdapterService
         byte[] frame,
         string channel,
         ConnectionSession session,
-        ushort clientCostField,
+        ushort clientSelectorMode,
+        ushort clientValue,
+        uint serverBillingOrdinal,
         CancellationToken token)
     {
         if (!session.OnlineTracked
@@ -682,7 +695,7 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonDeathLatched,
                 mode: 1))
         {
-            _log($"{channel}: native dungeon revival continue rejected: character={character.Id} deathLatched={session.NativeDungeonDeathLatched} checkpointHp={checkpoint.Get(20)} uses={checkpoint.Get(60)} clientCostField={clientCostField} hansDebited=0 reason=runtime-death-or-revival-gate");
+            _log($"{channel}: native dungeon revival continue rejected: character={character.Id} deathLatched={session.NativeDungeonDeathLatched} checkpointHp={checkpoint.Get(20)} uses={checkpoint.Get(60)} clientSelectorMode={clientSelectorMode} clientValue={clientValue} serverBillingOrdinal={serverBillingOrdinal} serverChargeType=RevivalEgg hansDebited=0 reason=runtime-death-or-revival-gate");
             return;
         }
 
@@ -715,14 +728,17 @@ public sealed partial class NetworkAdapterService
             revive,
             "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
             true, false, "native revival complete CF84 variant60"), token);
-        _log($"{channel}: native dungeon revival continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={clientCostField} cf84Hans={character.Hans} hans={character.Hans} hansDebited=0 workerAck=CF95-captured clientResponse=CF84-variant60");
+        _log($"{channel}: native dungeon revival continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientSelectorMode={clientSelectorMode} clientValue={clientValue} serverBillingOrdinal={serverBillingOrdinal} serverChargeType=RevivalEgg cf84Hans={character.Hans} hans={character.Hans} hansDebited=0 workerAck=CF95-captured clientResponse=CF84-variant60");
     }
 
     private async Task HandleNativeDungeonPaidContinueAsync(
         byte[] frame,
         string channel,
         ConnectionSession session,
-        ushort clientCostField,
+        ushort clientSelectorMode,
+        ushort clientValue,
+        ushort serverHansCharge,
+        uint serverBillingOrdinal,
         CancellationToken token)
     {
         if (!session.OnlineTracked
@@ -737,26 +753,28 @@ public sealed partial class NetworkAdapterService
                 checkpoint,
                 session.NativeDungeonDeathLatched,
                 mode: 0)
-            || !IsKnownDungeonContinueCost(clientCostField))
+            || !IsKnownDungeonContinueCost(serverHansCharge))
         {
-            _log($"{channel}: native dungeon paid continue rejected: character={character.Id} deathLatched={session.NativeDungeonDeathLatched} checkpointHp={checkpoint.Get(20)} uses={checkpoint.Get(60)} clientCostField={clientCostField} hans={character.Hans} reason=runtime-death-or-cost-gate");
+            _log($"{channel}: native dungeon paid continue rejected: character={character.Id} deathLatched={session.NativeDungeonDeathLatched} checkpointHp={checkpoint.Get(20)} uses={checkpoint.Get(60)} clientSelectorMode={clientSelectorMode} clientValue={clientValue} serverBillingOrdinal={serverBillingOrdinal} serverChargeType=Hans serverHansCharge={serverHansCharge} hans={character.Hans} reason=runtime-death-or-cost-gate");
             return;
         }
 
-        var restoredHp = Math.Max(1, character.MaxHp);
-        var restoredMp = Math.Max(1, character.MaxMp);
+        var effectiveMaximums = ResolveNativeDungeonRevivalMaximums(
+            character, session.NativeBattleResources);
+        var restoredHp = Math.Max(1, (int)effectiveMaximums.Hp);
+        var restoredMp = Math.Max(1, (int)effectiveMaximums.Mp);
         var consumed = await _database.ConsumeDungeonContinueAsync(
             session.AccountId,
             character.Id,
             session.SessionId,
             mode: 0,
-            clientCostField,
+            serverHansCharge,
             restoredHp,
             restoredMp,
             token);
         if (!consumed.Success)
         {
-            _log($"{channel}: native dungeon paid continue payment rejected: character={character.Id} cost={clientCostField} error={consumed.Error}");
+            _log($"{channel}: native dungeon paid continue payment rejected: character={character.Id} clientSelectorMode={clientSelectorMode} clientValue={clientValue} serverBillingOrdinal={serverBillingOrdinal} serverHansCharge={serverHansCharge} error={consumed.Error}");
             return;
         }
 
@@ -765,10 +783,11 @@ public sealed partial class NetworkAdapterService
         character.CurrentHp = consumed.CurrentHp;
         character.CurrentMp = consumed.CurrentMp;
         var committed = new NativePaidContinueCommit(
-            consumed.Hans, consumed.RevivalUseCount, consumed.CurrentHp, consumed.CurrentMp, clientCostField);
+            consumed.Hans, consumed.RevivalUseCount, consumed.CurrentHp, consumed.CurrentMp, serverHansCharge,
+            clientSelectorMode, clientValue, serverBillingOrdinal);
         RememberNativeDungeonPaidContinue(session, committed);
         if (!await TryCompleteNativeDungeonPaidContinueAsync(frame, channel, session, committed, token))
-            _log($"{channel}: native dungeon paid continue remains committed and pending worker synchronization: character={character.Id} cost={clientCostField} hans={consumed.Hans} hp={consumed.CurrentHp} mp={consumed.CurrentMp}; duplicate CF83 will retry without another debit");
+            _log($"{channel}: native dungeon paid continue remains committed and pending worker synchronization: character={character.Id} serverHansCharge={serverHansCharge} clientSelectorMode={clientSelectorMode} clientValue={clientValue} serverBillingOrdinal={serverBillingOrdinal} hans={consumed.Hans} hp={consumed.CurrentHp} mp={consumed.CurrentMp}; duplicate CF83 will retry without another debit");
     }
 
     private async Task<bool> TryCompleteNativeDungeonPaidContinueAsync(
@@ -805,7 +824,7 @@ public sealed partial class NetworkAdapterService
         }
         catch (Exception ex) when (!token.IsCancellationRequested)
         {
-            _log($"{channel}: native dungeon paid continue worker synchronization deferred after committed payment: character={character.Id} cost={committed.ClientCostField} error={ex.Message}");
+            _log($"{channel}: native dungeon paid continue worker synchronization deferred after committed payment: character={character.Id} serverHansCharge={committed.HansCost} clientSelectorMode={committed.ClientSelectorMode} clientValue={committed.ClientValue} serverBillingOrdinal={committed.ServerBillingOrdinal} error={ex.Message}");
             return false;
         }
 
@@ -819,7 +838,7 @@ public sealed partial class NetworkAdapterService
             var capturedOpcodes = string.Join(",", exchange.Frames
                 .Where(item => item.Length >= 8)
                 .Select(item => $"0x{BinaryPrimitives.ReadUInt16LittleEndian(item.AsSpan(6, 2)):X4}"));
-            _log($"{channel}: native dungeon paid continue worker synchronization rejected after committed payment: character={character.Id} cost={committed.ClientCostField} f105={runtimeSynchronized} state={stateSynchronized} captured={capturedOpcodes}; connection retained for idempotent retry");
+            _log($"{channel}: native dungeon paid continue worker synchronization rejected after committed payment: character={character.Id} serverHansCharge={committed.HansCost} clientSelectorMode={committed.ClientSelectorMode} clientValue={committed.ClientValue} serverBillingOrdinal={committed.ServerBillingOrdinal} f105={runtimeSynchronized} state={stateSynchronized} captured={capturedOpcodes}; connection retained for idempotent retry");
             return false;
         }
 
@@ -839,7 +858,7 @@ public sealed partial class NetworkAdapterService
             response,
             "NativeDungeon", session.ListenerPort, session.RemoteIp ?? "local",
             true, false, "native paid continue complete CF84 variant20"), token);
-        _log($"{channel}: native dungeon paid continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientCostField={committed.ClientCostField} cf84Hans={character.Hans} hans={character.Hans} hansDebited={committed.ClientCostField} workerAck=F105 clientResponse=CF84-variant20");
+        _log($"{channel}: native dungeon paid continue completed: character={character.Id} hp={character.CurrentHp} mp={character.CurrentMp} uses={character.RevivalUseCount} clientSelectorMode={committed.ClientSelectorMode} clientValue={committed.ClientValue} serverBillingOrdinal={committed.ServerBillingOrdinal} serverChargeType=Hans serverHansCharge={committed.HansCost} cf84Hans={character.Hans} hans={character.Hans} hansDebited={committed.HansCost} workerAck=F105 clientResponse=CF84-variant20");
         return true;
     }
 
@@ -874,6 +893,7 @@ public sealed partial class NetworkAdapterService
         exchange = new NativeDungeonExchangeResult(
             exchange.State,
             FilterNativeDungeonCheckpointFrames(requestOpcode, exchange.Frames));
+        var acceptedDungeonTransition = false;
         if (requestOpcode == 0xCF8B
             && frame is not null
             && session.NativeDungeonSelectionValid)
@@ -894,9 +914,19 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonDungeon = nextDungeon;
                 session.NativeDungeonStage = nextStage;
                 session.NativeDungeonLogicalDifficulty = nextLogicalDifficulty;
+                acceptedDungeonTransition = true;
                 _log($"NativeDungeon effective tuple advanced: old={previousTuple} new={session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{nextDungeon}/{nextStage}/{nextLogicalDifficulty} via=CF8B/CF8C");
                 break;
             }
+        }
+        if (acceptedDungeonTransition && session.NativeDungeonDeathRetryTransitionAuthorized)
+        {
+            session.NativeDungeonDeathLatched = false;
+            session.NativeDungeonDeathRetryTransitionAuthorized = false;
+            session.NativeBattleResources = ResetNativeDungeonDeathRetryResources(
+                session.NativeBattleResources);
+            session.NativeBattleAttackMode = session.NativeBattleResources?.AttackMode;
+            _log($"NativeDungeon death settlement retry accepted: character={session.Character.Id} tuple={session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{session.NativeDungeonDungeon}/{session.NativeDungeonStage}/{session.NativeDungeonLogicalDifficulty}");
         }
         var next = exchange.State;
         session.NativeBattleResources = MergeNativeDungeonRevivalResources(
@@ -1309,6 +1339,7 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
+            session.NativeDungeonDeathRetryTransitionAuthorized = false;
             if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleResources = null; session.NativeBattleAttackMode = null; }
             if (boundary != BattleResourceBoundary.TownReturn) session.NonCombatResourceSnapshot = null;
             return;
@@ -1338,6 +1369,7 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonSettlementAwaitingAction = false;
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonTownTransitionAuthorized = false;
+            session.NativeDungeonDeathRetryTransitionAuthorized = false;
             session.NativeDungeonSelectionValid = false;
             session.HasReportedDungeonPosition = false;
             await session.NativeDungeon.DisposeAsync(); session.NativeDungeon = null; session.NativeCheckpoint = null;

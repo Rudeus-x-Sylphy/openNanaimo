@@ -56,6 +56,18 @@ internal static class QuestSystemChecks
                 "official QT/QH task catalogs load completely");
             Check(QuestCatalog.MainLineQuestIds.SequenceEqual(Enumerable.Range(0, 13).Select(i => 71_000_000u + (uint)i)),
                 "mainline chain is the thirteen unsold QT story quests");
+            Check(QuestCatalog.MainLineQuestIds.Take(12).All(id =>
+                    QuestCatalog.TryGetQuest(id, out var quest)
+                    && quest.Rewards.Any(reward => reward.RewardType == 8
+                        && reward.RewardCode == 0 && reward.Amount == 1))
+                && QuestCatalog.TryGetQuest(71_000_012u, out var epilogue)
+                && !epilogue.Rewards.Any(reward => reward.RewardType == 8
+                    && reward.RewardCode == 0 && reward.Amount == 1),
+                "the exact QT type8/code0/amount1 tuple marks the twelve medal-granting mainline quests");
+            Check(NetworkAdapterService.ResolveTaskCompletionKind(71_000_000u, 3) == 1
+                && NetworkAdapterService.ResolveTaskCompletionKind(71_000_012u, 3) == 0
+                && NetworkAdapterService.ResolveTaskCompletionKind(70_000_007u, 6) == 6,
+                "C59A completion kind keeps ordinary task categories and maps only exact story-medal rewards to one");
 
             var listFrames = await Dispatch(0xC59B, []);
             Check(ReadOpcode(listFrames) == 0xC59C && BinaryPrimitives.ReadUInt16LittleEndian(listFrames.AsSpan(4)) == 252,
@@ -83,6 +95,14 @@ internal static class QuestSystemChecks
                 && completionFrames.Length > firstLength
                 && ReadOpcode(completionFrames.AsSpan(firstLength)) == 0xC59C,
                 "successful hand-in returns C59A and the advanced C59C list");
+            Check(BinaryPrimitives.ReadUInt16LittleEndian(completionFrames.AsSpan(16, 2)) == 1,
+                "medal-granting mainline hand-in publishes C59A completion kind one even without a level gain");
+            var storyState = await db.GetStoryGuideStateAsync(account, characterId, sessionId);
+            Check(storyState.Authorized && storyState.Medals == 1,
+                "the committed story-claim ledger persists one earned medal");
+            var restoredProfile = await Dispatch(0xC354, []);
+            Check(ReadOpcode(restoredProfile) == 0xC355 && restoredProfile[0xF3] == 1,
+                "C354 reconnect/profile refresh restores the persisted medal count at C355 frame+0xF3");
             var tasks = await db.GetCharacterTasksAsync(account, characterId, sessionId);
             Check(tasks.Any(task => task.SlotType == 1 && task.QuestId == 71_000_001u),
                 "hand-in atomically advances the fixed mainline slot");

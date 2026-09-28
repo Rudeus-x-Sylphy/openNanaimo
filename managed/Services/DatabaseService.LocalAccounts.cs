@@ -32,6 +32,37 @@ public sealed partial class DatabaseService
         return created.CharacterId;
     }
 
+    // Called only by the loopback launcher listener. This is the no-profile path used by
+    // the GUI's pure-new-player mode: it keeps the account characterless so the retail
+    // client owns character creation, and consumes the configurable local grant before
+    // that creation so launcher/server convenience values cannot seed the fresh character.
+    public async Task<long> OpenPureNewLocalAccountAsync(
+        string username,
+        CancellationToken token = default)
+    {
+        var accountId = await OpenLocalAccountAsync(username, token);
+        await using var connection = await OpenConnectionAsync(token);
+        await using var transaction = connection.BeginTransaction();
+        await using (var existing = connection.CreateCommand())
+        {
+            existing.Transaction = transaction;
+            existing.CommandText = "SELECT 1 FROM Characters WHERE AccountId=$accountId LIMIT 1";
+            existing.Parameters.AddWithValue("$accountId", accountId);
+            if (await existing.ExecuteScalarAsync(token) is not null)
+                throw new InvalidDataException("Pure-new-player launch requires an account without a character.");
+        }
+        await using (var suppressGrant = connection.CreateCommand())
+        {
+            suppressGrant.Transaction = transaction;
+            suppressGrant.CommandText = "UPDATE Accounts SET InitialGrantClaimed=1 WHERE Id=$accountId";
+            suppressGrant.Parameters.AddWithValue("$accountId", accountId);
+            if (await suppressGrant.ExecuteNonQueryAsync(token) != 1)
+                throw new InvalidOperationException("Pure-new-player account is unavailable.");
+        }
+        await transaction.CommitAsync(token);
+        return accountId;
+    }
+
     // Called only by the loopback launcher listener; leaves a new account without a character.
     public async Task<long> OpenLocalAccountAsync(string username, CancellationToken token = default)
     {

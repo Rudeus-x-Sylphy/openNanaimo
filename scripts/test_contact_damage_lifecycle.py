@@ -21,15 +21,23 @@ int main(int argc,char**argv){
     memset(req,0,sizeof(req));memset(&skill,0,sizeof(skill));
     pSd=capture;pT=clock_fixed;g_multi_current=0;g_profile_defense_flat=0;
     g_multi_conn[0].active=1;g_multi_conn[0].uid=21;g_multi_conn[0].socket=100;
-    kind=atoi(argv[1])==0?20u:40u;req[8]=kind;
-    stage_damage_damage_begin(&ctx,0,3,2,1,1,1,1);
-    if(kind==20u){req[10]=9;req[11]=1;}else{req[0x12]=9;}
-    CHECK(stage_damage_player_d00f_damage(&ctx,req,kind,&lookup)==(kind==20u?188u:369u));
+    {unsigned mode=(unsigned)atoi(argv[1]);kind=mode==0u?20u:mode==1u?40u:60u;}req[8]=kind;
+    if(kind==60u){
+        /* Captured Dungeon 16 / dungeon 3 tuple:
+         * D00F kind60 owner(selector)=17, source=2. */
+        stage_damage_damage_begin(&ctx,0,15,2,0,2,1,1);req[10]=17;req[12]=2;
+    }else{
+        stage_damage_damage_begin(&ctx,0,3,2,1,1,1,1);
+        if(kind==20u){req[10]=9;req[11]=1;}else{req[0x12]=9;}
+    }
+    CHECK(stage_damage_player_d00f_damage(&ctx,req,kind,&lookup)==(kind==20u?188u:kind==40u?369u:1146u));
+    if(kind==60u){CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE);CHECK(lookup.owner==17u&&lookup.source==2u&&lookup.associated_selector==16u);CHECK(!strcmp(lookup.resource,"ep15_dg02_m_154_00.mmo"));}
     rc=player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill);
     CHECK(rc==1&&sends==1&&size==36&&word(6)==0xD010&&word(8)==21&&word(10)==100);
-    CHECK(hp==(kind==20u?4812u:4631u)&&word(16)==hp&&word(18)==5000-hp);
+    CHECK(hp==(kind==20u?4812u:kind==40u?4631u:3854u)&&word(16)==hp&&word(18)==5000-hp);
     CHECK(frame[29]==kind&&word(12)==789);
     if(kind==40u){CHECK(word(26)==9&&frame[30]==0&&frame[31]==0&&word(32)==9);}
+    if(kind==60u){CHECK(word(26)==17u&&frame[29]==60u&&word(30)==0u);}
     g_profile_defense_flat=10000;hp=5;
     CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill));
     CHECK(hp==4&&word(18)==1);
@@ -37,6 +45,11 @@ int main(int argc,char**argv){
     CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill));
     CHECK(dead&&hp==0&&word(10)==200&&word(18)==1);i=sends;
     CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i);
+    /* Revival only restores HP/death state; it does not invalidate the battle
+     * epoch or suppress this captured kind60 route. */
+    hp=5000;dead=0;
+    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i+1);
+    CHECK(hp==(kind==20u?4812u:kind==40u?4631u:3854u));i=sends;
     hp=5000;dead=0;
     CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,2,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i);
     skill_effect_cleanup_arm(&skill,52000015,5,1,1,123000);
@@ -78,7 +91,7 @@ class ContactDamageLifecycleTests(unittest.TestCase):
         if result.returncode: raise AssertionError(result.stdout + result.stderr)
 
     def test_production_damage_matrix(self):
-        for kind in range(2):
+        for kind in range(3):
             with self.subTest(kind=kind):
                 result = subprocess.run([str(self.exe), str(kind)], cwd=self.work, capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

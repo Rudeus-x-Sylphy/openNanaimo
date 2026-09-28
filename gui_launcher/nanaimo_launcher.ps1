@@ -1,4 +1,4 @@
-﻿param([switch]$ValidateOnly,[switch]$PreviewOnly,[switch]$SelfTestProfileIO,[switch]$SelfTestInventoryIO,[switch]$SelfTestLaunchModes,[switch]$SelfTestAdapterManifest,[switch]$SelfTestLayout,[switch]$SelfTestCatalogPreview,[switch]$SelfTestTitleIO,[string]$ProfileIniOverride,[string]$ProfileJsonOverride)
+﻿param([switch]$ValidateOnly,[switch]$PreviewOnly,[switch]$SelfTestProfileIO,[switch]$SelfTestInventoryIO,[switch]$SelfTestLaunchModes,[switch]$SelfTestPureNewPlayer,[switch]$SelfTestAdapterManifest,[switch]$SelfTestLayout,[switch]$SelfTestCatalogPreview,[switch]$SelfTestTitleIO,[string]$ProfileIniOverride,[string]$ProfileJsonOverride)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -17,6 +17,7 @@ $ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay
 $ClientCompatibilityReport=Join-Path $ClientCompatibilityOverlay 'nanaimo_compatibility_report.json'
 $AdapterLogs=Join-Path $AdapterData 'logs'
 $AdapterStop=Join-Path $AdapterData 'stop.request'
+$PureNewPlayerProfile=Join-Path $AdapterData 'pure_new_player_profile.ini'
 $ProfileIni=if($ProfileIniOverride){[IO.Path]::GetFullPath($ProfileIniOverride)}else{Join-Path $Root 'nanaimo_launcher_profile.ini'}
 $ProfileJson=if($ProfileJsonOverride){[IO.Path]::GetFullPath($ProfileJsonOverride)}else{Join-Path $Root 'nanaimo_launcher_profile.json'}
 $ProfileStateRoot=if($ProfileIniOverride){Split-Path $ProfileIni -Parent}else{$Root}
@@ -407,7 +408,8 @@ foreach($b in $skillGradeBoxes){$b.add_ValueChanged({Set-SkillSlotChoices $null 
 
 Add-Label $tabStart '用户名/角色显示名' 35 108|Out-Null
 $nameBox=New-Object Windows.Forms.TextBox;$nameBox.Location=New-Object Drawing.Point(190,104);$nameBox.Size=New-Object Drawing.Size(320,28);$nameBox.Text=$defaultName;$tabStart.Controls.Add($nameBox)
-$skipTutorialBox=New-Object Windows.Forms.CheckBox;$skipTutorialBox.Text='跳过新手教程';$skipTutorialBox.Location=New-Object Drawing.Point(535,104);$skipTutorialBox.Size=New-Object Drawing.Size(300,28);$skipTutorialBox.Checked=$defaultSkipTutorial;$tabStart.Controls.Add($skipTutorialBox)
+$pureNewPlayerBox=New-Object Windows.Forms.CheckBox;$pureNewPlayerBox.Text='构建与启动纯新手档';$pureNewPlayerBox.Location=New-Object Drawing.Point(535,104);$pureNewPlayerBox.Size=New-Object Drawing.Size(260,28);$pureNewPlayerBox.Checked=$false;$tabStart.Controls.Add($pureNewPlayerBox)
+$skipTutorialBox=New-Object Windows.Forms.CheckBox;$skipTutorialBox.Text='跳过新手教程';$skipTutorialBox.Location=New-Object Drawing.Point(810,104);$skipTutorialBox.Size=New-Object Drawing.Size(220,28);$skipTutorialBox.Checked=$defaultSkipTutorial;$tabStart.Controls.Add($skipTutorialBox)
 function Get-SelectedLaunchMode {return 'network'}
 function Get-NetworkIpInput {return '127.0.0.1'}
 function Get-SelectedLaunchModeInfo {return Get-LaunchModeInfo}
@@ -446,8 +448,15 @@ $folderBtn=New-Object Windows.Forms.Button;$folderBtn.Text='打开日志目录';
 $defaultBtn=New-Object Windows.Forms.Button;$defaultBtn.Text='恢复默认';$defaultBtn.Size=New-Object Drawing.Size(120,40);$defaultBtn.Location=New-Object Drawing.Point(805,650);$tabStart.Controls.Add($defaultBtn)
 $status=New-Object Windows.Forms.Label;$status.Location=New-Object Drawing.Point(35,705);$status.Size=New-Object Drawing.Size(1000,60);$status.ForeColor=[Drawing.Color]::DarkBlue;$tabStart.Controls.Add($status)
 function Update-LaunchModePresentation {
-    $clientBtn.Text='一键进入 Nanaimo'
-    $warning.Text='进入游戏时保存配置并重启本地协议适配器。'
+    $clientBtn.Text=if($pureNewPlayerBox.Checked){'构建并进入纯新手档'}else{'一键进入 Nanaimo'}
+    $warning.Text=if($pureNewPlayerBox.Checked){'纯新手档：不保存/导入当前GUI角色、任务、库存或数值；由原客户端创建全新角色并进入引导。'}else{'进入游戏时保存配置并重启本地协议适配器。'}
+}
+function Update-PureNewPlayerPresentation {
+    $normal=-not$pureNewPlayerBox.Checked
+    foreach($control in @($nameBox,$skipTutorialBox,$levelBox,$resetProgressBtn,$genderCombo,$attackCombo,$titleCombo,$petCombo,$petAgeCombo)+@($comboMap.Values)){$control.Enabled=$normal}
+    $saveBtn.Enabled=$normal;$adapterBtn.Enabled=$normal
+    Update-LaunchModePresentation
+    if($launchInfoBox){Update-LaunchPreview}
 }
 
 # Launch-detail tab: show binary/profile diagnostics and pre-launch side effects.
@@ -477,7 +486,27 @@ function Get-ResourceSelection {
 }
 function Get-SelectedDungeonTitle {if($titleCombo.SelectedIndex-lt0-or-not$titleCombo.Tag-or$titleCombo.SelectedIndex-ge$titleCombo.Tag.Count){throw '请选择称号。'};return $titleCombo.Tag[$titleCombo.SelectedIndex]}
 function Update-LaunchPreview([switch]$ComputeHashes){
-    $pet=Get-SelectedData $petCombo;$mode=Selected-AttackMode;$resources=Get-ResourceSelection;$skills=Get-SkillSelection;$equipSummary=@();foreach($part in @('body','hair','top','bottom','accessory','effect')){$d=Get-SelectedData $comboMap[$part];if($d){$equipSummary+=("{0}={1}[{2}]"-f$PartLabels[$part],$d.name,$d.id)}}
+    if($pureNewPlayerBox.Checked){
+        $processFilter={param($p)(@($Adapter,$AdapterBridge,$LegacyAdapter)-contains$p.Path)-or($p.ProcessName-eq'game'-and$p.Path-eq$Client)}
+        $running=@(Get-Process -ErrorAction SilentlyContinue|Where-Object $processFilter|ForEach-Object{"$($_.ProcessName)(PID=$($_.Id))"});if(-not$running){$running=@('<none>')}
+        $lines=@(
+            '=== Pure new player launch ===',
+            'Pure profile: new loopback account | no pre-created character',
+            'Ignored: GUI name/gender/level/title/pet/equipment/resources/skills, normal profile INI/JSON, inventory sidecars, existing character/task state.',
+            'Applied: isolated runtime profile with skip_tutorial=0; server suppresses configurable local Hans/NANA/SP grants; retail client owns character creation.',
+            "Pure runtime profile: $PureNewPlayerProfile",'',
+            '=== Binary validation ===',"Release identity: $ReleaseIdentity","Canonical launcher: $CanonicalLauncher",
+            (File-State-Line 'Full adapter' $Adapter $ExpectedAdapterSize $ExpectedAdapterHash -ComputeHash:$ComputeHashes),
+            (File-State-Line 'Gameplay bridge' $AdapterBridge $ExpectedBridgeSize $ExpectedBridgeHash -ComputeHash:$ComputeHashes),
+            (Client-State-Line),'',
+            '=== Pre-launch actions ===',('Processes to stop: '+($running-join ', ')),
+            'One-click button: leave normal profile/sidecars unchanged; build pure runtime profile; restart adapter; register unique pure account; launch game.',
+            ('Working directory: '+$Root),'',
+            '验收入口：客户端应先进入原生角色创建，创建后 TutorialCompleted=0，再由客户端本地引导/NPC对话状态继续。'
+        )
+        $launchInfoBox.Text=$lines-join "`r`n";return
+    }
+    $pet=Get-SelectedData $petCombo;$attackChoice=Selected-AttackMode;$resources=Get-ResourceSelection;$skills=Get-SkillSelection;$equipSummary=@();foreach($part in @('body','hair','top','bottom','accessory','effect')){$d=Get-SelectedData $comboMap[$part];if($d){$equipSummary+=("{0}={1}[{2}]"-f$PartLabels[$part],$d.name,$d.id)}}
     $processFilter={param($p)(@($Adapter,$AdapterBridge,$LegacyAdapter)-contains$p.Path)-or($p.ProcessName-eq'game'-and$p.Path-eq$Client)}
     $running=@(Get-Process -ErrorAction SilentlyContinue|Where-Object $processFilter|ForEach-Object{"$($_.ProcessName)(PID=$($_.Id))"});if(-not$running){$running=@('<none>')}
     $adapterState=File-State-Line 'Full adapter' $Adapter $ExpectedAdapterSize $ExpectedAdapterHash -ComputeHash:$ComputeHashes
@@ -488,7 +517,7 @@ function Update-LaunchPreview([switch]$ComputeHashes){
         "Resources: MaxHP=$($resources.hp_max) MaxMP=$($resources.mp_max) attack_modifier=$($resources.attack) defense_flat=$($resources.defense) coin=$($resources.coin) nana_point=$($resources.nana_point)",
         ("Skills: projectile={0} meat={1} Z={2}[{3}] X={4}[{5}] grades={6}"-f@("none","upper","lower")[$skills.projectile_route],@("none","upper","lower")[$skills.meat_route],(Skill-CodeName $skills.slot_z),$skills.slot_z,(Skill-CodeName $skills.slot_x),$skills.slot_x,($skills.grades-join",")),
         "Card keys: normal=$($resources.card_key_normal) gold=$($resources.card_key_gold) mystery=$($resources.card_key_mystery) special=$($resources.card_key_special) free_expiry=$($resources.free_magic_key_expiry) quickbar_expiry=$($resources.quickbar_expiry) zx_expiry=$(if($resources.skill_slot_expiry_apply){$resources.skill_slot_expiry}else{'preserve-db'})",
-        "Pet=$(if($pet){$pet.name+'['+$pet.id+'] age='+$(Selected-PetAge)+'/'+$pet.max_age}else{'<none>'}) | initial_attack_mode=$mode",
+        "Pet=$(if($pet){$pet.name+'['+$pet.id+'] age='+$(Selected-PetAge)+'/'+$pet.max_age}else{'<none>'}) | Initial attack choice: $attackChoice",
         ('Equipment: '+($equipSummary-join '; ')),
         "Profile INI : $ProfileIni","Profile JSON: $ProfileJson",'',
         '=== Binary validation ===',"Release identity: $ReleaseIdentity","Canonical launcher: $CanonicalLauncher",$adapterState,$bridgeState,
@@ -507,6 +536,7 @@ $refreshLaunchInfoBtn.add_Click({try{Update-LaunchPreview -ComputeHashes}catch{[
 $copyLaunchInfoBtn.add_Click({if($launchInfoBox.Text){[Windows.Forms.Clipboard]::SetText($launchInfoBox.Text);$status.Text='已复制“本次启动详情”到剪贴板。'}})
 $tabs.add_SelectedIndexChanged({if($tabs.SelectedTab-eq$tabLaunchInfo){Update-LaunchPreview}})
 $skillSlotExpiryApplyBox.add_CheckedChanged({$skillSlotExpiryBox.Enabled=$skillSlotExpiryApplyBox.Checked;if($launchInfoBox){Update-LaunchPreview}})
+$pureNewPlayerBox.add_CheckedChanged({Update-PureNewPlayerPresentation})
 
 function Update-PetAgeOptions([Nullable[int]]$desired){
 $r=Get-SelectedData $petCombo;if(-not$r){return};$max=[Math]::Max(0,[int]$r.max_age);$min=if([uint32]$r.id-in[uint32[]](15000001,15000002,15000003)){1}else{0};if($min-gt$max){$min=$max};$want=if($null-ne$desired){[int]$desired}else{[int]$r.display_age};if($r.wire_age_status-eq'observed' -and $want-lt[int]$r.wire_current_age){$want=[int]$r.wire_current_age};$want=[Math]::Min($max,[Math]::Max($min,$want))
@@ -530,7 +560,7 @@ $titleCombo.add_SelectedIndexChanged({if($launchInfoBox){Update-LaunchPreview}})
 $attackCombo.add_SelectedIndexChanged({if($launchInfoBox){Update-LaunchPreview}})
 foreach($previewCombo in $comboMap.Values){$previewCombo.add_SelectedIndexChanged({if($launchInfoBox){Update-LaunchPreview}})}
 foreach($resourceBox in @($hpMaxBox,$mpMaxBox,$attackBox,$defenseBox,$coinBox,$nanaPointBox,$apartmentPointsBox,$cardKeyNormalBox,$cardKeyGoldBox,$cardKeyMysteryBox,$cardKeySpecialBox,$freeMagicKeyExpiryBox,$quickbarExpiryBox,$skillSlotExpiryBox)){$resourceBox.add_ValueChanged({if($launchInfoBox){try{Update-LaunchPreview}catch{$launchInfoBox.Text=$_.Exception.Message}}})}
-Update-PetAgeOptions $defaultPetAge;Update-AttackModes;Update-PetDetail;Update-LaunchModePresentation;Update-LaunchPreview
+Update-PetAgeOptions $defaultPetAge;Update-AttackModes;Update-PetDetail;Update-PureNewPlayerPresentation;Update-LaunchPreview
 if($PreviewOnly){Update-LaunchPreview -ComputeHashes;Write-Output $launchInfoBox.Text;exit 0}
 
 function Test-AdapterBinary {
@@ -570,7 +600,7 @@ function Ensure-ClientCompatibility {
     if(-not(Test-Path -LiteralPath $ClientCompatibilityTool -PathType Leaf)){throw "Client compatibility tool missing: $ClientCompatibilityTool"}
     if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
     $runtime=Get-ClientCompatibilityPython
-    $arguments=@($runtime.Prefix)+@($ClientCompatibilityTool,'--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--dungeon7','--overwrite','--apply')
+    $arguments=@($runtime.Prefix)+@($ClientCompatibilityTool,'--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--apartment-recommendation','--dungeon7','--overwrite','--apply')
     $output=@(& $runtime.Path @arguments 2>&1)
     if($LASTEXITCODE-ne0){throw ("Client compatibility preparation refused:`r`n"+($output-join"`r`n"))}
     if(-not(Test-Path -LiteralPath $ClientCompatibilityReport -PathType Leaf)){throw 'Client compatibility report was not generated.'}
@@ -578,13 +608,28 @@ function Ensure-ClientCompatibility {
     if(-not$report.verification.all_pass){throw 'Client compatibility post-apply verification failed.'}
     return $report
 }
-function Register-ClientProfile([string]$ip){
+function Send-LocalLaunchRegistration([string]$ip,[byte[]]$bytes,[string]$description){
     $tcp=New-Object Net.Sockets.TcpClient
     try{
-        $tcp.Connect($ip,11999);$stream=$tcp.GetStream();$bytes=[IO.File]::ReadAllBytes($ProfileIni);$len=[BitConverter]::GetBytes([uint32]$bytes.Length)
+        $tcp.Connect($ip,11999);$stream=$tcp.GetStream();$len=[BitConverter]::GetBytes([uint32]$bytes.Length)
         $stream.Write($len,0,4);$stream.Write($bytes,0,$bytes.Length);$stream.Flush();$ack=New-Object byte[] 3;$got=$stream.Read($ack,0,3)
-        if($got-ne3-or[Text.Encoding]::ASCII.GetString($ack)-ne"OK`n"){throw 'profile registry rejected'}
-    }catch{throw '适配器配置注册失败，请检查适配器状态及端口11999。'}finally{if($tcp){$tcp.Close()}}
+        if($got-ne3-or[Text.Encoding]::ASCII.GetString($ack)-ne"OK`n"){throw "$description registry rejected"}
+    }catch{throw "适配器$description 注册失败，请检查适配器状态及端口11999。"}finally{if($tcp){$tcp.Close()}}
+}
+function Register-ClientProfile([string]$ip){Send-LocalLaunchRegistration $ip ([IO.File]::ReadAllBytes($ProfileIni)) '角色配置'}
+function New-PureNewPlayerAccountName {return 'pure-'+(Get-Date).ToUniversalTime().ToString('yyyyMMddHHmmssfff')+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)}
+function Write-PureNewPlayerRuntimeProfile {
+    if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
+    $lines=@('version=2','launch_mode=network','network_ip=127.0.0.1','skip_tutorial=0','gender=0','name_hex=505552454E4557','dungeon_grade=auto','level=1','pet=0','pet_age_a=0','pet_age_b=0','initial_attack_mode=0','equip_hair=0','equip_body=0','equip_top=0','equip_bottom=0','equip_accessory=0','equip_effect=0','hp_max=1500','hp_current=1500','mp_max=100','mp_current=100','attack=0','defense=0','coin=0','nana_point=0','card_key_normal=0','card_key_gold=0','card_key_mystery=0','card_key_special=0','free_magic_key_expiry=0','quickbar_expiry=0','skill_config=1','skill_projectile_route=0','skill_meat_route=0','skill_slot_z=0','skill_slot_x=0')
+    for($i=0;$i-lt16;$i++){$lines+="skill_grade$i=0"}
+    [IO.File]::WriteAllLines($PureNewPlayerProfile,$lines,(New-Object Text.ASCIIEncoding))
+    return $PureNewPlayerProfile
+}
+function Register-PureNewPlayer([string]$ip){
+    $account=New-PureNewPlayerAccountName
+    $json=[ordered]@{LocalAccount=$account;PureNewPlayer=$true}|ConvertTo-Json -Compress
+    Send-LocalLaunchRegistration $ip ([Text.Encoding]::UTF8.GetBytes($json)) '纯新手账号'
+    return $account
 }
 function Get-LocalAdapters {
     $paths=@($Adapter,$AdapterBridge,$LegacyAdapter)
@@ -637,12 +682,12 @@ function Write-RuntimeIdentity([Diagnostics.Process]$proc) {
     }
     $identity|ConvertTo-Json -Depth 4|Set-Content -LiteralPath $RuntimeIdentityPath -Encoding UTF8
 }
-function Start-LocalAdapter {
+function Start-LocalAdapter([string]$runtimeProfile=$ProfileIni) {
     Test-AdapterBinary
     Assert-AdapterPortsAvailable
     foreach($path in @($AdapterData,$AdapterLogs)){if(-not(Test-Path -LiteralPath $path)){New-Item -ItemType Directory -Path $path -Force|Out-Null}}
     Remove-Item -LiteralPath $AdapterStop,$AdapterLog,$AdapterErr -Force -ErrorAction SilentlyContinue
-    $args=@('--data',$AdapterData,'--native',$AdapterBridge,'--profile',$ProfileIni,'--login-port','11005','--world-port','12050','--profile-port','11999','--log-directory',$AdapterLogs)
+    $args=@('--data',$AdapterData,'--native',$AdapterBridge,'--profile',$runtimeProfile,'--login-port','11005','--world-port','12050','--profile-port','11999','--log-directory',$AdapterLogs)
     $proc=Start-Process -FilePath $Adapter -ArgumentList $args -WorkingDirectory $AdapterRuntimeRoot -WindowStyle Hidden -RedirectStandardOutput $AdapterLog -RedirectStandardError $AdapterErr -PassThru
     for($i=0;$i-lt100;$i++){
         Start-Sleep -Milliseconds 100
@@ -653,6 +698,7 @@ function Start-LocalAdapter {
     throw '适配器未在10秒内准备完成；请检查日志。'
 }$inventoryAdmin=Initialize-InventoryAdmin $tabs $Root $(if($ini.name_hex){[string]$ini.name_hex}else{Encode-NameHex $defaultName})
 function Save-Profile {
+    if($pureNewPlayerBox.Checked){throw '纯新手档不会保存或导入GUI角色配置；请取消勾选后再保存常规档。'}
     if((Get-LocalAdapters).Count){throw 'Inventory files are live. Stop the local Nanaimo protocol adapter first, or use Save and Enter Game to stop-save-restart safely.'}
     $name=$nameBox.Text.Trim();$hex=Encode-NameHex $name;$pet=Get-SelectedData $petCombo;if(-not$pet){throw '请选择宠物。'}
     $selected=@{};foreach($part in $comboMap.Keys){$d=Get-SelectedData $comboMap[$part];if(-not$d){throw "请选择 $($PartLabels[$part])。"};$selected[$part]=$d}
@@ -687,7 +733,7 @@ if($SelfTestProfileIO){
 $saveBtn.add_Click({try{Save-Profile;[Windows.Forms.MessageBox]::Show('配置已保存。','Nanaimo 启动器')|Out-Null}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'配置错误')|Out-Null}})
 $folderBtn.add_Click({$target=if(Test-Path -LiteralPath $AdapterLogs){$AdapterLogs}else{$Root};Start-Process explorer.exe -ArgumentList $target})
 $resetProgressBtn.add_Click({try{if((Get-LocalAdapters).Count){throw 'Stop the local Nanaimo protocol adapter first.'};$name=$nameBox.Text.Trim();if(-not$name){throw 'Character name is required.'};$hex=Encode-NameHex $name;$paths=@((Join-Path $Root ("level_progress_state_v1_{0}.dat"-f$hex)),(Join-Path $Root ("level_progress_state_v1_{0}.bak"-f$hex)),(Join-Path $Root ("level_progress_state_v1_{0}.new"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.dat"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.bak"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.new"-f$hex)));Remove-Item -LiteralPath $paths -Force -ErrorAction SilentlyContinue;$status.Text="Reset level, EXP, and dungeon-title progress for $name. Next start seeds level $([int]$levelBox.Value) and dungeon grade 0."}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Reset failed')|Out-Null}})
-$defaultBtn.add_Click({$skipTutorialBox.Checked=$false;$nameBox.Text='Greyrat';$titleCombo.SelectedIndex=0;$levelBox.Value=25;$hpMaxBox.Value=1500;$mpMaxBox.Value=500;$attackBox.Value=0;$defenseBox.Value=0;$coinBox.Value=0;$nanaPointBox.Value=0;$apartmentPointsBox.Value=1000;$cardKeyNormalBox.Value=99;$cardKeyGoldBox.Value=99;$cardKeyMysteryBox.Value=99;$cardKeySpecialBox.Value=99;$freeMagicKeyExpiryBox.Value=2099123123;$quickbarExpiryBox.Value=0;$skillSlotExpiryBox.Value=0;$skillSlotExpiryApplyBox.Checked=$true;$projectileRouteCombo.SelectedIndex=0;$meatRouteCombo.SelectedIndex=0;for($i=0;$i-lt16;$i++){$skillGradeBoxes[$i].Value=0};foreach($i in 0,1,8,9){$skillGradeBoxes[$i].Value=5};Set-SkillSlotChoices 0 0;Update-SkillWarning;$genderCombo.SelectedIndex=1;Select-ComboId $petCombo 15009205|Out-Null;Update-PetAgeOptions 3;Select-ComboId $comboMap.hair 10130337|Out-Null;Select-ComboId $comboMap.body 10100028|Out-Null;Select-ComboId $comboMap.top 10110337|Out-Null;Select-ComboId $comboMap.bottom 10120352|Out-Null;Select-ComboId $comboMap.accessory 10150103|Out-Null;Select-ComboId $comboMap.effect 10160017|Out-Null;Update-PetDetail;Update-LaunchModePresentation})
+$defaultBtn.add_Click({$pureNewPlayerBox.Checked=$false;$skipTutorialBox.Checked=$false;$nameBox.Text='Greyrat';$titleCombo.SelectedIndex=0;$levelBox.Value=25;$hpMaxBox.Value=1500;$mpMaxBox.Value=500;$attackBox.Value=0;$defenseBox.Value=0;$coinBox.Value=0;$nanaPointBox.Value=0;$apartmentPointsBox.Value=1000;$cardKeyNormalBox.Value=99;$cardKeyGoldBox.Value=99;$cardKeyMysteryBox.Value=99;$cardKeySpecialBox.Value=99;$freeMagicKeyExpiryBox.Value=2099123123;$quickbarExpiryBox.Value=0;$skillSlotExpiryBox.Value=0;$skillSlotExpiryApplyBox.Checked=$true;$projectileRouteCombo.SelectedIndex=0;$meatRouteCombo.SelectedIndex=0;for($i=0;$i-lt16;$i++){$skillGradeBoxes[$i].Value=0};foreach($i in 0,1,8,9){$skillGradeBoxes[$i].Value=5};Set-SkillSlotChoices 0 0;Update-SkillWarning;$genderCombo.SelectedIndex=1;Select-ComboId $petCombo 15009205|Out-Null;Update-PetAgeOptions 3;Select-ComboId $comboMap.hair 10130337|Out-Null;Select-ComboId $comboMap.body 10100028|Out-Null;Select-ComboId $comboMap.top 10110337|Out-Null;Select-ComboId $comboMap.bottom 10120352|Out-Null;Select-ComboId $comboMap.accessory 10150103|Out-Null;Select-ComboId $comboMap.effect 10160017|Out-Null;Update-PetDetail;Update-LaunchModePresentation})
 $adapterBtn.add_Click({
     try{
         if((Get-LocalAdapters).Count){Stop-LocalAdapter;$adapterBtn.Text='仅启动适配器';$status.Text='适配器已停止。';return}
@@ -698,17 +744,19 @@ $adapterBtn.add_Click({
 })
 $clientBtn.add_Click({
     try{
-        $launchModeInfo=Get-SelectedLaunchModeInfo
+        $launchModeInfo=Get-SelectedLaunchModeInfo;$pure=[bool]$pureNewPlayerBox.Checked
         Stop-LocalAdapter
-        Save-Profile;Test-ClientBinary;Install-LaunchModeConfig $launchModeInfo
+        if($pure){$runtimeProfile=Write-PureNewPlayerRuntimeProfile}else{Save-Profile;$runtimeProfile=$ProfileIni}
+        Test-ClientBinary;Install-LaunchModeConfig $launchModeInfo
         Get-Process -Name game -ErrorAction SilentlyContinue|Where-Object{$_.Path-eq$Client}|Stop-Process -Force;Start-Sleep -Milliseconds 250
         $compatibility=Ensure-ClientCompatibility
-        $proc=Start-LocalAdapter
+        $proc=Start-LocalAdapter $runtimeProfile
         $adapterBtn.Text='停止适配器'
-        if($launchModeInfo.Key-eq'network'){Register-ClientProfile $launchModeInfo.AdapterIP}
+        $account=$null
+        if($launchModeInfo.Key-eq'network'){$account=if($pure){Register-PureNewPlayer $launchModeInfo.AdapterIP}else{Register-ClientProfile $launchModeInfo.AdapterIP;$null}}
         if($launchModeInfo.ClientArgs.Count){Start-Process -FilePath $Client -ArgumentList ([string[]]$launchModeInfo.ClientArgs) -WorkingDirectory $Root|Out-Null}else{Start-Process -FilePath $Client -WorkingDirectory $Root|Out-Null}
         $changed=@($compatibility.apply_results|Where-Object{$_.status-eq'applied'}).Count
-        $status.Text="Profile saved; compatibility verified ($changed files applied); adapter restarted and client launched.`r`n$ReleaseIdentity; identity: $RuntimeIdentityPath"
+        $status.Text=if($pure){"Pure new player account $account registered; normal profile/sidecars unchanged; compatibility verified ($changed files applied); client launched.`r`nRuntime profile: $runtimeProfile"}else{"Profile saved; compatibility verified ($changed files applied); adapter restarted and client launched.`r`n$ReleaseIdentity; identity: $RuntimeIdentityPath"}
     }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'启动 Nanaimo 失败')|Out-Null}
 })
 # Pet lookup tab
@@ -754,6 +802,10 @@ if($SelfTestLayout){
     try{
         $tabs.SelectedTab=$tabStart;[Windows.Forms.Application]::DoEvents();$defaultBtn.PerformClick()
         if($nameBox.Text-ne'Greyrat'){throw 'default name'}
+        if($pureNewPlayerBox.Checked){throw 'default pure-new-player mode'}
+        $pureNewPlayerBox.Checked=$true;[Windows.Forms.Application]::DoEvents()
+        if($nameBox.Enabled-or$saveBtn.Enabled-or$adapterBtn.Enabled-or-not$clientBtn.Enabled-or$clientBtn.Text-ne'构建并进入纯新手档'){throw 'pure-new-player control gate'}
+        $pureNewPlayerBox.Checked=$false;[Windows.Forms.Application]::DoEvents()
         $expectedOutfit=@{hair=10130337;body=10100028;top=10110337;bottom=10120352;accessory=10150103;effect=10160017}
         foreach($part in $expectedOutfit.Keys){if((Get-SelectedData $comboMap[$part]).id-ne$expectedOutfit[$part]){throw "default outfit $part"}}
         if((Get-SelectedLaunchModeInfo).AdapterIP-ne'127.0.0.1'){throw 'fixed loopback mode'}
@@ -790,6 +842,23 @@ if($SelfTestLayout){
         }
         Write-Output 'GUI_LAYOUT_SELFTEST_PASS sizes=1000x870,1120x940 scales=1,1.25,1.5 skill_grades=16 routes=2 slots=2 overlap=false defaults=PASS connection_text=absent startup_compaction=40 state_writes=0'
     }finally{$form.Close();$form.Dispose()}
+    exit 0
+}
+
+if($SelfTestPureNewPlayer){
+    $savedPurePath=$PureNewPlayerProfile;$tempPure=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo_pure_new_'+[guid]::NewGuid().ToString('N')+'.ini')
+    try{
+        $PureNewPlayerProfile=$tempPure;$pureNewPlayerBox.Checked=$true
+        $beforeIni=if(Test-Path -LiteralPath $ProfileIni){(Get-FileHash -LiteralPath $ProfileIni -Algorithm SHA256).Hash}else{$null}
+        $beforeJson=if(Test-Path -LiteralPath $ProfileJson){(Get-FileHash -LiteralPath $ProfileJson -Algorithm SHA256).Hash}else{$null}
+        $written=Write-PureNewPlayerRuntimeProfile;$profile=Read-KeyValueFile $written;$account=New-PureNewPlayerAccountName
+        $payload=[ordered]@{LocalAccount=$account;PureNewPlayer=$true}|ConvertTo-Json -Compress|ConvertFrom-Json
+        if($written-ne$tempPure-or[string]$profile.skip_tutorial-ne'0'-or[string]$profile.level-ne'1'-or[string]$profile.pet-ne'0'-or[string]$profile.coin-ne'0'-or[string]$profile.skill_grade0-ne'0'){throw 'pure runtime profile'}
+        if(-not[bool]$payload.PureNewPlayer-or[string]$payload.LocalAccount-notmatch'^pure-\d{17}-[0-9a-f]{8}$'){throw 'pure registration payload'}
+        $afterIni=if(Test-Path -LiteralPath $ProfileIni){(Get-FileHash -LiteralPath $ProfileIni -Algorithm SHA256).Hash}else{$null};$afterJson=if(Test-Path -LiteralPath $ProfileJson){(Get-FileHash -LiteralPath $ProfileJson -Algorithm SHA256).Hash}else{$null}
+        if($beforeIni-ne$afterIni-or$beforeJson-ne$afterJson){throw 'normal profile mutated'}
+        Write-Output 'GUI_PURE_NEW_PLAYER_SELFTEST_PASS profile=isolated skip_tutorial=0 level=1 grants=0 registration=json normal_profile_unchanged=true'
+    }finally{$PureNewPlayerProfile=$savedPurePath;Remove-Item -LiteralPath $tempPure -Force -ErrorAction SilentlyContinue;$form.Close();$form.Dispose()}
     exit 0
 }
 

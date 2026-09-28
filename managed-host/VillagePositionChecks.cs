@@ -298,10 +298,10 @@ internal static class VillagePositionChecks
             int previousCharacterPage = runtimeCharacter.CurrentTownPage;
             c366 = (await Dispatch(0xC365, BuildC365(1, 0, 1, 240, 320)))!;
             Check(ReadOpcode(c366) == 0xC366
-                  && c366[8] == 0
+                  && c366[8] == NetworkAdapterService.TownEnterStatusPaymentFailure
                   && c366[9] == previousTown
                   && c366[10] == previousPage,
-                "insufficient Hans returns a non-success C366 with the retained town tuple");
+                "insufficient Hans returns C366 status 100 with the retained town tuple");
             Check(runtimeCharacter.Hans == TownTravelPolicy.PlatanosTaoyuanFareHans - 1
                   && (await reopened.GetCharacterAsync(accountId))!.Hans == TownTravelPolicy.PlatanosTaoyuanFareHans - 1
                   && runtimeCharacter.CurrentMapId == previousMap
@@ -310,8 +310,9 @@ internal static class VillagePositionChecks
             var staleDebit = await reopened.DebitTownTravelFareAsync(
                 accountId, runtimeCharacter.Id, "stale-session", TownTravelPolicy.PlatanosTaoyuanFareHans);
             Check(!staleDebit.Success
+                  && !staleDebit.InsufficientBalance
                   && (await reopened.GetCharacterAsync(accountId))!.Hans == TownTravelPolicy.PlatanosTaoyuanFareHans - 1,
-                "stale session cannot debit a town-travel fare");
+                "stale session remains a generic town-travel failure and cannot debit a fare");
 
             byte[] destinationC367 = new byte[8];
             BinaryPrimitives.WriteInt32LittleEndian(destinationC367, 6);

@@ -26,7 +26,10 @@ static unsigned expected_associated(const struct stage_damage_damage_context *ct
 int main(void){
     unsigned char req[28];struct stage_damage_damage_context ctx;struct stage_damage_damage_lookup out;
     unsigned i,selector,mapped=0u,unmapped=0u,scopes=0u,mapped_scopes=0u,type4_total=0u;
-    static const unsigned ep15_selectors[]={0x07u,0x1Bu,0x1Du,0x1Eu,0x1Fu,0x54u,0x5Du,0xEDu,0xFCu,0xFDu,0xFEu,0x10Au,0x114u,0x11Cu,0x124u};
+    /* 0x11/source2 is the captured Dungeon 16 / dungeon 3 kind60 tuple from
+     * native.log line 13414; keep it explicit rather than relying only on the
+     * catalog-wide self-consistency loop. */
+    static const unsigned ep15_selectors[]={0x07u,0x11u,0x1Bu,0x1Du,0x1Eu,0x1Fu,0x54u,0x5Du,0xEDu,0xFCu,0xFDu,0xFEu,0x10Au,0x114u,0x11Cu,0x124u};
     memset(req,0,sizeof(req));req[8]=60u;
     for(i=0u;i<HP_SYNC_PROFILE_COUNT;i++){
         const struct hp_sync_profile_def *p=&hp_sync_profiles[i];
@@ -50,6 +53,7 @@ int main(void){
     CHECK(scopes==282u);CHECK(mapped_scopes==261u);CHECK(type4_total==43517u);
     CHECK(mapped==29172u);CHECK(type4_total-mapped==14345u);CHECK(unmapped>mapped);
     stage_damage_damage_begin(&ctx,0u,15u,2u,0u,2u,1u,1u);
+    CHECK(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])==16u);
     for(i=0u;i<sizeof(ep15_selectors)/sizeof(ep15_selectors[0]);i++){
         unsigned selector_value=ep15_selectors[i];req[0x0A]=(unsigned char)selector_value;req[0x0B]=(unsigned char)(selector_value>>8);req[0x0C]=2u;req[0x0D]=0u;
         CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==1146u);

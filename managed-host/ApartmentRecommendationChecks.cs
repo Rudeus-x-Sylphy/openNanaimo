@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Collections;
 using System.Reflection;
 using System.Text;
 using Microsoft.Data.Sqlite;
@@ -84,8 +83,9 @@ internal static class ApartmentRecommendationChecks
                 && (await Recommend(0, 3)).Status == ApartmentRecommendationStatus.Success, "three different owners may receive points");
             Check((await Recommend(0, 4)).Status == ApartmentRecommendationStatus.Exhausted && await Remaining(0) == 0,
                 "fourth distinct owner returns two without credit");
-            Check((await Recommend(0, 1)).Status == ApartmentRecommendationStatus.Duplicate,
-                "same-day duplicate remains one when quota is exhausted");
+            Check((await Recommend(0, 1)).Status == ApartmentRecommendationStatus.Exhausted
+                && (await Recommend(0, 0)).Status == ApartmentRecommendationStatus.Exhausted,
+                "zero quota returns two before duplicate or self classification");
 
             var oldSession = sessions[0];
             sessions[0] = Guid.NewGuid().ToString("N");
@@ -94,8 +94,8 @@ internal static class ApartmentRecommendationChecks
             var reopened = new DatabaseService(root);
             Check(await Remaining(0, instance: reopened) == 0 && await Remaining(0, session: oldSession) is null,
                 "quota survives service recreation and session replacement");
-            Check((await Recommend(0, 1, instance: reopened)).Status == ApartmentRecommendationStatus.Duplicate,
-                "daily deduplication survives reconnect");
+            Check((await Recommend(0, 1, instance: reopened)).Status == ApartmentRecommendationStatus.Exhausted,
+                "exhausted quota survives reconnect and remains the visible result");
             Check(await Remaining(0, day.Date.AddDays(1)) == 3, "UTC midnight refreshes persisted quota");
             Check((await Recommend(0, 1, day.Date.AddDays(1))).Status == ApartmentRecommendationStatus.Success,
                 "same owner becomes eligible on next UTC day");
@@ -254,9 +254,8 @@ internal static class ApartmentRecommendationChecks
             presences.GetType().GetMethod("TryAdd")!.Invoke(presences, new[] { targetSessionId, targetPresence });
             return targetSession;
         }
-        var ownerSession = AddApartmentPresence(owner, owner.Id);
+        _ = AddApartmentPresence(owner, owner.Id);
         _ = AddApartmentPresence(other, other.Id);
-        var pending = (IList)sessionType.GetProperty("PendingBroadcasts")!.GetValue(session)!;
         Task<byte[]?> Call(bool count, byte[] payload)
         {
             var frame = new byte[8 + payload.Length];
@@ -279,34 +278,14 @@ internal static class ApartmentRecommendationChecks
         Check(Reply(await Call(false, Name(actor.Name)), 0xC397, 1), "network handler returns one for self recommendation");
         Set("ApartmentOwnerCharacterId", owner.Id);
         var ownerPointsBefore = await db.GetApartmentRecommendationPointsAsync(owner.Id);
-        var successReply = await Call(false, chinese);
-        Check(Reply(successReply, 0xC397, 3), "C396 success returns C397 before room refresh broadcasts");
-        var refreshes = pending.Cast<object>()
-            .Select(item => new
-            {
-                TargetSessionId = (string)item.GetType().GetProperty("Target")!.PropertyType
-                    .GetProperty("SessionId")!.GetValue(item.GetType().GetProperty("Target")!.GetValue(item))!,
-                Opcode = (ushort)item.GetType().GetProperty("Opcode")!.GetValue(item)!,
-                Payload = (byte[])item.GetType().GetProperty("Payload")!.GetValue(item)!
-            })
-            .Where(item => item.Opcode == 0xC38E)
-            .ToArray();
-        var ownerSessionId = (string)sessionType.GetProperty("SessionId")!.GetValue(ownerSession)!;
-        var expectedOwnerPoints = checked((ulong)(ownerPointsBefore + 1));
-        Check(refreshes.Length == 2
-            && refreshes.Select(item => item.TargetSessionId).ToHashSet(StringComparer.Ordinal)
-                .SetEquals(new[] { sessionId, ownerSessionId })
-            && refreshes.All(item => item.Payload.Length == 104
-                && BinaryPrimitives.ReadUInt64LittleEndian(item.Payload.AsSpan(56, 8)) == expectedOwnerPoints),
-            "successful recommendation queues current C38E points for recommender and online owner only");
-        Check(refreshes.Single(item => item.TargetSessionId == sessionId).Payload[1] is 30 or 40
-            && refreshes.Single(item => item.TargetSessionId == ownerSessionId).Payload[1] is 10 or 20,
-            "recommendation refresh preserves visitor and owner room types per recipient");
-        var pendingAfterSuccess = pending.Count;
+        Check(Reply(await Call(false, chinese), 0xC397, 3)
+            && await db.GetApartmentRecommendationPointsAsync(owner.Id) == ownerPointsBefore + 1
+            && !((System.Collections.ICollection)sessionType.GetProperty("PendingBroadcasts")!.GetValue(session)!).Cast<object>()
+                .Any(item => (ushort)item.GetType().GetProperty("Opcode")!.GetValue(item)! == 0xC38E),
+            "C396 success returns only C397 and never replays room-entry C38E");
         Check(Reply(await Call(false, chinese), 0xC397, 1)
-            && pending.Count == pendingAfterSuccess
             && Reply(await Call(true, Array.Empty<byte>()), 0xC399, 2),
-            "C396 duplicate keeps persisted C399 remaining two without another points refresh");
+            "C396 duplicate keeps persisted C399 remaining two without room-state replay");
         Set("AuxiliaryGameSession", true);
         Check(await Call(true, Array.Empty<byte>()) is null, "auxiliary session cannot query recommendation quota");
         Set("AuxiliaryGameSession", false);

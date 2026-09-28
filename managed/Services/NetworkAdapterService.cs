@@ -31,6 +31,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private const int RestrictionCheckPayloadLength = 16;
     private const int WorldConnectPayloadLength = 16;
     private const int TownEnterRequestPayloadLength = 10;
+    internal const byte TownEnterStatusGenericFailure = 0;
+    internal const byte TownEnterStatusPaymentFailure = 100;
+    internal const byte TownEnterStatusSuccess = 200;
     private const int RoomEnterRequestPayloadLength = 8;
     private const int TownUserInfoRequestPayloadLength = 4;
     private const int TownLeavePayloadLength = 4;
@@ -198,6 +201,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private const int C355PartnerNameLength = 17;
     private const int C355RingSuffixFrameOffset = 0xF0;
     private const int C355RevivalCountFrameOffset = 0xF2;
+    private const int C355StoryMedalFrameOffset = 0xF3;
     private const uint CoupleRingCodeBase = 43_000_000u;
     private const string CoupleRingCatalogSource = "CI._D28/COUPLERING";
     private const byte DungeonLevelFallbackEpisodeCount = 16;
@@ -431,6 +435,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public bool NativeDungeonSettlementAwaitingAction { get; set; }
         public bool NativeDungeonNextTransitionAuthorized { get; set; }
         public bool NativeDungeonTownTransitionAuthorized { get; set; }
+        public bool NativeDungeonDeathRetryTransitionAuthorized { get; set; }
         public bool NativeDungeonSelectionValid { get; set; }
         public byte NativeDungeonHdIndex { get; set; }
         public byte NativeDungeonEpisode { get; set; }
@@ -2204,14 +2209,25 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var coupleRelation = session.Character is null
                     ? null
                     : await _database.GetActiveCoupleRelationAsync(session.Character.Id, token);
-                _log($"{channel}:{remote} 必需资源恢复：{FormatCharacterRestoreSummary(session.Character)}；下发 C355 后触发 C476 库存初始化");
-                return BuildLoadNecessityResponse(
+                if (session.Character is null)
+                    return null;
+                var storyGuideState = await _database.GetStoryGuideStateAsync(
+                    session.AccountId, session.Character.Id, session.SessionId, token);
+                if (!storyGuideState.Authorized)
+                    return null;
+                var loadNecessityFrames = BuildLoadNecessityResponse(
                     frame,
                     session,
                     dungeonClearMasks,
                     dungeonBestRatings,
                     dungeonSecretBestRatings,
                     coupleRelation);
+                // C355 full-frame +0xF3 is the client's persisted story-medal byte.
+                // The numeric source is the committed story-claim ledger, not C59A
+                // scratch data or a localized reward label.
+                loadNecessityFrames[C355StoryMedalFrameOffset] = storyGuideState.Medals;
+                _log($"{channel}:{remote} load necessities restored: {FormatCharacterRestoreSummary(session.Character)}; storyMedals={storyGuideState.Medals}; C355 followed by C476 inventory initialization");
+                return loadNecessityFrames;
 
             case 0xC358: // ENTER_OZVILL one-way notification
                 if (!session.OnlineTracked || session.Character is null)
@@ -2742,7 +2758,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         questId,
                         completion.Character ?? session.Character,
                         completion.HansChanged || completion.InventoryChanged,
-                        completion.GainedLevels),
+                        taskType),
                     session);
                 if (!completion.Success)
                     return completionFrame;
@@ -4571,10 +4587,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     if (!debit.Success)
                     {
                         _log($"{channel}:{remote} C365 paid village transition rejected: source={sourceTownId} destination={townId} requestedPage={townPage} mode={transientFlag} fare={travelFare} error={debit.Error}");
+                        var failureStatus = debit.InsufficientBalance
+                            ? TownEnterStatusPaymentFailure
+                            : TownEnterStatusGenericFailure;
                         return BuildNativeFrame(
                             frame,
                             0xC366,
-                            BuildTownEnterPayload(0, session.TownId, session.TownPage, 0),
+                            BuildTownEnterPayload(failureStatus, session.TownId, session.TownPage, 0),
                             session);
                     }
 
@@ -4598,7 +4617,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var transitionResponse = BuildNativeFrame(
                     frame,
                     0xC366,
-                    BuildTownEnterPayload(200, townId, transition.Page, transition.Flag),
+                    BuildTownEnterPayload(TownEnterStatusSuccess, townId, transition.Page, transition.Flag),
                     session);
                 if (travelFare == 0)
                     return transitionResponse;
@@ -12155,26 +12174,22 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         out byte dungeon,
         out byte wireDifficulty)
     {
-        mode = 0;
-        hdIndex = 0;
-        episode = 0;
-        dungeon = 0;
-        wireDifficulty = byte.MaxValue;
-        if (requestPayload.Length != 8)
+        if (!DungeonNavigationPolicy.TryParseQuickEntry(requestPayload, out var selection))
+        {
+            mode = 0;
+            hdIndex = 0;
+            episode = 0;
+            dungeon = 0;
+            wireDifficulty = byte.MaxValue;
             return false;
+        }
 
-        mode = BinaryPrimitives.ReadUInt16LittleEndian(requestPayload.Slice(0, 2));
-        if (mode is not (10 or 100))
-            return false;
-
-        // Retail sub_6E9BA0/sub_6E9C20 serialize the CF77 base tuple as
-        // hd, episode, dungeon, difficulty. CF77 carries no RealStage byte;
-        // the initial ready-room target is the ordinary stage (RealStage 0).
-        hdIndex = requestPayload[2];
-        episode = requestPayload[3];
-        dungeon = requestPayload[4];
-        wireDifficulty = requestPayload[5];
-        return wireDifficulty < DungeonDifficultyCount;
+        mode = selection.Mode;
+        hdIndex = selection.HdIndex;
+        episode = selection.Episode;
+        dungeon = selection.Dungeon;
+        wireDifficulty = selection.WireDifficulty;
+        return true;
     }
 
     private DungeonRoom? QuickEnterDungeonRoom(
@@ -12229,12 +12244,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // sub_6E99E0 always writes 100 to the CF6C word at +24. The selection
         // difficulty is the independent +30 word populated from +0x1E528.
         BinaryPrimitives.WriteUInt16LittleEndian(createPayload.AsSpan(24, 2), 100);
-        BinaryPrimitives.WriteUInt16LittleEndian(createPayload.AsSpan(30, 2),
-            requestedDifficulty);
-        createPayload[26] = requestedHdIndex;
-        createPayload[27] = requestedEpisode;
-        createPayload[28] = requestedDungeon;
-        createPayload[29] = 0;
+        DungeonNavigationPolicy.WriteCreateRequestSelection(
+            createPayload,
+            new DungeonQuickEntrySelection(
+                mode,
+                requestedHdIndex,
+                requestedEpisode,
+                requestedDungeon,
+                requestedDifficulty));
         created = true;
         return CreateDungeonRoom(session, createPayload);
     }
@@ -15922,28 +15939,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         => BuildClientDungeonDifficultyTable(persistedRatings);
 
     private static byte[] BuildClientDungeonDifficultyTable(byte[] persistedTable)
-    {
-        // C355 stores 3 * Episode + selector. Persistence uses logical
-        // low/middle/high, while the retail normal-stage selectors are 2/0/1.
-        var clientTable = new byte[DungeonEpisodeCount * DungeonDifficultyCount];
-        for (byte episode = 0; episode < DungeonEpisodeCount; episode++)
-        {
-            for (byte logicalDifficulty = 0;
-                 logicalDifficulty < DungeonDifficultyCount;
-                 logicalDifficulty++)
-            {
-                var persistedIndex = episode * DungeonDifficultyCount + logicalDifficulty;
-                if (persistedIndex >= persistedTable.Length)
-                    continue;
-                var clientSelector = EncodeDungeonDifficultySelector(
-                    logicalDifficulty,
-                    superBoss: false);
-                clientTable[episode * DungeonDifficultyCount + clientSelector] =
-                    persistedTable[persistedIndex];
-            }
-        }
-        return clientTable;
-    }
+        => DungeonNavigationPolicy.BuildClientDifficultyTable(
+            persistedTable,
+            DungeonEpisodeCount);
 
     private static bool IsClientDungeonCleared(byte clearMask, int dungeon) =>
         dungeon switch
@@ -16211,9 +16209,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0, 2), result);
         if (room is null)
             return payload;
-        payload[2] = room.Episode;
-        payload[3] = room.Dungeon;
-        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4, 4), (uint)room.Id);
+        DungeonNavigationPolicy.WriteQuickEnterResponseSelection(
+            payload,
+            room.Episode,
+            room.Dungeon,
+            checked((uint)room.Id));
         BuildDungeonEffectiveSlotStates(room).CopyTo(payload, 8);
         if (room.Members.TryGetValue(room.OwnerSessionId, out var owner)
             && owner.Session.Character is { } ownerCharacter)
@@ -16599,40 +16599,17 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         byte dungeon,
         byte realStage,
         ushort wireDifficulty)
-    {
-        if (wireDifficulty >= DungeonDifficultyCount)
-            return byte.MaxValue;
-
-        // The original client does not use one numeric domain for both jobs.
-        // Normal stages select low/middle/high as 2/0/1. Super-BOSS result
-        // stages use 0/1/2 so the ending UI can offer middle/top/next.
-        if (IsDungeonSuperBoss(dungeon, realStage))
-            return checked((byte)wireDifficulty);
-        return wireDifficulty switch
-        {
-            2 => 0,
-            0 => 1,
-            1 => 2,
-            _ => byte.MaxValue
-        };
-    }
+        => DungeonNavigationPolicy.DecodeLogicalDifficulty(
+            dungeon,
+            realStage,
+            wireDifficulty);
 
     private static byte EncodeDungeonDifficultySelector(
         byte logicalDifficulty,
         bool superBoss)
-    {
-        if (logicalDifficulty >= DungeonDifficultyCount)
-            throw new ArgumentOutOfRangeException(nameof(logicalDifficulty));
-        if (superBoss)
-            return logicalDifficulty;
-        return logicalDifficulty switch
-        {
-            0 => 2,
-            1 => 0,
-            2 => 1,
-            _ => throw new ArgumentOutOfRangeException(nameof(logicalDifficulty))
-        };
-    }
+        => DungeonNavigationPolicy.EncodeDifficultySelector(
+            logicalDifficulty,
+            superBoss);
 
     private static byte[] BuildDungeonResettingPayload(
         byte realStage,
@@ -16664,7 +16641,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     {
         // CF16 is a 252-byte frame: the echoed four-byte CF15 selector plus
         // ten fixed 24-byte records. The client consumes name[16], score u32,
-        // character level u16 and the 1..7 level-icon band u16.
+        // character level u16 and the persisted exact dungeon-title grade u16.
         var payload = new byte[244];
         requestPayload.AsSpan(0, Math.Min(requestPayload.Length, 4)).CopyTo(payload);
         for (var index = 0; index < Math.Min(records.Count, 10); index++)
@@ -16675,7 +16652,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset + 16, 4), record.BestScore);
             BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(offset + 20, 2), record.CharacterLevel);
             BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(offset + 22, 2),
-                GetDungeonLevelIcon(record.CharacterLevel));
+                record.DungeonGrade);
         }
         return payload;
     }
@@ -17579,10 +17556,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         uint questId,
         CharacterRecord character,
         bool hansChanged,
-        int gainedLevels)
+        byte taskType)
     {
         // C59A consumes result/changed flags at frame+8..+11, quest ID at +12,
-        // the level-up flag at +16, then level/HP/MP/experience at +19..+35.
+        // the quest-completion kind at +16, then level/HP/MP/experience at +19..+35.
+        // Original wire shows ordinary-task values following the task kind (for
+        // example 1/6), not the number of levels gained. Fixed story quests use
+        // QT's exact type=8/code=0/amount=1 tuple to select medal kind 1; the
+        // non-medal epilogue uses kind 0.
         var payload = new byte[TaskCompletionResponsePayloadLength];
         payload[0] = success ? (byte)0 : (byte)3;
         if (!success)
@@ -17590,7 +17571,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         payload[1] = hansChanged ? (byte)1 : (byte)0;
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4, 4), questId);
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(8, 2), gainedLevels > 0 ? (ushort)1 : (ushort)0);
+        BinaryPrimitives.WriteUInt16LittleEndian(
+            payload.AsSpan(8, 2), ResolveTaskCompletionKind(questId, taskType));
         payload[11] = (byte)Math.Clamp(character.Level, 1, byte.MaxValue);
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(12, 2),
@@ -17613,6 +17595,16 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             payload.AsSpan(24, 4),
             (uint)Math.Clamp(nextLevel, levelStart + 1, uint.MaxValue));
         return payload;
+    }
+
+    internal static ushort ResolveTaskCompletionKind(uint questId, byte taskType)
+    {
+        if (!QuestCatalog.TryGetQuest(questId, out var completedQuest))
+            return 0;
+        if (completedQuest.Rewards.Any(reward =>
+                reward.RewardType == 8 && reward.RewardCode == 0 && reward.Amount == 1))
+            return 1;
+        return QuestCatalog.MainLineQuestIds.Contains(questId) ? (ushort)0 : taskType;
     }
 
     private static byte[] BuildQuestScrollPurchaseResultPayload(
@@ -18388,8 +18380,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // C366 is a fixed 12-byte frame. The handler consumes only these four
         // bytes and then creates the local entity from the saved 271A context.
         // responsePage/responseFlag are the canonical server result, not a raw
-        // echo of C365's transient page/mode fields. Status 200 accepts the
-        // transition; zero keeps an unpaid request from becoming free travel.
+        // echo of C365's transient page/mode fields. The client maps status
+        // 0 to its generic portal failure dialog, 100 to the paid-ride failure
+        // dialog, and 200 to transition success.
         return [status, townId, responsePage, responseFlag];
     }
 

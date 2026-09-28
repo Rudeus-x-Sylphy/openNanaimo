@@ -14,6 +14,8 @@ public sealed partial class NetworkAdapterService
         return payload;
     }
 
+    internal const ushort NativeDungeonFirstRevivalCost = 50;
+
     internal enum NativeDungeonRevivalBillingMode : byte
     {
         None = 0,
@@ -25,16 +27,20 @@ public sealed partial class NetworkAdapterService
     {
         public readonly SemaphoreSlim Gate = new(1, 1);
         public readonly object BoundaryGate = new();
+        // Server-owned billing ordinal for the active battle: 0=50 Hans, >0=egg.
+        public uint SuccessfulRevivalCount;
         public NativePaidContinueCommit? PendingPaidContinue;
         public bool BattleStartArmed;
         public bool BattleStarted;
         public NativeRevivalTransition? Transition;
     }
 
-    private sealed record NativeRevivalTransition(byte[] Request, byte Dungeon, byte Stage, byte Difficulty);
+    private sealed record NativeRevivalTransition(
+        byte[] Request, byte Dungeon, byte Stage, byte Difficulty, bool DeathRetry);
 
     private sealed record NativePaidContinueCommit(
-        long Hans, byte RevivalUseCount, int CurrentHp, int CurrentMp, ushort ClientCostField);
+        long Hans, byte RevivalUseCount, int CurrentHp, int CurrentMp, ushort HansCost,
+        ushort ClientSelectorMode, ushort ClientValue, uint ServerBillingOrdinal);
 
     private readonly ConditionalWeakTable<ConnectionSession, NativeRevivalCycleState> _nativeRevivalCycles = new();
 
@@ -53,6 +59,7 @@ public sealed partial class NetworkAdapterService
         var cycle = GetNativeRevivalCycle(session);
         lock (cycle.BoundaryGate)
         {
+            cycle.SuccessfulRevivalCount = 0;
             cycle.PendingPaidContinue = null;
             cycle.BattleStartArmed = true;
             cycle.BattleStarted = false;
@@ -70,7 +77,8 @@ public sealed partial class NetworkAdapterService
         lock (cycle.BoundaryGate)
             if (cycle.BattleStarted && !cycle.BattleStartArmed && cycle.Transition is null)
                 cycle.Transition = new NativeRevivalTransition(frame.ToArray(), session.NativeDungeonDungeon,
-                    session.NativeDungeonStage, session.NativeDungeonLogicalDifficulty);
+                    session.NativeDungeonStage, session.NativeDungeonLogicalDifficulty,
+                    session.NativeDungeonDeathLatched);
     }
 
     private void CompleteNativeDungeonRevivalTransition(
@@ -83,7 +91,8 @@ public sealed partial class NetworkAdapterService
                 || !frame.AsSpan().SequenceEqual(transition.Request))
                 return;
             cycle.Transition = null;
-            if (session.NativeDungeonDeathLatched || session.NativeDungeonTownTransitionAuthorized)
+            if (session.NativeDungeonTownTransitionAuthorized
+                || (session.NativeDungeonDeathLatched && !transition.DeathRetry))
                 return;
             foreach (var response in responses)
             {
@@ -112,6 +121,7 @@ public sealed partial class NetworkAdapterService
                 return false;
             cycle.BattleStartArmed = false;
             cycle.BattleStarted = true;
+            cycle.SuccessfulRevivalCount = 0;
             cycle.PendingPaidContinue = null;
             cycle.Transition = null;
             return true;
@@ -119,21 +129,27 @@ public sealed partial class NetworkAdapterService
     }
 
     internal static NativeDungeonRevivalBillingMode ResolveNativeDungeonRevivalBilling(
-        bool deathLatched, ushort clientMode)
+        bool deathLatched, uint successfulRevivalCount)
         => !deathLatched ? NativeDungeonRevivalBillingMode.None
-            : clientMode switch
-            {
-                0 => NativeDungeonRevivalBillingMode.Hans,
-                1 => NativeDungeonRevivalBillingMode.RevivalEgg,
-                _ => NativeDungeonRevivalBillingMode.None
-            };
+            : successfulRevivalCount == 0
+                ? NativeDungeonRevivalBillingMode.Hans
+                : NativeDungeonRevivalBillingMode.RevivalEgg;
 
-    // CF83 mode is a proven client selector: mode1 is the revival egg/CF95
-    // path and mode0 is the Hans/F104 path. Serialize both paths and preserve
-    // a committed Hans result until worker synchronization can be retried.
+    internal static (ushort Hp, ushort Mp) ResolveNativeDungeonRevivalMaximums(
+        OpenNanaimo.Adapter.Models.CharacterRecord character,
+        BattleResourceSnapshot? resources)
+    {
+        var fallback = ResolveInventoryVitals(character, resources);
+        return (
+            resources is { MaximumHp: > 0 } ? resources.MaximumHp : fallback.MaximumHp,
+            resources is { MaximumMp: > 0 } ? resources.MaximumMp : fallback.MaximumMp);
+    }
+
+    // CF83 mode/value are client presentation selectors. Billing is owned by
+    // the active battle: first successful recovery is 50 Hans, later ones eggs.
     private async Task HandleNativeDungeonContinueBillingAsync(
-        byte[] frame, string channel, ConnectionSession session, ushort clientMode,
-        ushort clientCostField, CancellationToken token)
+        byte[] frame, string channel, ConnectionSession session, ushort clientSelectorMode,
+        ushort clientValue, CancellationToken token)
     {
         var cycle = GetNativeRevivalCycle(session);
         await cycle.Gate.WaitAsync(token);
@@ -142,28 +158,49 @@ public sealed partial class NetworkAdapterService
             if (session.NativeDungeon is null || !session.OnlineTracked || session.Character is null
                 || !session.NativeDungeonDeathLatched)
                 return;
-            lock (cycle.BoundaryGate)
-                if (!cycle.BattleStarted)
-                    return;
 
             NativePaidContinueCommit? pending;
+            uint serverBillingOrdinal;
             lock (cycle.BoundaryGate)
-                pending = cycle.PendingPaidContinue;
-            if (pending is not null)
             {
-                await TryCompleteNativeDungeonPaidContinueAsync(
-                    frame, channel, session, pending, token);
-                return;
+                if (!cycle.BattleStarted)
+                    return;
+                pending = cycle.PendingPaidContinue;
+                serverBillingOrdinal = pending?.ServerBillingOrdinal ?? cycle.SuccessfulRevivalCount;
             }
 
-            var billing = ResolveNativeDungeonRevivalBilling(
-                session.NativeDungeonDeathLatched, clientMode);
-            if (billing == NativeDungeonRevivalBillingMode.Hans)
-                await HandleNativeDungeonPaidContinueAsync(
-                    frame, channel, session, clientCostField, token);
-            else if (billing == NativeDungeonRevivalBillingMode.RevivalEgg)
-                await HandleNativeDungeonRevivalContinueAsync(
-                    frame, channel, session, clientCostField, token);
+            try
+            {
+                if (pending is not null)
+                {
+                    await TryCompleteNativeDungeonPaidContinueAsync(
+                        frame, channel, session, pending, token);
+                }
+                else
+                {
+                    var billing = ResolveNativeDungeonRevivalBilling(
+                        session.NativeDungeonDeathLatched, serverBillingOrdinal);
+                    if (billing == NativeDungeonRevivalBillingMode.Hans)
+                    {
+                        await HandleNativeDungeonPaidContinueAsync(
+                            frame, channel, session, clientSelectorMode, clientValue,
+                            NativeDungeonFirstRevivalCost, serverBillingOrdinal, token);
+                    }
+                    else if (billing == NativeDungeonRevivalBillingMode.RevivalEgg)
+                    {
+                        await HandleNativeDungeonRevivalContinueAsync(
+                            frame, channel, session, clientSelectorMode, clientValue,
+                            serverBillingOrdinal, token);
+                    }
+                }
+            }
+            finally
+            {
+                if (!session.NativeDungeonDeathLatched)
+                    lock (cycle.BoundaryGate)
+                        if (cycle.SuccessfulRevivalCount == serverBillingOrdinal)
+                            cycle.SuccessfulRevivalCount = checked(serverBillingOrdinal + 1);
+            }
         }
         finally
         {
@@ -187,6 +224,17 @@ public sealed partial class NetworkAdapterService
             if (ReferenceEquals(cycle.PendingPaidContinue, committed))
                 cycle.PendingPaidContinue = null;
     }
+
+    internal static BattleResourceSnapshot? ResetNativeDungeonDeathRetryResources(
+        BattleResourceSnapshot? resources)
+        => resources is null ? null : resources with
+        {
+            CurrentHp = resources.MaximumHp,
+            CurrentMp = resources.MaximumMp,
+            AttackMode = 0,
+            SettlementFrozen = false,
+            HpAuthority = BattleHpAuthority.Inherited
+        };
 
     // Only a verified worker debit is allowed to replace the local death HP.
     // Ordinary checkpoints must retain D010/pickup/settlement authority.

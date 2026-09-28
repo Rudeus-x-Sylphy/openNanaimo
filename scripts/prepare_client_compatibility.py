@@ -81,6 +81,19 @@ LAND_BALANCE_YIELD_LEGACY = bytes.fromhex('85C0743E')
 LAND_BALANCE_YIELD_NEW = LAND_BALANCE_YIELD_LEGACY
 
 # Route the owner's expanded house menu through both native decoration entries.
+# C397 is the request-bound recommendation result. On success, update only the
+# recommendation-point QWORD already owned by the apartment UI while C38E retains
+# the room-entry/state refresh boundary. The duplicate popup's source text has two
+# lines; its original renderer iterates three uninitialized line buffers.
+APARTMENT_RECOMMEND_SUCCESS_VA = 0x005A0BC1
+APARTMENT_RECOMMEND_SUCCESS_OLD = bytes.fromhex(
+    '682C62C4008B1568F3D60052E8392FE7FF83C408')
+APARTMENT_RECOMMEND_SUCCESS_NEW = bytes.fromhex(
+    '8B0DD469D8008381C00F0000018391C40F000000')
+APARTMENT_RECOMMEND_DUPLICATE_LINES_VA = 0x0058CE56
+APARTMENT_RECOMMEND_DUPLICATE_LINES_OLD = bytes.fromhex('837DF803')
+APARTMENT_RECOMMEND_DUPLICATE_LINES_NEW = bytes.fromhex('837DF802')
+
 APARTMENT_EXTERIOR_CALL_VA = 0x005DAB27
 APARTMENT_EXTERIOR_CALL_OLD = bytes.fromhex('E87824E3FF')
 APARTMENT_EXTERIOR_CAVE_VA = 0x005DAD80
@@ -554,6 +567,24 @@ def _apartment_exterior_patch_bytes() -> tuple[bytes, bytes]:
     return call, bytes(code)
 
 
+def patch_apartment_recommendation(data: bytes) -> tuple[bytes, dict]:
+    rows = []
+    for name, va, old, new in (
+        ('success_points', APARTMENT_RECOMMEND_SUCCESS_VA,
+         APARTMENT_RECOMMEND_SUCCESS_OLD, APARTMENT_RECOMMEND_SUCCESS_NEW),
+        ('duplicate_lines', APARTMENT_RECOMMEND_DUPLICATE_LINES_VA,
+         APARTMENT_RECOMMEND_DUPLICATE_LINES_OLD, APARTMENT_RECOMMEND_DUPLICATE_LINES_NEW),
+    ):
+        data, row = _patch_site(
+            data, va, old, new, 'patch_apartment_recommendation_' + name,
+            'apartment recommendation ' + name + ' differs; reviewed mapping required')
+        rows.append(row)
+    changed = any(row['changed'] for row in rows)
+    return data, {'operation': 'patch_apartment_recommendation', 'changed': changed,
+                  'status': 'patched' if changed else 'already_patched',
+                  'sites': rows, 'hash_gate_used': False}
+
+
 def patch_apartment_exterior(data: bytes) -> tuple[bytes, dict]:
     """Connect the existing house-menu exterior action under its ownership gates."""
     call, cave = _apartment_exterior_patch_bytes()
@@ -646,10 +677,10 @@ def _safe_relative(path: Path) -> Path:
     return path
 
 
-def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False):
+def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False, apartment_recommendation: bool = False):
     files: dict[Path, bytes] = {}
     operations = []
-    if furniture or revival_display or native_state or dungeon_state or inventory_gift_display or land_purchase or apartment_exterior:
+    if furniture or revival_display or native_state or dungeon_state or inventory_gift_display or land_purchase or apartment_exterior or apartment_recommendation:
         source = source_root / 'game.exe'
         require(source.is_file(), 'source game.exe is missing')
         original = source.read_bytes()
@@ -668,6 +699,9 @@ def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival
             operations.append(row)
         if land_purchase:
             data, row = patch_land_purchase(data)
+            operations.append(row)
+        if apartment_recommendation:
+            data, row = patch_apartment_recommendation(data)
             operations.append(row)
         if apartment_exterior:
             data, row = patch_apartment_exterior(data)
@@ -776,7 +810,7 @@ def _check(name: str, ok: bool, detail: str):
     return {'name': name, 'ok': bool(ok), 'detail': detail}
 
 
-def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False):
+def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False, apartment_recommendation: bool = False):
     checks = []
     if furniture:
         offset = _va_offset(data, FURNITURE_CALL_VA, len(FURNITURE_NEW))
@@ -820,6 +854,15 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
                                  data[offset:offset + len(expected)] == expected,
                                  f'VA=0x{va:08X}'))
 
+    if apartment_recommendation:
+        for name, va, expected in (
+            ('success_points', APARTMENT_RECOMMEND_SUCCESS_VA, APARTMENT_RECOMMEND_SUCCESS_NEW),
+            ('duplicate_lines', APARTMENT_RECOMMEND_DUPLICATE_LINES_VA, APARTMENT_RECOMMEND_DUPLICATE_LINES_NEW),
+        ):
+            offset = _va_offset(data, va, len(expected))
+            actual = data[offset:offset + len(expected)]
+            checks.append(_check('apartment_recommendation_' + name, actual == expected,
+                                 f'VA=0x{va:08X} actual={actual.hex().upper()}'))
     if apartment_exterior:
         call, cave = _apartment_exterior_patch_bytes()
         for name, va, expected in (('call', APARTMENT_EXTERIOR_CALL_VA, call),
@@ -873,7 +916,7 @@ def _verify_village_bytes(data: bytes):
 
 
 def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
-                 furniture: bool, dungeon7: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False):
+                 furniture: bool, dungeon7: bool, revival_display: bool, dungeon_state: bool, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False, apartment_recommendation: bool = False):
     def read(relative: Path) -> bytes:
         if files is not None and relative in files:
             return files[relative]
@@ -882,8 +925,8 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
         return path.read_bytes()
 
     checks = []
-    if furniture or revival_display or native_state or dungeon_state or inventory_gift_display or land_purchase or apartment_exterior:
-        checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state))
+    if furniture or revival_display or native_state or dungeon_state or inventory_gift_display or land_purchase or apartment_exterior or apartment_recommendation:
+        checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state, apartment_recommendation))
     if dungeon7:
         checks.extend(_verify_village_bytes(read(Path('Village_map_image/Village_map_image.pack'))))
         for source_rel, target_rel, role in ALIAS_SPECS:
@@ -897,17 +940,17 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
 def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: bool,
             overwrite: bool = False, dry_run: bool = False,
             apply: bool = False, revival_display: bool = False,
-            dungeon_state: bool = False, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False) -> dict:
+            dungeon_state: bool = False, inventory_gift_display: bool = False, land_purchase: bool = False, apartment_exterior: bool = False, native_state: bool = False, apartment_recommendation: bool = False) -> dict:
     source_root = source_root.resolve()
     output_root = output_root.resolve()
     require(source_root.is_dir(), 'source client root does not exist')
     require(output_root != source_root, 'output root must be separate from the source client root')
-    files, operations = _collect_outputs(source_root, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state)
+    files, operations = _collect_outputs(source_root, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state, apartment_recommendation)
     require(files, 'no compatibility operation selected')
     report = {'schema_version': 2, 'source_root': str(source_root), 'output_root': str(output_root),
               'hash_gate_used': False, 'dry_run': bool(dry_run), 'apply_requested': bool(apply),
               'operations': operations, 'planned_files': [relative.as_posix() for relative in files]}
-    report['planned_verification'] = _verify_data(source_root, files, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state)
+    report['planned_verification'] = _verify_data(source_root, files, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state, apartment_recommendation)
     require(report['planned_verification']['all_pass'], 'derived compatibility verification failed')
     if dry_run:
         report['overlay_writes'] = []
@@ -918,7 +961,7 @@ def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: boo
     output_root.mkdir(parents=True, exist_ok=True)
     report['overlay_writes'] = _write_overlay(output_root, files, overwrite)
     report['apply_results'] = _apply_outputs(source_root, output_root, files) if apply else []
-    report['verification'] = _verify_data(source_root, None if apply else files, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state)
+    report['verification'] = _verify_data(source_root, None if apply else files, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state, apartment_recommendation)
     require(report['verification']['all_pass'], 'post-write compatibility verification failed')
     report_path = output_root / 'nanaimo_compatibility_report.json'
     _atomic_write(report_path, (json.dumps(report, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
@@ -944,8 +987,10 @@ def main(argv=None) -> int:
                         help='restore empty-plot purchase confirmation input')
     parser.add_argument('--apartment-exterior', action='store_true',
                         help='restore the owned exterior menu and hit geometry, repeat inventory snapshots and body preview')
+    parser.add_argument('--apartment-recommendation', action='store_true',
+                        help='refresh recommendation points from C397 and bound duplicate popup lines')
     parser.add_argument('--all', action='store_true',
-                        help='derive furniture, native-state, dungeon-state, inventory-gift-display, land-purchase, apartment-exterior and dungeon7 compatibility')
+                        help='derive furniture, native-state, dungeon-state, inventory-gift-display, land-purchase, apartment-exterior, apartment-recommendation and dungeon7 compatibility')
     parser.add_argument('--overwrite', action='store_true', help='replace differing named files in the overlay')
     parser.add_argument('--dry-run', action='store_true', help='validate and report without writing any file')
     parser.add_argument('--apply', action='store_true',
@@ -959,11 +1004,12 @@ def main(argv=None) -> int:
     inventory_gift_display = args.inventory_gift_display or args.all
     land_purchase = args.land_purchase or args.all
     apartment_exterior = args.apartment_exterior or args.all
-    if not furniture and not dungeon7 and not revival_display and not native_state and not dungeon_state and not inventory_gift_display and not land_purchase and not apartment_exterior:
-        parser.error('select --furniture, --native-state, --revival-display, --dungeon-state, --dungeon7, --inventory-gift-display, --land-purchase, --apartment-exterior or --all')
+    apartment_recommendation = args.apartment_recommendation or args.all
+    if not furniture and not dungeon7 and not revival_display and not native_state and not dungeon_state and not inventory_gift_display and not land_purchase and not apartment_exterior and not apartment_recommendation:
+        parser.error('select --furniture, --native-state, --revival-display, --dungeon-state, --dungeon7, --inventory-gift-display, --land-purchase, --apartment-exterior, --apartment-recommendation or --all')
     try:
         report = prepare(args.source_root, args.output_root, furniture, dungeon7,
-                         args.overwrite, args.dry_run, args.apply, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state)
+                         args.overwrite, args.dry_run, args.apply, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state, apartment_recommendation)
         print('CLIENT_COMPATIBILITY_READY', json.dumps(report, ensure_ascii=False))
         return 0
     except (CompatibilityError, OSError, struct.error) as exc:

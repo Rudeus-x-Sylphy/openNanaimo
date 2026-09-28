@@ -46,6 +46,11 @@ static async Task RunAsync(string[] args)
         await TutorialAppearanceChecks.RunAsync();
         return;
     }
+    if (args.Contains("--pure-new-player-self-test"))
+    {
+        await PureNewPlayerChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--inventory-expansion-self-test"))
     {
         await InventoryExpansionChecks.RunAsync();

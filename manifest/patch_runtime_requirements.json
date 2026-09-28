@@ -29,7 +29,7 @@
     "derived_outputs": [
       {
         "path": "game.exe",
-        "operation": "reviewed furniture Index redirect; restore retired revival HUD and P-sentinel patches to native bytes; manual confirmation for both settlement controllers preserving mouse and keyboard; scoped gift-refresh preview HP/MP preservation; purchase-window type25 entry plus required no-shop C37B yield patch; complete exterior lifecycle, resources and localized text"
+        "operation": "reviewed furniture Index redirect; restore retired revival HUD and P-sentinel patches to native bytes; manual confirmation for both settlement controllers preserving mouse and keyboard; scoped gift-refresh preview HP/MP preservation; purchase-window type25 entry plus required no-shop C37B yield patch; complete exterior lifecycle, resources and localized text; request-bound apartment recommendation point refresh and bounded duplicate-popup lines"
       },
       {
         "path": "Village_map_image/Village_map_image.pack",
@@ -89,6 +89,7 @@
         "--inventory-gift-display",
         "--land-purchase",
         "--apartment-exterior",
+        "--apartment-recommendation",
         "--dungeon7",
         "--overwrite",
         "--apply"

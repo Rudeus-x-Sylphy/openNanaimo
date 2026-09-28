@@ -103,6 +103,8 @@ public sealed partial class DatabaseService
                 return default;
         }
         var quota = await ReadApartmentRecommendationQuotaAsync(connection, transaction, characterId, utcNow, cancellationToken);
+        if (quota.Remaining == 0)
+            return new(ApartmentRecommendationStatus.Exhausted, 0, 0);
         if (currentOwnerCharacterId == characterId)
             return new(ApartmentRecommendationStatus.Duplicate, quota.Remaining, 0);
         await using var command = connection.CreateCommand();
@@ -114,11 +116,8 @@ public sealed partial class DatabaseService
             SELECT EXISTS(SELECT 1 FROM CharacterApartmentRecommendations
                 WHERE RecommenderCharacterId = $actor AND RecommendationDate = $day AND OwnerCharacterId = $owner)
             """;
-        // Duplicate takes precedence over exhaustion for a previously recommended owner.
         if (Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture) != 0)
             return new(ApartmentRecommendationStatus.Duplicate, quota.Remaining, 0);
-        if (quota.Remaining == 0)
-            return new(ApartmentRecommendationStatus.Exhausted, 0, 0);
         command.CommandText = """
             INSERT INTO CharacterApartmentRecommendations(RecommenderCharacterId, RecommendationDate, OwnerCharacterId)
             VALUES($actor, $day, $owner);

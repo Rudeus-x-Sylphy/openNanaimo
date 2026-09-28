@@ -85,10 +85,11 @@ struct boss_hp_sync_result {
     unsigned completion_shell_retired,completion_shell_child,completion_shell_residual,completion_shell_retire_mask[8];
     unsigned recording_damage,completion_shell_projection_started,completion_shell_projected_damage;
     /* D012 DWORD+0x28 feeds both the visible boss bar and the native
-       mode-completion gate, so it carries the current mode ledger. The aggregate
-       (current mode + future modes) stays in hp/cumulative_damage for the score
-       and settlement side. mode_recording_published marks a ledger this context
-       published, which keeps a genuine zero distinct from an untouched result. */
+       mode-completion gate. It carries the current mode ledger normally, but a
+       pure parallel-component mode publishes the focused component ledger and
+       keeps zero reserved for all-components-dead. The aggregate stays in
+       hp/cumulative_damage for scoring and settlement. mode_recording_published
+       keeps a genuine zero distinct from an untouched result. */
     unsigned mode_recording_hp,mode_recording_published;
 #endif
 #endif
@@ -257,13 +258,26 @@ static unsigned boss_hp_sync_profile_mode_hp(const struct boss_hp_sync_context*c
 }
 static unsigned boss_hp_sync_profile_total_hp(const struct boss_hp_sync_context*c){unsigned mode,total=0u;if(!c)return 0u;for(mode=0u;mode<c->mode_count;mode++)total+=boss_hp_sync_profile_mode_hp(c,mode);return total;}
 static unsigned boss_hp_sync_profile_future_hp(const struct boss_hp_sync_context*c){unsigned mode,total=0u;if(!c)return 0u;for(mode=c->mode_index+1u;mode<c->mode_count;mode++)total+=boss_hp_sync_profile_mode_hp(c,mode);return total;}
-/* Publishes the multimode recording split.
-   r->hp/cumulative_damage keep the aggregate across every authored mode for the
-   score and settlement side, while r->mode_recording_hp is the current mode's
-   own remaining HP. The client runs its boss bar on the current mode's authored
-   maximum, so the bar carrier stays on that same ledger and each hit shows the
-   damage it actually dealt. */
-static void boss_hp_sync_project_multimode_recording(const struct boss_hp_sync_context*c,struct boss_hp_sync_result*r){unsigned total,remaining;if(!c||!r)return;r->mode_recording_hp=c->hp;r->mode_recording_published=1u;if(!c->authored_multimode)return;total=boss_hp_sync_profile_total_hp(c);remaining=c->hp+boss_hp_sync_profile_future_hp(c);if(remaining>total)remaining=total;r->hp=remaining;r->cumulative_damage=total-remaining;}
+/* The aggregate mode ledger owns settlement/all-components-dead, but a pure
+   same-child parallel Boss exposes one local component bar at a time.  Publishing
+   the aggregate through D012 makes a hit on one copy consume another copy's
+   visual range.  Keep that presentation on the resolved component; when it dies,
+   move to the first still-live authored component without publishing zero early. */
+static unsigned boss_hp_sync_visual_recording_hp(const struct boss_hp_sync_context*c,const struct boss_hp_sync_result*r){
+#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+    unsigned child=0u,n=0u,i;if(c&&r&&boss_hp_sync_parallel_component_mode(c,&child,&n)){
+        if(r->component_slot<c->component_count&&c->component_hp[r->component_slot]>0u)return c->component_hp[r->component_slot];
+        for(i=0u;i<n;i++)if(c->component_hp[i]>0u)return c->component_hp[i];
+        return 0u;
+    }
+#endif
+    return c?c->hp:0u;
+}
+/* Publishes the wire recording split. r->hp/cumulative_damage retain the
+   aggregate used by scoring and settlement. D012 +0x28 carries either the
+   current authored mode ledger or, for a pure parallel-component mode, the
+   focused component ledger selected above. */
+static void boss_hp_sync_project_multimode_recording(const struct boss_hp_sync_context*c,struct boss_hp_sync_result*r){unsigned total,remaining;if(!c||!r)return;r->mode_recording_hp=boss_hp_sync_visual_recording_hp(c,r);r->mode_recording_published=1u;if(!c->authored_multimode)return;total=boss_hp_sync_profile_total_hp(c);remaining=c->hp+boss_hp_sync_profile_future_hp(c);if(remaining>total)remaining=total;r->hp=remaining;r->cumulative_damage=total-remaining;}
 static void boss_hp_sync_init(struct boss_hp_sync_context*c){memset(c,0,sizeof(*c));c->phase=BOSS_HP_SYNC_PHASE_IDLE;c->hp=BOSS_HP_SYNC_MAX_HP;c->mode_max_hp=BOSS_HP_SYNC_MAX_HP;c->mode_count=1u;c->profile_kind=BOSS_HP_SYNC_PROFILE_GENERIC;}
 static void boss_hp_sync_select_stage(struct boss_hp_sync_context*c,unsigned stage){
     c->stage=stage;c->map_epoch++;c->phase=BOSS_HP_SYNC_PHASE_PREPARED;c->hp=0u;c->cumulative_damage=0u;c->request_count=0u;c->applied_hit_count=0u;c->terminal_response_count=0u;c->awaiting_next_mode=0u;c->final_terminal_seen=0u;c->profile=0;c->profile_kind=BOSS_HP_SYNC_PROFILE_LOOKUP_MISS;c->lookup_miss=1u;c->invalid_slot=0u;c->component_count=0u;c->resource_mode_hp=0u;
@@ -585,7 +599,7 @@ static int boss_hp_sync_encode_d012_payload(unsigned char*frame,unsigned len,con
     else if(r->first_terminal){boss_hp_sync_put32(frame,0x1C,BOSS_HP_SYNC_TERMINAL_REWARD);boss_hp_sync_put32(frame,0x20,card_drop_create(1u,r->stage));boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
     else if(r->repeated_terminal){boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
     else boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_NORMAL_MARKER);
-    /* Native +0x28 drives both the boss bar (6EC979 -> 6BF200) and the mode-completion gate (6ED62D/6BE8D9), so a published recording carries the current mode ledger. At an authored mode boundary that ledger is already zero, which is what the completion gate reads. Results that carry no published ledger keep the neutral rule. */
+    /* Native +0x28 drives both the boss bar (6EC979 -> 6BF200) and the mode-completion gate (6ED62D/6BE8D9). A published recording carries the selected visual ledger; at an authored mode boundary or final parallel-component terminal it is zero, which is what the completion gate reads. Results that carry no published ledger keep the neutral rule. */
     {unsigned recording=r->mode_recording_published?r->mode_recording_hp:(r->intermediate_terminal?0u:r->hp);
      boss_hp_sync_put32(frame,0x28,recording);}
     /* D012 +0x2C..+0x33 and +0x34..+0x3B are four u16 HP/MP

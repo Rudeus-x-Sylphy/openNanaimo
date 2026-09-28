@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class LauncherContractTests(unittest.TestCase):
     def test_apartment_exterior_is_applied_during_normal_launch(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
-        self.assertIn("'--land-purchase','--apartment-exterior','--dungeon7'", text)
+        self.assertIn("'--land-purchase','--apartment-exterior','--apartment-recommendation','--dungeon7'", text)
 
     def test_adapter_artifacts_and_process_contract(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
@@ -73,8 +73,9 @@ class LauncherContractTests(unittest.TestCase):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         self.assertIn("$ClientCompatibilityTool=Join-Path $Root 'scripts\\prepare_client_compatibility.py'", text)
         self.assertIn("$ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay'", text)
+        self.assertIn("'--apartment-recommendation'", text)
         self.assertIn('function Ensure-ClientCompatibility', text)
-        self.assertIn("'--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--dungeon7','--overwrite','--apply'", text)
+        self.assertIn("'--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--apartment-recommendation','--dungeon7','--overwrite','--apply'", text)
         self.assertNotIn("'--emotion'", text)
         self.assertIn('Fixed C393 is protocol hygiene, not the click-time Index repair.', text)
         self.assertNotIn("'--all','--overwrite','--apply'", text)

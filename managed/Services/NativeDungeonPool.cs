@@ -25,6 +25,9 @@ public sealed class NativeDungeonPool(string executable, string dataDirectory) :
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly NativeProcessJob _job = new();
     private readonly Dictionary<string, Room> _rooms = [];
+    private static readonly TimeSpan PrimaryDrainTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan PrimaryDrainPoll = TimeSpan.FromMilliseconds(25);
+    private bool _primaryRequiresQuiet;
     private bool _disposed;
 
     public sealed record RoomSnapshot(string Key, int Port, int Users, int? ProcessId);
@@ -43,8 +46,9 @@ public sealed class NativeDungeonPool(string executable, string dataDirectory) :
             if (_disposed) throw new ObjectDisposedException(nameof(NativeDungeonPool));
             if (!_rooms.TryGetValue(key, out var room))
             {
-                if (!_rooms.Values.Any(r => r.Port == 52050)) room = new Room { Port = 52050 };
-                else room = await StartRoomAsync(token);
+                var primaryUnused = !_rooms.Values.Any(r => r.Port == 52050);
+                var primaryReady = primaryUnused && await EnsurePrimaryReadyAsync(token);
+                room = primaryReady ? new Room { Port = 52050 } : await StartRoomAsync(token);
                 _rooms.Add(key, room);
             }
             if (room.Users >= 6) throw new InvalidOperationException("Native dungeon party is full.");
@@ -53,6 +57,38 @@ public sealed class NativeDungeonPool(string executable, string dataDirectory) :
             return new Lease(this, key, room.Port);
         }
         finally { _gate.Release(); }
+    }
+
+
+    internal static bool IsBlockingPortConnection(int port, TcpConnectionInformation connection)
+        => (connection.LocalEndPoint.Port == port || connection.RemoteEndPoint.Port == port)
+            && connection.State is not (TcpState.Closed or TcpState.Listen or TcpState.TimeWait or TcpState.DeleteTcb);
+
+    internal static bool IsPortConnectionQuiet(int port)
+        => !IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpConnections()
+            .Any(connection => IsBlockingPortConnection(port, connection));
+
+    internal static async Task<bool> WaitForPortQuietAsync(
+        int port, TimeSpan timeout, TimeSpan poll, CancellationToken token)
+    {
+        var deadline = Stopwatch.GetTimestamp() + checked((long)(timeout.TotalSeconds * Stopwatch.Frequency));
+        while (!IsPortConnectionQuiet(port))
+        {
+            if (Stopwatch.GetTimestamp() >= deadline)
+                return false;
+            await Task.Delay(poll, token);
+        }
+        return true;
+    }
+
+    private async Task<bool> EnsurePrimaryReadyAsync(CancellationToken token)
+    {
+        if (!_primaryRequiresQuiet)
+            return true;
+        if (!await WaitForPortQuietAsync(52050, PrimaryDrainTimeout, PrimaryDrainPoll, token))
+            return false;
+        _primaryRequiresQuiet = false;
+        return true;
     }
 
     private async Task<Room> StartRoomAsync(CancellationToken token)
@@ -102,7 +138,12 @@ public sealed class NativeDungeonPool(string executable, string dataDirectory) :
         {
             if (!_rooms.TryGetValue(key, out var room) || --room.Users > 0) return;
             _rooms.Remove(key); await StopRoomAsync(room);
-            if (room.Port == 52050) await Task.Delay(150);
+            if (room.Port == 52050)
+            {
+                _primaryRequiresQuiet = true;
+                if (await WaitForPortQuietAsync(52050, PrimaryDrainTimeout, PrimaryDrainPoll, CancellationToken.None))
+                    _primaryRequiresQuiet = false;
+            }
         }
         finally { _gate.Release(); }
     }

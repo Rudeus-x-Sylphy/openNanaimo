@@ -54,6 +54,37 @@ static void begin_profile_mode(struct boss_hp_sync_context *ctx,const struct bos
     assert(boss_component_boss_load_mode(ctx,mode));
 }
 
+static void verify_level1_dungeon1_parallel_visual_ledger(void){
+    struct boss_hp_sync_context ctx;struct boss_hp_sync_result first,first_end,second,final;
+    unsigned char req[0x20],frame[BOSS_HP_SYNC_D012_LEN];
+    /* UI level 1 / dungeon 1 is the zero-based hd0/ep0/dg0/st0 resource. */
+    boss_hp_sync_init(&ctx);boss_hp_sync_begin_game_domain(&ctx,0u,0u,0u,0u,2u,0u);
+    assert(ctx.profile&&ctx.component_count==2u&&ctx.positive_child_count==1u&&ctx.mode_max_hp==4000u);
+    assert(ctx.component_hp[0]==2000u&&ctx.component_hp[1]==2000u);
+
+    request(req,0u,0u,0u);
+    assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),619u,1u,&first)==BOSS_HP_SYNC_OK);
+    assert(first.applied_damage==600u&&ctx.component_hp[0]==1400u&&ctx.component_hp[1]==2000u&&ctx.hp==3400u);
+    memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&first)==BOSS_HP_SYNC_OK);
+    assert(boss_hp_sync_get32(frame,0x28)==1400u);
+
+    assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),1000000u,1u,&first_end)==BOSS_HP_SYNC_OK);
+    assert(first_end.component_first_terminal&&!first_end.final_terminal&&ctx.component_hp[0]==0u&&ctx.component_hp[1]==2000u&&ctx.hp==2000u);
+    memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&first_end)==BOSS_HP_SYNC_OK);
+    assert(frame[0x19]==0u&&boss_hp_sync_get16(frame,0x1A)==0u&&boss_hp_sync_get32(frame,0x28)==2000u);
+
+    assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),519u,1u,&second)==BOSS_HP_SYNC_OK);
+    assert(second.component_route_collapsed&&second.target_ordinal==1u&&second.applied_damage==500u);
+    assert(ctx.component_hp[1]==1500u&&ctx.hp==1500u);
+    memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&second)==BOSS_HP_SYNC_OK);
+    assert(boss_hp_sync_get32(frame,0x28)==1500u);
+
+    assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),1000000u,1u,&final)==BOSS_HP_SYNC_OK);
+    assert(final.component_route_collapsed&&final.target_ordinal==1u&&final.component_first_terminal&&final.final_terminal);
+    memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&final)==BOSS_HP_SYNC_OK);
+    assert(boss_hp_sync_get32(frame,0x28)==0u&&ctx.hp==0u);
+}
+
 static void verify_first_normal_split(void){
     struct boss_hp_sync_context ctx;struct boss_hp_sync_result first,first_end,second,second_end,final,repeat;
     unsigned char req[0x20],frame[BOSS_HP_SYNC_D012_LEN];
@@ -71,7 +102,9 @@ static void verify_first_normal_split(void){
     assert(first_end.applied_damage==244u&&first_end.component_first_terminal&&!first_end.final_terminal);
     assert(first_end.target_ordinal==0u&&ctx.component_hp[0]==0u&&ctx.component_hp[1]==3960u&&ctx.hp==7920u);
     memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&first_end)==BOSS_HP_SYNC_OK);
-    assert(frame[0x19]==0u&&boss_hp_sync_get16(frame,0x1A)==0u&&boss_hp_sync_get32(frame,0x28)==7920u);
+    /* The retired component is addressed exactly, while the recording switches
+       to the next live component instead of exposing the 7920 aggregate. */
+    assert(frame[0x19]==0u&&boss_hp_sync_get16(frame,0x1A)==0u&&boss_hp_sync_get32(frame,0x28)==3960u);
 
     assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),3970u,1u,&second)==BOSS_HP_SYNC_OK);
     assert(second.component_route_collapsed&&second.wire_ordinal==0u&&second.target_ordinal==1u);
@@ -200,7 +233,7 @@ static void audit_all_split_topologies(void){
     assert(split_modes==339u&&same_child_split_modes==118u&&multi_child_split_modes==221u&&checked==split_modes);
 }
 
-int main(void){verify_first_normal_split();verify_multi_child_split();verify_split_mode_settlement_gate();audit_all_split_topologies();return 0;}
+int main(void){verify_level1_dungeon1_parallel_visual_ledger();verify_first_normal_split();verify_multi_child_split();verify_split_mode_settlement_gate();audit_all_split_topologies();return 0;}
 '''
         with tempfile.TemporaryDirectory(prefix="nanaimo-split-boss-") as temp:
             directory = Path(temp)
@@ -232,6 +265,8 @@ int main(void){verify_first_normal_split();verify_multi_child_split();verify_spl
         self.assertIn("r->wire_ordinal=r->target_ordinal", runtime)
         self.assertIn("if(r->component_route_collapsed)r->target_ordinal=def->ordinal", runtime)
         self.assertIn("if(damage>c->component_hp[loaded_slot])damage=c->component_hp[loaded_slot]", runtime)
+        self.assertIn("boss_hp_sync_visual_recording_hp", runtime)
+        self.assertIn("if(c->component_hp[i]>0u)return c->component_hp[i]", runtime)
         self.assertIn("c->component_hp[loaded_slot]-=damage", runtime)
         self.assertIn("r->component_first_terminal=1u", runtime)
         self.assertIn("if(r->child_first_terminal)teamplay_send_d013_boss_child_retire", protocol)

@@ -76,21 +76,21 @@ internal static class RevivalBillingChecks
         f.Character.Hans = 99999;
         await f.Hp(0);
         await f.Revive(1, 1280);
-        await f.Balance(1000, 11, "first mode1/value1280 service-egg click consumes exactly one egg and no Hans");
-        f.Recovered(60, 2000, 800);
+        await f.Balance(950, 12, "first recovery costs exactly 50 Hans regardless of client mode/value");
+        f.Recovered(20, 2000, 800);
 
         await f.Revive(0, 50);
-        await f.Balance(1000, 11, "repeated recovery while alive pays nothing");
+        await f.Balance(950, 12, "repeated recovery while alive pays nothing");
         Check(f.Drain().Count == 0, "repeated recovery has no second success");
 
         await f.Hp(0);
         await f.Revive(0, 50);
-        await f.Balance(950, 11, "mode0 uses its proven Hans price without consuming an egg");
-        f.Recovered(20, 2000, 800);
+        await f.Balance(950, 11, "second recovery consumes one revival egg even when the client sends mode0");
+        f.Recovered(60, 2000, 800);
 
         await f.Hp(0);
         await f.Revive(1, 1400);
-        await f.Balance(950, 10, "later mode1 remains the egg path regardless of client value");
+        await f.Balance(950, 10, "later recoveries keep consuming exactly one egg");
         f.Recovered(60, 2000, 800);
     }
 
@@ -117,52 +117,56 @@ internal static class RevivalBillingChecks
             await f.Start();
             await f.Hp(0);
             await f.Revive(0, 50);
-            await f.Balance(49, 2, "insufficient mode0 Hans leaves both ledgers unchanged");
-            Check(f.Dead && f.Drain().Count == 0,
-                "insufficient mode0 returns normally, retains the death latch and emits no fabricated success");
-
+            await f.Balance(49, 2, "insufficient first-payment Hans leaves both ledgers unchanged");
+            Check(f.Dead && f.Drain().Count == 0, "insufficient first payment retains the death latch");
             await f.Revive(1, 1280);
-            await f.Balance(49, 1, "mode1 can still consume the selected service egg after a rejected Hans attempt");
-            f.Recovered(60, 2000, 800);
+            await f.Balance(49, 2, "changing client mode cannot bypass the first 50-Hans payment");
+            Check(f.Dead && f.Drain().Count == 0, "client selector changes do not consume an egg before the first success");
+            await f.Coins(50);
+            f.Character.Hans = 0;
+            await f.Revive(1, 65535);
+            await f.Balance(0, 2, "retry after funding uses exactly 50 Hans from persistence");
+            f.Recovered(20, 2000, 800);
         }
-
         await using (var f = await Fixture.Create(1000, 0))
         {
             await f.Start();
             await f.Hp(0);
             await f.Revive(1, 1280);
-            await f.Balance(1000, 0, "mode1 without eggs never falls back to Hans");
-            Check(f.Dead && f.Drain().Count == 0,
-                "missing service egg keeps death and grants no recovery");
+            await f.Balance(950, 0, "first recovery still uses 50 Hans when no eggs exist");
+            f.Recovered(20, 2000, 800);
+            await f.Hp(0);
+            await f.Revive(0, 50);
+            await f.Balance(950, 0, "later recovery without eggs never falls back to Hans");
+            Check(f.Dead && f.Drain().Count == 0, "missing revival egg keeps death and grants no recovery");
         }
     }
 
     private static async Task CheckRejectedTransitions()
     {
-        await using var f = await Fixture.Create(1000, 5);
-        await f.Start();
-        await f.Hp(0);
-        await f.Revive(0, 50);
-        f.Recovered(20, 2000, 800);
-        await f.Settle();
-        f.Worker.RejectTransition = true;
-        await f.Send(0xCF8B, [0, 0, 1, 0]);
-        f.Drain();
-        await f.ReadyRoom();
-        await f.Start();
-        await f.Hp(0);
-        await f.Revive(0, 50);
-        await f.Balance(900, 5, "invalid transition does not change mode0 Hans selector semantics");
-        f.Recovered(20, 2000, 800);
-        await f.Settle();
-        await f.Send(0xCF8B, [0, 0, 0, 0]);
-        f.Drain();
-        await f.Start();
-        Set(f.Session, "NativeDungeonSettlementAwaitingAction", false);
-        await f.Hp(0);
-        await f.Revive(0, 50);
-        await f.Balance(850, 5, "invalid transition mode still leaves mode0 on the Hans path");
-        f.Recovered(20, 2000, 800);
+        await using (var f = await Fixture.Create(1000, 5))
+        {
+            await f.Start(); await f.Hp(0); await f.Revive(0, 50);
+            f.Recovered(20, 2000, 800);
+            await f.Settle();
+            f.Worker.RejectTransition = true;
+            await f.Send(0xCF8B, [0, 0, 1, 0]);
+            f.Drain(); await f.ReadyRoom(); await f.Start(); await f.Hp(0);
+            await f.Revive(0, 50);
+            await f.Balance(950, 4, "rejected transition does not reset the active battle billing ordinal");
+            f.Recovered(60, 2000, 800);
+        }
+        await using (var f = await Fixture.Create(1000, 5))
+        {
+            await f.Start(); await f.Hp(0); await f.Revive(0, 50);
+            f.Recovered(20, 2000, 800);
+            await f.Settle();
+            await f.Send(0xCF8B, [0, 0, 1, 0]);
+            f.Drain(); await f.ReadyRoom(); await f.Start(); await f.Hp(0);
+            await f.Revive(1, 1400);
+            await f.Balance(900, 5, "accepted new battle resets to the first 50-Hans ordinal");
+            f.Recovered(20, 2000, 800);
+        }
     }
 
     private sealed class Fixture : IAsyncDisposable
