@@ -130,6 +130,35 @@ internal static class PureNewPlayerChecks
 
             Check(Encoding.GetEncoding(936).GetString(login.AsSpan(8, 16)).TrimEnd('\0') == chosenName,
                 "post-creation context carries the player-selected name, not the account identity");
+
+            var emptyRecommendation = CheckPayload(
+                await Send(service, session, 0x2725, new byte[16]), 0x2726, 20);
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(emptyRecommendation) == 10
+                && emptyRecommendation.AsSpan(4).ToArray().All(value => value == 0),
+                "empty recommender name receives the client-defined nonexistent result without closing the connection");
+            var missingRecommendation = CheckPayload(
+                await Send(service, session, 0x2725, Recommendation("MissingReferrer")), 0x2726, 20);
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(missingRecommendation) == 10,
+                "unknown recommender name receives the client-defined nonexistent result");
+
+            const string referrerName = "ReferrerOne";
+            long referrerAccount = await database.OpenLocalAccountAsync("referrer-" + Guid.NewGuid().ToString("N"));
+            long referrerCharacterId = await database.CreateLocalCharacterAsync(referrerAccount, referrerName, 0);
+            Check(await database.GetApartmentRecommendationPointsAsync(referrerCharacterId) == 0,
+                "new recommender profile starts without referral points");
+            var acceptedRecommendation = CheckPayload(
+                await Send(service, session, 0x2725, Recommendation(referrerName)), 0x2726, 20);
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(acceptedRecommendation) == 30
+                && Encoding.GetEncoding(936).GetString(acceptedRecommendation.AsSpan(4, 16)).TrimEnd('\0') == referrerName,
+                "existing recommender receives the exact result-30/name response required by the client");
+            Check(await database.GetApartmentRecommendationPointsAsync(referrerCharacterId) == 200,
+                "first successful character recommendation grants the referrer profile 200 recommendation points");
+            var repeatedRecommendation = CheckPayload(
+                await Send(service, session, 0x2725, Recommendation(referrerName)), 0x2726, 20);
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(repeatedRecommendation) == 30
+                && await database.GetApartmentRecommendationPointsAsync(referrerCharacterId) == 200,
+                "recommendation replay reuses the accepted response without duplicating the 200-point grant");
+
             CheckPayload(await Send(service, session, 0x271B, new byte[4]), 0x271C);
             CheckResult(await Send(service, session, 0x2717, Creation("Replacement", chosenAppearance)), 10,
                 "duplicate creation cannot replace the selected character");
@@ -218,6 +247,13 @@ internal static class PureNewPlayerChecks
         var payload = new byte[52];
         Encoding.GetEncoding(936).GetBytes(name).CopyTo(payload, 0);
         appearance.CopyTo(payload, 16);
+        return payload;
+    }
+
+    private static byte[] Recommendation(string name)
+    {
+        var payload = new byte[16];
+        Encoding.GetEncoding(936).GetBytes(name).CopyTo(payload, 0);
         return payload;
     }
 

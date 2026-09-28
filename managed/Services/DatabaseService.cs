@@ -7451,11 +7451,12 @@ public sealed partial class DatabaseService
             }
 
             long recommendedAccountId;
+            long recommendedCharacterId;
             string canonicalCharacterName;
             await using (var target = connection.CreateCommand())
             {
                 target.Transaction = transaction;
-                target.CommandText = "SELECT AccountId, Name FROM Characters WHERE Name = $name COLLATE NOCASE LIMIT 1";
+                target.CommandText = "SELECT AccountId, Id, Name FROM Characters WHERE Name = $name COLLATE NOCASE LIMIT 1";
                 target.Parameters.AddWithValue("$name", recommendedCharacterName);
                 await using var reader = await target.ExecuteReaderAsync(cancellationToken);
                 if (!await reader.ReadAsync(cancellationToken))
@@ -7464,7 +7465,8 @@ public sealed partial class DatabaseService
                     return new FriendRecommendationResult(FriendRecommendationStatus.Nonexistent, null);
                 }
                 recommendedAccountId = reader.GetInt64(0);
-                canonicalCharacterName = reader.GetString(1);
+                recommendedCharacterId = reader.GetInt64(1);
+                canonicalCharacterName = reader.GetString(2);
             }
 
             if (recommendedAccountId == requesterAccountId)
@@ -7486,7 +7488,23 @@ public sealed partial class DatabaseService
                 insert.Parameters.AddWithValue("$recommendedAccountId", recommendedAccountId);
                 insert.Parameters.AddWithValue("$recommendedCharacterName", canonicalCharacterName);
                 insert.Parameters.AddWithValue("$createdAt", DateTime.UtcNow.ToString("O"));
-                await insert.ExecuteNonQueryAsync(cancellationToken);
+                var inserted = await insert.ExecuteNonQueryAsync(cancellationToken);
+                if (inserted == 1)
+                {
+                    await using var reward = connection.CreateCommand();
+                    reward.Transaction = transaction;
+                    reward.CommandText = """
+                        INSERT INTO CharacterApartmentProfile(CharacterId, RecommendationPoints)
+                        VALUES($characterId, 200)
+                        ON CONFLICT(CharacterId) DO UPDATE SET
+                            RecommendationPoints=CASE
+                                WHEN RecommendationPoints > 9223372036854775607 THEN 9223372036854775807
+                                ELSE RecommendationPoints+200
+                            END
+                        """;
+                    reward.Parameters.AddWithValue("$characterId", recommendedCharacterId);
+                    await reward.ExecuteNonQueryAsync(cancellationToken);
+                }
             }
 
             await using (var stored = connection.CreateCommand())

@@ -2734,6 +2734,42 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
 
+                var submittedTaskType = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(0, 2));
+                var submittedRuntimeState = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2, 2));
+                var submittedId = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
+                if (submittedId <= 6)
+                {
+                    var beforeGuide = session.Character;
+                    var guideCompletion = await _database.CompleteStoryGuideAsync(
+                        session.AccountId,
+                        session.Character.Id,
+                        session.SessionId,
+                        submittedId,
+                        submittedTaskType,
+                        token);
+                    if (!guideCompletion.Authorized)
+                        return null;
+                    var rewardChanged = StoryGuideRewardChanged(beforeGuide, guideCompletion.Character);
+                    if (guideCompletion.Success && guideCompletion.Character is not null)
+                    {
+                        session.Character = guideCompletion.Character;
+                        AccountStateChanged?.Invoke();
+                    }
+                    _log($"{channel}:{remote} story guide completion: guide={submittedId} type={submittedTaskType} state={submittedRuntimeState} result={(guideCompletion.Success ? "success" : "rejected")} rewardChanged={rewardChanged} rewardPending={guideCompletion.RewardPending}");
+                    return BuildNativeFrame(
+                        frame,
+                        0xC59A,
+                        BuildTaskCompletionResultPayload(
+                            guideCompletion.Success,
+                            submittedId,
+                            guideCompletion.Character ?? session.Character,
+                            rewardChanged,
+                            0,
+                            completionKindOverride: submittedTaskType,
+                            failureResult: 1),
+                        session);
+                }
+
                 if (!TryParseTaskCompletionRequest(payload, out var taskType, out var runtimeStateValue, out var questId))
                 {
                     _log($"{channel}:{remote} task completion rejected: payload fields invalid; archive unchanged");
@@ -17610,12 +17646,24 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
+    private static bool StoryGuideRewardChanged(CharacterRecord before, CharacterRecord? after)
+    {
+        if (after is null)
+            return false;
+        if (before.Hans != after.Hans || before.CardSummonCount != after.CardSummonCount)
+            return true;
+        var beforeItems = before.Items.ToDictionary(item => item.ItemCode, item => item.Quantity);
+        return after.Items.Any(item => beforeItems.GetValueOrDefault(item.ItemCode) != item.Quantity);
+    }
+
     private static byte[] BuildTaskCompletionResultPayload(
         bool success,
         uint questId,
         CharacterRecord character,
         bool hansChanged,
-        byte taskType)
+        byte taskType,
+        ushort? completionKindOverride = null,
+        byte failureResult = 3)
     {
         // C59A consumes result/changed flags at frame+8..+11, quest ID at +12,
         // the quest-completion kind at +16, then level/HP/MP/experience at +19..+35.
@@ -17624,14 +17672,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // QT's exact type=8/code=0/amount=1 tuple to select medal kind 1; the
         // non-medal epilogue uses kind 0.
         var payload = new byte[TaskCompletionResponsePayloadLength];
-        payload[0] = success ? (byte)0 : (byte)3;
+        payload[0] = success ? (byte)0 : failureResult;
         if (!success)
             return payload;
 
         payload[1] = hansChanged ? (byte)1 : (byte)0;
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4, 4), questId);
         BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(8, 2), ResolveTaskCompletionKind(questId, taskType));
+            payload.AsSpan(8, 2), completionKindOverride ?? ResolveTaskCompletionKind(questId, taskType));
         payload[11] = (byte)Math.Clamp(character.Level, 1, byte.MaxValue);
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(12, 2),

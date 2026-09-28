@@ -81,6 +81,28 @@ internal static class QuestSystemChecks
             Check(BinaryPrimitives.ReadUInt32LittleEndian(listFrames.AsSpan(8 + 224 + 12, 4)) == 71_000_000u,
                 "first mainline quest is restored in fixed slot type 1");
 
+            var beforeNemo = (await db.GetCharacterAsync(account))!;
+            var nemoCompletion = new byte[80];
+            BinaryPrimitives.WriteUInt16LittleEndian(nemoCompletion.AsSpan(0, 2), 0);
+            BinaryPrimitives.WriteUInt16LittleEndian(nemoCompletion.AsSpan(2, 2), 0);
+            BinaryPrimitives.WriteUInt32LittleEndian(nemoCompletion.AsSpan(4, 4), 0);
+            nemoCompletion.AsSpan(8).Fill(0xA5);
+            var nemoFrame = await Dispatch(0xC599, nemoCompletion);
+            var afterNemo = (await db.GetCharacterAsync(account))!;
+            var nemoState = await db.GetStoryGuideStateAsync(account, characterId, sessionId);
+            Check(Opcodes(nemoFrame).SequenceEqual(new ushort[] { 0xC59A })
+                && nemoFrame.Length == 36 && nemoFrame[8] == 0 && nemoFrame[9] == 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(nemoFrame.AsSpan(12, 4)) == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(nemoFrame.AsSpan(16, 2)) == 0,
+                "Nemo C599 type0/guide0 receives the exact C59A success tuple that closes the client guide state");
+            Check(nemoState.Authorized && (nemoState.Mask & 1) != 0
+                && afterNemo.Hans == beforeNemo.Hans + 100,
+                "Nemo completion persists guide bit zero and its one-time 100-Hans reward");
+            var repeatedNemo = await Dispatch(0xC599, nemoCompletion);
+            Check(repeatedNemo[8] == 0 && repeatedNemo[9] == 0
+                && (await db.GetCharacterAsync(account))!.Hans == afterNemo.Hans,
+                "repeated Nemo completion acknowledges the waiting client without duplicating rewards");
+
             var firstProgress = await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true,
                 new QuestRunRestrictions(false, false, false, true, 0, 0, 0, 1000)
                 { BattlePetCode = 15_000_010u, BossDefeated = true });
@@ -110,9 +132,9 @@ internal static class QuestSystemChecks
             var restoredReady = FindFrame(restoredProfile, 0xC594);
             var restoredC355 = FindFrame(restoredProfile, 0xC355);
             Check(Opcodes(restoredProfile).Take(2).SequenceEqual(new ushort[] { 0xC594, 0xC355 })
-                && BinaryPrimitives.ReadUInt32LittleEndian(restoredReady.AsSpan(8, 4)) == 0x80
+                && BinaryPrimitives.ReadUInt32LittleEndian(restoredReady.AsSpan(8, 4)) == 0x81
                 && restoredC355[0xF3] == 1,
-                "C354 reconnect restores story-guide progress before C355 and the persisted medal count");
+                "C354 reconnect restores Nemo plus mainline story progress before C355 and the persisted medal count");
             var tasks = await db.GetCharacterTasksAsync(account, characterId, sessionId);
             Check(tasks.Any(task => task.SlotType == 1 && task.QuestId == 71_000_001u),
                 "hand-in atomically advances the fixed mainline slot");
