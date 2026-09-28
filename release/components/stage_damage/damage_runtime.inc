@@ -171,13 +171,18 @@ static const struct stage_damage_scene_hazard_policy stage_damage_scene_hazard_p
     {"ep01_dg02_new_obj_meteor.mmo",STAGE_DAMAGE_SCENE_HAZARD_FALLBACK_DAMAGE}
 };
 #define STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT ((unsigned)(sizeof(stage_damage_scene_hazard_policies)/sizeof(stage_damage_scene_hazard_policies[0])))
+static int stage_damage_resource_name_equal(const char *left,const char *right){
+    if(!left||!right)return 0;
+    while(*left&&*right&&*left==*right){left++;right++;}
+    return *left==*right;
+}
 static unsigned stage_damage_scene_hazard_lookup(const struct stage_damage_damage_context *ctx,unsigned selector,struct stage_damage_damage_lookup *out){
     const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);const struct hp_sync_target_def *target;const char *resource;unsigned i;
     if(!profile||selector>=(unsigned)profile->target_count)return 0u;
     target=&hp_sync_target_defs[profile->first_row+selector];
     if((unsigned)target->selector!=selector||target->target_type!=4u||target->resource_index>=HP_SYNC_RESOURCE_COUNT)return 0u;
     resource=hp_sync_resources[target->resource_index].name;
-    for(i=0u;i<STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT;i++)if(!strcmp(resource,stage_damage_scene_hazard_policies[i].resource)){
+    for(i=0u;i<STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT;i++)if(stage_damage_resource_name_equal(resource,stage_damage_scene_hazard_policies[i].resource)){
         unsigned damage=stage_damage_scene_hazard_policies[i].damage;
         if(out){out->target_type=(unsigned)target->target_type;out->row_count=(unsigned)profile->target_count;out->base=damage;
             out->status=STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE;out->policy_damage=damage;out->resource=resource;}

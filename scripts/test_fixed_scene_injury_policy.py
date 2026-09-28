@@ -31,8 +31,9 @@ class FixedSceneInjuryPolicyTests(unittest.TestCase):
             source,
         )
         self.assertIn("STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE", source)
-        self.assertIn("associated kind60 selector=%u parent=%u resource=%s damage=%u -> player-injury/no-echo", source)
-        self.assertIn("reason=no-exact-associated-target", source)
+        self.assertIn("STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE", source)
+        self.assertIn("terrain-hazard", source)
+        self.assertIn("reason=no-damaging-scene-classification", source)
         self.assertIn("echo-only/no-authoritative-HP", source)
         self.assertNotIn(
             "request_kind==10u||scene_injury_fixed_scene_d00f_kind(request_kind)",

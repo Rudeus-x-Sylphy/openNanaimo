@@ -272,7 +272,7 @@ class LauncherContractTests(unittest.TestCase):
             self.assertIn(carrier, state)
         self.assertIn('MANAGED_PET_COMBAT_LEVEL_OFFSET 5116u', bridge)
         self.assertIn('g_managed_pet_combat_level=managed_get', bridge)
-        self.assertIn('unsigned pet_level=g_managed_pet_combat_level;', protocol)
+        self.assertIn('g_managed_pet_combat_level', protocol)
 
     def test_client_and_installer_export_denied(self):
         from export_patch import payload_policy, ExportError

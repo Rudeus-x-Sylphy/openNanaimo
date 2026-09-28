@@ -163,13 +163,15 @@ internal static class DungeonSaveChecks
             Check(replies.Single(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF71)[0x49] == 1,
                 "restored dungeon grade is reflected in room character data");
             var restoredCombatLevel = checked((byte)imported.Get(NativeDungeonState.PetCombatLevelOffset));
+            var restoredModelStage = checked((byte)imported.Get(72));
+            var restoredMaximumModelStage = checked((byte)imported.Get(76));
             var restoredCf72 = replies.Single(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF72);
             Check(NetworkAdapterService.PatchNativePetActorFrame(restoredCf72, character, restoredCombatLevel),
-                "managed forwarding normalizes the retained worker combat level");
+                "managed forwarding applies the retained battle attack mode independently");
             Check(imported.Get(NativeDungeonState.PetLevelOffset) == 7
-                && restoredCf72[0x66] == restoredCombatLevel
-                && restoredCf72[0x67] == restoredCombatLevel,
-                "CF72 actor profile preserves the independent pet combat level");
+                && restoredCf72[0x66] == restoredModelStage
+                && restoredCf72[0x67] == restoredMaximumModelStage,
+                "CF72 actor profile preserves pet model stages independently from battle attack mode");
             await Request(0xCFEB, new byte[4], 0xCFEC);
             await Request(0xCFD3, [], 0xCFD4);
             await Request(0xCFD5, BitConverter.GetBytes(1), 0xCFD6);

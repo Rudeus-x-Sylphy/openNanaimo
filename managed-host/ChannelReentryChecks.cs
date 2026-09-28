@@ -98,10 +98,9 @@ internal static class ChannelReentryChecks
             Check(ReadOpcode(reconnect) == 0xC352 && reconnect[8] == 100, "channel reentry restores C351/C352 after prior world teardown");
             byte[] profile = (await Dispatch(reentered, 0xC354, [], "WorldAdapter"))!;
             finalize.Invoke(service, [profile, reentered]);
-            Check(ReadOpcode(profile) == 0xC355
-                  && BinaryPrimitives.ReadUInt16LittleEndian(profile.AsSpan(4, 2)) == 728,
-                "channel reentry preserves the request-driven C355 chain");
-            var c355Frame = profile.AsSpan(0, 728).ToArray();
+            var c355Frame = FindFrame(profile, 0xC355);
+            Check(c355Frame.Length == 728,
+                "channel reentry preserves the request-driven C355 chain after story-guide restoration");
             Check(c355Frame.AsSpan(0x3C, 60).ToArray().All(value => value == 0x0F)
                   && c355Frame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0),
                 "channel reentry keeps access open without fabricating score-board ranks");
@@ -161,6 +160,20 @@ internal static class ChannelReentryChecks
                 }
             }
         }
+    }
+
+    private static byte[] FindFrame(byte[] response, ushort opcode)
+    {
+        for (int offset = 0; offset < response.Length;)
+        {
+            int length = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(offset + 4, 2));
+            if (length < 8 || length > response.Length - offset)
+                throw new InvalidDataException("CHANNEL_REENTRY_CHECK_FAILED response frame length");
+            if (BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(offset + 6, 2)) == opcode)
+                return response.AsSpan(offset, length).ToArray();
+            offset += length;
+        }
+        throw new InvalidDataException($"CHANNEL_REENTRY_CHECK_FAILED missing response frame {opcode:X4}");
     }
 
     private static ushort ReadOpcode(byte[] frame)
