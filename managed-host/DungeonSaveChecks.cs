@@ -10,6 +10,20 @@ internal static class DungeonSaveChecks
     {
         long account = await db.OpenLocalAccountAsync("dungeon-save-check", token);
         await db.CreateLocalCharacterAsync(account, "SaveCheck", 1, token);
+        var fieldMappingPet = ShopCatalog.All.Single(item => item.ItemCode == 15_001_003u);
+        Check(fieldMappingPet.PetModelStage == 1 && fieldMappingPet.PetGemSlotCount == 3
+            && fieldMappingPet.PetUpgradeStage == 3,
+            "pi._D7 field23 drives model age while field21 independently drives gem slots");
+        var oneSlotPet = ShopCatalog.All.First(item =>
+            item.Section == InventorySection.Pet && item.PetGemSlotCount == 1);
+        var normalizedSlots = PetProgression.NormalizeState(new PetState(
+            oneSlotPet.ItemCode, 0, 0, 0, 0, 17_000_001u, 17_000_002u, 17_000_003u, -1));
+        Check(normalizedSlots.CurrentStage >= 1
+            && normalizedSlots.MaximumStage >= normalizedSlots.CurrentStage
+            && normalizedSlots.Accessory0 != 0
+            && normalizedSlots.Accessory1 == 0
+            && normalizedSlots.Accessory2 == 0,
+            "pet runtime normalization enforces catalog stage bounds and exact gem-slot count");
         var petCatalog = ShopCatalog.All.First(item =>
             item.Section == InventorySection.Pet
             && item.PetModelStage == 1
@@ -208,6 +222,33 @@ internal static class DungeonSaveChecks
                 "stale dungeon checkpoints cannot regress experience, level or duplicate level points");
 
             ShopCatalog.TryGetPetGrowthStage(petCatalog.PetGrowthClass, 1, out var firstGrowth);
+            var expectedFirstStageReward = checked(
+                firstGrowth.ExperiencePerLevel * PetProgression.NativeClearRewardPercentOfStageLevel / 100u);
+            await SetPetStateAsync(db, account, petCatalog, 1, 0, 0, token);
+            var failedBeforeCharacter = (await db.GetCharacterAsync(account, token))!;
+            var failedBefore = NativeDungeonState.Create(failedBeforeCharacter, [], []);
+            var failedAfterBytes = failedBefore.Bytes.ToArray();
+            Put(failedAfterBytes, 12, checked(failedBefore.Get(12) + 20u));
+            await db.ApplyNativeDungeonDeltaAsync(
+                account, character.Id, session, failedBefore,
+                new NativeDungeonState(failedAfterBytes), token, "pet-failed-settlement");
+            var failedPet = PetProgression.GetState(
+                (await db.GetCharacterAsync(account, token))!, petCatalog.ItemCode);
+            Check(failedPet.Experience == 0 && failedPet.Level == 0,
+                "sub-clear character EXP does not award native pet experience");
+
+            var firstClearCharacter = (await db.GetCharacterAsync(account, token))!;
+            var firstClearBefore = NativeDungeonState.Create(firstClearCharacter, [], []);
+            var firstClearAfterBytes = firstClearBefore.Bytes.ToArray();
+            Put(firstClearAfterBytes, 12, checked(firstClearBefore.Get(12) + 100u));
+            await db.ApplyNativeDungeonDeltaAsync(
+                account, character.Id, session, firstClearBefore,
+                new NativeDungeonState(firstClearAfterBytes), token, "pet-first-clear");
+            var firstClearPet = PetProgression.GetState(
+                (await db.GetCharacterAsync(account, token))!, petCatalog.ItemCode);
+            Check(firstClearPet.Experience == expectedFirstStageReward,
+                "native clear awards exactly ten percent of the current pi._D7 stage requirement");
+
             await SetPetStateAsync(
                 db, account, petCatalog, 1, firstGrowth.MaximumLevel, 0, token);
             NativeDungeonApplyResult petApply = default;
@@ -216,9 +257,7 @@ internal static class DungeonSaveChecks
             string petCommit = string.Empty;
             CharacterRecord progressedCharacter = null!;
             PetState progressedPet = default;
-            ShopCatalog.TryGetPetGrowthStage(petCatalog.PetGrowthClass, 2, out var secondGrowth);
-            var maximumAwards = checked((int)(secondGrowth.ExperiencePerLevel / 100u) + 3);
-            for (var award = 0; award < maximumAwards; award++)
+            for (var award = 0; award < 20; award++)
             {
                 var petBeforeCharacter = (await db.GetCharacterAsync(account, token))!;
                 petBefore = NativeDungeonState.Create(petBeforeCharacter, [], []);

@@ -676,15 +676,15 @@ public sealed partial class DatabaseService
                     INSERT INTO CharacterItems(
                         CharacterId, ItemCode, Quantity, PetCurrentStage, PetMaximumStage,
                         PetLevel, PetExperience, UpdatedAt)
-                    SELECT Id, 15000000 + PetVariant, 1, 1, 2,
+                    SELECT Id, 15000000 + PetVariant, 1, $currentStage, $maximumStage,
                            CASE WHEN PetLevel = 1 AND PetExperience = 0 THEN 0 ELSE MAX(0, PetLevel) END,
                            MAX(0, PetExperience), $now
                     FROM Characters
-                    WHERE PetVariant BETWEEN 1 AND 3
+                    WHERE PetVariant = $variant
                     ON CONFLICT(CharacterId, ItemCode) DO UPDATE SET
                         Quantity = MAX(1, CharacterItems.Quantity),
-                        PetCurrentStage = CASE WHEN CharacterItems.PetCurrentStage = 0 THEN 1 ELSE CharacterItems.PetCurrentStage END,
-                        PetMaximumStage = CASE WHEN CharacterItems.PetMaximumStage = 0 THEN 2 ELSE CharacterItems.PetMaximumStage END,
+                        PetCurrentStage = CASE WHEN CharacterItems.PetCurrentStage = 0 THEN excluded.PetCurrentStage ELSE CharacterItems.PetCurrentStage END,
+                        PetMaximumStage = CASE WHEN CharacterItems.PetMaximumStage = 0 THEN excluded.PetMaximumStage ELSE CharacterItems.PetMaximumStage END,
                         PetLevel = CASE
                             WHEN CharacterItems.PetLevel = 0 AND CharacterItems.PetExperience = 0
                             THEN excluded.PetLevel ELSE CharacterItems.PetLevel END,
@@ -693,8 +693,17 @@ public sealed partial class DatabaseService
                             THEN excluded.PetExperience ELSE CharacterItems.PetExperience END,
                         UpdatedAt = excluded.UpdatedAt;
                     """;
-                migrateTutorialPets.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
-                await migrateTutorialPets.ExecuteNonQueryAsync(cancellationToken);
+                for (var variant = 1; variant <= 3; variant++)
+                {
+                    var initial = PetProgression.NormalizeState(new PetState(
+                        15_000_000u + (uint)variant, 0, 0, 0, 0, 0, 0, 0, -1));
+                    migrateTutorialPets.Parameters.Clear();
+                    migrateTutorialPets.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+                    migrateTutorialPets.Parameters.AddWithValue("$variant", variant);
+                    migrateTutorialPets.Parameters.AddWithValue("$currentStage", initial.CurrentStage);
+                    migrateTutorialPets.Parameters.AddWithValue("$maximumStage", initial.MaximumStage);
+                    await migrateTutorialPets.ExecuteNonQueryAsync(cancellationToken);
+                }
             }
         }
 
@@ -6267,7 +6276,9 @@ public sealed partial class DatabaseService
         if (!ShopCatalog.TryGet(materialItemCode, out var materialItem)
             || !materialItem.IsPetMaterial)
             return (false, "unknown material");
-        if (operation == 1 && (accessoryPosition > 2 || materialItem.Category != 17))
+        if (operation == 1
+            && (accessoryPosition >= PetProgression.GetGemSlotCount(petItemCode)
+                || materialItem.Category != 17))
             return (false, "invalid accessory");
         if (operation == 2
             && (materialItem.Category != 19
@@ -7778,22 +7789,28 @@ public sealed partial class DatabaseService
             return false;
         }
 
+        var initialPet = petVariant is >= 1 and <= 3
+            ? PetProgression.NormalizeState(new PetState(
+                15_000_000u + (uint)petVariant, 0, 0, 0, 0, 0, 0, 0, -1))
+            : default;
         await using var createPetState = connection.CreateCommand();
         createPetState.Transaction = transaction;
         createPetState.CommandText = """
             INSERT INTO CharacterItems(
                 CharacterId, ItemCode, Quantity, PetCurrentStage, PetMaximumStage,
                 PetLevel, PetExperience, UpdatedAt)
-            SELECT Id, 15000000 + PetVariant, 1, 1, 2, 0, 0, $now
+            SELECT Id, 15000000 + PetVariant, 1, $currentStage, $maximumStage, 0, 0, $now
             FROM Characters
             WHERE Id = $characterId AND PetVariant BETWEEN 1 AND 3
             ON CONFLICT(CharacterId, ItemCode) DO UPDATE SET
                 Quantity = MAX(1, CharacterItems.Quantity),
-                PetCurrentStage = CASE WHEN CharacterItems.PetCurrentStage = 0 THEN 1 ELSE CharacterItems.PetCurrentStage END,
-                PetMaximumStage = CASE WHEN CharacterItems.PetMaximumStage = 0 THEN 2 ELSE CharacterItems.PetMaximumStage END,
+                PetCurrentStage = CASE WHEN CharacterItems.PetCurrentStage = 0 THEN excluded.PetCurrentStage ELSE CharacterItems.PetCurrentStage END,
+                PetMaximumStage = CASE WHEN CharacterItems.PetMaximumStage = 0 THEN excluded.PetMaximumStage ELSE CharacterItems.PetMaximumStage END,
                 UpdatedAt = excluded.UpdatedAt
             """;
         createPetState.Parameters.AddWithValue("$characterId", characterId);
+        createPetState.Parameters.AddWithValue("$currentStage", initialPet.CurrentStage);
+        createPetState.Parameters.AddWithValue("$maximumStage", initialPet.MaximumStage);
         createPetState.Parameters.AddWithValue("$now", now);
         if (await createPetState.ExecuteNonQueryAsync(cancellationToken) != 1)
         {

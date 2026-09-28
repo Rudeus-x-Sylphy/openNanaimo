@@ -43,8 +43,15 @@ static unsigned combat_economy_monster_max_hp(struct hp_sync_context*ctx,unsigne
     struct hp_sync_target_state*s=hp_sync_state_for(ctx,selector);return (s&&s->initialized&&s->max_hp>0)?(unsigned)s->max_hp:0u;
 }
 static unsigned combat_economy_score_ordinary_terminal(struct battle_score_context*score,struct hp_sync_context*ctx,unsigned selector,int old_hp,int new_hp){
-    unsigned hp;if(!(old_hp>0&&new_hp==0))return score?score->total:0u;hp=combat_economy_monster_max_hp(ctx,selector);if(!hp)hp=(unsigned)old_hp;
-    teamplay_battle_score_add(score,hp,BATTLE_SCORE_KIND_ORDINARY);printf("  [ECONOMY] score-on-kill kind=ordinary selector=%u monster_hp=%u total=%u\n",selector,hp,score->total);fflush(0);return score->total;
+    unsigned points;const struct hp_sync_target_def*d;
+    if(!score||!(old_hp>0&&new_hp==0))return score?score->total:0u;
+    d=hp_sync_global_static_def(ctx,selector,0,0,0);
+    /* Capture-derived buckets, extended to matching target types on other maps.
+       Never grant monster points for the random-item box (reward kind 5). */
+    if(!d||d->reward_kind==5u)return score->total;
+    points=d->target_type==0u?20u:d->target_type==1u?1200u:d->target_type==2u?10000u:0u;
+    teamplay_battle_score_add(score,points,BATTLE_SCORE_KIND_ORDINARY);
+    printf("  [ECONOMY] score-on-kill selector=%u target_type=%u points=%u total=%u\n",selector,d->target_type,points,score->total);fflush(0);return score->total;
 }
 static unsigned combat_economy_boss_total_hp(const struct boss_hp_sync_context*c){
     unsigned i,total=0u;if(!c)return 0u;
@@ -52,8 +59,17 @@ static unsigned combat_economy_boss_total_hp(const struct boss_hp_sync_context*c
     if(!total)total=c->mode_max_hp?c->mode_max_hp:c->resource_mode_hp;return total;
 }
 static unsigned combat_economy_score_boss_terminal(struct battle_score_context*score,const struct boss_hp_sync_context*c,const struct boss_hp_sync_result*r){
-    unsigned hp;if(!score||!r||!r->first_terminal)return score?score->total:0u;hp=combat_economy_boss_total_hp(c);if(!hp)hp=r->resource_mode_hp?r->resource_mode_hp:r->cumulative_damage;
-    teamplay_battle_score_add(score,hp,BATTLE_SCORE_KIND_BOSS);printf("  [ECONOMY] score-on-kill kind=boss boss_hp=%u modes=%u total=%u\n",hp,c?c->mode_count:0u,score->total);fflush(0);return score->total;
+    unsigned points;if(!score||!c||!r||!r->first_terminal)return score?score->total:0u;
+    points=c->dungeon==2u?(c->stage_index==1u?50000u:30000u):10000u;
+    teamplay_battle_score_add(score,points,BATTLE_SCORE_KIND_BOSS);
+    printf("  [ECONOMY] score-on-kill kind=boss points=%u total=%u\n",points,score->total);fflush(0);return score->total;
+}
+/* Inferred S boundaries fit all supplied CF88 rows; not official server data.
+   The same policy drives live D012 and settlement CF88. */
+static unsigned combat_economy_rating(unsigned score,unsigned cleared,unsigned dungeon){
+    unsigned step=dungeon==2u?16000u:10000u,grade;
+    if(!cleared)return 0u;
+    grade=score/step;return grade>5u?5u:grade;
 }
 static unsigned combat_economy_coin_amount_for_hp(unsigned monster_hp){return monster_hp<COMBAT_ECONOMY_REWARD_MIN_HP?0u:monster_hp/COMBAT_ECONOMY_COIN_HP_DIVISOR;}
 static int combat_economy_reward_hp_eligible(unsigned monster_hp){return monster_hp>=COMBAT_ECONOMY_REWARD_MIN_HP;}

@@ -189,6 +189,23 @@ if (args.Contains("--launcher-profile-self-test"))
     await LauncherProfileChecks.RunAsync();
     return;
 }
+if (args.Contains("--pet-growth-self-test"))
+{
+    var root = Path.Combine(Path.GetTempPath(), "nanaimo-pet-growth-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(root);
+    using (File.Create(Path.Combine(root, "game.db"))) { }
+    try
+    {
+        var petGrowthDatabase = new DatabaseService(root);
+        await petGrowthDatabase.InitializeAsync();
+        await DungeonSaveChecks.RunAsync(petGrowthDatabase, CancellationToken.None);
+    }
+    finally
+    {
+        try { Directory.Delete(root, true); } catch { }
+    }
+    return;
+}
 string Option(string name, string fallback)
 {
     int index = Array.IndexOf(args, name);

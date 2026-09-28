@@ -26,7 +26,9 @@ public sealed class ShopCatalogItem
     public uint HansPrice { get; init; }
     public uint CashPrice { get; init; }
     public ushort DurationDays { get; init; }
+    // pi._D7 field 23 is the current/model age; field 21 is the independent gem-slot count.
     public byte PetModelStage { get; init; }
+    public byte PetGemSlotCount { get; init; }
     public byte PetUpgradeStage { get; init; }
     public byte PetGrowthClass { get; init; }
     public uint PetGoldDustItemCode { get; init; }
@@ -317,7 +319,8 @@ internal static class ShopCatalog
                 "pi._D7",
                 index,
                 cashPriceField: 14,
-                petModelStageField: 21,
+                petModelStageField: 23,
+                petGemSlotCountField: 21,
                 petUpgradeStageField: 22,
                 petGrowthClassField: 24,
                 petGoldDustItemCodeField: 25,
@@ -646,7 +649,8 @@ internal static class ShopCatalog
         int? quickEffectFlagField = null,
         int? quickUsableField = null,
         bool quickUsable = false,
-        int? faceOptionsFirstField = null)
+        int? faceOptionsFirstField = null,
+        int? petGemSlotCountField = null)
     {
         if (!uint.TryParse(fields[offset + codeField], NumberStyles.None, CultureInfo.InvariantCulture, out var itemCode))
             throw new InvalidDataException($"The embedded {source} record at index {index} has an invalid item code.");
@@ -674,6 +678,7 @@ internal static class ShopCatalog
         byte petModelStage = 0;
         byte petUpgradeStage = 0;
         byte petGrowthClass = 0;
+        byte petGemSlotCount = 0;
         uint petGoldDustItemCode = 0;
         if (petModelStageField is int modelField
             && !byte.TryParse(fields[offset + modelField], NumberStyles.None, CultureInfo.InvariantCulture, out petModelStage))
@@ -687,6 +692,16 @@ internal static class ShopCatalog
         if (petGoldDustItemCodeField is int goldDustField
             && !uint.TryParse(fields[offset + goldDustField], NumberStyles.None, CultureInfo.InvariantCulture, out petGoldDustItemCode))
             throw new InvalidDataException($"The embedded {source} gold-dust item at index {index} is invalid.");
+        if (petGemSlotCountField is int slotField
+            && (!byte.TryParse(fields[offset + slotField], NumberStyles.None, CultureInfo.InvariantCulture, out petGemSlotCount)
+                || petGemSlotCount is < 1 or > 3))
+            throw new InvalidDataException($"The embedded {source} gem-slot count at index {index} is invalid.");
+        if (section == InventorySection.Pet)
+        {
+            petUpgradeStage = (byte)Math.Clamp((int)petUpgradeStage, 1, 3);
+            // Retail age zero maps to the first playable model stage.
+            petModelStage = (byte)Math.Clamp((int)petModelStage, 1, petUpgradeStage);
+        }
 
         var petBaseAttack = 0;
         var petAttackBonusCap = 0;
@@ -798,6 +813,7 @@ internal static class ShopCatalog
             CashPrice = cashPrice,
             DurationDays = duration,
             PetModelStage = petModelStage,
+            PetGemSlotCount = petGemSlotCount,
             PetUpgradeStage = petUpgradeStage,
             PetGrowthClass = petGrowthClass,
             PetGoldDustItemCode = petGoldDustItemCode,

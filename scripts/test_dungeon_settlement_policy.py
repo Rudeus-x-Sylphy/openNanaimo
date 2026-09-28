@@ -24,8 +24,11 @@ class DungeonSettlementPolicyTests(unittest.TestCase):
 
     def test_native_cf88_uses_failure_rating_when_progress_is_disallowed(self):
         text = (ROOT / "release/components/protocol_extensions/protocol_overrides.inc").read_text("utf-8")
-        self.assertIn('p[off+0x0B]=(char)dungeon_settlement_visible_rating(allow_progress);', text)
+        self.assertIn('allow_progress?combat_economy_rating(score,1u,multiplayer_shared_boss_context()->dungeon):dungeon_settlement_visible_rating(0u)', text)
         self.assertNotIn('p[off+0x0B]=5;', text)
+        policy = POLICY.read_text('utf-8')
+        self.assertIn('dungeon_settlement_visible_rating(unsigned allow_progress)', policy)
+        self.assertNotIn('dungeon_settlement_visible_rating(unsigned score', policy)
 
 if __name__ == "__main__":
     unittest.main()

@@ -795,8 +795,9 @@ public sealed partial class DatabaseService
 
         var petApply = default(NativeDungeonApplyResult);
         var petItemCode = after.Get(68);
-        var petExperienceReward = experienceDelta;
-        if (petExperienceReward > 0
+        var petClearSettled = settlement is { Rating: >= DungeonRewardPolicy.ClearRatingC }
+            || NativeDungeonClearSettled(before, after);
+        if (petClearSettled
             && petItemCode != 0
             && ShopCatalog.TryGet(15, petItemCode, out var petCatalogItem))
         {
@@ -863,31 +864,36 @@ public sealed partial class DatabaseService
 
             if (storedPetState is PetState petState)
             {
-                var progressed = PetProgression.AddExperience(petState, petExperienceReward);
-                await Execute("""
-                    UPDATE CharacterItems
-                    SET PetCurrentStage = $currentStage, PetMaximumStage = $maximumStage,
-                        PetLevel = $petLevel, PetExperience = $petExperience, UpdatedAt = $now
-                    WHERE CharacterId = $id AND ItemCode = $itemCode AND Quantity > 0;
-                    UPDATE Characters
-                    SET PetLevel = $petLevel, PetExperience = $petExperience, LastSavedAt = $now
-                    WHERE Id = $id;
-                    """,
-                    ("$currentStage", progressed.State.CurrentStage),
-                    ("$maximumStage", progressed.State.MaximumStage),
-                    ("$petLevel", progressed.State.Level),
-                    ("$petExperience", progressed.State.Experience),
-                    ("$now", DateTime.UtcNow.ToString("O")),
-                    ("$itemCode", petItemCode));
-                petApply = new NativeDungeonApplyResult(
-                    true,
-                    petItemCode,
-                    progressed.State.CurrentStage,
-                    progressed.State.MaximumStage,
-                    progressed.State.Level,
-                    progressed.State.Experience,
-                    PetProgression.GetCurrentStageMaximumLevel(progressed.State),
-                    progressed.LevelOrStageChanged);
+                petState = PetProgression.NormalizeState(petState);
+                var petExperienceReward = PetProgression.GetNativeClearReward(petState);
+                if (petExperienceReward > 0)
+                {
+                    var progressed = PetProgression.AddExperience(petState, petExperienceReward);
+                    await Execute("""
+                        UPDATE CharacterItems
+                        SET PetCurrentStage = $currentStage, PetMaximumStage = $maximumStage,
+                            PetLevel = $petLevel, PetExperience = $petExperience, UpdatedAt = $now
+                        WHERE CharacterId = $id AND ItemCode = $itemCode AND Quantity > 0;
+                        UPDATE Characters
+                        SET PetLevel = $petLevel, PetExperience = $petExperience, LastSavedAt = $now
+                        WHERE Id = $id;
+                        """,
+                        ("$currentStage", progressed.State.CurrentStage),
+                        ("$maximumStage", progressed.State.MaximumStage),
+                        ("$petLevel", progressed.State.Level),
+                        ("$petExperience", progressed.State.Experience),
+                        ("$now", DateTime.UtcNow.ToString("O")),
+                        ("$itemCode", petItemCode));
+                    petApply = new NativeDungeonApplyResult(
+                        true,
+                        petItemCode,
+                        progressed.State.CurrentStage,
+                        progressed.State.MaximumStage,
+                        progressed.State.Level,
+                        progressed.State.Experience,
+                        PetProgression.GetCurrentStageMaximumLevel(progressed.State),
+                        progressed.LevelOrStageChanged);
+                }
             }
         }
 
@@ -1153,6 +1159,23 @@ public sealed partial class DatabaseService
             insert.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
             await insert.ExecuteNonQueryAsync(token);
         }
+    }
+
+    internal static bool NativeDungeonClearSettled(
+        NativeDungeonState before,
+        NativeDungeonState after)
+    {
+        var previous = NativeClearMasks(before);
+        var current = NativeClearMasks(after);
+        for (var index = 0; index < Math.Min(previous.Length, current.Length); index++)
+            if ((current[index] & ~previous[index]) != 0)
+                return true;
+
+        // Re-clears do not add another clear-mask bit. The native clear award is
+        // the same 100 EXP base used by the managed settlement policy; failures
+        // are below this boundary (currently zero on the playable route).
+        return after.Get(12) >= before.Get(12)
+            && after.Get(12) - before.Get(12) >= DungeonRewardPolicy.BaseCharacterExperience;
     }
 
     private static byte[] NativeClearMasks(NativeDungeonState state)

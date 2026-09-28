@@ -38,6 +38,39 @@ internal readonly record struct PetAttackProfile(
 
 internal static class PetProgression
 {
+    public const int PetGemSlotMaximum = 3;
+
+    public static int GetGemSlotCount(uint itemCode)
+        => ShopCatalog.TryGet(15, itemCode, out var pet)
+            ? Math.Clamp((int)pet.PetGemSlotCount, 1, PetGemSlotMaximum)
+            : 0;
+
+    // Normalize the runtime projection without rewriting legacy database rows.
+    // Valid earned stages/experience survive; only impossible catalog bounds and
+    // inaccessible gem slots are hidden from calculations and protocol carriers.
+    public static PetState NormalizeState(PetState state)
+    {
+        if (!ShopCatalog.TryGet(15, state.ItemCode, out var pet))
+            return state;
+        var maximum = (byte)Math.Clamp(
+            (int)(state.MaximumStage == 0 ? pet.PetUpgradeStage : state.MaximumStage), 1, 3);
+        var current = (byte)Math.Clamp(
+            (int)(state.CurrentStage == 0 ? pet.PetModelStage : state.CurrentStage), 1, maximum);
+        var level = state.Level;
+        if (ShopCatalog.TryGetPetGrowthStage(pet.PetGrowthClass, current, out var growth))
+            level = Math.Min(level, growth.MaximumLevel);
+        var slots = GetGemSlotCount(state.ItemCode);
+        return state with
+        {
+            CurrentStage = current,
+            MaximumStage = maximum,
+            Level = level,
+            Accessory0 = slots > 0 ? state.Accessory0 : 0u,
+            Accessory1 = slots > 1 ? state.Accessory1 : 0u,
+            Accessory2 = slots > 2 ? state.Accessory2 : 0u
+        };
+    }
+
     private const byte HansBonusEffectType = 6;
     private const byte CardDropBonusEffectType = 7;
 
@@ -52,6 +85,7 @@ internal static class PetProgression
 
     public static PetAttackProfile GetAttackProfile(PetState state)
     {
+        state = NormalizeState(state);
         if (state.ItemCode == 0
             || !ShopCatalog.TryGet(15, state.ItemCode, out var pet))
             return default;
@@ -107,6 +141,7 @@ internal static class PetProgression
 
     private static int GetAccessoryPercent(PetState state, byte effectType)
     {
+        state = NormalizeState(state);
         var total = 0;
         foreach (var accessoryCode in new[] { state.Accessory0, state.Accessory1, state.Accessory2 })
         {
@@ -124,6 +159,7 @@ internal static class PetProgression
 
     public static uint GetCurrentStageMaximumLevel(PetState state)
     {
+        state = NormalizeState(state);
         if (state.ItemCode == 0
             || !ShopCatalog.TryGet(15, state.ItemCode, out var pet)
             || !ShopCatalog.TryGetPetGrowthStage(
@@ -133,6 +169,25 @@ internal static class PetProgression
             return 0;
 
         return growth.MaximumLevel;
+    }
+
+
+    // The client resource provides each growth class/stage's exact per-level
+    // requirement, but not the retail server's clear reward. Keep the reference
+    // server's explicit balance policy: one clear pays 10% of that requirement,
+    // producing a uniform ten clears per pet level across all growth classes.
+    internal const uint NativeClearRewardPercentOfStageLevel = 10u;
+
+    public static uint GetNativeClearReward(PetState state)
+    {
+        state = NormalizeState(state);
+        if (state.ItemCode == 0
+            || !ShopCatalog.TryGet(15, state.ItemCode, out var pet)
+            || !ShopCatalog.TryGetPetGrowthStage(pet.PetGrowthClass, state.CurrentStage, out var growth)
+            || growth.ExperiencePerLevel == 0)
+            return 0;
+
+        return checked(growth.ExperiencePerLevel * NativeClearRewardPercentOfStageLevel / 100u);
     }
 
     public static PetState GetState(CharacterRecord? character, uint itemCode)
@@ -161,7 +216,7 @@ internal static class PetProgression
         var durability = stored?.PetDurability
             ?? (catalogItem is { PetMaxDurability: >= 0 } ? catalogItem.PetMaxDurability : (short)-1);
 
-        return new PetState(
+        return NormalizeState(new PetState(
             itemCode,
             currentStage,
             maximumStage,
@@ -170,11 +225,12 @@ internal static class PetProgression
             stored?.PetAccessory0 ?? 0u,
             stored?.PetAccessory1 ?? 0u,
             stored?.PetAccessory2 ?? 0u,
-            durability);
+            durability));
     }
 
     public static PetProgressResult AddExperience(PetState state, uint amount)
     {
+        state = NormalizeState(state);
         if (state.ItemCode == 0
             || amount == 0
             || !ShopCatalog.TryGet(15, state.ItemCode, out var pet))
