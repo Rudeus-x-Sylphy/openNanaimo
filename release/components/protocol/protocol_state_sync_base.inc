@@ -25,7 +25,7 @@ static void send_cfd2_p2p_my_info(SOCKET c){
    hold the multiplayer lock; this is per receiving client AND source actor. */
 enum native_cf72_phase { NATIVE_CF72_PROFILE=0, NATIVE_CF72_CONTINUATION=1, NATIVE_CF72_REVIVE=2 };
 static unsigned native_cf72_phase_for_socket(SOCKET c);
-static unsigned native_cf72_rebuild_required(SOCKET c,unsigned actor_uid,unsigned pet_level,unsigned phase);
+static unsigned native_cf72_rebuild_required(SOCKET c,unsigned actor_uid,unsigned pet_stage,unsigned pet_stage_cap,unsigned phase);
 static unsigned native_actor_revival_count(unsigned actor_uid);
 
 #if TEAMPLAY_FEATURE_DYNAMIC_ROOM_CF72
@@ -35,12 +35,11 @@ static unsigned native_actor_revival_count(unsigned actor_uid);
    experiment, this refresh targets the dynamic UID that CF71 just created. */
 static void send_cf72_dynamic_actor_refresh_phase(SOCKET c,unsigned actor_uid,unsigned phase){
     char p[4096];unsigned i,hm,hc,mm,mc,apply,qb[6]={0,0,0,0,0,0};
-#ifdef NANAIMO_GAMEPLAY_BRIDGE
-    unsigned pet_level=g_managed_pet_combat_level;
-#else
-    unsigned pet_level=g_initial_attack_mode+1u;if(pet_level<1u)pet_level=1u;if(pet_level>3u)pet_level=3u;
-#endif
-    apply=native_cf72_rebuild_required(c,actor_uid,pet_level,phase);
+    unsigned pet_stage=g_stable_pet_age_a,pet_stage_cap=g_stable_pet_age_b;
+    /* CF72 +0x66/+0x67 select the pet model stage/cap.  Combat Power is
+       maintained by the D035 attack-mode lifecycle and must not be projected
+       into these resource selectors (several pets have only one/two models). */
+    apply=native_cf72_rebuild_required(c,actor_uid,pet_stage,pet_stage_cap,phase);
     pet_crafting_pet_effective_resources(&hm,&hc,&mm,&mc);
     mkpkt(p,0xCF72,0x74,1);stable_resource_put16(p,0x08,actor_uid);
     stable_resource_put16(p,0x0A,hm);stable_resource_put16(p,0x0C,mm);stable_resource_put16(p,0x0E,hc);stable_resource_put16(p,0x10,mc);stable_resource_put16(p,0x12,0u);
@@ -61,15 +60,15 @@ static void send_cf72_dynamic_actor_refresh_phase(SOCKET c,unsigned actor_uid,un
 #else
     stable_resource_put16(p,0x56,0u);
 #endif
-    stable_put32(p,0x58,0u);stable_put32(p,0x5C,0u);stable_put32(p,0x60,0u);stable_resource_put16(p,0x64,apply);p[0x66]=(char)pet_level;p[0x67]=(char)pet_level;stable_put32(p,0x68,0u);stable_put32(p,0x6C,100u);p[0x72]=1;p[0x73]=(char)native_actor_revival_count(actor_uid);
+    stable_put32(p,0x58,0u);stable_put32(p,0x5C,0u);stable_put32(p,0x60,0u);stable_resource_put16(p,0x64,apply);p[0x66]=(char)pet_stage;p[0x67]=(char)pet_stage_cap;stable_put32(p,0x68,0u);stable_put32(p,0x6C,100u);p[0x72]=1;p[0x73]=(char)native_actor_revival_count(actor_uid);
     sendbuf(c,p,0x74);
 #if TEAMPLAY_FEATURE_QUICKBAR_BATTLE_UNLOCK
     printf("  [QUICKBAR_BATTLE_GATE] CF72 actor=%u local=%u gate=%u\n",actor_uid,multiplayer_current_uid(),(unsigned)((unsigned char)p[0x56]|((unsigned char)p[0x57]<<8)));fflush(0);
 #endif
 #if TEAMPLAY_FEATURE_ROOM_ACTOR_BASE_GENDER
-    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetLevel=%u effect=%u base_gender=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,apply,STABLE_PET,pet_level,g_effect_equipped,g_stable_gender&1u,hc,hm,mc,mm,sec());
+    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetStage=%u/%u effect=%u base_gender=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,apply,STABLE_PET,pet_stage,pet_stage_cap,g_effect_equipped,g_stable_gender&1u,hc,hm,mc,mm,sec());
 #else
-    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetLevel=%u effect=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,apply,STABLE_PET,pet_level,g_effect_equipped,hc,hm,mc,mm,sec());
+    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetStage=%u/%u effect=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,apply,STABLE_PET,pet_stage,pet_stage_cap,g_effect_equipped,hc,hm,mc,mm,sec());
 #endif
     fflush(0);
 }

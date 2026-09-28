@@ -16842,8 +16842,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             && expiration > DateTime.Now;
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x56 - 8, 2), expandedQuickSlotsActive ? (ushort)1 : (ushort)0);
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x64 - 8, 2), 1);
-        payload[0x66 - 8] = checked((byte)Math.Clamp(character.InitialAttackMode + 1, 1, 3));
-        payload[0x67 - 8] = payload[0x66 - 8];
+        var petState = PetProgression.GetState(character, GetEquippedPetItemCode(character));
+        payload[0x66 - 8] = petState.CurrentStage;
+        payload[0x67 - 8] = petState.MaximumStage;
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x6C - 8, 4), 100);
         payload[0x72 - 8] = 1;
         payload[0x73 - 8] = character.RevivalUseCount;

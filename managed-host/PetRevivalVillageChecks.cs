@@ -376,8 +376,9 @@ internal static class PetRevivalVillageChecks
             && NetworkAdapterService.TryParseNativePaidContinueRuntimeSyncAck(runtimeAck, 1_000, 250),
             "internal F104/F105 paid-continue sync preserves worker combat HP/MP across the managed payment");
         Check(BinaryPrimitives.ReadUInt16LittleEndian(cf72.AsSpan(6, 2)) == 2_000
+            && cf72[0x66 - 8] == 1 && cf72[0x67 - 8] == 2
             && cf72[0x73 - 8] == character.RevivalUseCount,
-            "CF72 refresh carries current HP and the owner's revival ledger for the separate CF95 retry family");
+            "CF72 refresh carries pet model stages independently from high battle attack mode");
 
         foreach (ushort echoKind in new ushort[] { 60, 80, 120 })
         {

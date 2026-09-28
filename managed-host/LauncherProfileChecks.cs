@@ -71,10 +71,12 @@ internal static class LauncherProfileChecks
             Check(state.Get(NativeDungeonState.PetCombatLevelOffset) == 3, "Selina combat level missing from native bridge");
             var cf72Payload = new byte[108];
             BinaryPrimitives.WriteUInt16LittleEndian(cf72Payload.AsSpan(0, 2), checked((ushort)second.Id));
+            cf72Payload[0x66 - 8] = checked((byte)state.Get(72));
+            cf72Payload[0x67 - 8] = checked((byte)state.Get(76));
             var cf72 = NativeDungeonClient.Frame(0xCF72, cf72Payload);
             Check(NetworkAdapterService.PatchNativePetActorFrame(cf72, second)
-                && cf72[0x66] == 3 && cf72[0x67] == 3,
-                "native CF72 forwarding overwrote the independent PET combat level");
+                && cf72[0x66] == state.Get(72) && cf72[0x67] == state.Get(76),
+                "native CF72 forwarding preserves PET model stages independently from battle attack mode");
             Check(BinaryPrimitives.ReadUInt32LittleEndian(second.Appearance.AsSpan(16, 4)) == 0
                 && BinaryPrimitives.ReadUInt32LittleEndian(second.Appearance.AsSpan(20, 4)) == 10150103u
                 && state.Get(128) == 10150103u,

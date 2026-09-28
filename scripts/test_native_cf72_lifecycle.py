@@ -70,12 +70,16 @@ int main(int argc,char**argv){
         refresh(NATIVE_CF72_PROFILE);native_cf72_continue_room();
         g_stable_pet=15009206u;refresh(NATIVE_CF72_CONTINUATION);CHECK(word(frames[0],0x64)==1);
         refresh(NATIVE_CF72_CONTINUATION);CHECK(word(frames[0],0x64)==0);
+        /* Attack stage is independent of the pet model resource selector. */
 #ifdef NANAIMO_GAMEPLAY_BRIDGE
-        g_managed_pet_combat_level=2;
+        g_managed_pet_combat_level=3;
 #else
-        g_initial_attack_mode=1;
+        g_initial_attack_mode=2;
 #endif
+        refresh(NATIVE_CF72_CONTINUATION);CHECK(word(frames[0],0x64)==0);
+        g_stable_pet_age_a=1u;g_stable_pet_age_b=2u;
         refresh(NATIVE_CF72_CONTINUATION);CHECK(word(frames[0],0x64)==1);
+        CHECK(frames[0][0x66]==1u&&frames[0][0x67]==2u);
     }else if(test==4){
         refresh(NATIVE_CF72_PROFILE);native_cf72_continue_room();native_cf72_reset_actor(0);
         CHECK(native_cf72_phase_for_socket(100)==NATIVE_CF72_PROFILE);

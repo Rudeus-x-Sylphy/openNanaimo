@@ -4,7 +4,7 @@
    Rows survive CF8B/CF8C, NOT CF6C, leave or connection/UID reuse.  A duplicate
    same-epoch profile refresh also does not justify resetting combat Power. */
 struct native_cf72_actor_state {
-    unsigned valid,uid,join_order,pet,pet_level,gems[3],name_len;
+    unsigned valid,uid,join_order,pet,pet_stage,pet_stage_cap,gems[3],name_len;
     unsigned char name[16];
 };
 struct native_cf72_view_state {
@@ -55,14 +55,14 @@ static void native_revival_state_path(char *out,unsigned cap,const char *key,con
     while(n<cap&&out[n])n++;if(n>=cap)return;
     game_session_revive_copy(out+n,cap-n,suffix);
 }
-static unsigned native_cf72_rebuild_required(SOCKET c,unsigned actor_uid,unsigned pet_level,unsigned phase){
+static unsigned native_cf72_rebuild_required(SOCKET c,unsigned actor_uid,unsigned pet_stage,unsigned pet_stage_cap,unsigned phase){
     int vi=native_view_index(c),ai=native_actor_index(actor_uid),pi;unsigned i,rebuild;
     struct native_cf72_actor_state now,*old;struct native_cf72_view_state *v;
     if(vi<0||ai<0)return 1u; /* unknown/new actor must not inherit another row */
     v=&g_native_cf72_views[vi];
     if(v->socket!=c||v->join_order!=g_multi_conn[vi].join_order){memset(v,0,sizeof(*v));v->socket=c;v->join_order=g_multi_conn[vi].join_order;}
     memset(&now,0,sizeof(now));now.valid=1u;now.uid=actor_uid;now.join_order=g_multi_conn[ai].join_order;
-    now.pet=STABLE_PET;now.pet_level=pet_level;now.name_len=g_stable_name_len;
+    now.pet=STABLE_PET;now.pet_stage=pet_stage;now.pet_stage_cap=pet_stage_cap;now.name_len=g_stable_name_len;
     memcpy(now.name,g_stable_name,sizeof(now.name));
     pet_crafting_pet_state_load();pi=pet_crafting_pet_row_index(now.pet);
     if(pi>=0)for(i=0;i<3u;i++)now.gems[i]=g_pet_crafting_pet_items[pi].gems[i];
