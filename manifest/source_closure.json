@@ -108,8 +108,8 @@
     },
     {
       "path": "managed-host/ChannelReentryChecks.cs",
-      "size": 11610,
-      "sha256": "6917E25413D55FF4BE63720007BF6FD6EF8BD7DFF6DC347A67CE5177AA303237"
+      "size": 12268,
+      "sha256": "D51C63BC7F02610C6CB758DA0CFE9B94EA47F660398F1A576D9EC4DC98B81FD7"
     },
     {
       "path": "managed-host/CompatibilityChecks.cs",
@@ -138,8 +138,8 @@
     },
     {
       "path": "managed-host/DungeonSaveChecks.cs",
-      "size": 21563,
-      "sha256": "D17B1986E4B636880AE85FFF7F16556040AB3F4348D137B65F2043E54805EDA2"
+      "size": 23560,
+      "sha256": "C508B17B8B19EF4F8E168C48D62D580DB951F1439F63F08486ECCC8BFDA3F68C"
     },
     {
       "path": "managed-host/HealthRecoveryChecks.cs",
@@ -188,8 +188,8 @@
     },
     {
       "path": "managed-host/LauncherProfileChecks.cs",
-      "size": 15573,
-      "sha256": "AFAA8EB508B96935C3AFA1BA81B3F5707B0E033887BD54DFEA90CF37F3A8503A"
+      "size": 15751,
+      "sha256": "D2F19C1585065F2F383980697613407DBC42B5B8779C86C3B087B3B24CB6DB07"
     },
     {
       "path": "managed-host/MigrationChecks.cs",
@@ -218,23 +218,23 @@
     },
     {
       "path": "managed-host/PetRevivalVillageChecks.cs",
-      "size": 36723,
-      "sha256": "ABD845232C8DAD4AAE88B551D007C5C2CE8F186AE15AB10508AE1E2817C20FDE"
+      "size": 37950,
+      "sha256": "422C70A05AB0E7D494E99F7A851F7E13A2BFBC931F848A9D0B0B93331ED27BC0"
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 12029,
-      "sha256": "0777D6911D02D4FEC76881EC628A2F86BC020FEE350FE7D05F8EE30B01537095"
+      "size": 12806,
+      "sha256": "4FD0BAB53AE2E0E60084A5D0AA7C281580ACE7018E7A91F93B534082CC8AA8A1"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
-      "size": 15587,
-      "sha256": "294B78456E7478B879694E2B2BF74938D042F1C99450248F47C3CED0B4E603A2"
+      "size": 16432,
+      "sha256": "BAD2767E086A01E2C8E994523FF39928485266BC4E953DCA716E841F1F267555"
     },
     {
       "path": "managed-host/QuestSystemChecks.cs",
-      "size": 14862,
-      "sha256": "DC5156279D1B51BE451D22D6ED351E3D1E3BD7C49E0B91CAA53756440D9D19A9"
+      "size": 16562,
+      "sha256": "0C369D258727970DC7A2F29BB02ADA3A51CBD4FE6A23311E90BD2B612EF1F035"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -258,8 +258,8 @@
     },
     {
       "path": "managed-host/TutorialAppearanceChecks.cs",
-      "size": 12137,
-      "sha256": "0E6FDBDD3FF01F0E8E3C34D6B1AD13B23AA2F0A4681CDAF9D7CB8515BB8B7C40"
+      "size": 13141,
+      "sha256": "A2E44DF6D45F25ED15A38640253AEE605590859176FBEDA13D5CA389DE1EFFAE"
     },
     {
       "path": "managed-host/VillagePositionChecks.cs",
@@ -513,13 +513,13 @@
     },
     {
       "path": "managed/Services/DatabaseService.LocalAccounts.cs",
-      "size": 5151,
-      "sha256": "429E289F63E7C294D0E0493FA858D1FAB1A403D8C485DB013A9445B5E78F3B4B"
+      "size": 6004,
+      "sha256": "F93BB427D4D6A0AA9751564E156B87ACB91B145F3E3C396E3F24E5E9466D56E1"
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
-      "size": 66487,
-      "sha256": "3504FFA382D43FA39F1E016061EC135628EB773C3911A453A3A23BA0CBFEE401"
+      "size": 69804,
+      "sha256": "1E5E7F38A442B5077E1F9D6B16ABF06B144E69F0F48403D4586A2FAE952DF806"
     },
     {
       "path": "managed/Services/DatabaseService.PetMaterialMigration.cs",
@@ -703,8 +703,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 72415,
-      "sha256": "F5F68EC97B8C4614368A91AFC1FC6B6D53F6CA4264132C7034B031155EE71E07"
+      "size": 72565,
+      "sha256": "18E03FFAC498FE42F75E3C7DC1B884A338FC2762052278C186EFE7E0611F98A6"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
@@ -733,8 +733,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 950622,
-      "sha256": "D374A8F9AFAC54820838BA0D156EFD5517D11D3CAF20A167F039C846E59FB2C2"
+      "size": 953004,
+      "sha256": "CCA35BD9090D8402C18416D56A0D3807821A1BB190EB7F72310A8DF4BEFDFD7C"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -968,8 +968,8 @@
     },
     {
       "path": "release/components/dungeon_progression/progression_runtime.inc",
-      "size": 13608,
-      "sha256": "198D62FAAE761FC5815AB594D1BF5B21451845150FB2A0BCA73A96479C3AD60B"
+      "size": 13911,
+      "sha256": "8A46F4642392712FD50F8B4C7D5762A2E3338695CA3F9A524BE07C1F64CB5ACC"
     },
     {
       "path": "release/components/dungeon_progression/settlement_result_policy.inc",
@@ -1023,8 +1023,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 138319,
-      "sha256": "96CCBBA0537D64C47624608FE22489DBD5D2506448EED41D9BDA34603884A838"
+      "size": 138581,
+      "sha256": "A8C87F3C1BE46DA27DFE397CEAB146035E8D81DC5BF8CB01C4CB3ADB6F9E7F0B"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
@@ -1173,8 +1173,8 @@
     },
     {
       "path": "release/components/protocol/protocol_state_sync_base.inc",
-      "size": 11092,
-      "sha256": "FA920B4417E67FC80CC794368B892492BF484B32AE6425BCDD308E19FA2C6595"
+      "size": 11273,
+      "sha256": "A51BEFD684CF86A580A074F0DE27C1EDAFC4E6B5D7D841A8C0831AB84819895D"
     },
     {
       "path": "release/components/protocol_extensions/protocol_overrides.inc",
@@ -1233,8 +1233,8 @@
     },
     {
       "path": "release/components/stage_damage/damage_runtime.inc",
-      "size": 14412,
-      "sha256": "EF0AE02A6729E65A6BCD9C0F85C74C52560685920E3B563E2AD69FE95DB2A7F2"
+      "size": 16841,
+      "sha256": "9699B59ECBEF7636BDB6242A1E9F82ECCBFF24DD11FE276F5AD4F8813A60C7EE"
     },
     {
       "path": "release/components/stage_damage/monster_contact_catalog.inc",
