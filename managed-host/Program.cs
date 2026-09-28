@@ -228,8 +228,26 @@ using var worker = Process.Start(start) ?? throw new InvalidOperationException("
 workerJob.Add(worker);
 using var nativeLog = new StreamWriter(Path.Combine(data, "native.log"), append: true) { AutoFlush = true };
 var logGate = new object();
-worker.OutputDataReceived += (_, e) => { if (e.Data is not null) lock (logGate) nativeLog.WriteLine(e.Data); };
-worker.ErrorDataReceived += (_, e) => { if (e.Data is not null) lock (logGate) nativeLog.WriteLine(e.Data); };
+var nativeTail = new Queue<string>();
+void CaptureNativeLine(string line)
+{
+    lock (logGate)
+    {
+        nativeLog.WriteLine(line);
+        nativeTail.Enqueue(line);
+        while (nativeTail.Count > 40) nativeTail.Dequeue();
+    }
+}
+string NativeWorkerExitDetail()
+{
+    worker.WaitForExit(); // also drains asynchronous stdout/stderr callbacks
+    string tail;
+    lock (logGate) tail = string.Join(Environment.NewLine, nativeTail);
+    return $"Native dungeon worker exited code={worker.ExitCode}. profile={profile}"
+        + (tail.Length == 0 ? "" : Environment.NewLine + "Native tail:" + Environment.NewLine + tail);
+}
+worker.OutputDataReceived += (_, e) => { if (e.Data is not null) CaptureNativeLine(e.Data); };
+worker.ErrorDataReceived += (_, e) => { if (e.Data is not null) CaptureNativeLine(e.Data); };
 worker.BeginOutputReadLine(); worker.BeginErrorReadLine();
 using var stop = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
@@ -238,7 +256,7 @@ try
 {
     for (int retry = 0; retry < 50; retry++)
     {
-        if (worker.HasExited) throw new InvalidOperationException("Native dungeon worker exited. See native.log.");
+        if (worker.HasExited) throw new InvalidOperationException(NativeWorkerExitDetail());
         try
         {
             using var probe = new System.Net.Sockets.TcpClient();
@@ -263,7 +281,14 @@ try
     {
         var ended = worker.WaitForExitAsync(stop.Token);
         var requested = WaitForStopAsync(stopPath, stop.Token);
-        await Task.WhenAny(profiles, ended, requested, gmControl);
+        var completed = await Task.WhenAny(profiles, ended, requested, gmControl);
+        if (completed == ended && !stop.IsCancellationRequested)
+        {
+            await ended;
+            throw new InvalidOperationException(NativeWorkerExitDetail());
+        }
+        if (completed == profiles) await profiles;
+        if (completed == gmControl) await gmControl;
         stop.Cancel();
     }
     try { await profiles; } catch (OperationCanceledException) when (stop.IsCancellationRequested) { }

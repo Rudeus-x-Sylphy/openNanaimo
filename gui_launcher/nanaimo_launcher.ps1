@@ -620,7 +620,7 @@ function Register-ClientProfile([string]$ip){Send-LocalLaunchRegistration $ip ([
 function New-PureNewPlayerAccountName {return 'pure-'+(Get-Date).ToUniversalTime().ToString('yyyyMMddHHmmssfff')+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)}
 function Write-PureNewPlayerRuntimeProfile {
     if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
-    $lines=@('version=2','launch_mode=network','network_ip=127.0.0.1','skip_tutorial=0','gender=0','name_hex=505552454E4557','dungeon_grade=auto','level=1','pet=0','pet_age_a=0','pet_age_b=0','initial_attack_mode=0','equip_hair=0','equip_body=0','equip_top=0','equip_bottom=0','equip_accessory=0','equip_effect=0','hp_max=1500','hp_current=1500','mp_max=100','mp_current=100','attack=0','defense=0','coin=0','nana_point=0','card_key_normal=0','card_key_gold=0','card_key_mystery=0','card_key_special=0','free_magic_key_expiry=0','quickbar_expiry=0','skill_config=1','skill_projectile_route=0','skill_meat_route=0','skill_slot_z=0','skill_slot_x=0')
+    $lines=@('version=2','launch_mode=network','network_ip=127.0.0.1','skip_tutorial=0','gender=0','name_hex=505552454E4557','dungeon_grade=auto','level=1','pet=0','pet_age_a=0','pet_age_b=0','initial_attack_mode=0','equip_hair=0','equip_body=0','equip_top=0','equip_bottom=0','equip_accessory=0','equip_effect=0','hp_max=1500','hp_current=1500','mp_max=100','mp_current=100','attack=0','defense=0','coin=0','nana_point=0','card_key_normal=0','card_key_gold=0','card_key_mystery=0','card_key_special=0','free_magic_key_expiry=2000010100','quickbar_expiry=0','skill_config=1','skill_projectile_route=0','skill_meat_route=0','skill_slot_z=0','skill_slot_x=0')
     for($i=0;$i-lt16;$i++){$lines+="skill_grade$i=0"}
     [IO.File]::WriteAllLines($PureNewPlayerProfile,$lines,(New-Object Text.ASCIIEncoding))
     return $PureNewPlayerProfile
@@ -681,6 +681,41 @@ function Write-RuntimeIdentity([Diagnostics.Process]$proc) {
         client_path=$Client;ports=@(11005,11999,12050);release_identity=$ReleaseIdentity
     }
     $identity|ConvertTo-Json -Depth 4|Set-Content -LiteralPath $RuntimeIdentityPath -Encoding UTF8
+}
+function Test-PureNewPlayerNativeStartup([string]$profilePath) {
+    $probeRoot=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo_pure_native_'+[guid]::NewGuid().ToString('N'));[IO.Directory]::CreateDirectory($probeRoot)|Out-Null
+    $probeOut=Join-Path $probeRoot 'native.out.log';$probeErr=Join-Path $probeRoot 'native.err.log';$probe=$null
+    try{
+        $listeners=@([Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners()|ForEach-Object{$_.Port})
+        $first=41000;while($first-lt65000-and(@($first..($first+7)|Where-Object{$_-in$listeners}).Count-or($first+20)-in$listeners)){$first+=11}
+        if($first-ge65000){throw 'no free native probe port block'}
+        $probeArgs=@([string]($first+20),'new','0','0',$profilePath,[string]$first)
+        $probe=Start-Process -FilePath $AdapterBridge -ArgumentList $probeArgs -WorkingDirectory $probeRoot -WindowStyle Hidden -RedirectStandardOutput $probeOut -RedirectStandardError $probeErr -PassThru
+        $ready=$false
+        for($attempt=0;$attempt-lt50;$attempt++){
+            Start-Sleep -Milliseconds 50
+            if($probe.HasExited){$native=if(Test-Path -LiteralPath $probeOut){Get-Content -LiteralPath $probeOut -Raw}else{''};throw "pure native startup exited code=$($probe.ExitCode): $native"}
+            if((Test-AdapterPort ($first+20))-and(Test-AdapterPort ($first+7))){$ready=$true;break}
+        }
+        if(-not$ready){throw 'pure native startup did not bind the isolated login/profile listeners'}
+    }finally{
+        if($probe-and-not$probe.HasExited){$probe|Stop-Process -Force;Wait-Process -Id $probe.Id -Timeout 5 -ErrorAction SilentlyContinue}
+        if(Test-Path -LiteralPath $probeRoot){Remove-Item -LiteralPath $probeRoot -Recurse -Force -ErrorAction SilentlyContinue}
+    }
+}
+function Get-AdapterStartupFailureDetail([Diagnostics.Process]$proc,[string]$runtimeProfile) {
+    $sections=@("adapter_exit_code=$($proc.ExitCode)","profile=$runtimeProfile")
+    foreach($entry in @(
+        [pscustomobject]@{Label='process stderr';Path=$AdapterErr;Tail=80},
+        [pscustomobject]@{Label='managed adapter error';Path=(Join-Path $AdapterLogs 'adapter-error.log');Tail=80},
+        [pscustomobject]@{Label='native worker tail';Path=(Join-Path $AdapterData 'native.log');Tail=40}
+    )){
+        if(Test-Path -LiteralPath $entry.Path -PathType Leaf){
+            $content=@(Get-Content -LiteralPath $entry.Path -Tail $entry.Tail -ErrorAction SilentlyContinue)
+            if($content.Count){$sections+=("--- {0}: {1} ---`r`n{2}"-f$entry.Label,$entry.Path,($content-join"`r`n"))}
+        }
+    }
+    return $sections-join"`r`n"
 }
 function Start-LocalAdapter([string]$runtimeProfile=$ProfileIni) {
     Test-AdapterBinary
@@ -854,10 +889,12 @@ if($SelfTestPureNewPlayer){
         $written=Write-PureNewPlayerRuntimeProfile;$profile=Read-KeyValueFile $written;$account=New-PureNewPlayerAccountName
         $payload=[ordered]@{LocalAccount=$account;PureNewPlayer=$true}|ConvertTo-Json -Compress|ConvertFrom-Json
         if($written-ne$tempPure-or[string]$profile.skip_tutorial-ne'0'-or[string]$profile.level-ne'1'-or[string]$profile.pet-ne'0'-or[string]$profile.coin-ne'0'-or[string]$profile.skill_grade0-ne'0'){throw 'pure runtime profile'}
+        [uint64]$freeExpiry=0;if(-not[uint64]::TryParse([string]$profile.free_magic_key_expiry,[ref]$freeExpiry)-or$freeExpiry-ne2000010100){throw 'pure runtime profile violates native free_magic_key_expiry startup/no-grant contract'}
         if(-not[bool]$payload.PureNewPlayer-or[string]$payload.LocalAccount-notmatch'^pure-\d{17}-[0-9a-f]{8}$'){throw 'pure registration payload'}
+        Test-PureNewPlayerNativeStartup $written
         $afterIni=if(Test-Path -LiteralPath $ProfileIni){(Get-FileHash -LiteralPath $ProfileIni -Algorithm SHA256).Hash}else{$null};$afterJson=if(Test-Path -LiteralPath $ProfileJson){(Get-FileHash -LiteralPath $ProfileJson -Algorithm SHA256).Hash}else{$null}
         if($beforeIni-ne$afterIni-or$beforeJson-ne$afterJson){throw 'normal profile mutated'}
-        Write-Output 'GUI_PURE_NEW_PLAYER_SELFTEST_PASS profile=isolated skip_tutorial=0 level=1 grants=0 registration=json normal_profile_unchanged=true'
+        Write-Output 'GUI_PURE_NEW_PLAYER_SELFTEST_PASS profile=isolated native_startup=listening skip_tutorial=0 level=1 grants=0 registration=json normal_profile_unchanged=true'
     }finally{$PureNewPlayerProfile=$savedPurePath;Remove-Item -LiteralPath $tempPure -Force -ErrorAction SilentlyContinue;$form.Close();$form.Dispose()}
     exit 0
 }

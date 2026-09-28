@@ -169,6 +169,27 @@ class LauncherContractTests(unittest.TestCase):
         self.assertNotIn('Save-Profile', layout)
         self.assertNotIn('Start-Process', layout)
 
+    def test_pure_new_player_profile_reaches_native_startup_boundary(self):
+        launcher = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
+        pure_profile = launcher.split('function Write-PureNewPlayerRuntimeProfile', 1)[1].split(
+            'function Register-PureNewPlayer', 1)[0]
+        self.assertIn("'free_magic_key_expiry=2000010100'", pure_profile)
+        self.assertNotIn("'free_magic_key_expiry=0'", pure_profile)
+        self.assertIn('Test-PureNewPlayerNativeStartup $written', launcher)
+        click = launcher.split('$clientBtn.add_Click({', 1)[1].split('if($ValidateOnly)', 1)[0]
+        self.assertIn('$proc=Start-LocalAdapter $runtimeProfile', click)
+        self.assertLess(click.index('$proc=Start-LocalAdapter $runtimeProfile'),
+                        click.index('Register-PureNewPlayer $launchModeInfo.AdapterIP'))
+        native_probe = launcher.split('function Test-PureNewPlayerNativeStartup', 1)[1].split(
+            'function Get-AdapterStartupFailureDetail', 1)[0]
+        self.assertIn('Start-Process -FilePath $AdapterBridge', native_probe)
+        self.assertIn('Test-AdapterPort ($first+20)', native_probe)
+        self.assertIn('Test-AdapterPort ($first+7)', native_probe)
+        self.assertIn("Join-Path $AdapterLogs 'adapter-error.log'", launcher)
+        host = (ROOT / 'managed-host/Program.cs').read_text('utf-8-sig')
+        self.assertIn('NativeWorkerExitDetail()', host)
+        self.assertIn('if (completed == ended && !stop.IsCancellationRequested)', host)
+
     def test_fixed_transport_and_profile_contract_remain_internal(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         for invariant in (
