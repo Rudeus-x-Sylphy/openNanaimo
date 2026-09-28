@@ -17,6 +17,8 @@ public sealed class CardCatalogEntry
     public byte DropRegion { get; init; }
     public byte Episode { get; init; }
     public byte DropType { get; init; }
+    // ddakg field 7; used only to weight a resolved monster's card pool.
+    public byte CardType { get; init; }
     public uint MonsterTargetCode { get; init; }
     public IReadOnlyList<string> SourceMonsters { get; init; } = [];
     public string MapName { get; init; } = string.Empty;

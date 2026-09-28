@@ -22,7 +22,8 @@ public static class CardCatalog
         new(() => Entries.Value.ToDictionary(entry => entry.CardCode));
     private static readonly Lazy<IReadOnlyDictionary<uint, CardCatalogEntry[]>> NormalDropsByMonster =
         new(() => Entries.Value
-            .Where(entry => entry.Category == 1 && entry.MonsterTargetCode != 0)
+            .Where(entry => entry.CardCode is >= 13000001 and <= 13000410
+                && !IsGoldPowder(entry.CardCode) && entry.MonsterTargetCode is not (0 or 99999))
             .GroupBy(entry => entry.MonsterTargetCode)
             .ToDictionary(group => group.Key, group => group.OrderBy(entry => entry.CardCode).ToArray()));
     public static IReadOnlyList<CardCatalogEntry> All => Entries.Value;
@@ -30,8 +31,26 @@ public static class CardCatalog
     public static bool TryGet(uint cardCode, out CardCatalogEntry entry)
         => EntriesByCode.Value.TryGetValue(cardCode, out entry!);
 
+    public static bool IsGoldPowder(uint cardCode)
+        => cardCode is >= 13000201 and <= 13000210 or >= 13000411 and <= 13000420;
+
     public static bool TryGetAlbumCoordinate(uint cardCode, out byte category, out byte page, out byte slot)
     {
+        if (cardCode is >= 50000001 and <= 50000100)
+        {
+            var eventOrdinal = cardCode - 50000001u;
+            category = 3;
+            page = checked((byte)(eventOrdinal / 10u + 1u));
+            slot = checked((byte)(eventOrdinal % 10u));
+            return true;
+        }
+        if (cardCode is >= 12000001 and <= 12000020)
+        {
+            category = 4;
+            page = 1;
+            slot = checked((byte)(cardCode - 12000001u));
+            return true;
+        }
         if (TryGet(cardCode, out var entry))
         {
             category = entry.Category;
@@ -91,12 +110,9 @@ public static class CardCatalog
             return false;
         }
 
-        // The client resource identifies all valid cards for this exact MMO
-        // Monster-code entries carry no adapter drop-rate weights. Select only
-        // within that authoritative set; never derive a card from scene UID,
-        // dungeon number, or stage number.
-        entry = candidates[RandomNumberGenerator.GetInt32(candidates.Count)];
-        return true;
+        // Select only inside the client-derived pool for the killed monster,
+        // then apply the reference server's content-class weights.
+        return TryWeightedSelect(candidates, out entry);
     }
 
     public static IReadOnlyList<CardCatalogEntry> GetDungeonEpisodeDrops(byte clientEpisode)
@@ -105,7 +121,8 @@ public static class CardCatalog
             return [];
         var resourceEpisode = checked((byte)(clientEpisode + 1));
         return Entries.Value
-            .Where(entry => entry.Category == 1
+            .Where(entry => entry.CardCode is >= 13000001 and <= 13000410
+                && !IsGoldPowder(entry.CardCode)
                 && entry.Episode == resourceEpisode
                 && entry.CardCode != 0)
             .OrderBy(entry => entry.CardCode)
@@ -137,19 +154,19 @@ public static class CardCatalog
                 string.Equals(source, bossMarker, StringComparison.OrdinalIgnoreCase)))
             .ToArray();
         var candidates = bossDrops.Length == 0 ? episodeDrops : bossDrops;
-        entry = candidates[RandomNumberGenerator.GetInt32(candidates.Count)];
-        return true;
+        return TryWeightedSelect(candidates, out entry);
     }
 
     internal static bool TryRollDungeonDrop(
         byte clientEpisode,
         int monsterResourceCode,
         int cardBonusPercent,
+        int monsterMaximumHp,
         out CardCatalogEntry entry,
         int? rollBasisPoints = null)
     {
         var roll = rollBasisPoints ?? RandomNumberGenerator.GetInt32(10_000);
-        if (!DungeonDropPolicy.PassesNormalCardRoll(cardBonusPercent, roll))
+        if (!DungeonDropPolicy.PassesNormalCardRoll(cardBonusPercent, roll, monsterMaximumHp))
         {
             entry = null!;
             return false;
@@ -158,15 +175,59 @@ public static class CardCatalog
         return TrySelectDungeonDrop(clientEpisode, monsterResourceCode, out entry);
     }
 
+    private static readonly Dictionary<byte, int> CardTypeDropWeight = new()
+    {
+        [5] = 700,
+        [6] = 700,
+        [9] = 1300
+    };
+
+    private static int GetCardTypeWeight(byte cardType)
+        => CardTypeDropWeight.TryGetValue(cardType, out var weight) ? weight : 1000;
+
+    internal static bool TryWeightedSelectForTest(
+        IReadOnlyList<CardCatalogEntry> candidates,
+        int roll,
+        out CardCatalogEntry entry)
+        => TryWeightedSelect(candidates, out entry, roll);
+
+    private static bool TryWeightedSelect(
+        IReadOnlyList<CardCatalogEntry> candidates,
+        out CardCatalogEntry entry,
+        int? deterministicRoll = null)
+    {
+        entry = null!;
+        if (candidates.Count == 0)
+            return false;
+        var totalWeight = candidates.Sum(candidate => GetCardTypeWeight(candidate.CardType));
+        var roll = deterministicRoll ?? RandomNumberGenerator.GetInt32(totalWeight);
+        if (roll is < 0 || roll >= totalWeight)
+            throw new ArgumentOutOfRangeException(nameof(deterministicRoll));
+        foreach (var candidate in candidates)
+        {
+            roll -= GetCardTypeWeight(candidate.CardType);
+            if (roll < 0)
+            {
+                entry = candidate;
+                return true;
+            }
+        }
+        entry = candidates[^1];
+        return true;
+    }
+
     private static IReadOnlyList<CardCatalogEntry> Load()
     {
-        var result = new List<CardCatalogEntry>(310);
-        // ddakg._D4 field 5 is the exact item produced by the client's
-        // one-card DDAKGI_UNION branch (sub_9BE850 reads record+0xC4).
-        LoadFixedRecords(result, NormalResourceName, "PICTURECARD", 3, 17, 200, 1, 0, 1, 20, 12, 5, 6,
+        var result = new List<CardCatalogEntry>(530);
+        // ddakg._D4 has two 210-record ordinary albums; the last ten rows in
+        // each are gold-powder synthesis outputs and are excluded from drops.
+        LoadFixedRecords(result, NormalResourceName, "PICTURECARD", 3, 17, 210, 1, 0, 1, 20, 12, 5, 6,
             dropRegionField: 13, episodeField: 14, dropTypeField: 8, sourceMonstersField: 15, mapNameField: 16,
-            monsterImageField: 11);
-        LoadFixedRecords(result, EventResourceName, "EVENTDDAKGI", 2, 12, 100, 2, 0, 1, 20, 8, null, null, @"images\ddakg_images\");
+            monsterImageField: 11, cardTypeField: 7);
+        LoadFixedRecords(result, NormalResourceName, "PICTURECARD", 3, 17, 210, 2, 0, 1, 20, 12, 5, 6,
+            dropRegionField: 13, episodeField: 14, dropTypeField: 8, sourceMonstersField: 15, mapNameField: 16,
+            monsterImageField: 11, cardTypeField: 7, firstRecord: 210);
+        LoadFixedRecords(result, EventResourceName, "EVENTDDAKGI", 2, 12, 100, 3, 0, 1, 10, 8, null, null, @"images\ddakg_images\");
         // Sddakg declares ten fixed-layout VIP cards in its header. Later
         // reward-list records are variable length and are not card-book slots.
         // Sddakg._D35 fields 4 and 5 are the native special-card shop's
@@ -198,15 +259,17 @@ public static class CardCatalog
         int? mapNameField = null,
         int? monsterImageField = null,
         int? specialShopPurchasableField = null,
-        int? specialShopPriceField = null)
+        int? specialShopPriceField = null,
+        int? cardTypeField = null,
+        int firstRecord = 0)
     {
         var fields = DecryptFields(resourceName);
-        if (fields.Length < headerFields + recordFields * recordCount || fields[0] != header)
+        if (fields.Length < headerFields + recordFields * (firstRecord + recordCount) || fields[0] != header)
             throw new InvalidDataException($"The embedded {header} card catalog is invalid.");
 
         for (var index = 0; index < recordCount; index++)
         {
-            var offset = headerFields + index * recordFields;
+            var offset = headerFields + (firstRecord + index) * recordFields;
             if (!uint.TryParse(fields[offset + codeField], NumberStyles.None, CultureInfo.InvariantCulture, out var cardCode))
                 throw new InvalidDataException($"The embedded {header} card at index {index} has an invalid code.");
             uint synthesisItemCode = 0;
@@ -242,6 +305,7 @@ public static class CardCatalog
                 DropRegion = ParseByteField(fields, offset, dropRegionField),
                 Episode = ParseByteField(fields, offset, episodeField),
                 DropType = ParseByteField(fields, offset, dropTypeField),
+                CardType = ParseByteField(fields, offset, cardTypeField),
                 MonsterTargetCode = monsterImageField is int targetField
                     ? ParseMonsterTargetCode(fields[offset + targetField])
                     : 0,
@@ -284,7 +348,7 @@ public static class CardCatalog
         if (!resourceName.StartsWith(ClientDataResourcePrefix, StringComparison.Ordinal))
             throw new InvalidDataException($"Invalid client catalog name: {resourceName}");
         var fileName = resourceName[ClientDataResourcePrefix.Length..];
-        var catalogPath = Path.Combine(AppContext.BaseDirectory, "资源", "数据", fileName);
+        var catalogPath = Path.Combine(AppContext.BaseDirectory, "璧勬簮", "鏁版嵁", fileName);
         if (!File.Exists(catalogPath))
             throw new FileNotFoundException($"Missing client catalog: {catalogPath}", catalogPath);
         using var aes = Aes.Create();

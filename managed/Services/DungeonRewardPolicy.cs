@@ -136,14 +136,20 @@ internal static class DungeonDropPolicy
     // The client proves the card pool and item protocol, but not the official
     // adapter's base probability. Keep the fallback in one explicit policy
     // value instead of deriving a fake probability from ddakg.DropType.
-    internal const int NormalCardBaseBasisPoints = 100;
+    internal const int NormalCardBaseBasisPoints = 560;
+    internal const int CardOrdinaryDropMinimumHp = 0;
 
-    public static bool PassesNormalCardRoll(int cardBonusPercent, int rollBasisPoints)
+    public static bool PassesNormalCardRoll(
+        int cardBonusPercent,
+        int rollBasisPoints,
+        int monsterMaximumHp)
     {
         if (cardBonusPercent is < 0 or > 10_000)
             throw new ArgumentOutOfRangeException(nameof(cardBonusPercent));
         if (rollBasisPoints is < 0 or >= 10_000)
             throw new ArgumentOutOfRangeException(nameof(rollBasisPoints));
+        if (monsterMaximumHp <= 0 || monsterMaximumHp < CardOrdinaryDropMinimumHp)
+            return false;
 
         var threshold = Math.Min(
             10_000,

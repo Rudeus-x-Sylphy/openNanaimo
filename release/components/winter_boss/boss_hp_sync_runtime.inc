@@ -3,6 +3,7 @@
 #ifndef NANAIMO_BOSS_HP_SYNC_RUNTIME_WINTER_P01_INC
 #define NANAIMO_BOSS_HP_SYNC_RUNTIME_WINTER_P01_INC
 #include "../boss/component_data.inc"
+#include "../cards/card_manual_boss_pool.inc"
 #define BOSS_HP_SYNC_MAX_HP 4000u
 #define BOSS_HP_SYNC_MAX_CHILDREN 256u
 #define BOSS_HP_SYNC_DAMAGE 210u
@@ -35,6 +36,10 @@
 #define BOSS_HP_SYNC_TABLE_ERROR -7
 #define BOSS_HP_SYNC_TERMINAL_QUARANTINED -8
 #define BOSS_HP_SYNC_ZERO_GATE_QUARANTINED -9
+#define BOSS_HP_SYNC_CARD_POOL_UNRESOLVED 0xFFFFFFFFu
+#ifndef CARD_BOSS_DROP_UNCATALOGUED_FALLBACK
+#define CARD_BOSS_DROP_UNCATALOGUED_FALLBACK 0u
+#endif
 struct boss_hp_sync_context {
     unsigned stage,map_epoch,battle_epoch,phase,hp,cumulative_damage,request_count,applied_hit_count,terminal_response_count;
     unsigned hd,dungeon,stage_index,difficulty,absolute_slot;
@@ -70,6 +75,7 @@ struct boss_hp_sync_result {
     unsigned owner_key,source_index,phase_candidate,attack_value,have_attack,basis,mode_index,mode_count,intermediate_terminal,phase_transition_retire,final_terminal;
     unsigned wire_mode,wire_child,wire_ordinal,expected_ordinal,target_mismatch,mode_error,profile_kind,component_route_collapsed;
     unsigned absolute_slot,target_type,fallback_used,lookup_miss,invalid_slot,resource_mode_hp,fixed_damage_policy,zero_hp_gate;
+    unsigned card_pool_key,card_pool_hd;
 #if TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
     unsigned retire_child,child_max_hp,child_hp,child_first_terminal,child_repeated_terminal;
 #if TEAMPLAY_FEATURE_BOSS_MONOTONIC_CHILD_PHASE
@@ -98,7 +104,13 @@ static unsigned boss_hp_sync_get16(const unsigned char*p,unsigned off){return (u
 static unsigned boss_hp_sync_get32(const unsigned char*p,unsigned off){return (unsigned)p[off]|((unsigned)p[off+1]<<8)|((unsigned)p[off+2]<<16)|((unsigned)p[off+3]<<24);}
 static void boss_hp_sync_put16(unsigned char*p,unsigned off,unsigned v){p[off]=(unsigned char)v;p[off+1]=(unsigned char)(v>>8);}
 static void boss_hp_sync_put32(unsigned char*p,unsigned off,unsigned v){p[off]=(unsigned char)v;p[off+1]=(unsigned char)(v>>8);p[off+2]=(unsigned char)(v>>16);p[off+3]=(unsigned char)(v>>24);}
-static void boss_hp_sync_zero_result(struct boss_hp_sync_result*r){memset(r,0,sizeof(*r));}
+static void boss_hp_sync_zero_result(const struct boss_hp_sync_context*c,struct boss_hp_sync_result*r){
+    memset(r,0,sizeof(*r));
+    r->card_pool_hd=(c&&c->profile)?(unsigned)c->profile->hd:BOSS_HP_SYNC_CARD_POOL_UNRESOLVED;
+    r->card_pool_key=(c&&c->profile)?(((unsigned)c->profile->episode<<25)|((unsigned)c->profile->dungeon<<23)|
+                                      ((unsigned)c->profile->stage_index<<22)|((unsigned)c->profile->slot<<18))
+                                    :BOSS_HP_SYNC_CARD_POOL_UNRESOLVED;
+}
 static int boss_hp_sync_mode_transition_needs_component_retire(const struct boss_hp_sync_context*c,const struct boss_hp_sync_result*r){
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
     /* A child terminal does not replace the exact component terminal edge. */
@@ -367,7 +379,7 @@ static int boss_hp_sync_apply_d011_attack(struct boss_hp_sync_context*c,const un
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
     unsigned completion_shell_hit=0u,completion_shell_first_observed=0u;
 #endif
-    boss_hp_sync_zero_result(r);if(len!=BOSS_HP_SYNC_D011_LEN)return BOSS_HP_SYNC_BAD_LENGTH;if(c->phase!=BOSS_HP_SYNC_PHASE_RUNNING&&c->phase!=BOSS_HP_SYNC_PHASE_TERMINAL)return BOSS_HP_SYNC_BAD_PHASE;c->request_count++;boss_hp_sync_fill_common(c,req,r);r->attack_value=attack_value;r->have_attack=have_attack;r->fallback_used=have_attack?0u:1u;
+    boss_hp_sync_zero_result(c,r);if(len!=BOSS_HP_SYNC_D011_LEN)return BOSS_HP_SYNC_BAD_LENGTH;if(c->phase!=BOSS_HP_SYNC_PHASE_RUNNING&&c->phase!=BOSS_HP_SYNC_PHASE_TERMINAL)return BOSS_HP_SYNC_BAD_PHASE;c->request_count++;boss_hp_sync_fill_common(c,req,r);r->attack_value=attack_value;r->have_attack=have_attack;r->fallback_used=have_attack?0u:1u;
     if(c->invalid_slot)return BOSS_HP_SYNC_INVALID_SLOT;if(c->lookup_miss||!c->profile)return BOSS_HP_SYNC_LOOKUP_MISS;
     if(c->phase==BOSS_HP_SYNC_PHASE_TERMINAL||c->final_terminal_seen){
         c->phase=BOSS_HP_SYNC_PHASE_TERMINAL;
@@ -526,7 +538,7 @@ static int boss_hp_sync_apply_runtime_component(struct boss_hp_sync_context*c,un
     if(slot==BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS){for(i=0u;i<n;i++)if(!c->runtime_selector_bound[i]){slot=i;c->runtime_selector_bound[i]=1u;c->runtime_selector[i]=selector;break;}}
     if(slot==BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS)return BOSS_HP_SYNC_BAD_TARGET;
     def=&boss_component_boss_components[c->component_def_index[slot]];
-    boss_hp_sync_zero_result(r);r->stage=c->stage;r->battle_epoch=c->battle_epoch;r->request_count=++c->request_count;r->wire_mode=c->mode_index;r->wire_child=def->child;r->wire_ordinal=def->ordinal;r->target_ordinal=def->ordinal;r->retire_child=def->child;r->child_max_hp=c->child_max_hp[def->child];r->child_hp=c->child_hp[def->child];r->mode_index=c->mode_index;r->mode_count=c->mode_count;r->profile_kind=c->profile_kind;r->absolute_slot=c->absolute_slot;r->component_slot=slot;r->component_max_hp=c->component_max_hp[slot];r->component_hp=c->component_hp[slot];r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;r->have_attack=1u;r->attack_value=attack_value;r->basis=def->basis;
+    boss_hp_sync_zero_result(c,r);r->stage=c->stage;r->battle_epoch=c->battle_epoch;r->request_count=++c->request_count;r->wire_mode=c->mode_index;r->wire_child=def->child;r->wire_ordinal=def->ordinal;r->target_ordinal=def->ordinal;r->retire_child=def->child;r->child_max_hp=c->child_max_hp[def->child];r->child_hp=c->child_hp[def->child];r->mode_index=c->mode_index;r->mode_count=c->mode_count;r->profile_kind=c->profile_kind;r->absolute_slot=c->absolute_slot;r->component_slot=slot;r->component_max_hp=c->component_max_hp[slot];r->component_hp=c->component_hp[slot];r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;r->have_attack=1u;r->attack_value=attack_value;r->basis=def->basis;
     if(c->component_terminal_sent[slot]){r->component_repeated_terminal=1u;return BOSS_HP_SYNC_OK;}
     damage=attack_value>def->basis?attack_value-def->basis:1u;if(damage>c->component_hp[slot])damage=c->component_hp[slot];c->component_hp[slot]-=damage;c->child_hp[def->child]-=damage;r->child_hp=c->child_hp[def->child];c->hp=c->hp>damage?c->hp-damage:0u;c->cumulative_damage=c->mode_max_hp-c->hp;c->applied_hit_count++;r->applied_damage=damage;r->component_hp=c->component_hp[slot];r->hp=c->hp;r->cumulative_damage=c->cumulative_damage;
     if(c->component_hp[slot]==0u){c->component_terminal_sent[slot]=1u;r->component_first_terminal=1u;}
@@ -540,7 +552,7 @@ static int boss_hp_sync_apply_runtime_component(struct boss_hp_sync_context*c,un
    It cannot open a new mode or redirect a completed component to a sibling. */
 static int boss_hp_sync_apply_external_component_damage(struct boss_hp_sync_context*c,unsigned mode,unsigned child,unsigned ordinal,unsigned damage,struct boss_hp_sync_result*r){
     const struct boss_component_boss_component*def=0;unsigned slot=0u,requests;unsigned char req[BOSS_HP_SYNC_D011_LEN];int rc;
-    boss_hp_sync_zero_result(r);
+    boss_hp_sync_zero_result(c,r);
     if(!c||c->phase!=BOSS_HP_SYNC_PHASE_RUNNING)return BOSS_HP_SYNC_BAD_PHASE;
     if(c->invalid_slot)return BOSS_HP_SYNC_INVALID_SLOT;
     if(c->lookup_miss||!c->profile)return BOSS_HP_SYNC_LOOKUP_MISS;
@@ -558,7 +570,7 @@ static int boss_hp_sync_apply_external_component_damage(struct boss_hp_sync_cont
     c->request_count=requests;r->request_count=requests;boss_hp_sync_project_multimode_recording(c,r);return rc;
 }
 static int boss_hp_sync_apply_external_contact(struct boss_hp_sync_context*c,const unsigned char*req,unsigned len,unsigned damage,struct boss_hp_sync_result*r){
-    boss_hp_sync_zero_result(r);if(len!=0x1Cu)return BOSS_HP_SYNC_BAD_LENGTH;
+    boss_hp_sync_zero_result(c,r);if(len!=0x1Cu)return BOSS_HP_SYNC_BAD_LENGTH;
     if(boss_hp_sync_get16(req,0x08)!=40u)return BOSS_HP_SYNC_BAD_TARGET;
     return boss_hp_sync_apply_external_component_damage(c,req[0x10],req[0x11],boss_hp_sync_get16(req,0x12),damage,r);
 }
@@ -566,7 +578,7 @@ static int boss_hp_sync_apply_external_contact(struct boss_hp_sync_context*c,con
    damage value must never be distributed over an ambiguous component topology. */
 static int boss_hp_sync_apply_external_damage(struct boss_hp_sync_context*c,unsigned damage,struct boss_hp_sync_result*r){
     unsigned i,n=0u;const struct boss_component_boss_component*def=0;int rc;
-    boss_hp_sync_zero_result(r);if(!c||c->phase!=BOSS_HP_SYNC_PHASE_RUNNING)return BOSS_HP_SYNC_BAD_PHASE;
+    boss_hp_sync_zero_result(c,r);if(!c||c->phase!=BOSS_HP_SYNC_PHASE_RUNNING)return BOSS_HP_SYNC_BAD_PHASE;
     if(c->invalid_slot)return BOSS_HP_SYNC_INVALID_SLOT;if(c->lookup_miss||!c->profile)return BOSS_HP_SYNC_LOOKUP_MISS;if(c->awaiting_next_mode)return BOSS_HP_SYNC_BAD_MODE;
     for(i=0;i<c->component_count;i++)if(c->component_max_hp[i]){def=&boss_component_boss_components[c->component_def_index[i]];n++;}
     if(n!=1u)return BOSS_HP_SYNC_BAD_TARGET;
@@ -574,6 +586,32 @@ static int boss_hp_sync_apply_external_damage(struct boss_hp_sync_context*c,unsi
     r->component_first_terminal=0u;r->phase_transition_retire=0u;return rc;
 }
 #endif
+static unsigned boss_hp_sync_terminal_card(const struct boss_hp_sync_result*r){
+    const unsigned char*grades=0;const unsigned*pool=0;unsigned count=0u,producer=(r?r->stage:0u);
+    if(r&&r->card_pool_key!=BOSS_HP_SYNC_CARD_POOL_UNRESOLVED)
+        pool=card_manual_boss_lookup(r->card_pool_hd,r->card_pool_key,&grades,&count);
+    if(!pool&&r&&r->card_pool_key!=BOSS_HP_SYNC_CARD_POOL_UNRESOLVED){
+        int secret_set=card_secret_set_index(r->card_pool_key>>25);
+        if(secret_set>=0){
+            unsigned card=card_drop_create_from(1u,producer,card_secret_set_cards[secret_set],card_secret_set_grades,CARD_SECRET_SET_SIZE);
+            printf("  [CARD] boss-secret-set key=%u set=%d code=%u\n",r->card_pool_key,secret_set,card);fflush(0);
+            return card;
+        }
+    }
+    if(!pool&&r&&r->card_pool_key!=BOSS_HP_SYNC_CARD_POOL_UNRESOLVED)
+        pool=card_drop_pool_boss_lookup(r->card_pool_key,&grades,&count);
+    if(pool&&count){
+        unsigned card=card_drop_create_from(1u,producer,pool,grades,count);
+        printf("  [CARD] boss-own-card key=%u pool=%u code=%u\n",r->card_pool_key,count,card);fflush(0);
+        return card;
+    }
+#if CARD_BOSS_DROP_UNCATALOGUED_FALLBACK
+    return card_drop_create(1u,producer);
+#else
+    printf("  [CARD] boss-no-own-card key=%u\n",r?r->card_pool_key:0u);fflush(0);
+    return 0u;
+#endif
+}
 static int boss_hp_sync_encode_d012_payload(unsigned char*frame,unsigned len,const struct boss_hp_sync_result*r){
     if(len!=BOSS_HP_SYNC_D012_LEN)return BOSS_HP_SYNC_BAD_LENGTH;
     memset(frame+0x18,0,BOSS_HP_SYNC_D012_LEN-0x18u);
@@ -596,7 +634,7 @@ static int boss_hp_sync_encode_d012_payload(unsigned char*frame,unsigned len,con
     if((r->component_first_terminal&&!r->intermediate_terminal)||transition_target)boss_hp_sync_put16(frame,0x1A,r->target_ordinal);
 #endif
     if(r->intermediate_terminal){/* addressed old-mode retirement; all state/reward fields stay zero */}
-    else if(r->first_terminal){boss_hp_sync_put32(frame,0x1C,BOSS_HP_SYNC_TERMINAL_REWARD);boss_hp_sync_put32(frame,0x20,card_drop_create(1u,r->stage));boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
+    else if(r->first_terminal){boss_hp_sync_put32(frame,0x1C,BOSS_HP_SYNC_TERMINAL_REWARD);boss_hp_sync_put32(frame,0x20,boss_hp_sync_terminal_card(r));boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
     else if(r->repeated_terminal){boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
     else boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_NORMAL_MARKER);
     /* Native +0x28 drives both the boss bar (6EC979 -> 6BF200) and the mode-completion gate (6ED62D/6BE8D9). A published recording carries the selected visual ledger; at an authored mode boundary or final parallel-component terminal it is zero, which is what the completion gate reads. Results that carry no published ledger keep the neutral rule. */

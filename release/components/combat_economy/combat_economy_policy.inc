@@ -10,6 +10,10 @@
 #define COMBAT_ECONOMY_COLLISION_PLAYER_DAMAGE 100u
 #define COMBAT_ECONOMY_REWARD_MIN_HP 200u
 #define COMBAT_ECONOMY_COIN_HP_DIVISOR 50u
+/* Card eligibility is intentionally independent of the Hans floor above. */
+#ifndef CARD_ORDINARY_DROP_MIN_HP
+#define CARD_ORDINARY_DROP_MIN_HP 0u
+#endif
 
 #define COMBAT_ECONOMY_PON_LOOKUP_RESOURCE_EXACT 1u
 #define COMBAT_ECONOMY_PON_LOOKUP_ZERO 2u
@@ -53,4 +57,5 @@ static unsigned combat_economy_score_boss_terminal(struct battle_score_context*s
 }
 static unsigned combat_economy_coin_amount_for_hp(unsigned monster_hp){return monster_hp<COMBAT_ECONOMY_REWARD_MIN_HP?0u:monster_hp/COMBAT_ECONOMY_COIN_HP_DIVISOR;}
 static int combat_economy_reward_hp_eligible(unsigned monster_hp){return monster_hp>=COMBAT_ECONOMY_REWARD_MIN_HP;}
+static int card_ordinary_drop_hp_eligible(unsigned monster_hp){return monster_hp>0u&&monster_hp>=CARD_ORDINARY_DROP_MIN_HP;}
 #endif

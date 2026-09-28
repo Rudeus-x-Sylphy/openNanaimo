@@ -6690,6 +6690,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                                 collisionRoom.BattleEpisode,
                                 combatTemplate.ResourceCode,
                                 cardDropBonusPercent,
+                                combatTemplate.Hp,
                                 out var droppedCard))
                         {
                             RegisterGeneratedDungeonCardLocked(

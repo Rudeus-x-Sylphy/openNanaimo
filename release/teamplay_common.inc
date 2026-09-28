@@ -156,8 +156,12 @@
 #endif
 #define NANAIMO_ADAPTER_EVIDENCE_LOG_V2 1
 #define MONSTER_HP_ENABLE_PON_ATTACK_CANDIDATES 1
+/* Reference-server policy: only a monster mapped by ddakg may roll a card. */
 #ifndef CARD_ORDINARY_DROP_PERCENT
-#define CARD_ORDINARY_DROP_PERCENT 5u
+#define CARD_ORDINARY_DROP_PERCENT 30u
+#endif
+#ifndef CARD_DROP_POOL_STRICT
+#define CARD_DROP_POOL_STRICT 1
 #endif
 typedef void FILE;
 extern void* __attribute__((cdecl)) fopen(const char*, const char*);extern int __attribute__((cdecl)) fclose(void*);extern char* __attribute__((cdecl)) fgets(char*, int, void*);extern int __attribute__((cdecl)) sscanf(const char*, const char*, ...);extern char* __attribute__((cdecl)) strchr(const char*, int);extern int __attribute__((cdecl)) fprintf(void*, const char*, ...);extern int __attribute__((cdecl)) remove(const char*);extern int __attribute__((cdecl)) rename(const char*,const char*);
@@ -196,6 +200,9 @@ extern void* __attribute__((cdecl)) fopen(const char*, const char*);extern int _
 #include "components/skills/progress_runtime.inc"
 #include "components/cards/card_system.inc"
 #endif
+/* Generated Boss and secret-stage pools must precede the Boss runtime. */
+#include "components/cards/card_drop_pool_boss_data.inc"
+#include "components/cards/card_secret_pool_data.inc"
 #include "components/winter_boss/boss_hp_sync_runtime.inc"
 #if TEAMPLAY_FEATURE_MAP_IDENTITY_GENERIC
 #include "components/combat_attribution/map_identity_runtime.inc"

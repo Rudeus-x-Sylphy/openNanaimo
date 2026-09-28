@@ -1036,14 +1036,13 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                     } else if(type==0xD034 && len==16){
                         unsigned category=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8);unsigned scene_uid=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);unsigned item_type=(unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8)|((unsigned char)buf[off+14]<<16)|((unsigned char)buf[off+15]<<24);
                         printf("  [GS %d] GOT D034 pickup category=%u scene=%u item=%u tick=%u\n",port,category,scene_uid,item_type,tickms()); fflush(0);
-                        if(category==20u){int grant=card_pickup_commit(scene_uid,item_type);printf("  [CARD] pickup category=%u result=%d code=%u scene=%u\n",category,grant,item_type,scene_uid);fflush(0);
+                        if(category==20u||category==30u){int grant=card_pickup_commit(scene_uid,item_type);printf("  [CARD] pickup category=%u result=%d code=%u scene=%u\n",category,grant,item_type,scene_uid);fflush(0);
 #if TEAMPLAY_FEATURE_PICKUP_ROOM_BROADCAST
                         if(grant==1){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else{printf("  [MULTI_DROP] suppress card duplicate/unoffered uid=%u category=%u scene=%u item=%u result=%d\n",multiplayer_current_uid(),category,scene_uid,item_type,grant);fflush(0);}
 #else
                         if(grant){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}
 #endif
                         }
-                        else if(category==30u){int grant=card_pickup_commit(scene_uid,item_type);printf("  [CARD] pickup category=30 result=%d code=%u scene=%u\n",grant,item_type,scene_uid);fflush(0);if(grant==1){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else if(grant==2){printf("  [MULTI_DROP] suppress category30 duplicate card uid=%u scene=%u item=%u\n",multiplayer_current_uid(),scene_uid,item_type);fflush(0);}else{int claim_ok=teamplay_drop_claim(category,scene_uid,item_type,multiplayer_current_uid());if(claim_ok){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else{printf("  [MULTI_DROP] suppress category30 duplicate/unoffered uid=%u scene=%u item=%u\n",multiplayer_current_uid(),scene_uid,item_type);fflush(0);}}}
                         else{int claim_ok=teamplay_drop_claim(category,scene_uid,item_type,multiplayer_current_uid());if(claim_ok){if(item_type==2u){combat_hp=pet_crafting_pet_effective_hp_max();injury_dead=0;}sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else{printf("  [MULTI_DROP] suppress duplicate/unoffered pickup uid=%u category=%u scene=%u item=%u\n",multiplayer_current_uid(),category,scene_uid,item_type);fflush(0);}}
                     } else if(type==0xCF73 && len==8){
                         post_reset_pending=post_reset_seen_c587=post_reset_seen_cf70=0;pending_super_cf87=0;

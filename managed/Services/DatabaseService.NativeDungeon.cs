@@ -134,7 +134,7 @@ public sealed partial class DatabaseService
     {
         var result = ParseCountSidecar(path, "card");
         foreach (var (code, quantity) in result)
-            if (code is < 13000001 or > 13000420 || quantity > byte.MaxValue
+            if (quantity > byte.MaxValue
                 || !CardCatalog.TryGetAlbumCoordinate(code, out _, out _, out _))
                 throw new InvalidDataException($"Card sidecar contains an invalid card {code}.");
         return result;

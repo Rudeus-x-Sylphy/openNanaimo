@@ -1,0 +1,4505 @@
+{
+  "schema": 1,
+  "provenance": {
+    "source_root": "E:\\\\QQ??????\\\\9.27???\\\\?????\\\\??",
+    "monster_table_sha256": "832F14A9481B0CFD8D1F6790CC987A9DCCC969C8738050BEB830E1AC97A0E4E3",
+    "boss_table_sha256": "9236067C534B8BB9A5F28455B3D140C673E2A9BC822FDFB4A8365FE9871C6B15",
+    "note": "Manual supplements reconstructed from the upstream generated tables because the upstream package omitted its original manual-list source."
+  },
+  "monster_name_supplements": [
+    {
+      "resource": "ep12_dg02_mb_126_00.mmo",
+      "monster_code": 30128,
+      "cards": [
+        13000322,
+        13000323
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg01_mb_125_00.mmo",
+      "monster_code": 30127,
+      "cards": [
+        13000338,
+        13000344,
+        13000345
+      ],
+      "grades": [
+        2,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep10_dg01_mb_100_00.mmo",
+      "monster_code": 30102,
+      "cards": [
+        13000283,
+        13000286
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep09_dg01_mb_89_00.mmo",
+      "monster_code": 30091,
+      "cards": [
+        13000267
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep11_dg00_mb_111_01.mmo",
+      "monster_code": 30113,
+      "cards": [
+        13000293,
+        13000303
+      ],
+      "grades": [
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg02_mb_153_00.mmo",
+      "monster_code": 30155,
+      "cards": [
+        13000408,
+        13000409
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep09_dg01_mb_90_01.mmo",
+      "monster_code": 30092,
+      "cards": [
+        13000259
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_120_03.mmo",
+      "monster_code": 30122,
+      "cards": [
+        13000313,
+        13000315
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_130_03.mmo",
+      "monster_code": 30132,
+      "cards": [
+        13000346,
+        13000347,
+        13000348,
+        13000349
+      ],
+      "grades": [
+        4,
+        4,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_121_00.mmo",
+      "monster_code": 30123,
+      "cards": [
+        13000326,
+        13000327
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg02_m_126_00.mmo",
+      "monster_code": 20126,
+      "cards": [
+        13000330
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_143_00.mmo",
+      "monster_code": 30145,
+      "cards": [
+        13000382,
+        13000388,
+        13000389
+      ],
+      "grades": [
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_143_01.mmo",
+      "monster_code": 30145,
+      "cards": [
+        13000382,
+        13000388,
+        13000389
+      ],
+      "grades": [
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg00_mb_61_00.mmo",
+      "monster_code": 30063,
+      "cards": [
+        13000215,
+        13000224
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg02_m_144_02.mmo",
+      "monster_code": 20144,
+      "cards": [
+        13000372
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg01_mb_103_00.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000287
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep09_dg02_mb_94_01.mmo",
+      "monster_code": 30096,
+      "cards": [
+        13000262
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_141_02.mmo",
+      "monster_code": 30143,
+      "cards": [
+        13000360,
+        13000386,
+        13000387
+      ],
+      "grades": [
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_148_02.mmo",
+      "monster_code": 30150,
+      "cards": [
+        13000383,
+        13000395
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep09_dg01_mb_88_01.mmo",
+      "monster_code": 30090,
+      "cards": [
+        13000266
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_149_02.mmo",
+      "monster_code": 30151,
+      "cards": [
+        13000394,
+        13000397
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep11_dg02_m_116_01.mmo",
+      "monster_code": 20116,
+      "cards": [
+        13000291
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_135_01.mmo",
+      "monster_code": 30137,
+      "cards": [
+        13000337,
+        13000358
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep11_dg02_mb_118_00.mmo",
+      "monster_code": 30120,
+      "cards": [
+        13000314,
+        13000317
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ani_mon_um_02_03_down.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000036
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_74_02.mmo",
+      "monster_code": 30076,
+      "cards": [
+        13000233
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg01_m_151_03.mmo",
+      "monster_code": 20151,
+      "cards": [
+        13000392
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg02_mb_107_01.mmo",
+      "monster_code": 30109,
+      "cards": [
+        13000281
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep08_dg01_mb_78_00.mmo",
+      "monster_code": 30080,
+      "cards": [
+        13000236
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep08_dg02_mb_80_00.mmo",
+      "monster_code": 30082,
+      "cards": [
+        13000243,
+        13000246
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg00_m_147_03.mmo",
+      "monster_code": 20147,
+      "cards": [
+        13000379
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep12_dg00_m_120_03.mmo",
+      "monster_code": 20120,
+      "cards": [
+        13000311
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg02_mb_95_00.mmo",
+      "monster_code": 30097,
+      "cards": [
+        13000258,
+        13000278
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep11_dg01_mb_112_00.mmo",
+      "monster_code": 30114,
+      "cards": [
+        13000297,
+        13000306
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg00_mb_60_01.mmo",
+      "monster_code": 30062,
+      "cards": [
+        13000217
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_140_01.mmo",
+      "monster_code": 30142,
+      "cards": [
+        13000359,
+        13000381
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ani_mon_um_02_03_up.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000036
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg01_mb_151_03.mmo",
+      "monster_code": 30153,
+      "cards": [
+        13000398,
+        13000400
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep06_dg02_mb_59_01.mmo",
+      "monster_code": 30061,
+      "cards": [
+        13000214
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep09_dg01_mb_89_01.mmo",
+      "monster_code": 30091,
+      "cards": [
+        13000267
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_142_02.mmo",
+      "monster_code": 30144,
+      "cards": [
+        13000363,
+        13000373
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_120_01.mmo",
+      "monster_code": 30122,
+      "cards": [
+        13000313,
+        13000315
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep09_dg00_mb_87_00.mmo",
+      "monster_code": 30089,
+      "cards": [
+        13000261
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep15_dg02_mb_153_01.mmo",
+      "monster_code": 30155,
+      "cards": [
+        13000408,
+        13000409
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg02_mb_71_01.mmo",
+      "monster_code": 30073,
+      "cards": [
+        13000237
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_134_02.mmo",
+      "monster_code": 30136,
+      "cards": [
+        13000355,
+        13000366,
+        13000367
+      ],
+      "grades": [
+        2,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_72_00.mmo",
+      "monster_code": 30074,
+      "cards": [
+        13000238,
+        13000244
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg00_m_63_01.mmo",
+      "monster_code": 20063,
+      "cards": [
+        13000212
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg01_mb_65_00.mmo",
+      "monster_code": 30067,
+      "cards": [
+        13000219,
+        13000226
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep06_dg02_mb_58_00.mmo",
+      "monster_code": 30060,
+      "cards": [
+        13000213
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_130_02.mmo",
+      "monster_code": 30132,
+      "cards": [
+        13000346,
+        13000347,
+        13000348,
+        13000349
+      ],
+      "grades": [
+        4,
+        4,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_137_02.mmo",
+      "monster_code": 30139,
+      "cards": [
+        13000368,
+        13000369
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_149_00.mmo",
+      "monster_code": 30151,
+      "cards": [
+        13000394,
+        13000397
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_142_01.mmo",
+      "monster_code": 30144,
+      "cards": [
+        13000363,
+        13000373
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg02_mb_128_01.mmo",
+      "monster_code": 30129,
+      "cards": [
+        13000332,
+        13000333
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep11_dg00_mb_109_00.mmo",
+      "monster_code": 30111,
+      "cards": [
+        13000305
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_129_03.mmo",
+      "monster_code": 30131,
+      "cards": [
+        13000340,
+        13000341
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg00_m_129_00.mmo",
+      "monster_code": 20129,
+      "cards": [
+        13000335
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_75_00.mmo",
+      "monster_code": 30077,
+      "cards": [
+        13000240
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_145_02.mmo",
+      "monster_code": 30147,
+      "cards": [
+        13000377,
+        13000378
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep09_dg01_mb_88_00.mmo",
+      "monster_code": 30090,
+      "cards": [
+        13000266
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg01_m_151_01.mmo",
+      "monster_code": 20151,
+      "cards": [
+        13000392
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep11_dg02_m_116_00.mmo",
+      "monster_code": 20116,
+      "cards": [
+        13000291
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_135_03.mmo",
+      "monster_code": 30137,
+      "cards": [
+        13000337,
+        13000358
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg00_m_131_00.mmo",
+      "monster_code": 20131,
+      "cards": [
+        13000339
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ani_mon_um_02_02_up.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000036
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_132_00.mmo",
+      "monster_code": 30134,
+      "cards": [
+        13000353,
+        13000364,
+        13000365
+      ],
+      "grades": [
+        2,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep09_dg01_m_91_01.mmo",
+      "monster_code": 20091,
+      "cards": [
+        13000256
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg02_m_95_01.mmo",
+      "monster_code": 20095,
+      "cards": [
+        13000270
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep03_dg00_mb_26_s03.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000086,
+        13000097
+      ],
+      "grades": [
+        4,
+        2
+      ]
+    },
+    {
+      "resource": "ep08_dg01_mb_76_01.mmo",
+      "monster_code": 30078,
+      "cards": [
+        13000234,
+        13000245
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_138_01.mmo",
+      "monster_code": 30140,
+      "cards": [
+        13000354,
+        13000362
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_131_01.mmo",
+      "monster_code": 30133,
+      "cards": [
+        13000334,
+        13000342
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep09_dg00_mb_84_00.mmo",
+      "monster_code": 30086,
+      "cards": [
+        13000253,
+        13000264
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg01_mb_151_01.mmo",
+      "monster_code": 30153,
+      "cards": [
+        13000398,
+        13000400
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_140_00.mmo",
+      "monster_code": 30142,
+      "cards": [
+        13000359,
+        13000381
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep11_dg02_mb_117_01.mmo",
+      "monster_code": 30119,
+      "cards": [
+        13000301,
+        13000302,
+        13000309
+      ],
+      "grades": [
+        3,
+        3,
+        4
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_73_00.mmo",
+      "monster_code": 30075,
+      "cards": [
+        13000247
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg01_mb_151_02.mmo",
+      "monster_code": 30153,
+      "cards": [
+        13000398,
+        13000400
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_131_02.mmo",
+      "monster_code": 30133,
+      "cards": [
+        13000334,
+        13000342
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep07_dg01_mb_66_01.mmo",
+      "monster_code": 30068,
+      "cards": [
+        13000221
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep11_dg00_m_108_00.mmo",
+      "monster_code": 20108,
+      "cards": [
+        13000296
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg00_mb_62_01.mmo",
+      "monster_code": 30064,
+      "cards": [
+        13000218
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep15_dg00_m_149_01.mmo",
+      "monster_code": 20149,
+      "cards": [
+        13000391
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg02_m_107_01.mmo",
+      "monster_code": 20107,
+      "cards": [
+        13000290
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_142_03.mmo",
+      "monster_code": 30144,
+      "cards": [
+        13000363,
+        13000373
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_137_00.mmo",
+      "monster_code": 30139,
+      "cards": [
+        13000368,
+        13000369
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_137_03.mmo",
+      "monster_code": 30139,
+      "cards": [
+        13000368,
+        13000369
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg00_m_138_02.mmo",
+      "monster_code": 20138,
+      "cards": [
+        13000356
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep15_dg02_m_153_03.mmo",
+      "monster_code": 20153,
+      "cards": [
+        13000396
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep12_dg02_mb_128_00.mmo",
+      "monster_code": 30129,
+      "cards": [
+        13000332,
+        13000333
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_129_02.mmo",
+      "monster_code": 30131,
+      "cards": [
+        13000340,
+        13000341
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep14_dg02_m_144_03.mmo",
+      "monster_code": 20144,
+      "cards": [
+        13000372
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep15_dg00_m_147_00.mmo",
+      "monster_code": 20147,
+      "cards": [
+        13000379
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_133_00.mmo",
+      "monster_code": 30135,
+      "cards": [
+        13000343,
+        13000357
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_146_00.mmo",
+      "monster_code": 30148,
+      "cards": [
+        13000376,
+        13000393
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep15_dg01_mb_152_00.mmo",
+      "monster_code": 30154,
+      "cards": [
+        13000399,
+        13000401,
+        13000403,
+        13000406,
+        13000407
+      ],
+      "grades": [
+        3,
+        3,
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep13_dg02_m_137_00.mmo",
+      "monster_code": 20137,
+      "cards": [
+        13000352
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_138_03.mmo",
+      "monster_code": 30140,
+      "cards": [
+        13000354,
+        13000362
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep03_dg00_mb_26_s02.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000086,
+        13000097
+      ],
+      "grades": [
+        4,
+        2
+      ]
+    },
+    {
+      "resource": "ep09_dg01_m_91_00.mmo",
+      "monster_code": 20091,
+      "cards": [
+        13000256
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg01_mb_102_01.mmo",
+      "monster_code": 30104,
+      "cards": [
+        13000275
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep08_dg01_mb_78_01.mmo",
+      "monster_code": 30080,
+      "cards": [
+        13000236
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_146_03.mmo",
+      "monster_code": 30148,
+      "cards": [
+        13000376,
+        13000393
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_147_01.mmo",
+      "monster_code": 30149,
+      "cards": [
+        13000404,
+        13000405
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg02_m_128_01.mmo",
+      "monster_code": 20128,
+      "cards": [
+        13000331
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg00_mb_96_00.mmo",
+      "monster_code": 30098,
+      "cards": [
+        13000279,
+        13000284
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg01_mb_67_00.mmo",
+      "monster_code": 30069,
+      "cards": [
+        13000227
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg01_mb_151_00.mmo",
+      "monster_code": 30153,
+      "cards": [
+        13000398,
+        13000400
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_141_01.mmo",
+      "monster_code": 30143,
+      "cards": [
+        13000360,
+        13000386,
+        13000387
+      ],
+      "grades": [
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg01_mb_66_00.mmo",
+      "monster_code": 30068,
+      "cards": [
+        13000221
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep12_dg01_mb_124_00.mmo",
+      "monster_code": 30126,
+      "cards": [
+        13000320,
+        13000321
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg02_m_155_03.mmo",
+      "monster_code": 20155,
+      "cards": [
+        13000410
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg00_m_129_03.mmo",
+      "monster_code": 20129,
+      "cards": [
+        13000335
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep12_dg01_m_124_01.mmo",
+      "monster_code": 20124,
+      "cards": [
+        13000316
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg01_mb_90_00.mmo",
+      "monster_code": 30092,
+      "cards": [
+        13000259
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_133_02.mmo",
+      "monster_code": 30135,
+      "cards": [
+        13000343,
+        13000357
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_136_00.mmo",
+      "monster_code": 30138,
+      "cards": [
+        13000374,
+        13000375
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg02_m_135_03.mmo",
+      "monster_code": 20135,
+      "cards": [
+        13000351
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg02_mb_92_01.mmo",
+      "monster_code": 30094,
+      "cards": [
+        13000268
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep08_dg01_m_78_00.mmo",
+      "monster_code": 20078,
+      "cards": [
+        13000235
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep05_dg01_mb_s44_00.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000161,
+        13000166,
+        13000170
+      ],
+      "grades": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep11_dg00_mb_109_01.mmo",
+      "monster_code": 30111,
+      "cards": [
+        13000305
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep02_dg02_mb_23_s01.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000078
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep02_01_e_gate_mon_06.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000037
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep05_st02_mb_47_00.mmo",
+      "monster_code": 30048,
+      "cards": [
+        13000163,
+        13000169
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep08_dg01_m_78_03.mmo",
+      "monster_code": 20078,
+      "cards": [
+        13000235
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg02_mb_68_00.mmo",
+      "monster_code": 30070,
+      "cards": [
+        13000228,
+        13000241
+      ],
+      "grades": [
+        4,
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_135_02.mmo",
+      "monster_code": 30137,
+      "cards": [
+        13000337,
+        13000358
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep07_dg01_m_67_00.mmo",
+      "monster_code": 20067,
+      "cards": [
+        13000216
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_144_02.mmo",
+      "monster_code": 30146,
+      "cards": [
+        13000361,
+        13000380
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg02_m_153_01.mmo",
+      "monster_code": 20153,
+      "cards": [
+        13000396
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_147_00.mmo",
+      "monster_code": 30149,
+      "cards": [
+        13000404,
+        13000405
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg00_m_140_03.mmo",
+      "monster_code": 20140,
+      "cards": [
+        13000370
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep06_dg00_m_50_04.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000200
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep03_st03_e_gate_mon_23.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000078
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg02_m_155_01.mmo",
+      "monster_code": 20155,
+      "cards": [
+        13000410
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg00_mb_60_00.mmo",
+      "monster_code": 20062,
+      "cards": [
+        13000211
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg00_m_62_01.mmo",
+      "monster_code": 20062,
+      "cards": [
+        13000211
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg02_m_71_01.mmo",
+      "monster_code": 20071,
+      "cards": [
+        13000230,
+        13000231
+      ],
+      "grades": [
+        1,
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg02_m_107_00.mmo",
+      "monster_code": 20107,
+      "cards": [
+        13000290
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg00_mb_85_00.mmo",
+      "monster_code": 30087,
+      "cards": [
+        13000265
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep06_dg00_m_50_01.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000200
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg02_mb_106_00.mmo",
+      "monster_code": 30108,
+      "cards": [
+        13000277
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg01_m_133_05.mmo",
+      "monster_code": 20133,
+      "cards": [
+        13000350
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg02_mb_92_00.mmo",
+      "monster_code": 30094,
+      "cards": [
+        13000268
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep10_dg02_m_104_00.mmo",
+      "monster_code": 20104,
+      "cards": [
+        13000276
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep12_dg02_mb_127_00.mmo",
+      "monster_code": 30129,
+      "cards": [
+        13000332,
+        13000333
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep03_st03_e_gate_mon_23_l.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000078
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep09_dg00_mb_86_01.mmo",
+      "monster_code": 30088,
+      "cards": [
+        13000255
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep07_dg00_m_63_03.mmo",
+      "monster_code": 20063,
+      "cards": [
+        13000212
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_142_00.mmo",
+      "monster_code": 30144,
+      "cards": [
+        13000363,
+        13000373
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep07_dg01_m_67_01.mmo",
+      "monster_code": 20067,
+      "cards": [
+        13000216
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg01_mb_102_00.mmo",
+      "monster_code": 30104,
+      "cards": [
+        13000275
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_138_02.mmo",
+      "monster_code": 30140,
+      "cards": [
+        13000354,
+        13000362
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep15_dg00_m_149_02.mmo",
+      "monster_code": 20149,
+      "cards": [
+        13000391
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep06_dg00_m_50_05.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000200
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep11_dg02_mb_118_01.mmo",
+      "monster_code": 30120,
+      "cards": [
+        13000314,
+        13000317
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_122_00.mmo",
+      "monster_code": 30124,
+      "cards": [
+        13000318,
+        13000319
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_132_02.mmo",
+      "monster_code": 30134,
+      "cards": [
+        13000353,
+        13000364,
+        13000365
+      ],
+      "grades": [
+        2,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep11_dg01_m_112_00.mmo",
+      "monster_code": 20112,
+      "cards": [
+        13000310
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg00_mb_62_00.mmo",
+      "monster_code": 30064,
+      "cards": [
+        13000218
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg02_m_135_00.mmo",
+      "monster_code": 20135,
+      "cards": [
+        13000351
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg02_m_146_03.mmo",
+      "monster_code": 20146,
+      "cards": [
+        13000390
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg01_m_142_01.mmo",
+      "monster_code": 20142,
+      "cards": [
+        13000371
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg02_mb_93_00.mmo",
+      "monster_code": 30095,
+      "cards": [
+        13000269
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep08_dg01_mb_77_00.mmo",
+      "monster_code": 30079,
+      "cards": [
+        13000248
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_121_01.mmo",
+      "monster_code": 30123,
+      "cards": [
+        13000326,
+        13000327
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_136_01.mmo",
+      "monster_code": 30138,
+      "cards": [
+        13000374,
+        13000375
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg01_m_124_02.mmo",
+      "monster_code": 20124,
+      "cards": [
+        13000316
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_120_02.mmo",
+      "monster_code": 30122,
+      "cards": [
+        13000313,
+        13000315
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep10_dg02_m_104_02.mmo",
+      "monster_code": 20104,
+      "cards": [
+        13000276
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg02_mb_83_00.mmo",
+      "monster_code": 30085,
+      "cards": [
+        13000249,
+        13000257,
+        13000260
+      ],
+      "grades": [
+        4,
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep10_dg00_m_98_01.mmo",
+      "monster_code": 20098,
+      "cards": [
+        13000271
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg00_m_75_01.mmo",
+      "monster_code": 20075,
+      "cards": [
+        13000239
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg00_m_87_00.mmo",
+      "monster_code": 20087,
+      "cards": [
+        13000252
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep12_dg01_mb_123_00.mmo",
+      "monster_code": 30125,
+      "cards": [
+        13000328,
+        13000329,
+        13000336
+      ],
+      "grades": [
+        4,
+        4,
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_148_03.mmo",
+      "monster_code": 30150,
+      "cards": [
+        13000383,
+        13000395
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg02_m_153_02.mmo",
+      "monster_code": 20153,
+      "cards": [
+        13000396
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_130_01.mmo",
+      "monster_code": 30132,
+      "cards": [
+        13000346,
+        13000347,
+        13000348,
+        13000349
+      ],
+      "grades": [
+        4,
+        4,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg01_mb_123_01.mmo",
+      "monster_code": 30125,
+      "cards": [
+        13000328,
+        13000329,
+        13000336
+      ],
+      "grades": [
+        4,
+        4,
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg00_m_138_00.mmo",
+      "monster_code": 20138,
+      "cards": [
+        13000356
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_74_03.mmo",
+      "monster_code": 30076,
+      "cards": [
+        13000233
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_143_03.mmo",
+      "monster_code": 30145,
+      "cards": [
+        13000382,
+        13000388,
+        13000389
+      ],
+      "grades": [
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg02_m_144_01.mmo",
+      "monster_code": 20144,
+      "cards": [
+        13000372
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_143_02.mmo",
+      "monster_code": 30145,
+      "cards": [
+        13000382,
+        13000388,
+        13000389
+      ],
+      "grades": [
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep11_dg02_mb_116_01.mmo",
+      "monster_code": 30118,
+      "cards": [
+        13000300,
+        13000308
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_148_00.mmo",
+      "monster_code": 30150,
+      "cards": [
+        13000383,
+        13000395
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg01_mb_152_02.mmo",
+      "monster_code": 30154,
+      "cards": [
+        13000399,
+        13000401,
+        13000403
+      ],
+      "grades": [
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep12_dg00_m_120_02.mmo",
+      "monster_code": 20120,
+      "cards": [
+        13000311
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep11_dg01_mb_113_00.mmo",
+      "monster_code": 30115,
+      "cards": [
+        13000295,
+        13000307
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_74_00.mmo",
+      "monster_code": 30076,
+      "cards": [
+        13000233
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg02_m_146_01.mmo",
+      "monster_code": 20146,
+      "cards": [
+        13000390
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_136_03.mmo",
+      "monster_code": 30138,
+      "cards": [
+        13000374,
+        13000375
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg02_mb_126_01.mmo",
+      "monster_code": 30128,
+      "cards": [
+        13000322,
+        13000323
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg02_m_146_02.mmo",
+      "monster_code": 20146,
+      "cards": [
+        13000390
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_120_00.mmo",
+      "monster_code": 30122,
+      "cards": [
+        13000313,
+        13000315
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep06_dg02_mb_58_01.mmo",
+      "monster_code": 30060,
+      "cards": [
+        13000213
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_140_03.mmo",
+      "monster_code": 30142,
+      "cards": [
+        13000359,
+        13000381
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep09_dg02_mb_93_01.mmo",
+      "monster_code": 30095,
+      "cards": [
+        13000269
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ani_mon_um_02_01_up.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000036
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_134_03.mmo",
+      "monster_code": 30136,
+      "cards": [
+        13000355,
+        13000366,
+        13000367
+      ],
+      "grades": [
+        2,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep08_dg01_mb_77_01.mmo",
+      "monster_code": 30079,
+      "cards": [
+        13000248
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep11_dg00_mb_108_01.mmo",
+      "monster_code": 30110,
+      "cards": [
+        13000304
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep06_dg02_mb_59_00.mmo",
+      "monster_code": 30061,
+      "cards": [
+        13000214
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep12_dg01_m_124_03.mmo",
+      "monster_code": 20124,
+      "cards": [
+        13000316
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg02_m_135_02.mmo",
+      "monster_code": 20135,
+      "cards": [
+        13000351
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg02_mb_83_01.mmo",
+      "monster_code": 30085,
+      "cards": [
+        13000249,
+        13000257,
+        13000260
+      ],
+      "grades": [
+        4,
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_134_00.mmo",
+      "monster_code": 30136,
+      "cards": [
+        13000355,
+        13000366,
+        13000367
+      ],
+      "grades": [
+        2,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep10_dg00_m_98_00.mmo",
+      "monster_code": 20098,
+      "cards": [
+        13000271
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg00_m_75_00.mmo",
+      "monster_code": 20075,
+      "cards": [
+        13000239
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_149_03.mmo",
+      "monster_code": 30151,
+      "cards": [
+        13000394,
+        13000397
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep11_dg01_mb_114_00.mmo",
+      "monster_code": 30116,
+      "cards": [
+        13000294,
+        13000298
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep03_st02_e_gate_mon_21.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000071
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_139_01.mmo",
+      "monster_code": 30141,
+      "cards": [
+        13000384,
+        13000385
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_145_03.mmo",
+      "monster_code": 30147,
+      "cards": [
+        13000377,
+        13000378
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_122_03.mmo",
+      "monster_code": 30124,
+      "cards": [
+        13000318,
+        13000319
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg01_mb_152_03.mmo",
+      "monster_code": 30154,
+      "cards": [
+        13000399,
+        13000401,
+        13000403,
+        13000406,
+        13000407
+      ],
+      "grades": [
+        3,
+        3,
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_135_00.mmo",
+      "monster_code": 30137,
+      "cards": [
+        13000337,
+        13000358
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep07_dg02_mb_69_00.mmo",
+      "monster_code": 30071,
+      "cards": [
+        13000229
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg00_m_122_03.mmo",
+      "monster_code": 20122,
+      "cards": [
+        13000312
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg01_m_133_00.mmo",
+      "monster_code": 20133,
+      "cards": [
+        13000350
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg00_m_62_00.mmo",
+      "monster_code": 20062,
+      "cards": [
+        13000211
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg00_mb_84_01.mmo",
+      "monster_code": 30086,
+      "cards": [
+        13000253,
+        13000264
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep03_dg00_mb_26_s01.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000086,
+        13000097
+      ],
+      "grades": [
+        4,
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg02_m_146_00.mmo",
+      "monster_code": 20146,
+      "cards": [
+        13000390
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg00_mb_85_01.mmo",
+      "monster_code": 30087,
+      "cards": [
+        13000265
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg02_m_71_00.mmo",
+      "monster_code": 20071,
+      "cards": [
+        13000230,
+        13000231
+      ],
+      "grades": [
+        1,
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_72_01.mmo",
+      "monster_code": 30074,
+      "cards": [
+        13000238,
+        13000244
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep03_st02_e_gate_mon_21_l.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000071
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_131_03.mmo",
+      "monster_code": 30133,
+      "cards": [
+        13000334,
+        13000342
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep10_dg00_mb_97_01.mmo",
+      "monster_code": 30099,
+      "cards": [
+        13000274,
+        13000285
+      ],
+      "grades": [
+        3,
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_121_02.mmo",
+      "monster_code": 30123,
+      "cards": [
+        13000326,
+        13000327
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_137_01.mmo",
+      "monster_code": 30139,
+      "cards": [
+        13000368,
+        13000369
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ani_mon_mb_11_01_up.mmo",
+      "monster_code": 30007,
+      "cards": [
+        13000030
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep06_dg00_m_50_03.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000200
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg00_m_75_02.mmo",
+      "monster_code": 20075,
+      "cards": [
+        13000239
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg01_m_142_02.mmo",
+      "monster_code": 20142,
+      "cards": [
+        13000371
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg02_m_137_01.mmo",
+      "monster_code": 20137,
+      "cards": [
+        13000352
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_149_01.mmo",
+      "monster_code": 30151,
+      "cards": [
+        13000394,
+        13000397
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep10_dg00_mb_98_01.mmo",
+      "monster_code": 30100,
+      "cards": [
+        13000254
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_129_00.mmo",
+      "monster_code": 30131,
+      "cards": [
+        13000340,
+        13000341
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep05_st02_mb_47_01.mmo",
+      "monster_code": 30048,
+      "cards": [
+        13000163,
+        13000169
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_132_01.mmo",
+      "monster_code": 30134,
+      "cards": [
+        13000353,
+        13000364,
+        13000365
+      ],
+      "grades": [
+        2,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg01_m_151_00.mmo",
+      "monster_code": 20151,
+      "cards": [
+        13000392
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_75_01.mmo",
+      "monster_code": 30077,
+      "cards": [
+        13000240
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep11_dg01_mb_114_01.mmo",
+      "monster_code": 30116,
+      "cards": [
+        13000294,
+        13000298
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ani_mon_mb_26_02.mmo",
+      "monster_code": 30028,
+      "cards": [
+        13000086,
+        13000097
+      ],
+      "grades": [
+        4,
+        2
+      ]
+    },
+    {
+      "resource": "ani_mon_um_02_01_down.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000036
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_139_00.mmo",
+      "monster_code": 30141,
+      "cards": [
+        13000384,
+        13000385
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg00_m_120_01.mmo",
+      "monster_code": 20120,
+      "cards": [
+        13000311
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg00_mb_61_01.mmo",
+      "monster_code": 30063,
+      "cards": [
+        13000215,
+        13000224
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_122_02.mmo",
+      "monster_code": 30124,
+      "cards": [
+        13000318,
+        13000319
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_144_03.mmo",
+      "monster_code": 30146,
+      "cards": [
+        13000361,
+        13000380
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg00_m_122_02.mmo",
+      "monster_code": 20122,
+      "cards": [
+        13000312
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg02_m_83_03.mmo",
+      "monster_code": 20083,
+      "cards": [
+        13000250
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_138_00.mmo",
+      "monster_code": 30140,
+      "cards": [
+        13000354,
+        13000362
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ani_mon_mb_10_01_up.mmo",
+      "monster_code": 30003,
+      "cards": [
+        13000012
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg02_m_128_00.mmo",
+      "monster_code": 20128,
+      "cards": [
+        13000331
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep15_dg00_m_149_00.mmo",
+      "monster_code": 20149,
+      "cards": [
+        13000391
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_121_03.mmo",
+      "monster_code": 30123,
+      "cards": [
+        13000326,
+        13000327
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg01_m_142_00.mmo",
+      "monster_code": 20142,
+      "cards": [
+        13000371
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg00_m_129_02.mmo",
+      "monster_code": 20129,
+      "cards": [
+        13000335
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg02_mb_106_01.mmo",
+      "monster_code": 30108,
+      "cards": [
+        13000277
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep14_dg00_m_138_03.mmo",
+      "monster_code": 20138,
+      "cards": [
+        13000356
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg02_mb_71_00.mmo",
+      "monster_code": 30073,
+      "cards": [
+        13000237
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep08_dg02_m_80_01.mmo",
+      "monster_code": 20080,
+      "cards": [
+        13000251
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep02_01_e_gate_mon_06_m.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000037
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep05_st01_mb_44_00.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000161,
+        13000166,
+        13000170
+      ],
+      "grades": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep09_dg00_mb_87_01.mmo",
+      "monster_code": 30089,
+      "cards": [
+        13000261
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep14_dg01_m_142_03.mmo",
+      "monster_code": 20142,
+      "cards": [
+        13000371
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg00_mb_98_00.mmo",
+      "monster_code": 30100,
+      "cards": [
+        13000254
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep11_dg02_mb_119_00.mmo",
+      "monster_code": 30121,
+      "cards": [
+        13000324,
+        13000325
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep13_dg00_m_129_01.mmo",
+      "monster_code": 20129,
+      "cards": [
+        13000335
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg01_mb_79_00.mmo",
+      "monster_code": 30081,
+      "cards": [
+        13000242
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_145_00.mmo",
+      "monster_code": 30147,
+      "cards": [
+        13000377,
+        13000378
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep08_dg02_m_83_01.mmo",
+      "monster_code": 20083,
+      "cards": [
+        13000250
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep03_st03_e_gate_mon_23_m.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000078
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep07_dg02_mb_68_01.mmo",
+      "monster_code": 30070,
+      "cards": [
+        13000228,
+        13000241
+      ],
+      "grades": [
+        4,
+        3
+      ]
+    },
+    {
+      "resource": "ani_mon_mb_11_01_down.mmo",
+      "monster_code": 30007,
+      "cards": [
+        13000030
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg00_m_120_00.mmo",
+      "monster_code": 20120,
+      "cards": [
+        13000311
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg00_m_131_02.mmo",
+      "monster_code": 20131,
+      "cards": [
+        13000339
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg01_m_78_02.mmo",
+      "monster_code": 20078,
+      "cards": [
+        13000235
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg00_m_140_02.mmo",
+      "monster_code": 20140,
+      "cards": [
+        13000370
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_147_02.mmo",
+      "monster_code": 30149,
+      "cards": [
+        13000404,
+        13000405
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_144_01.mmo",
+      "monster_code": 30146,
+      "cards": [
+        13000361,
+        13000380
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_144_00.mmo",
+      "monster_code": 30146,
+      "cards": [
+        13000361,
+        13000380
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep09_dg02_m_95_00.mmo",
+      "monster_code": 20095,
+      "cards": [
+        13000270
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_131_00.mmo",
+      "monster_code": 30133,
+      "cards": [
+        13000334,
+        13000342
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep11_dg02_mb_117_00.mmo",
+      "monster_code": 30119,
+      "cards": [
+        13000301,
+        13000302,
+        13000309
+      ],
+      "grades": [
+        3,
+        3,
+        4
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_73_01.mmo",
+      "monster_code": 30075,
+      "cards": [
+        13000247
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ani_mon_um_02_02_down.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000036
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg02_m_155_02.mmo",
+      "monster_code": 20155,
+      "cards": [
+        13000410
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep11_dg00_mb_108_00.mmo",
+      "monster_code": 30110,
+      "cards": [
+        13000304
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep06_dg00_m_50_02.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000200
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep11_dg01_mb_115_01.mmo",
+      "monster_code": 30117,
+      "cards": [
+        13000299
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep10_dg01_mb_100_01.mmo",
+      "monster_code": 30102,
+      "cards": [
+        13000283,
+        13000286
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep08_dg02_m_80_00.mmo",
+      "monster_code": 20080,
+      "cards": [
+        13000251
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg01_m_133_04.mmo",
+      "monster_code": 20133,
+      "cards": [
+        13000350
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep11_dg02_mb_119_01.mmo",
+      "monster_code": 30121,
+      "cards": [
+        13000324,
+        13000325
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg00_mb_63_00.mmo",
+      "monster_code": 30065,
+      "cards": [
+        13000220,
+        13000223
+      ],
+      "grades": [
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg02_m_137_02.mmo",
+      "monster_code": 20137,
+      "cards": [
+        13000352
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_145_01.mmo",
+      "monster_code": 30147,
+      "cards": [
+        13000377,
+        13000378
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep02_dg02_mb_20_1_01.mmo",
+      "monster_code": 32008,
+      "cards": [
+        13000041,
+        13000045
+      ],
+      "grades": [
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg02_mb_127_01.mmo",
+      "monster_code": 30129,
+      "cards": [
+        13000332,
+        13000333
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep09_dg02_mb_94_00.mmo",
+      "monster_code": 30096,
+      "cards": [
+        13000262
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_133_01.mmo",
+      "monster_code": 30135,
+      "cards": [
+        13000343,
+        13000357
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg00_m_131_03.mmo",
+      "monster_code": 20131,
+      "cards": [
+        13000339
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg01_mb_91_01.mmo",
+      "monster_code": 30093,
+      "cards": [
+        13000263
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep07_dg02_mb_69_01.mmo",
+      "monster_code": 30071,
+      "cards": [
+        13000229
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg00_m_147_01.mmo",
+      "monster_code": 20147,
+      "cards": [
+        13000379
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg02_mb_70_00.mmo",
+      "monster_code": 30072,
+      "cards": [
+        13000232
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg00_m_147_02.mmo",
+      "monster_code": 20147,
+      "cards": [
+        13000379
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep09_dg02_mb_95_01.mmo",
+      "monster_code": 30097,
+      "cards": [
+        13000258,
+        13000278
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ani_mon_mb_03_02_up.mmo",
+      "monster_code": 30017,
+      "cards": [
+        13000052,
+        13000053
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep10_dg00_mb_96_01.mmo",
+      "monster_code": 30098,
+      "cards": [
+        13000279,
+        13000284
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep11_dg01_m_112_01.mmo",
+      "monster_code": 20112,
+      "cards": [
+        13000310
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep15_dg02_m_155_00.mmo",
+      "monster_code": 20155,
+      "cards": [
+        13000410
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep11_dg02_m_117_00.mmo",
+      "monster_code": 20117,
+      "cards": [
+        13000292
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg01_m_133_01.mmo",
+      "monster_code": 20133,
+      "cards": [
+        13000350
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg02_m_135_01.mmo",
+      "monster_code": 20135,
+      "cards": [
+        13000351
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg02_mb_146_04.mmo",
+      "monster_code": 30148,
+      "cards": [
+        13000376,
+        13000393
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep07_dg01_mb_64_01.mmo",
+      "monster_code": 30066,
+      "cards": [
+        13000222,
+        13000225
+      ],
+      "grades": [
+        3,
+        4
+      ]
+    },
+    {
+      "resource": "ep11_dg01_mb_115_00.mmo",
+      "monster_code": 30117,
+      "cards": [
+        13000299
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_129_01.mmo",
+      "monster_code": 30131,
+      "cards": [
+        13000340,
+        13000341
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_133_03.mmo",
+      "monster_code": 30135,
+      "cards": [
+        13000343,
+        13000357
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep13_dg02_m_137_03.mmo",
+      "monster_code": 20137,
+      "cards": [
+        13000352
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep07_dg00_m_63_02.mmo",
+      "monster_code": 20063,
+      "cards": [
+        13000212
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg00_mb_130_00.mmo",
+      "monster_code": 30132,
+      "cards": [
+        13000346,
+        13000347,
+        13000348,
+        13000349
+      ],
+      "grades": [
+        4,
+        4,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep08_dg01_m_78_01.mmo",
+      "monster_code": 20078,
+      "cards": [
+        13000235
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep02_dg02_mb_20_1_00.mmo",
+      "monster_code": 32008,
+      "cards": [
+        13000041,
+        13000045
+      ],
+      "grades": [
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg01_m_124_00.mmo",
+      "monster_code": 20124,
+      "cards": [
+        13000316
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg02_m_104_01.mmo",
+      "monster_code": 20104,
+      "cards": [
+        13000276
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg02_mb_105_00.mmo",
+      "monster_code": 30107,
+      "cards": [
+        13000280,
+        13000289
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep09_dg01_mb_91_00.mmo",
+      "monster_code": 30093,
+      "cards": [
+        13000263
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep11_dg02_mb_116_00.mmo",
+      "monster_code": 30118,
+      "cards": [
+        13000300,
+        13000308
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep14_dg00_m_140_01.mmo",
+      "monster_code": 20140,
+      "cards": [
+        13000370
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg00_m_131_01.mmo",
+      "monster_code": 20131,
+      "cards": [
+        13000339
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg01_mb_76_00.mmo",
+      "monster_code": 30078,
+      "cards": [
+        13000234,
+        13000245
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg02_m_153_00.mmo",
+      "monster_code": 20153,
+      "cards": [
+        13000396
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_148_01.mmo",
+      "monster_code": 30150,
+      "cards": [
+        13000383,
+        13000395
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep15_dg01_m_151_02.mmo",
+      "monster_code": 20151,
+      "cards": [
+        13000392
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ani_mon_mb_03_02_d.mmo",
+      "monster_code": 30017,
+      "cards": [
+        13000052,
+        13000053
+      ],
+      "grades": [
+        2,
+        3
+      ]
+    },
+    {
+      "resource": "ep15_dg00_m_149_03.mmo",
+      "monster_code": 20149,
+      "cards": [
+        13000391
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep11_dg02_m_117_01.mmo",
+      "monster_code": 20117,
+      "cards": [
+        13000292
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg02_m_83_02.mmo",
+      "monster_code": 20083,
+      "cards": [
+        13000250
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg01_m_101_01.mmo",
+      "monster_code": 20101,
+      "cards": [
+        13000272
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep08_dg00_mb_74_01.mmo",
+      "monster_code": 30074,
+      "cards": [
+        13000238,
+        13000244
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg01_mb_125_01.mmo",
+      "monster_code": 30127,
+      "cards": [
+        13000338,
+        13000344,
+        13000345
+      ],
+      "grades": [
+        2,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep11_dg00_m_108_01.mmo",
+      "monster_code": 20108,
+      "cards": [
+        13000296
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg01_m_102_01.mmo",
+      "monster_code": 20108,
+      "cards": [
+        13000296
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg00_mb_140_02.mmo",
+      "monster_code": 30142,
+      "cards": [
+        13000359,
+        13000381
+      ],
+      "grades": [
+        3,
+        3
+      ]
+    },
+    {
+      "resource": "ep10_dg00_mb_97_00.mmo",
+      "monster_code": 30099,
+      "cards": [
+        13000274,
+        13000285
+      ],
+      "grades": [
+        3,
+        4
+      ]
+    },
+    {
+      "resource": "ep12_dg01_mb_124_01.mmo",
+      "monster_code": 30126,
+      "cards": [
+        13000320,
+        13000321
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep07_dg01_mb_64_00.mmo",
+      "monster_code": 30066,
+      "cards": [
+        13000222,
+        13000225
+      ],
+      "grades": [
+        3,
+        4
+      ]
+    },
+    {
+      "resource": "ep11_dg00_mb_111_00.mmo",
+      "monster_code": 30113,
+      "cards": [
+        13000293,
+        13000303
+      ],
+      "grades": [
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep10_dg02_mb_104_00.mmo",
+      "monster_code": 30106,
+      "cards": [
+        13000288
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg00_m_63_00.mmo",
+      "monster_code": 20063,
+      "cards": [
+        13000212
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep02_01_e_gate_mon_06_l.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000037
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg00_mb_63_01.mmo",
+      "monster_code": 30065,
+      "cards": [
+        13000220,
+        13000223
+      ],
+      "grades": [
+        2,
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg02_m_126_01.mmo",
+      "monster_code": 20126,
+      "cards": [
+        13000330
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep13_dg01_mb_134_01.mmo",
+      "monster_code": 30136,
+      "cards": [
+        13000355,
+        13000366,
+        13000367
+      ],
+      "grades": [
+        2,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep09_dg00_mb_86_00.mmo",
+      "monster_code": 30088,
+      "cards": [
+        13000255
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg00_m_138_01.mmo",
+      "monster_code": 20138,
+      "cards": [
+        13000356
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg02_mb_105_01.mmo",
+      "monster_code": 30107,
+      "cards": [
+        13000280,
+        13000289
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep11_dg00_mb_110_01.mmo",
+      "monster_code": 30112,
+      "cards": [
+        13000273
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep11_dg00_mb_110_00.mmo",
+      "monster_code": 30112,
+      "cards": [
+        13000273
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep14_dg00_m_140_00.mmo",
+      "monster_code": 20140,
+      "cards": [
+        13000370
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg02_m_144_00.mmo",
+      "monster_code": 20144,
+      "cards": [
+        13000372
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_141_03.mmo",
+      "monster_code": 30143,
+      "cards": [
+        13000360,
+        13000386,
+        13000387
+      ],
+      "grades": [
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg00_mb_147_03.mmo",
+      "monster_code": 30149,
+      "cards": [
+        13000404,
+        13000405
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep15_dg01_mb_152_01.mmo",
+      "monster_code": 30154,
+      "cards": [
+        13000399,
+        13000401,
+        13000403,
+        13000406,
+        13000407
+      ],
+      "grades": [
+        3,
+        3,
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep10_dg02_mb_107_00.mmo",
+      "monster_code": 30109,
+      "cards": [
+        13000281
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep11_dg01_mb_113_01.mmo",
+      "monster_code": 30115,
+      "cards": [
+        13000295,
+        13000307
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep07_dg01_mb_67_01.mmo",
+      "monster_code": 30069,
+      "cards": [
+        13000227
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "resource": "ani_mon_m_12_03.mmo",
+      "monster_code": 20011,
+      "cards": [
+        13000028
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep12_dg00_mb_122_01.mmo",
+      "monster_code": 30124,
+      "cards": [
+        13000318,
+        13000319
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    },
+    {
+      "resource": "ep08_dg02_mb_80_01.mmo",
+      "monster_code": 30082,
+      "cards": [
+        13000243,
+        13000246
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "resource": "ep10_dg00_mb_99_01.mmo",
+      "monster_code": 30101,
+      "cards": [
+        13000282
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep03_st02_e_gate_mon_21_m.mmo",
+      "monster_code": 0,
+      "cards": [
+        13000071
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "resource": "ep12_dg00_m_122_01.mmo",
+      "monster_code": 20122,
+      "cards": [
+        13000312
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg01_m_101_00.mmo",
+      "monster_code": 20101,
+      "cards": [
+        13000272
+      ],
+      "grades": [
+        1
+      ]
+    },
+    {
+      "resource": "ep10_dg00_mb_99_00.mmo",
+      "monster_code": 30101,
+      "cards": [
+        13000282
+      ],
+      "grades": [
+        3
+      ]
+    },
+    {
+      "resource": "ep14_dg01_mb_141_00.mmo",
+      "monster_code": 30143,
+      "cards": [
+        13000360,
+        13000386,
+        13000387
+      ],
+      "grades": [
+        3,
+        4,
+        4
+      ]
+    },
+    {
+      "resource": "ep13_dg02_mb_136_02.mmo",
+      "monster_code": 30138,
+      "cards": [
+        13000374,
+        13000375
+      ],
+      "grades": [
+        3,
+        2
+      ]
+    }
+  ],
+  "boss_rooms": [
+    {
+      "room_key": 0,
+      "cards": [
+        13000008
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "room_key": 20971520,
+      "cards": [
+        13000003,
+        13000018
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "room_key": 33554432,
+      "cards": [
+        13000037,
+        13000048
+      ],
+      "grades": [
+        4,
+        2
+      ]
+    },
+    {
+      "room_key": 41943040,
+      "cards": [
+        13000042
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "room_key": 50331648,
+      "cards": [
+        13000024
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "room_key": 54525952,
+      "cards": [
+        13000031,
+        13000049
+      ],
+      "grades": [
+        3,
+        4
+      ]
+    },
+    {
+      "room_key": 67108864,
+      "cards": [
+        13000043,
+        13000059
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "room_key": 75497472,
+      "cards": [
+        13000071
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "room_key": 83886080,
+      "cards": [
+        13000078
+      ],
+      "grades": [
+        2
+      ]
+    },
+    {
+      "room_key": 88080384,
+      "cards": [
+        13000069,
+        13000070
+      ],
+      "grades": [
+        4,
+        3
+      ]
+    },
+    {
+      "room_key": 100663296,
+      "cards": [
+        13000081,
+        13000101
+      ],
+      "grades": [
+        2,
+        2
+      ]
+    },
+    {
+      "room_key": 109051904,
+      "cards": [
+        13000087,
+        13000110
+      ],
+      "grades": [
+        2,
+        2
+      ]
+    },
+    {
+      "room_key": 117440512,
+      "cards": [
+        13000108,
+        13000117
+      ],
+      "grades": [
+        4,
+        3
+      ]
+    },
+    {
+      "room_key": 121634816,
+      "cards": [
+        13000106,
+        13000115
+      ],
+      "grades": [
+        2,
+        4
+      ]
+    },
+    {
+      "room_key": 155189248,
+      "cards": [
+        13000122,
+        13000133,
+        13000135
+      ],
+      "grades": [
+        4,
+        4,
+        2
+      ]
+    },
+    {
+      "room_key": 188743680,
+      "cards": [
+        13000159,
+        13000177,
+        13000190
+      ],
+      "grades": [
+        4,
+        4,
+        3
+      ]
+    },
+    {
+      "room_key": 222298112,
+      "cards": [
+        13000191,
+        13000198
+      ],
+      "grades": [
+        4,
+        2
+      ]
+    },
+    {
+      "room_key": 356515840,
+      "cards": [
+        13000287
+      ],
+      "grades": [
+        4
+      ]
+    },
+    {
+      "room_key": 436207616,
+      "cards": [
+        13000346,
+        13000347
+      ],
+      "grades": [
+        4,
+        4
+      ]
+    },
+    {
+      "room_key": 524288000,
+      "cards": [
+        13000402
+      ],
+      "grades": [
+        3
+      ]
+    }
+  ]
+}
