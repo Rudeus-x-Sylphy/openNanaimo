@@ -348,7 +348,7 @@ public static class CardCatalog
         if (!resourceName.StartsWith(ClientDataResourcePrefix, StringComparison.Ordinal))
             throw new InvalidDataException($"Invalid client catalog name: {resourceName}");
         var fileName = resourceName[ClientDataResourcePrefix.Length..];
-        var catalogPath = Path.Combine(AppContext.BaseDirectory, "璧勬簮", "鏁版嵁", fileName);
+        var catalogPath = Path.Combine(AppContext.BaseDirectory, "资源", "数据", fileName);
         if (!File.Exists(catalogPath))
             throw new FileNotFoundException($"Missing client catalog: {catalogPath}", catalogPath);
         using var aes = Aes.Create();

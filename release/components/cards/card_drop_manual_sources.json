@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "provenance": {
-    "source_root": "E:\\\\QQ??????\\\\9.27???\\\\?????\\\\??",
+    "source_kind": "user-supplied client MMO directory",
     "monster_table_sha256": "832F14A9481B0CFD8D1F6790CC987A9DCCC969C8738050BEB830E1AC97A0E4E3",
     "boss_table_sha256": "9236067C534B8BB9A5F28455B3D140C673E2A9BC822FDFB4A8365FE9871C6B15",
     "note": "Manual supplements reconstructed from the upstream generated tables because the upstream package omitted its original manual-list source."

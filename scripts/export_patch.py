@@ -85,9 +85,15 @@ def payload_policy(value: str, layer: str) -> None:
     elif layer == "testports":
         good = value == "adapter/nanaimo_adapter_testports.exe"
     elif layer == "source":
+        card_generation_sources = {
+            "release/components/cards/card_drop_manual_sources.json",
+            "release/components/cards/gen_card_drop_pool_boss.py",
+            "release/components/cards/generate_card_drop_data.py",
+        }
         good = ((parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"})
                 or (parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"})
                 or (parts[0] == "scripts" and p.suffix in {".py", ".ps1"})
+                or value in card_generation_sources
                 or value == "manifest/source_closure.json")
     elif layer == "docs":
         good = value == "README.md" or (parts[0] == "docs" and p.suffix == ".md")

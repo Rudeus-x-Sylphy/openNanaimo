@@ -56,6 +56,7 @@ typedef int SOCKET;
 #define STABLE_PET 15009205u
 static unsigned g_pet_equipped=STABLE_PET;
 static unsigned test_revival, test_grade;
+static unsigned g_channel_reentry_scene_valid, g_channel_reentry_scene_selector, g_channel_reentry_scene_page;
 static unsigned game_session_revival_count(void){return test_revival;}
 static unsigned progression_dungeon_grade_current(void){return test_grade;}
 static int sec(void){return 0;}

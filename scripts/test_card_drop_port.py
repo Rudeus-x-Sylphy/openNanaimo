@@ -1,8 +1,8 @@
 from pathlib import Path
 import os,re,subprocess,tempfile,textwrap,unittest
 ROOT=Path(__file__).resolve().parents[1]
-TCC=Path(r'F:/openNanaimo/github_openNanaimo/tools/tcc/tcc.exe')
-MMO=Path(r'E:/QQ飞行岛客户端/9.27枫叶子/QQ飞行岛客户端/flying/mmo')
+TCC=ROOT/'tools/tcc/tcc.exe'
+MMO=Path(os.environ['NANAIMO_CARD_MMO_ROOT']) if os.environ.get('NANAIMO_CARD_MMO_ROOT') else None
 class CardDropPortTests(unittest.TestCase):
  def test_generated_dimensions_and_policy(self):
   drop=(ROOT/'release/components/cards/card_drop_pool_data.inc').read_text('utf-8')
@@ -19,7 +19,7 @@ class CardDropPortTests(unittest.TestCase):
   self.assertIn('NormalCardBaseBasisPoints = 560',managed)
   self.assertIn('CARD_DROP_POOL_STRICT 1',(ROOT/'release/teamplay_common.inc').read_text('utf-8'))
  def test_regeneration_is_deterministic(self):
-  if not MMO.is_dir(): self.skipTest('external client MMO input unavailable')
+  if MMO is None or not MMO.is_dir(): self.skipTest('set NANAIMO_CARD_MMO_ROOT to the user-supplied client flying/mmo directory')
   subprocess.run(['python','-B',str(ROOT/'release/components/cards/generate_card_drop_data.py'),'--mmo-root',str(MMO),'--check'],cwd=ROOT,check=True)
  def test_native_weight_claim_and_persistence(self):
   self.assertTrue(TCC.is_file())

@@ -8,7 +8,7 @@ Inputs:
 
 Example:
   python -B release/components/cards/generate_card_drop_data.py \
-    --mmo-root "E:/QQ飞行岛客户端/9.27枫叶子/QQ飞行岛客户端/flying/mmo" --check
+    --mmo-root "<client-root>/flying/mmo" --check
 """
 from __future__ import annotations
 import argparse, hashlib, json, re, struct, sys
