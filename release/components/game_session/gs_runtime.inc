@@ -310,7 +310,7 @@ static void gs_thread(void* arg){
         int standalone = g_standalone;
         multiplayer_save_unlock(multiplayer_idx);
         unsigned long nb=1; if(pIo)pIo(c,FIONBIO,&nb);
-        char buf[65536]; int total=0; int parsed=0; int game_connection_acknowledged=0; int c353_seen=0; int local_actor_snapshot_sent=0; int roster_refresh_sent=0; int village_scene_sync_pending=0; int c47f_wait_cb21=0; unsigned current_village_selector=0;
+        char buf[65536]; int total=0; int parsed=0; int game_connection_acknowledged=0; int c353_seen=0; int local_actor_snapshot_sent=0; int roster_refresh_sent=0; int village_scene_sync_pending=0; int c47f_wait_cb21=0; unsigned current_village_selector=g_multi_conn[multiplayer_idx].village_selector;unsigned reentry_village_page=g_multi_conn[multiplayer_idx].village_page,reentry_village_x=g_multi_conn[multiplayer_idx].pos_x,reentry_village_y=g_multi_conn[multiplayer_idx].pos_y;int reentry_scene_pending=(int)g_multi_conn[multiplayer_idx].reentry_scene_pending;
         /* APARTMENT_STORAGE: apartment scene is connection-local and distinct from dungeon
            room_active.  C38D/C38E establishes it; explicit world/dungeon
            transitions clear it.  C47D must not rebuild the actor while set. */
@@ -494,15 +494,18 @@ static void gs_thread(void* arg){
                         if(c47f_wait_cb21){unsigned reqc=(unsigned char)buf[off]|((unsigned char)buf[off+1]<<8);enqueue_c47f(reqc);c47f_wait_cb21=0;village_scene_sync_pending=0;printf("  [GS %d] Network first CB21 after C36C -> schedule C47F low=0x%02X\n",port,reqc&0x1Fu);fflush(0);}
                         multiplayer_village_move((const unsigned char*)&buf[off],len);
                     } else if(type==0xC367){
+                        const unsigned char*c367_req=(const unsigned char*)&buf[off];unsigned char reentry_c367[16];unsigned requested_page=(unsigned char)buf[off+8];
                         if(apartment_epoch_ready||apartment_scene_active){printf("  [APARTMENT_STORAGE] C367 explicit scene exit ready=%d active=%d\n",apartment_epoch_ready,apartment_scene_active);fflush(0);apartment_epoch_ready=0;apartment_scene_active=0;}
-                        g_last_x=(unsigned char)buf[off+0x0C] | ((unsigned char)buf[off+0x0D]<<8);
-                        g_last_y=(unsigned char)buf[off+0x0E] | ((unsigned char)buf[off+0x0F]<<8);
+                        if(len==16&&channel_reentry_should_restore_scene((unsigned)reentry_scene_pending,requested_page,reentry_village_page)){memcpy(reentry_c367,&buf[off],16);stable_put32((char*)reentry_c367,8,reentry_village_page);stable_resource_put16((char*)reentry_c367,0x0C,reentry_village_x);stable_resource_put16((char*)reentry_c367,0x0E,reentry_village_y);c367_req=reentry_c367;printf("  [CHANNEL_REENTRY] restore first C367 synthetic page=%u pos=%u,%u -> retained page=%u pos=%u,%u selector=%u\n",requested_page,(unsigned char)buf[off+0x0C]|((unsigned char)buf[off+0x0D]<<8),(unsigned char)buf[off+0x0E]|((unsigned char)buf[off+0x0F]<<8),reentry_village_page,reentry_village_x,reentry_village_y,current_village_selector);fflush(0);}
+                        if(reentry_scene_pending){reentry_scene_pending=0;g_multi_conn[multiplayer_idx].reentry_scene_pending=0u;g_channel_reentry_scene_valid=0u;}
+                        g_last_x=(unsigned char)c367_req[0x0C] | ((unsigned char)c367_req[0x0D]<<8);
+                        g_last_y=(unsigned char)c367_req[0x0E] | ((unsigned char)c367_req[0x0F]<<8);
                         g_have_pos=1;
-                        multiplayer_village_prepare(current_village_selector,(unsigned char)buf[off+8],g_last_x,g_last_y);
-                        printf("  [GS %d] GOT C367 TownPage/portal entry -> C368 args=%u,%u\n",port,
+                        multiplayer_village_prepare(current_village_selector,(unsigned char)c367_req[8],g_last_x,g_last_y);
+                        printf("  [GS %d] GOT C367 TownPage/portal entry -> C368 page=%u args=%u,%u\n",port,(unsigned char)c367_req[8],
                                g_last_x, g_last_y); fflush(0);
 
-                        sleep(0); send_c368_profile_ready(c, (const unsigned char*)&buf[off]);
+                        sleep(0); send_c368_profile_ready(c,c367_req);
                         village_scene_sync_pending=1;
                         /* Village selector4 does not emit C36C on this return/page path.  Arm
                            the already-proven first-CB21 attachment gate directly; other
@@ -1033,13 +1036,14 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                     } else if(type==0xD034 && len==16){
                         unsigned category=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8);unsigned scene_uid=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);unsigned item_type=(unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8)|((unsigned char)buf[off+14]<<16)|((unsigned char)buf[off+15]<<24);
                         printf("  [GS %d] GOT D034 pickup category=%u scene=%u item=%u tick=%u\n",port,category,scene_uid,item_type,tickms()); fflush(0);
-                        if(category==20u){int grant=card_pickup_commit(scene_uid,item_type);printf("  [CARD] pickup result=%d code=%u scene=%u\n",grant,item_type,scene_uid);fflush(0);
+                        if(category==20u){int grant=card_pickup_commit(scene_uid,item_type);printf("  [CARD] pickup category=%u result=%d code=%u scene=%u\n",category,grant,item_type,scene_uid);fflush(0);
 #if TEAMPLAY_FEATURE_PICKUP_ROOM_BROADCAST
-                        if(grant==1){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else{printf("  [MULTI_DROP] suppress category20 duplicate/unoffered uid=%u scene=%u item=%u result=%d\n",multiplayer_current_uid(),scene_uid,item_type,grant);fflush(0);}
+                        if(grant==1){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else{printf("  [MULTI_DROP] suppress card duplicate/unoffered uid=%u category=%u scene=%u item=%u result=%d\n",multiplayer_current_uid(),category,scene_uid,item_type,grant);fflush(0);}
 #else
                         if(grant){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}
 #endif
                         }
+                        else if(category==30u){int grant=card_pickup_commit(scene_uid,item_type);printf("  [CARD] pickup category=30 result=%d code=%u scene=%u\n",grant,item_type,scene_uid);fflush(0);if(grant==1){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else if(grant==2){printf("  [MULTI_DROP] suppress category30 duplicate card uid=%u scene=%u item=%u\n",multiplayer_current_uid(),scene_uid,item_type);fflush(0);}else{int claim_ok=teamplay_drop_claim(category,scene_uid,item_type,multiplayer_current_uid());if(claim_ok){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else{printf("  [MULTI_DROP] suppress category30 duplicate/unoffered uid=%u scene=%u item=%u\n",multiplayer_current_uid(),scene_uid,item_type);fflush(0);}}}
                         else{int claim_ok=teamplay_drop_claim(category,scene_uid,item_type,multiplayer_current_uid());if(claim_ok){if(item_type==2u){combat_hp=pet_crafting_pet_effective_hp_max();injury_dead=0;}sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else{printf("  [MULTI_DROP] suppress duplicate/unoffered pickup uid=%u category=%u scene=%u item=%u\n",multiplayer_current_uid(),category,scene_uid,item_type);fflush(0);}}
                     } else if(type==0xCF73 && len==8){
                         post_reset_pending=post_reset_seen_c587=post_reset_seen_cf70=0;pending_super_cf87=0;

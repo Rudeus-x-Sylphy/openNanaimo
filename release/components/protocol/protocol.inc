@@ -1427,14 +1427,18 @@ static void send_standalone_C352_ref(SOCKET c){
     sendbuf(c,p,8+(int)sizeof(ref_C352));
     printf("  S standalone 0xC352 coherent scene-host=1 (matches C47F +8) (12B) t=%lds\n",sec()); fflush(0);
 }
+/* Channel reconnect is a transport replacement, not a fresh village epoch.
+   multi_load_unlocked refreshes this tuple for the active logical slot. */
+static unsigned g_channel_reentry_scene_valid=0u,g_channel_reentry_scene_selector=0u,g_channel_reentry_scene_page=0u;
 static void send_standalone_C355_ref(SOCKET c){
     char p[4096]; mkpkt(p,0xC355,0x2D8,1);
     memcpy(p+8,stable_1full_c355,sizeof(stable_1full_c355));
     p[0x18]=0xDC;p[0x19]=0x05;p[0x1A]=0x64;p[0x1B]=0;p[0x1C]=(char)STABLE_LEVEL;p[0x23]=(char)STABLE_LEVEL;stable_put32(p,0x38,STABLE_PET);
+    if(g_channel_reentry_scene_valid){p[0x20]=(char)g_channel_reentry_scene_selector;p[0x21]=(char)g_channel_reentry_scene_page;}
     nanaimo_unlock_all_dungeon_stages((unsigned char*)p,0x2D8,1,1);
     p[0xF2]=(char)game_session_revival_count();
     sendbuf(c,p,0x2D8);
-    printf("  S standalone C355 configurable profile len=728 t=%lds\n",sec()); fflush(0);
+    printf("  S standalone C355 configurable profile scene=%u/%u reentry=%u len=728 t=%lds\n",(unsigned char)p[0x20],(unsigned char)p[0x21],g_channel_reentry_scene_valid,sec()); fflush(0);
 }
 static void send_standalone_C44C_ref(SOCKET c){
     /* Real-log C44C: 4 pet/item records (C1E1E400/CE05E500/E805E500/EC05E500).
