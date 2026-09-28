@@ -5,7 +5,13 @@ import subprocess
 import sys
 import unittest
 
-from scripts import generate_scene_hazard_catalog as generator
+import importlib.util
+
+_GENERATOR_SPEC = importlib.util.spec_from_file_location("generate_scene_hazard_catalog", Path(__file__).with_name("generate_scene_hazard_catalog.py"))
+if _GENERATOR_SPEC is None or _GENERATOR_SPEC.loader is None:
+    raise ImportError("unable to load scene hazard generator")
+generator = importlib.util.module_from_spec(_GENERATOR_SPEC)
+_GENERATOR_SPEC.loader.exec_module(generator)
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR = ROOT / "scripts/generate_scene_hazard_catalog.py"
