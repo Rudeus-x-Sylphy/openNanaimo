@@ -201,6 +201,7 @@ extern void* __attribute__((cdecl)) fopen(const char*, const char*);extern int _
 #include "components/cards/card_system.inc"
 #endif
 /* Generated Boss and secret-stage pools must precede the Boss runtime. */
+#define BOSS_HP_SYNC_CARD_POOLS 1
 #include "components/cards/card_drop_pool_boss_data.inc"
 #include "components/cards/card_secret_pool_data.inc"
 #include "components/winter_boss/boss_hp_sync_runtime.inc"

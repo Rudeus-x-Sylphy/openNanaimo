@@ -586,6 +586,10 @@ static int boss_hp_sync_apply_external_damage(struct boss_hp_sync_context*c,unsi
     r->component_first_terminal=0u;r->phase_transition_retire=0u;return rc;
 }
 #endif
+#ifndef BOSS_HP_SYNC_CARD_POOLS
+#define BOSS_HP_SYNC_CARD_POOLS 0
+#endif
+#if BOSS_HP_SYNC_CARD_POOLS
 static unsigned boss_hp_sync_terminal_card(const struct boss_hp_sync_result*r){
     const unsigned char*grades=0;const unsigned*pool=0;unsigned count=0u,producer=(r?r->stage:0u);
     if(r&&r->card_pool_key!=BOSS_HP_SYNC_CARD_POOL_UNRESOLVED)
@@ -612,6 +616,7 @@ static unsigned boss_hp_sync_terminal_card(const struct boss_hp_sync_result*r){
     return 0u;
 #endif
 }
+#endif
 static int boss_hp_sync_encode_d012_payload(unsigned char*frame,unsigned len,const struct boss_hp_sync_result*r){
     if(len!=BOSS_HP_SYNC_D012_LEN)return BOSS_HP_SYNC_BAD_LENGTH;
     memset(frame+0x18,0,BOSS_HP_SYNC_D012_LEN-0x18u);
@@ -634,7 +639,13 @@ static int boss_hp_sync_encode_d012_payload(unsigned char*frame,unsigned len,con
     if((r->component_first_terminal&&!r->intermediate_terminal)||transition_target)boss_hp_sync_put16(frame,0x1A,r->target_ordinal);
 #endif
     if(r->intermediate_terminal){/* addressed old-mode retirement; all state/reward fields stay zero */}
-    else if(r->first_terminal){boss_hp_sync_put32(frame,0x1C,BOSS_HP_SYNC_TERMINAL_REWARD);boss_hp_sync_put32(frame,0x20,boss_hp_sync_terminal_card(r));boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
+    else if(r->first_terminal){boss_hp_sync_put32(frame,0x1C,BOSS_HP_SYNC_TERMINAL_REWARD);boss_hp_sync_put32(frame,0x20,
+#if BOSS_HP_SYNC_CARD_POOLS
+        boss_hp_sync_terminal_card(r)
+#else
+        card_drop_create(1u,r->stage)
+#endif
+    );boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
     else if(r->repeated_terminal){boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_TERMINAL_MARKER);}
     else boss_hp_sync_put32(frame,0x24,BOSS_HP_SYNC_NORMAL_MARKER);
     /* Native +0x28 drives both the boss bar (6EC979 -> 6BF200) and the mode-completion gate (6ED62D/6BE8D9). A published recording carries the selected visual ledger; at an authored mode boundary or final parallel-component terminal it is zero, which is what the completion gate reads. Results that carry no published ledger keep the neutral rule. */
