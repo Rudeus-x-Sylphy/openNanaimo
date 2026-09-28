@@ -353,6 +353,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public long AccountId { get; set; }
         public string Username { get; set; } = string.Empty;
         public CharacterRecord? Character { get; set; }
+        public bool PureNewPlayer { get; set; }
         public int ChannelId { get; set; }
         public int ListenerPort { get; set; }
         public string SessionId { get; } = Guid.NewGuid().ToString("N");
@@ -13744,7 +13745,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             out _);
     }
 
-    private static void FinalizeNativeFramesForSend(byte[] frames, ConnectionSession session)
+    private void FinalizeNativeFramesForSend(byte[] frames, ConnectionSession session)
     {
         var offset = 0;
         while (offset < frames.Length)
@@ -13774,7 +13775,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             // the low-44 village mask while leaving the client's ordinary
             // dungeon/stage gates closed. This is intentionally before the
             // checksum and is idempotent with the primary C354 builder.
-            NormalizeC355VillageAccessFrame(frame);
+            NormalizeC355VillageAccessFrame(frame, UnlockAllDungeons);
             NormalizeInventoryVitalsForSend(frame, session);
 
             var checksum = ComputeNativeChecksum(frame);
@@ -13805,7 +13806,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return index >= 0 ? (byte)index : (byte)0;
     }
 
-    private static byte[] BuildLoadNecessityResponse(
+    private byte[] BuildLoadNecessityResponse(
         byte[] request,
         ConnectionSession session,
         byte[] dungeonClearMasks,
@@ -13821,7 +13822,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 dungeonClearMasks,
                 dungeonBestRatings,
                 dungeonSecretBestRatings,
-                coupleRelation),
+                coupleRelation,
+                UnlockAllDungeons),
             session);
         // A pre-completion C354 still gets its native C355 response, but must
         // not initialize our configured inventories/pet inside the main guide.
@@ -13993,7 +13995,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             // preserve the stored loadout for C368 after valid C353 completion.
             var appearance = character.TutorialCompleted
                 ? BuildStoredAppearance(character)
-                : DatabaseService.CreateDefaultAppearance(character.Gender);
+                : session.PureNewPlayer
+                    ? BuildTutorialCreationAppearance(character)
+                    : DatabaseService.CreateDefaultAppearance(character.Gender);
             appearance.CopyTo(payload, 24);
         }
         else
@@ -14004,6 +14008,18 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             payload.AsSpan(8, 52).Clear();
         }
         return payload;
+    }
+
+    private static byte[] BuildTutorialCreationAppearance(CharacterRecord character)
+    {
+        var appearance = DatabaseService.NormalizeAppearanceForGender(
+            character.Appearance,
+            character.Gender,
+            equippedPetItemCode: 0);
+        // The main-guide renderer treats the D6 effect slot as an image resource.
+        // Keep player-selected avatar slots and attach effects/pets after tutorial completion.
+        appearance.AsSpan(24, 8).Clear();
+        return appearance;
     }
 
     private byte[] BuildChannelListPayload()
@@ -15777,7 +15793,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         byte[] dungeonClearMasks,
         byte[] dungeonBestRatings,
         byte[] dungeonSecretBestRatings,
-        CoupleRelationRecord? coupleRelation)
+        CoupleRelationRecord? coupleRelation,
+        bool unlockAllDungeons = true)
     {
         var payload = new byte[C355FrameLength - NativeHeaderLength];
         // The C355 consumer passes frame+13 to the client's pet-carry setter.
@@ -15862,46 +15879,71 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         // Keep access carriers independent from the cached score-board ranks.
         // The final writer repeats the idempotent access normalization before checksum.
-        NormalizeC355VillageAccessPayload(payload);
+        NormalizeC355VillageAccessPayload(payload, unlockAllDungeons);
         return payload;
     }
 
-    internal static void NormalizeC355VillageAccessFrame(Span<byte> frame)
+    internal static void NormalizeC355VillageAccessFrame(
+        Span<byte> frame,
+        bool unlockAllDungeons = true)
     {
         if (frame.Length != C355FrameLength
             || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) != 0xC355)
             return;
 
-        NormalizeC355VillageAccessPayload(frame[NativeHeaderLength..]);
+        NormalizeC355VillageAccessPayload(frame[NativeHeaderLength..], unlockAllDungeons);
     }
 
-    internal static void NormalizeC355VillageAccessPayload(Span<byte> payload)
+    internal static void NormalizeC355VillageAccessPayload(
+        Span<byte> payload,
+        bool unlockAllDungeons = true)
     {
         if (payload.Length != C355FrameLength - NativeHeaderLength)
             return;
 
-        // sub_544000 copies full-frame +0x3C..+0x77 into the ordinary
-        // dungeon availability object consumed by sub_509BC0. reference implementation's final
-        // all-open payload used 0x0F in every one of these 60 cells.
-        payload.Slice(
+        var ordinaryAccess = payload.Slice(
             C355DungeonClearFrameOffset - NativeHeaderLength,
-            C355DungeonClearLength).Fill(0x0F);
+            C355DungeonClearLength);
+        if (unlockAllDungeons)
+            ordinaryAccess.Fill(0x0F);
 
-        // Full-frame +0x80/+0x84 is a separate QWORD consumed by
-        // sub_54EDD0 and sub_509EC0. Set only the 22 predecessor pairs; retain
-        // bit44..63 exactly, including the not-implied final-clear pair.
+        // Keep the fifth-village compatibility gate, but in progression mode
+        // satisfy it only after every preceding ordinary episode is complete.
+        var fifthVillageUnlocked = unlockAllDungeons
+            || HasCompletedFifthVillagePrerequisites(ordinaryAccess);
         var prerequisiteOffset = C355VillagePrerequisiteFrameOffset - NativeHeaderLength;
         var prerequisites = BinaryPrimitives.ReadUInt64LittleEndian(
             payload.Slice(prerequisiteOffset, C355VillagePrerequisiteLength));
+        prerequisites = fifthVillageUnlocked
+            ? prerequisites | C355VillagePrerequisiteLow44Mask
+            : prerequisites & ~C355VillagePrerequisiteLow44Mask;
         BinaryPrimitives.WriteUInt64LittleEndian(
             payload.Slice(prerequisiteOffset, C355VillagePrerequisiteLength),
-            prerequisites | C355VillagePrerequisiteLow44Mask);
+            prerequisites);
 
-        // Do not normalize +0x88..<+0xDF. Those bytes are the score-board
-        // cache consumed by the ordinary, secret, and frontier "view credits"
-        // pages. Replacing them with packed state 1 fabricates a B rank for
-        // every slot and destroys the persisted best result. Access remains
-        // carried by +0x3C..+0x77 and the independent prerequisite QWORD.
+        // The score-board domains at +0x88..<+0xDF remain independent.
+    }
+
+    internal static bool HasCompletedFifthVillagePrerequisites(ReadOnlySpan<byte> ordinaryAccess)
+    {
+        const int prerequisiteEpisodeCount = 16;
+        if (ordinaryAccess.Length < DungeonEpisodeCount * DungeonDifficultyCount)
+            return false;
+        for (var episode = 0; episode < prerequisiteEpisodeCount; episode++)
+        {
+            var completed = false;
+            for (var difficulty = 0; difficulty < DungeonDifficultyCount; difficulty++)
+            {
+                if ((ordinaryAccess[episode * DungeonDifficultyCount + difficulty] & 0x0F) == 0x0F)
+                {
+                    completed = true;
+                    break;
+                }
+            }
+            if (!completed)
+                return false;
+        }
+        return true;
     }
 
     private static void WriteC355CoupleState(

@@ -86,6 +86,10 @@ internal static class PureNewPlayerChecks
 
             const string chosenName = "\u65b0\u624b\u4e00\u53f7";
             byte[] chosenAppearance = DatabaseService.CreateDefaultAppearance(1);
+            BinaryPrimitives.WriteUInt32LittleEndian(chosenAppearance.AsSpan(0, 4), 10130337u);
+            BinaryPrimitives.WriteUInt32LittleEndian(chosenAppearance.AsSpan(8, 4), 10110337u);
+            BinaryPrimitives.WriteUInt32LittleEndian(chosenAppearance.AsSpan(24, 4), 10160017u);
+            BinaryPrimitives.WriteUInt32LittleEndian(chosenAppearance.AsSpan(28, 4), 15009205u);
             byte[] creation = Creation(chosenName, chosenAppearance);
             CheckResult(await Send(service, session, 0x2717, creation), 30,
                 "submitted name and appearance create the character through the login dispatcher");
@@ -118,9 +122,11 @@ internal static class PureNewPlayerChecks
             }
 
             byte[] login = CheckPayload(await Send(service, session, 0x2719, new byte[24]), 0x271A, 60);
+            byte[] tutorialAppearance = chosenAppearance.ToArray();
+            tutorialAppearance.AsSpan(24, 8).Clear();
             Check(login.Length == 60 && login[4] == 1 && login[6] == 0
-                && login.AsSpan(24, 36).SequenceEqual(DatabaseService.CreateDefaultAppearance(1)),
-                "271A publishes guide state 0 and the gender-correct starter appearance");
+                && login.AsSpan(24, 36).SequenceEqual(tutorialAppearance),
+                "271A preserves the player-created avatar while withholding tutorial-unsafe effect/pet slots");
 
             Check(Encoding.GetEncoding(936).GetString(login.AsSpan(8, 16)).TrimEnd('\0') == chosenName,
                 "post-creation context carries the player-selected name, not the account identity");
@@ -129,15 +135,11 @@ internal static class PureNewPlayerChecks
                 "duplicate creation cannot replace the selected character");
             Check((await database.GetCharacterAsync(accountId))!.Name == chosenName,
                 "duplicate creation preserves the original name");
-            Check((await RegisterAsync(port, request)).AsSpan().SequenceEqual("NO\n"u8),
-                "pure registration refuses to reset an existing character");
-            Check(await Send(service, NewSession(), 0x2730, new byte[360]) is null,
-                "rejected registration does not enqueue a login or reuse the consumed ticket");
+            Check((await RegisterAsync(port, request)).AsSpan().SequenceEqual("OK\n"u8),
+                "pure registration reopens an existing character without resetting it");
 
-            // Reconnect through the same launcher registration mechanism, without
-            // manually supplying an account or character to the new session.
-            Check((await RegisterAsync(port, JsonSerializer.SerializeToUtf8Bytes(new { LocalAccount = account })))
-                .AsSpan().SequenceEqual("OK\n"u8), "existing character can register for normal login");
+            // Reconnect through the same pure-new-player registration mechanism,
+            // without manually supplying an account or character to the new session.
             object reconnect = NewSession();
             Check(CheckPayload(await Send(service, reconnect, 0x2730, new byte[360]), 0x2731, 4)
                 .AsSpan().SequenceEqual(new byte[] { 1, 0, 1, 0 }),
@@ -145,6 +147,16 @@ internal static class PureNewPlayerChecks
             Check(CheckPayload(await Send(service, reconnect, 0x2719, new byte[24]), 0x271A, 60)
                 .SequenceEqual(login), "relogin restores the persisted character and tutorial context");
             CheckPayload(await Send(service, reconnect, 0x271B, new byte[4]), 0x271C);
+
+            Check((await RegisterAsync(port, JsonSerializer.SerializeToUtf8Bytes(
+                    new { LocalAccount = chosenName, PureNewPlayer = true })))
+                .AsSpan().SequenceEqual("OK\n"u8),
+                "legacy generated pure account can be recovered by its persisted character name");
+            object legacyReconnect = NewSession();
+            Check(CheckPayload(await Send(service, legacyReconnect, 0x2730, new byte[360]), 0x2731, 4)
+                .AsSpan().SequenceEqual(new byte[] { 1, 0, 1, 0 })
+                && (long)SessionType.GetProperty("AccountId")!.GetValue(legacyReconnect)! == accountId,
+                "legacy character-name recovery binds the original pure account");
 
             string secondAccount = "pure-" + Guid.NewGuid().ToString("N");
             Check((await RegisterAsync(port, JsonSerializer.SerializeToUtf8Bytes(

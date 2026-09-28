@@ -197,6 +197,7 @@ string Option(string name, string fallback)
 string data = Path.GetFullPath(Option("--data", "adapter-data"));
 string native = Path.GetFullPath(Option("--native", "nanaimo_gameplay_bridge.exe"));
 string profile = Path.GetFullPath(Option("--profile", "profile.ini"));
+bool unlockAllDungeons = ReadProfileBoolean(profile, "unlock_all_dungeons", defaultValue: true);
 int loginPort = int.Parse(Option("--login-port", "11005"));
 int worldPort = int.Parse(Option("--world-port", "12050"));
 int profilePort = int.Parse(Option("--profile-port", "11999"));
@@ -266,7 +267,7 @@ try
     }
     await using var rooms = new NativeDungeonPool(native, Path.Combine(data, "native-rooms"));
     await using var host = new NetworkAdapterService(database, message => Console.WriteLine($"{DateTime.Now:O} {message}"), data)
-    { NativeDungeonEnabled = true, NativeJournalDirectory = journal, NativeRooms = rooms };
+    { NativeDungeonEnabled = true, UnlockAllDungeons = unlockAllDungeons, NativeJournalDirectory = journal, NativeRooms = rooms };
     await host.StartAsync(new AdapterOptions { GameAdapterPort = loginPort, WorldAdapterPort = worldPort },
         new[] { new AdapterEndpoint { Id = 1, Port = worldPort } }, stop.Token);
     var profiles = host.RunLocalProfileListenerAsync(profilePort, stop.Token, Path.GetDirectoryName(profile)!);
@@ -298,6 +299,26 @@ finally
 {
     if (!worker.HasExited) { worker.Kill(); await worker.WaitForExitAsync(); }
 }
+}
+
+static bool ReadProfileBoolean(string path, string key, bool defaultValue)
+{
+    if (!File.Exists(path)) return defaultValue;
+    foreach (var raw in File.ReadLines(path))
+    {
+        var line = raw.Trim();
+        if (line.Length == 0 || line[0] is '#' or ';') continue;
+        var separator = line.IndexOf('=');
+        if (separator <= 0 || !string.Equals(line[..separator].Trim(), key, StringComparison.OrdinalIgnoreCase))
+            continue;
+        return line[(separator + 1)..].Trim() switch
+        {
+            "1" => true,
+            "0" => false,
+            _ => defaultValue
+        };
+    }
+    return defaultValue;
 }
 
 static async Task WaitForStopAsync(string path, CancellationToken token)

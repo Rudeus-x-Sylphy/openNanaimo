@@ -40,27 +40,45 @@ public sealed partial class DatabaseService
         string username,
         CancellationToken token = default)
     {
-        var accountId = await OpenLocalAccountAsync(username, token);
+        username = username.Trim();
+        if (username.Length is < 1 or > 64 || username.Any(char.IsControl))
+            throw new InvalidDataException("Pure-new-player username must contain 1..64 characters without control characters.");
+
+        // Current launcher identities are stable user-selected account names. Older
+        // pure-new-player saves used generated pure-* accounts, so a character name
+        // may be used once to recover that legacy account and continue the same save.
+        var accountId = await GetAccountIdByUsernameAsync(username, token);
+        if (accountId is null)
+        {
+            await using var lookup = await OpenConnectionAsync(token);
+            await using var byCharacter = lookup.CreateCommand();
+            byCharacter.CommandText = """
+                SELECT c.AccountId
+                FROM Characters c
+                JOIN Accounts a ON a.Id=c.AccountId
+                WHERE c.Name=$identity COLLATE NOCASE
+                  AND a.Username LIKE 'pure-%'
+                LIMIT 1
+                """;
+            byCharacter.Parameters.AddWithValue("$identity", username);
+            if (await byCharacter.ExecuteScalarAsync(token) is long legacyAccountId)
+                accountId = legacyAccountId;
+        }
+        accountId ??= await OpenLocalAccountAsync(username, token);
+        var resolvedAccountId = accountId.Value;
+
         await using var connection = await OpenConnectionAsync(token);
         await using var transaction = connection.BeginTransaction();
-        await using (var existing = connection.CreateCommand())
-        {
-            existing.Transaction = transaction;
-            existing.CommandText = "SELECT 1 FROM Characters WHERE AccountId=$accountId LIMIT 1";
-            existing.Parameters.AddWithValue("$accountId", accountId);
-            if (await existing.ExecuteScalarAsync(token) is not null)
-                throw new InvalidDataException("Pure-new-player launch requires an account without a character.");
-        }
         await using (var suppressGrant = connection.CreateCommand())
         {
             suppressGrant.Transaction = transaction;
             suppressGrant.CommandText = "UPDATE Accounts SET InitialGrantClaimed=1 WHERE Id=$accountId";
-            suppressGrant.Parameters.AddWithValue("$accountId", accountId);
+            suppressGrant.Parameters.AddWithValue("$accountId", resolvedAccountId);
             if (await suppressGrant.ExecuteNonQueryAsync(token) != 1)
                 throw new InvalidOperationException("Pure-new-player account is unavailable.");
         }
         await transaction.CommitAsync(token);
-        return accountId;
+        return resolvedAccountId;
     }
 
     // Called only by the loopback launcher listener; leaves a new account without a character.

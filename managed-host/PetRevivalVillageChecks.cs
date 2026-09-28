@@ -166,6 +166,21 @@ internal static class PetRevivalVillageChecks
             "C355 no-couple state leaves empty name and zero ring for the native emotion gate");
         Check(c355[0xF2 - 8] == 33, "C355 revival count remains adjacent after the ring field");
 
+        var progressiveMasks = new byte[60];
+        for (var episode = 0; episode < 15; episode++)
+            progressiveMasks[episode * 3] = 0x0F;
+        var progressiveLocked = NetworkAdapterService.BuildLoadNecessityPayload(
+            character, progressiveMasks, ratings, secretRatings, null, unlockAllDungeons: false);
+        Check(progressiveLocked.AsSpan(0x3C - 8, 60).SequenceEqual(progressiveMasks)
+            && BinaryPrimitives.ReadUInt64LittleEndian(progressiveLocked.AsSpan(0x80 - 8, 8)) == 0,
+            "progression mode preserves real dungeon clears and keeps the fifth-village gate closed before all prerequisites");
+        progressiveMasks[15 * 3] = 0x0F;
+        var progressiveUnlocked = NetworkAdapterService.BuildLoadNecessityPayload(
+            character, progressiveMasks, ratings, secretRatings, null, unlockAllDungeons: false);
+        Check(progressiveUnlocked.AsSpan(0x3C - 8, 60).SequenceEqual(progressiveMasks)
+            && BinaryPrimitives.ReadUInt64LittleEndian(progressiveUnlocked.AsSpan(0x80 - 8, 8)) == (1UL << 44) - 1UL,
+            "progression mode retains the fifth-village compatibility gate after all prior episodes are complete");
+
         // A final access normalization must not mutate the independent cached
         // score-board tables. Reproduce a zero-rating profile with open village
         // prerequisites and verify the ranks remain unrated.

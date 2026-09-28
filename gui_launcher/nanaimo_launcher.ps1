@@ -18,6 +18,7 @@ $ClientCompatibilityReport=Join-Path $ClientCompatibilityOverlay 'nanaimo_compat
 $AdapterLogs=Join-Path $AdapterData 'logs'
 $AdapterStop=Join-Path $AdapterData 'stop.request'
 $PureNewPlayerProfile=Join-Path $AdapterData 'pure_new_player_profile.ini'
+$PureNewPlayerAccountState=Join-Path $AdapterData 'pure_new_player_account.txt'
 $ProfileIni=if($ProfileIniOverride){[IO.Path]::GetFullPath($ProfileIniOverride)}else{Join-Path $Root 'nanaimo_launcher_profile.ini'}
 $ProfileJson=if($ProfileJsonOverride){[IO.Path]::GetFullPath($ProfileJsonOverride)}else{Join-Path $Root 'nanaimo_launcher_profile.json'}
 $ProfileStateRoot=if($ProfileIniOverride){Split-Path $ProfileIni -Parent}else{$Root}
@@ -93,6 +94,8 @@ $SkillDefs=@(
     [pscustomobject]@{Index=15;Code=52000015;Name='肉弹型·下路技能Ⅲ';Tree='meat';Route=2}
 )
 function Read-KeyValueFile([string]$path){$h=@{};if(Test-Path -LiteralPath $path){foreach($line in Get-Content -LiteralPath $path){if($line-match'^\s*([^#;=]+)=(.*)$'){$h[$matches[1].Trim()]=$matches[2].Trim()}}};return $h}
+function Read-PureNewPlayerUsername {if(-not(Test-Path -LiteralPath $PureNewPlayerAccountState)){return ''};return [string](Get-Content -LiteralPath $PureNewPlayerAccountState -TotalCount 1).Trim()}
+function Save-PureNewPlayerUsername([string]$username){$username=$username.Trim();if($username.Length-lt1-or$username.Length-gt64-or(@($username.ToCharArray()|Where-Object{[char]::IsControl($_)}).Count-gt0)){throw '新手档用户名必须为1到64个非控制字符。'};if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null};[IO.File]::WriteAllText($PureNewPlayerAccountState,$username+("`r`n"),(New-Object Text.UTF8Encoding($false)));return $username}
 function Infer-SkillRoute($grades,[int[]]$upper,[int[]]$lower){$u=@($upper|Where-Object{[int]$grades[$_]-gt0}).Count-gt0;$l=@($lower|Where-Object{[int]$grades[$_]-gt0}).Count-gt0;if($u-and$l){return -1};if($u){return 1};if($l){return 2};return 0}
 
 
@@ -277,6 +280,8 @@ $defaultFreeMagicKeyExpiry=Read-ProfileUInt64 $ini 'free_magic_key_expiry' 20991
 $defaultQuickbarExpiry=Read-ProfileUInt64 $ini 'quickbar_expiry' 0;if($defaultQuickbarExpiry-ne0-and($defaultQuickbarExpiry-lt2000010100-or$defaultQuickbarExpiry-gt2100123123)){throw 'quickbar_expiry must be 0 or YYYYMMDDHH in 2000010100..2100123123.'}
 $skillSlotExpiryConfigured=$ini.ContainsKey('skill_slot_expiry');$defaultSkillSlotExpiry=Read-ProfileUInt64 $ini 'skill_slot_expiry' 0;if($defaultSkillSlotExpiry-ne0-and($defaultSkillSlotExpiry-lt2000010100-or$defaultSkillSlotExpiry-gt2100123123)){throw 'skill_slot_expiry must be 0 or YYYYMMDDHH in 2000010100..2100123123.'}
 $defaultSkipTutorial=$ini.ContainsKey('skip_tutorial')-and([string]$ini.skip_tutorial-eq'1')
+$defaultUnlockAllDungeons=-not$ini.ContainsKey('unlock_all_dungeons')-or([string]$ini.unlock_all_dungeons-eq'1')
+$defaultPureNewPlayerUsername=Read-PureNewPlayerUsername
 $skillProfile=$ini
 if(-not($ini.ContainsKey('skill_config')-and[string]$ini.skill_config-eq'1')-and$ini.name_hex){$skillPath=Join-Path $Root ("skill_progress_state_v2_{0}.dat"-f([string]$ini.name_hex));if(Test-Path -LiteralPath $skillPath){$skillProfile=Read-KeyValueFile $skillPath}}
 $defaultSkillGrades=New-Object int[] 16;$haveSkillGrades=$false
@@ -439,7 +444,10 @@ foreach($part in @('body','hair','top','bottom','accessory','effect')){
     $rows=@($equips|Where-Object part -eq $part);$choices=New-ChoiceList $rows;Bind-Combo $c $choices ([uint32]$defaults[$part]);$comboMap[$part]=$c;$y+=46
 }
 $comboMap.body.add_SelectedIndexChanged({$d=Get-SelectedData $comboMap.body;if($d-and$d.gender-eq'M'){$genderCombo.SelectedIndex=1}elseif($d-and$d.gender-eq'F'){$genderCombo.SelectedIndex=0}})
-$warning=New-Object Windows.Forms.Label;$warning.Text='进入游戏时保存配置并重启本地协议适配器。';$warning.ForeColor=[Drawing.Color]::DarkOrange;$warning.AutoSize=$true;$warning.Location=New-Object Drawing.Point(190,608);$tabStart.Controls.Add($warning)
+Add-Label $tabStart '新手档用户名' 35 610 145|Out-Null
+$pureNewPlayerUsernameBox=New-Object Windows.Forms.TextBox;$pureNewPlayerUsernameBox.Location=New-Object Drawing.Point(190,606);$pureNewPlayerUsernameBox.Size=New-Object Drawing.Size(300,28);$pureNewPlayerUsernameBox.Text=$defaultPureNewPlayerUsername;$tabStart.Controls.Add($pureNewPlayerUsernameBox)
+$unlockAllDungeonsBox=New-Object Windows.Forms.CheckBox;$unlockAllDungeonsBox.Text='开启全部地宫进入权限';$unlockAllDungeonsBox.Location=New-Object Drawing.Point(520,606);$unlockAllDungeonsBox.Size=New-Object Drawing.Size(250,28);$unlockAllDungeonsBox.Checked=$defaultUnlockAllDungeons;$tabStart.Controls.Add($unlockAllDungeonsBox)
+$warning=New-Object Windows.Forms.Label;$warning.Text='进入游戏时保存配置并重启本地协议适配器。';$warning.ForeColor=[Drawing.Color]::DarkOrange;$warning.AutoSize=$true;$warning.Location=New-Object Drawing.Point(190,632);$tabStart.Controls.Add($warning)
 
 $saveBtn=New-Object Windows.Forms.Button;$saveBtn.Text='保存配置';$saveBtn.Size=New-Object Drawing.Size(125,40);$saveBtn.Location=New-Object Drawing.Point(75,650);$tabStart.Controls.Add($saveBtn)
 $clientBtn=New-Object Windows.Forms.Button;$clientBtn.Text='一键进入 Nanaimo';$clientBtn.Size=New-Object Drawing.Size(230,40);$clientBtn.Location=New-Object Drawing.Point(215,650);$clientBtn.BackColor=[Drawing.Color]::LightGreen;$tabStart.Controls.Add($clientBtn)
@@ -454,6 +462,7 @@ function Update-LaunchModePresentation {
 function Update-PureNewPlayerPresentation {
     $normal=-not$pureNewPlayerBox.Checked
     foreach($control in @($nameBox,$skipTutorialBox,$levelBox,$resetProgressBtn,$genderCombo,$attackCombo,$titleCombo,$petCombo,$petAgeCombo)+@($comboMap.Values)){$control.Enabled=$normal}
+    $pureNewPlayerUsernameBox.Enabled=-not$normal
     $saveBtn.Enabled=$normal;$adapterBtn.Enabled=$normal
     Update-LaunchModePresentation
     if($launchInfoBox){Update-LaunchPreview}
@@ -491,6 +500,8 @@ function Update-LaunchPreview([switch]$ComputeHashes){
         $running=@(Get-Process -ErrorAction SilentlyContinue|Where-Object $processFilter|ForEach-Object{"$($_.ProcessName)(PID=$($_.Id))"});if(-not$running){$running=@('<none>')}
         $lines=@(
             '=== Pure new player launch ===',
+            ('Pure account: '+$(if($pureNewPlayerUsernameBox.Text.Trim()){$pureNewPlayerUsernameBox.Text.Trim()}else{'<auto-generated>'})),
+            ('Dungeon access: '+$(if($unlockAllDungeonsBox.Checked){'all unlocked'}else{'progression prerequisites'})),
             'Pure profile: new loopback account | no pre-created character',
             'Ignored: GUI name/gender/level/title/pet/equipment/resources/skills, normal profile INI/JSON, inventory sidecars, existing character/task state.',
             'Applied: isolated runtime profile with skip_tutorial=0; server suppresses configurable local Hans/NANA/SP grants; retail client owns character creation.',
@@ -536,7 +547,9 @@ $refreshLaunchInfoBtn.add_Click({try{Update-LaunchPreview -ComputeHashes}catch{[
 $copyLaunchInfoBtn.add_Click({if($launchInfoBox.Text){[Windows.Forms.Clipboard]::SetText($launchInfoBox.Text);$status.Text='已复制“本次启动详情”到剪贴板。'}})
 $tabs.add_SelectedIndexChanged({if($tabs.SelectedTab-eq$tabLaunchInfo){Update-LaunchPreview}})
 $skillSlotExpiryApplyBox.add_CheckedChanged({$skillSlotExpiryBox.Enabled=$skillSlotExpiryApplyBox.Checked;if($launchInfoBox){Update-LaunchPreview}})
-$pureNewPlayerBox.add_CheckedChanged({Update-PureNewPlayerPresentation})
+$pureNewPlayerBox.add_CheckedChanged({if($pureNewPlayerBox.Checked){$unlockAllDungeonsBox.Checked=$false}else{$unlockAllDungeonsBox.Checked=$defaultUnlockAllDungeons};Update-PureNewPlayerPresentation})
+$pureNewPlayerUsernameBox.add_TextChanged({if($launchInfoBox){Update-LaunchPreview}})
+$unlockAllDungeonsBox.add_CheckedChanged({if($launchInfoBox){Update-LaunchPreview}})
 
 function Update-PetAgeOptions([Nullable[int]]$desired){
 $r=Get-SelectedData $petCombo;if(-not$r){return};$max=[Math]::Max(0,[int]$r.max_age);$min=if([uint32]$r.id-in[uint32[]](15000001,15000002,15000003)){1}else{0};if($min-gt$max){$min=$max};$want=if($null-ne$desired){[int]$desired}else{[int]$r.display_age};if($r.wire_age_status-eq'observed' -and $want-lt[int]$r.wire_current_age){$want=[int]$r.wire_current_age};$want=[Math]::Min($max,[Math]::Max($min,$want))
@@ -620,13 +633,13 @@ function Register-ClientProfile([string]$ip){Send-LocalLaunchRegistration $ip ([
 function New-PureNewPlayerAccountName {return 'pure-'+(Get-Date).ToUniversalTime().ToString('yyyyMMddHHmmssfff')+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)}
 function Write-PureNewPlayerRuntimeProfile {
     if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
-    $lines=@('version=2','launch_mode=network','network_ip=127.0.0.1','skip_tutorial=0','gender=0','name_hex=505552454E4557','dungeon_grade=auto','level=1','pet=0','pet_age_a=0','pet_age_b=0','initial_attack_mode=0','equip_hair=0','equip_body=0','equip_top=0','equip_bottom=0','equip_accessory=0','equip_effect=0','hp_max=1500','hp_current=1500','mp_max=100','mp_current=100','attack=0','defense=0','coin=0','nana_point=0','card_key_normal=0','card_key_gold=0','card_key_mystery=0','card_key_special=0','free_magic_key_expiry=2000010100','quickbar_expiry=0','skill_config=1','skill_projectile_route=0','skill_meat_route=0','skill_slot_z=0','skill_slot_x=0')
+    $lines=@('version=2','launch_mode=network','network_ip=127.0.0.1','skip_tutorial=0',"unlock_all_dungeons=$([int]$unlockAllDungeonsBox.Checked)",'gender=0','name_hex=505552454E4557','dungeon_grade=auto','level=1','pet=0','pet_age_a=0','pet_age_b=0','initial_attack_mode=0','equip_hair=0','equip_body=0','equip_top=0','equip_bottom=0','equip_accessory=0','equip_effect=0','hp_max=1500','hp_current=1500','mp_max=100','mp_current=100','attack=0','defense=0','coin=0','nana_point=0','card_key_normal=0','card_key_gold=0','card_key_mystery=0','card_key_special=0','free_magic_key_expiry=2000010100','quickbar_expiry=0','skill_config=1','skill_projectile_route=0','skill_meat_route=0','skill_slot_z=0','skill_slot_x=0')
     for($i=0;$i-lt16;$i++){$lines+="skill_grade$i=0"}
     [IO.File]::WriteAllLines($PureNewPlayerProfile,$lines,(New-Object Text.ASCIIEncoding))
     return $PureNewPlayerProfile
 }
-function Register-PureNewPlayer([string]$ip){
-    $account=New-PureNewPlayerAccountName
+function Register-PureNewPlayer([string]$ip,[string]$requestedUsername){
+    $account=$requestedUsername.Trim();if(-not$account){$account=New-PureNewPlayerAccountName};$account=Save-PureNewPlayerUsername $account
     $json=[ordered]@{LocalAccount=$account;PureNewPlayer=$true}|ConvertTo-Json -Compress
     Send-LocalLaunchRegistration $ip ([Text.Encoding]::UTF8.GetBytes($json)) '纯新手账号'
     return $account
@@ -738,7 +751,7 @@ function Save-Profile {
     $name=$nameBox.Text.Trim();$hex=Encode-NameHex $name;$pet=Get-SelectedData $petCombo;if(-not$pet){throw '请选择宠物。'}
     $selected=@{};foreach($part in $comboMap.Keys){$d=Get-SelectedData $comboMap[$part];if(-not$d){throw "请选择 $($PartLabels[$part])。"};$selected[$part]=$d}
     $age=Selected-PetAge;$resources=Get-ResourceSelection;$skills=Get-SkillSelection;$titleSelection=Get-SelectedDungeonTitle;$launchMode=Get-SelectedLaunchMode;$networkIp=Get-NetworkIpInput;$launchModeInfo=Get-SelectedLaunchModeInfo
-    $lines=@('version=2',"launch_mode=$launchMode","network_ip=$networkIp","skip_tutorial=$([int]$skipTutorialBox.Checked)","gender=$($genderCombo.SelectedIndex)","name_hex=$hex","dungeon_grade=$(if([int]$titleSelection.Grade-ge0){[int]$titleSelection.Grade}else{'auto'})","level=$([int]$levelBox.Value)","pet=$($pet.id)","pet_age_a=$age","pet_age_b=$($pet.max_age)","initial_attack_mode=$(Selected-AttackMode)","equip_hair=$($selected.hair.id)","equip_body=$($selected.body.id)","equip_top=$($selected.top.id)","equip_bottom=$($selected.bottom.id)","equip_accessory=$($selected.accessory.id)","equip_effect=$($selected.effect.id)","hp_max=$($resources.hp_max)","mp_max=$($resources.mp_max)","attack=$($resources.attack)","defense=$($resources.defense)","coin=$($resources.coin)","nana_point=$($resources.nana_point)","apartment_recommendation_points=$($resources.apartment_recommendation_points)","card_key_normal=$($resources.card_key_normal)","card_key_gold=$($resources.card_key_gold)","card_key_mystery=$($resources.card_key_mystery)","card_key_special=$($resources.card_key_special)","free_magic_key_expiry=$($resources.free_magic_key_expiry)","quickbar_expiry=$($resources.quickbar_expiry)")
+    $lines=@('version=2',"launch_mode=$launchMode","network_ip=$networkIp","skip_tutorial=$([int]$skipTutorialBox.Checked)","unlock_all_dungeons=$([int]$unlockAllDungeonsBox.Checked)","gender=$($genderCombo.SelectedIndex)","name_hex=$hex","dungeon_grade=$(if([int]$titleSelection.Grade-ge0){[int]$titleSelection.Grade}else{'auto'})","level=$([int]$levelBox.Value)","pet=$($pet.id)","pet_age_a=$age","pet_age_b=$($pet.max_age)","initial_attack_mode=$(Selected-AttackMode)","equip_hair=$($selected.hair.id)","equip_body=$($selected.body.id)","equip_top=$($selected.top.id)","equip_bottom=$($selected.bottom.id)","equip_accessory=$($selected.accessory.id)","equip_effect=$($selected.effect.id)","hp_max=$($resources.hp_max)","mp_max=$($resources.mp_max)","attack=$($resources.attack)","defense=$($resources.defense)","coin=$($resources.coin)","nana_point=$($resources.nana_point)","apartment_recommendation_points=$($resources.apartment_recommendation_points)","card_key_normal=$($resources.card_key_normal)","card_key_gold=$($resources.card_key_gold)","card_key_mystery=$($resources.card_key_mystery)","card_key_special=$($resources.card_key_special)","free_magic_key_expiry=$($resources.free_magic_key_expiry)","quickbar_expiry=$($resources.quickbar_expiry)")
     if($resources.skill_slot_expiry_apply){$lines+="skill_slot_expiry=$($resources.skill_slot_expiry)"}
     $lines+=@('skill_config=1',"skill_projectile_route=$($skills.projectile_route)","skill_meat_route=$($skills.meat_route)","skill_slot_z=$($skills.slot_z)","skill_slot_x=$($skills.slot_x)")
     for($i=0;$i-lt16;$i++){$lines+="skill_grade$i=$($skills.grades[$i])"}
@@ -746,7 +759,7 @@ function Save-Profile {
     $adminShop=[ordered]@{coin=[uint64]$resources.coin;nana=[uint64]$resources.nana_point;equipped=@([uint32]$selected.hair.id,[uint32]$selected.body.id,[uint32]$selected.top.id,[uint32]$selected.bottom.id,[uint32]$selected.accessory.id);effect=[uint32]$selected.effect.id;selected_pet=[uint32]$pet.id}
     $adminResult=Save-InventoryAdminState $inventoryAdmin $hex $adminShop
     $titleStatePath=$null;if([int]$titleSelection.Grade-ge0){$titleStatePath=Write-DungeonGradeState $ProfileStateRoot $hex ([int]$titleSelection.Grade)}
-    $view=[ordered]@{launch_mode=$launchMode;network_ip=$networkIp;start_local_adapter=$launchModeInfo.StartLocalAdapter;skip_tutorial=[bool]$skipTutorialBox.Checked;name=$name;level=[int]$levelBox.Value;title=[ordered]@{mode=if([int]$titleSelection.Grade-ge0){'fixed'}else{'progress'};grade=[int]$titleSelection.Grade;rank=[string]$titleSelection.Rank;resource_id=$titleSelection.ResourceId;icon_resource=$titleSelection.IconResource;text_resource=$titleSelection.TextResource;name=[string]$titleSelection.Name;state_file=$titleStatePath};gender=if($genderCombo.SelectedIndex-eq1){'M'}else{'F'};pet=$pet;pet_selected_age=$age;initial_attack_mode=Selected-AttackMode;equipment=[ordered]@{hair=$selected.hair;body=$selected.body;top=$selected.top;bottom=$selected.bottom;accessory=$selected.accessory;effect=$selected.effect};resources=[ordered]@{hp_max=$resources.hp_max;mp_max=$resources.mp_max;attack=$resources.attack;defense=$resources.defense;attack_carrier='CFEC+0x2E0';defense_policy='local max(1, raw-defense) before D010/D015';coin=$resources.coin;nana_point=$resources.nana_point;apartment_recommendation_points=$resources.apartment_recommendation_points;card_key_normal=$resources.card_key_normal;card_key_gold=$resources.card_key_gold;card_key_mystery=$resources.card_key_mystery;card_key_special=$resources.card_key_special;free_magic_key_expiry=$resources.free_magic_key_expiry;quickbar_expiry=$resources.quickbar_expiry;skill_slot_expiry=$resources.skill_slot_expiry;skill_slot_expiry_configured=$resources.skill_slot_expiry_apply;currency_carriers='C37B+C379';item_carriers='C3E8+C430+C474'};inventory_admin=[ordered]@{account_suffix=$adminResult.account_suffix;backup=$adminResult.backup;clothing=$inventoryAdmin.Clothing.Count;pets=$inventoryAdmin.Pets.Count;game_item_kinds=$inventoryAdmin.GameItems.Count;furniture=$inventoryAdmin.Furniture.Count;cards=$inventoryAdmin.Cards.Count};skills=[ordered]@{projectile_route=$skills.projectile_route;meat_route=$skills.meat_route;slot_z=$skills.slot_z;slot_x=$skills.slot_x;grades=@($skills.grades)};saved_at=(Get-Date).ToString('s')}
+    $view=[ordered]@{launch_mode=$launchMode;network_ip=$networkIp;start_local_adapter=$launchModeInfo.StartLocalAdapter;skip_tutorial=[bool]$skipTutorialBox.Checked;unlock_all_dungeons=[bool]$unlockAllDungeonsBox.Checked;name=$name;level=[int]$levelBox.Value;title=[ordered]@{mode=if([int]$titleSelection.Grade-ge0){'fixed'}else{'progress'};grade=[int]$titleSelection.Grade;rank=[string]$titleSelection.Rank;resource_id=$titleSelection.ResourceId;icon_resource=$titleSelection.IconResource;text_resource=$titleSelection.TextResource;name=[string]$titleSelection.Name;state_file=$titleStatePath};gender=if($genderCombo.SelectedIndex-eq1){'M'}else{'F'};pet=$pet;pet_selected_age=$age;initial_attack_mode=Selected-AttackMode;equipment=[ordered]@{hair=$selected.hair;body=$selected.body;top=$selected.top;bottom=$selected.bottom;accessory=$selected.accessory;effect=$selected.effect};resources=[ordered]@{hp_max=$resources.hp_max;mp_max=$resources.mp_max;attack=$resources.attack;defense=$resources.defense;attack_carrier='CFEC+0x2E0';defense_policy='local max(1, raw-defense) before D010/D015';coin=$resources.coin;nana_point=$resources.nana_point;apartment_recommendation_points=$resources.apartment_recommendation_points;card_key_normal=$resources.card_key_normal;card_key_gold=$resources.card_key_gold;card_key_mystery=$resources.card_key_mystery;card_key_special=$resources.card_key_special;free_magic_key_expiry=$resources.free_magic_key_expiry;quickbar_expiry=$resources.quickbar_expiry;skill_slot_expiry=$resources.skill_slot_expiry;skill_slot_expiry_configured=$resources.skill_slot_expiry_apply;currency_carriers='C37B+C379';item_carriers='C3E8+C430+C474'};inventory_admin=[ordered]@{account_suffix=$adminResult.account_suffix;backup=$adminResult.backup;clothing=$inventoryAdmin.Clothing.Count;pets=$inventoryAdmin.Pets.Count;game_item_kinds=$inventoryAdmin.GameItems.Count;furniture=$inventoryAdmin.Furniture.Count;cards=$inventoryAdmin.Cards.Count};skills=[ordered]@{projectile_route=$skills.projectile_route;meat_route=$skills.meat_route;slot_z=$skills.slot_z;slot_x=$skills.slot_x;grades=@($skills.grades)};saved_at=(Get-Date).ToString('s')}
     [IO.File]::WriteAllText($ProfileJson,($view|ConvertTo-Json -Depth 6),(New-Object Text.UTF8Encoding($false)))
     $status.Text="Saved profile + title selection + five inventory domains (backup: $($adminResult.backup)).`r`nMax HP $($resources.hp_max), Max MP $($resources.mp_max), attack +$($resources.attack), defense $($resources.defense); Title=$($titleSelection.Display); Z=$(Skill-CodeName $skills.slot_z), X=$(Skill-CodeName $skills.slot_x).";Update-LaunchPreview
 }
@@ -757,6 +770,7 @@ if($SelfTestProfileIO){
     if([string]$roundIni.dungeon_grade-ne$(if([int]$expectTitle.Grade-ge0){[string][int]$expectTitle.Grade}else{'auto'})-or[int]$roundJson.title.grade-ne[int]$expectTitle.Grade){throw 'dungeon_grade roundtrip'}
     if([string]$roundIni.network_ip-ne$expectIp-or[string]$roundJson.network_ip-ne$expectIp){throw 'network_ip roundtrip'}
     $expectSkip=[int]$skipTutorialBox.Checked;if([int]$roundIni.skip_tutorial-ne$expectSkip-or[bool]$roundJson.skip_tutorial-ne[bool]$skipTutorialBox.Checked){throw 'skip_tutorial roundtrip'}
+    $expectUnlock=[int]$unlockAllDungeonsBox.Checked;if([int]$roundIni.unlock_all_dungeons-ne$expectUnlock-or[bool]$roundJson.unlock_all_dungeons-ne[bool]$unlockAllDungeonsBox.Checked){throw 'unlock_all_dungeons roundtrip'}
     foreach($k in 'hp_max','mp_max','attack','defense','coin','nana_point','apartment_recommendation_points','card_key_normal','card_key_gold','card_key_mystery','card_key_special','free_magic_key_expiry','quickbar_expiry'){if([string]$roundIni[$k]-ne[string]$expect[$k]){throw "INI roundtrip $k"};if([string]$roundJson.resources.$k-ne[string]$expect[$k]){throw "JSON roundtrip $k"}};if($expect.skill_slot_expiry_apply){if([string]$roundIni.skill_slot_expiry-ne[string]$expect.skill_slot_expiry){throw 'INI roundtrip skill_slot_expiry'}}elseif($roundIni.ContainsKey('skill_slot_expiry')){throw 'implicit skill_slot_expiry write'};if([string]$roundJson.resources.skill_slot_expiry-ne[string]$expect.skill_slot_expiry-or[bool]$roundJson.resources.skill_slot_expiry_configured-ne[bool]$expect.skill_slot_expiry_apply){throw 'JSON roundtrip skill_slot_expiry'}
     foreach($legacy in 'hp_current','mp_current'){if($roundIni.ContainsKey($legacy)){throw "legacy INI resource key retained: $legacy"};if($roundJson.resources.PSObject.Properties.Name-contains$legacy){throw "legacy JSON resource key retained: $legacy"}}
     $skillExpectedValues=@{skill_projectile_route=$skillExpect.projectile_route;skill_meat_route=$skillExpect.meat_route;skill_slot_z=$skillExpect.slot_z;skill_slot_x=$skillExpect.slot_x}
@@ -788,7 +802,7 @@ $clientBtn.add_Click({
         $proc=Start-LocalAdapter $runtimeProfile
         $adapterBtn.Text='停止适配器'
         $account=$null
-        if($launchModeInfo.Key-eq'network'){$account=if($pure){Register-PureNewPlayer $launchModeInfo.AdapterIP}else{Register-ClientProfile $launchModeInfo.AdapterIP;$null}}
+        if($launchModeInfo.Key-eq'network'){$account=if($pure){Register-PureNewPlayer $launchModeInfo.AdapterIP $pureNewPlayerUsernameBox.Text}else{Register-ClientProfile $launchModeInfo.AdapterIP;$null}}
         if($launchModeInfo.ClientArgs.Count){Start-Process -FilePath $Client -ArgumentList ([string[]]$launchModeInfo.ClientArgs) -WorkingDirectory $Root|Out-Null}else{Start-Process -FilePath $Client -WorkingDirectory $Root|Out-Null}
         $changed=@($compatibility.apply_results|Where-Object{$_.status-eq'applied'}).Count
         $status.Text=if($pure){"Pure new player account $account registered; normal profile/sidecars unchanged; compatibility verified ($changed files applied); client launched.`r`nRuntime profile: $runtimeProfile"}else{"Profile saved; compatibility verified ($changed files applied); adapter restarted and client launched.`r`n$ReleaseIdentity; identity: $RuntimeIdentityPath"}
@@ -839,7 +853,7 @@ if($SelfTestLayout){
         if($nameBox.Text-ne'Greyrat'){throw 'default name'}
         if($pureNewPlayerBox.Checked){throw 'default pure-new-player mode'}
         $pureNewPlayerBox.Checked=$true;[Windows.Forms.Application]::DoEvents()
-        if($nameBox.Enabled-or$saveBtn.Enabled-or$adapterBtn.Enabled-or-not$clientBtn.Enabled-or$clientBtn.Text-ne'构建并进入纯新手档'){throw 'pure-new-player control gate'}
+        if($nameBox.Enabled-or-not$pureNewPlayerUsernameBox.Enabled-or$saveBtn.Enabled-or$adapterBtn.Enabled-or-not$clientBtn.Enabled-or$clientBtn.Text-ne'构建并进入纯新手档'){throw 'pure-new-player control gate'}
         $pureNewPlayerBox.Checked=$false;[Windows.Forms.Application]::DoEvents()
         $expectedOutfit=@{hair=10130337;body=10100028;top=10110337;bottom=10120352;accessory=10150103;effect=10160017}
         foreach($part in $expectedOutfit.Keys){if((Get-SelectedData $comboMap[$part]).id-ne$expectedOutfit[$part]){throw "default outfit $part"}}
@@ -881,21 +895,21 @@ if($SelfTestLayout){
 }
 
 if($SelfTestPureNewPlayer){
-    $savedPurePath=$PureNewPlayerProfile;$tempPure=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo_pure_new_'+[guid]::NewGuid().ToString('N')+'.ini')
+    $savedPurePath=$PureNewPlayerProfile;$savedAccountState=$PureNewPlayerAccountState;$tempPure=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo_pure_new_'+[guid]::NewGuid().ToString('N')+'.ini');$tempAccount=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo_pure_account_'+[guid]::NewGuid().ToString('N')+'.txt')
     try{
-        $PureNewPlayerProfile=$tempPure;$pureNewPlayerBox.Checked=$true
+        $PureNewPlayerProfile=$tempPure;$PureNewPlayerAccountState=$tempAccount;$pureNewPlayerBox.Checked=$true;$pureNewPlayerUsernameBox.Text='test';$unlockAllDungeonsBox.Checked=$false
         $beforeIni=if(Test-Path -LiteralPath $ProfileIni){(Get-FileHash -LiteralPath $ProfileIni -Algorithm SHA256).Hash}else{$null}
         $beforeJson=if(Test-Path -LiteralPath $ProfileJson){(Get-FileHash -LiteralPath $ProfileJson -Algorithm SHA256).Hash}else{$null}
-        $written=Write-PureNewPlayerRuntimeProfile;$profile=Read-KeyValueFile $written;$account=New-PureNewPlayerAccountName
+        $written=Write-PureNewPlayerRuntimeProfile;$profile=Read-KeyValueFile $written;$account=Save-PureNewPlayerUsername $pureNewPlayerUsernameBox.Text
         $payload=[ordered]@{LocalAccount=$account;PureNewPlayer=$true}|ConvertTo-Json -Compress|ConvertFrom-Json
-        if($written-ne$tempPure-or[string]$profile.skip_tutorial-ne'0'-or[string]$profile.level-ne'1'-or[string]$profile.pet-ne'0'-or[string]$profile.coin-ne'0'-or[string]$profile.skill_grade0-ne'0'){throw 'pure runtime profile'}
+        if($written-ne$tempPure-or[string]$profile.skip_tutorial-ne'0'-or[string]$profile.level-ne'1'-or[string]$profile.pet-ne'0'-or[string]$profile.coin-ne'0'-or[string]$profile.skill_grade0-ne'0'-or[string]$profile.unlock_all_dungeons-ne'0'){throw 'pure runtime profile'}
         [uint64]$freeExpiry=0;if(-not[uint64]::TryParse([string]$profile.free_magic_key_expiry,[ref]$freeExpiry)-or$freeExpiry-ne2000010100){throw 'pure runtime profile violates native free_magic_key_expiry startup/no-grant contract'}
-        if(-not[bool]$payload.PureNewPlayer-or[string]$payload.LocalAccount-notmatch'^pure-\d{17}-[0-9a-f]{8}$'){throw 'pure registration payload'}
+        if(-not[bool]$payload.PureNewPlayer-or[string]$payload.LocalAccount-ne'test'-or(Read-PureNewPlayerUsername)-ne'test'){throw 'pure registration payload/state'}
         Test-PureNewPlayerNativeStartup $written
         $afterIni=if(Test-Path -LiteralPath $ProfileIni){(Get-FileHash -LiteralPath $ProfileIni -Algorithm SHA256).Hash}else{$null};$afterJson=if(Test-Path -LiteralPath $ProfileJson){(Get-FileHash -LiteralPath $ProfileJson -Algorithm SHA256).Hash}else{$null}
         if($beforeIni-ne$afterIni-or$beforeJson-ne$afterJson){throw 'normal profile mutated'}
         Write-Output 'GUI_PURE_NEW_PLAYER_SELFTEST_PASS profile=isolated native_startup=listening skip_tutorial=0 level=1 grants=0 registration=json normal_profile_unchanged=true'
-    }finally{$PureNewPlayerProfile=$savedPurePath;Remove-Item -LiteralPath $tempPure -Force -ErrorAction SilentlyContinue;$form.Close();$form.Dispose()}
+    }finally{$PureNewPlayerProfile=$savedPurePath;$PureNewPlayerAccountState=$savedAccountState;Remove-Item -LiteralPath $tempPure,$tempAccount -Force -ErrorAction SilentlyContinue;$form.Close();$form.Dispose()}
     exit 0
 }
 

@@ -9,8 +9,9 @@ namespace OpenNanaimo.Adapter.Services;
 
 public sealed partial class NetworkAdapterService
 {
-    private readonly ConcurrentQueue<(long AccountId, DateTime Expires)> _localLaunches = new();
+    private readonly ConcurrentQueue<(long AccountId, bool PureNewPlayer, DateTime Expires)> _localLaunches = new();
     public bool NativeDungeonEnabled { get; set; }
+    public bool UnlockAllDungeons { get; set; } = true;
     public NativeDungeonPool? NativeRooms { get; set; }
     public string NativeJournalDirectory { get; set; } = "native-journal";
 
@@ -46,7 +47,7 @@ public sealed partial class NetworkAdapterService
                     }
                     else
                         accountId = (await _database.ImportLocalProfileAsync(Encoding.ASCII.GetString(data), profileRoot, timeout.Token)).AccountId;
-                    _localLaunches.Enqueue((accountId, DateTime.UtcNow.AddMinutes(2)));
+                    _localLaunches.Enqueue((accountId, pureNewPlayer, DateTime.UtcNow.AddMinutes(2)));
                     await stream.WriteAsync("OK\n"u8.ToArray(), timeout.Token);
                     _log($"Local launcher account ready: account={accountId} mode={(pureNewPlayer ? "pure-new-player" : "profile/default")}");
                 }
@@ -70,6 +71,7 @@ public sealed partial class NetworkAdapterService
             var access = await _database.GetAccountAccessByIdAsync(pending.AccountId, token);
             if (access is null || access.Value.IsBanned) continue;
             session.AccountId = pending.AccountId; session.Username = access.Value.Username;
+            session.PureNewPlayer = pending.PureNewPlayer;
             session.Character = await _database.GetCharacterAsync(pending.AccountId, token);
             session.RemoteIp = remoteIp; CacheLoginTicket(session);
             return true;
