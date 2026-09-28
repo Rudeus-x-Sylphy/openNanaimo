@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "policies": [
+    {
+      "resource": "ep01_dg02_new_obj_meteor.mmo",
+      "sha256": "80A21EE3F8175DCFEA21C2BF84B3F6DF9A0BC24B69951294F37D8C2178ADCB01",
+      "mmo_record_count": 36,
+      "damage": 100,
+      "expected_selected_rows": 216,
+      "evidence": "Observed standalone kind60 terrain collision restored by abed8a2; no positive-HP parent exists.",
+      "scopes": [
+        {
+          "hd": 0,
+          "episode": 0,
+          "dungeon": 2,
+          "stage": 0,
+          "difficulty_mask": 7
+        }
+      ]
+    }
+  ],
+  "negative_samples": [
+    {
+      "resource": "ep01_dg02_new_obj_flash_00.mmo",
+      "expected_unclassified_rows": 168,
+      "reason": "Same episode/object family and HP0 standalone type4 shape, but no damage evidence."
+    },
+    {
+      "resource": "ep17_dg00_obj_B_bomb_00.mmo",
+      "expected_unclassified_rows": 594,
+      "reason": "Hazardous-sounding name is not sufficient evidence."
+    },
+    {
+      "resource": "ep03_dg00_obj_fire-nw0.mmo",
+      "expected_unclassified_rows": 21,
+      "reason": "Fire naming is not sufficient evidence."
+    },
+    {
+      "resource": "ep13_dg02_obj_rock_00.mmo",
+      "expected_unclassified_rows": 4,
+      "reason": "Rock naming is not sufficient evidence."
+    },
+    {
+      "resource": "ep17_dg01_obj_spear_00.mmo",
+      "expected_unclassified_rows": 27,
+      "reason": "Spear naming is not sufficient evidence."
+    },
+    {
+      "resource": "ep05_bbm_ef_leaf00.mmo",
+      "expected_unclassified_rows": 1260,
+      "reason": "High-volume decorative standalone type4 negative control."
+    },
+    {
+      "resource": "cloud_obj_01.mmo",
+      "expected_unclassified_rows": 870,
+      "reason": "High-volume ambient standalone type4 negative control."
+    }
+  ]
+}

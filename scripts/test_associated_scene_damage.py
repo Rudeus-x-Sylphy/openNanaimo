@@ -25,7 +25,7 @@ static unsigned expected_associated(const struct stage_damage_damage_context *ct
 }
 int main(void){
     unsigned char req[28];struct stage_damage_damage_context ctx;struct stage_damage_damage_lookup out;
-    unsigned i,selector,mapped=0u,hazards=0u,unmapped=0u,scopes=0u,mapped_scopes=0u,type4_total=0u;
+    unsigned i,selector,mapped=0u,hazards=0u,unmapped=0u,scopes=0u,mapped_scopes=0u,type4_total=0u,association_candidates=0u,standalone=0u,broken_association=0u,unclassified_type4=0u;
     /* 0x11/source2 is the captured Dungeon 16 / dungeon 3 kind60 tuple from
      * native.log line 13414; keep it explicit rather than relying only on the
      * catalog-wide self-consistency loop. */
@@ -39,7 +39,8 @@ int main(void){
             unsigned parent=0u,expected=expected_associated(&ctx,p,selector,&parent),actual;
             req[0x0A]=(unsigned char)selector;req[0x0B]=(unsigned char)(selector>>8);req[0x0C]=2u;req[0x0D]=0u;
             actual=stage_damage_player_d00f_damage(&ctx,req,60u,&out);
-            if(hp_sync_target_defs[p->first_row+selector].target_type==4u)type4_total++;
+            {const struct hp_sync_target_def *classified=&hp_sync_target_defs[p->first_row+selector];
+                if(classified->target_type==4u){type4_total++;if(classified->association>=0)association_candidates++;else standalone++;}}
             if(expected){const struct hp_sync_target_def *child=&hp_sync_target_defs[p->first_row+selector];
                 if(actual!=expected)printf("MISMATCH hd=%u ep=%u dg=%u st=%u diff=%u slot=%u selector=%u parent=%u expected=%u actual=%u status=%u\n",p->hd_id,p->stage_id,p->dungeon_id,p->stage_index,p->difficulty,p->slot_index,selector,parent,expected,actual,out.status);
                 CHECK(actual==expected);CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE);
@@ -47,17 +48,22 @@ int main(void){
                 CHECK(out.base==expected&&out.policy_damage==expected&&out.row_count==(unsigned)p->target_count);
                 CHECK(!strcmp(out.resource,hp_sync_resources[child->resource_index].name));mapped++;scope_mapped++;
             }else{const struct hp_sync_target_def *target=&hp_sync_target_defs[p->first_row+selector];const char *resource=target->resource_index<HP_SYNC_RESOURCE_COUNT?hp_sync_resources[target->resource_index].name:"";
-                if(target->target_type==4u&&!strcmp(resource,"ep01_dg02_new_obj_meteor.mmo")){
-                    CHECK(actual==STAGE_DAMAGE_SCENE_HAZARD_FALLBACK_DAMAGE);CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);
+                if(actual){
+                    CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);CHECK(target->target_type==4u&&target->association<0);
+                    CHECK(target->raw_hp==0&&target->nominal_hp==0&&target->basis==0&&target->reward_kind==0);
                     CHECK(out.owner==selector&&out.source==2u&&out.target_type==4u&&out.associated_selector==0u);
                     CHECK(out.base==actual&&out.policy_damage==actual&&out.row_count==(unsigned)p->target_count);CHECK(!strcmp(out.resource,resource));hazards++;
-                }else{CHECK(actual==0u);CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);unmapped++;}}
+                }else{CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);unmapped++;
+                    if(target->target_type==4u){unclassified_type4++;if(target->association>=0)broken_association++;}}}
 
         }
         if(scope_mapped)mapped_scopes++;
     }
     CHECK(scopes==282u);CHECK(mapped_scopes==261u);CHECK(type4_total==43517u);
-    CHECK(mapped==29172u);CHECK(hazards==216u);CHECK(type4_total-mapped-hazards==14129u);CHECK(unmapped>mapped);
+    CHECK(association_candidates==31095u);CHECK(standalone==12422u);CHECK(broken_association==1923u);
+    CHECK(mapped==29172u);CHECK(hazards==STAGE_DAMAGE_SCENE_HAZARD_SELECTED_ROW_COUNT);CHECK(hazards==216u);
+    CHECK(unclassified_type4==14129u);CHECK(type4_total-mapped-hazards==unclassified_type4);CHECK(unmapped>mapped);
+    CHECK(STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT==1u);
     stage_damage_damage_begin(&ctx,0u,15u,2u,0u,2u,1u,1u);
     CHECK(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])==16u);
     for(i=0u;i<sizeof(ep15_selectors)/sizeof(ep15_selectors[0]);i++){
@@ -82,7 +88,7 @@ int main(void){
     CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);
     req[0x0A]=0u;req[0x0B]=0u;CHECK(stage_damage_player_d00f_damage(&ctx,req,80u,&out)==0u);
     CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);
-    printf("ASSOCIATED_SCENE_DAMAGE_PASS scopes=%u mapped_scopes=%u type4=%u mapped=%u hazards=%u unmapped_type4=%u all_unmapped=%u ep15=%u\n",scopes,mapped_scopes,type4_total,mapped,hazards,type4_total-mapped-hazards,unmapped,(unsigned)(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])));
+    printf("ASSOCIATED_SCENE_DAMAGE_PASS scopes=%u mapped_scopes=%u type4=%u association_candidates=%u exact_associated=%u broken_association=%u standalone=%u hazards=%u unclassified=%u all_unmapped=%u ep15=%u\n",scopes,mapped_scopes,type4_total,association_candidates,mapped,broken_association,standalone,hazards,unclassified_type4,unmapped,(unsigned)(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])));
     return 0;
 }
 """
@@ -103,7 +109,7 @@ class AssociatedSceneDamageTests(unittest.TestCase):
             run_result = subprocess.run(
                 [str(binary)], cwd=directory, capture_output=True, text=True, errors="replace", timeout=60)
             self.assertEqual(run_result.returncode, 0, run_result.stdout + run_result.stderr)
-            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=282 mapped_scopes=261 type4=43517 mapped=29172 hazards=216 unmapped_type4=14129", run_result.stdout)
+            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=282 mapped_scopes=261 type4=43517 association_candidates=31095 exact_associated=29172 broken_association=1923 standalone=12422 hazards=216 unclassified=14129", run_result.stdout)
 
     def test_dispatch_is_exact_not_global_kind60_damage(self):
         source = (ROOT / "release/components/game_session/gs_runtime.inc").read_text("utf-8")

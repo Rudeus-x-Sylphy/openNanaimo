@@ -5,6 +5,7 @@
 #include "stage_damage_catalog.inc"
 #include "boss_contact_catalog.inc"
 #include "monster_contact_catalog.inc"
+#include "scene_hazard_catalog.inc"
 
 #define STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT 1u
 #define STAGE_DAMAGE_DAMAGE_EXACT_ZERO 2u
@@ -28,9 +29,6 @@
 #endif
 #ifndef STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE
 #define STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE STAGE_DAMAGE_PROJECTILE_FALLBACK_DAMAGE
-#endif
-#ifndef STAGE_DAMAGE_SCENE_HAZARD_FALLBACK_DAMAGE
-#define STAGE_DAMAGE_SCENE_HAZARD_FALLBACK_DAMAGE STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE
 #endif
 
 struct stage_damage_damage_context {
@@ -163,39 +161,31 @@ static unsigned stage_damage_scene_associated_lookup(const struct stage_damage_d
         out->resource=child->resource_index<HP_SYNC_RESOURCE_COUNT?hp_sync_resources[child->resource_index].name:"<scene-resource-oob>";}
     return damage;
 }
-/* Some authored terrain attacks are standalone type4 resources and therefore
- * have no positive-HP parent to inherit from. Keep these collision producers
- * explicit: decorative and ambient type4 rows remain echo-only. The policy is
- * scoped by stage tuple, segment, selector range and resource hash so reusing
- * a filename in another map cannot silently create a player damage source. */
-struct stage_damage_scene_hazard_policy {
-    unsigned hd,episode,dungeon,stage,difficulty,segment,selector_first,selector_last;
-    const char *resource,*sha256; unsigned damage;
-};
-static const struct stage_damage_scene_hazard_policy stage_damage_scene_hazard_policies[]={
-    {0u,0u,2u,0u,0xFFu,0u,239u,388u,"ep01_dg02_new_obj_meteor.mmo","80A21EE3F8175DCFEA21C2BF84B3F6DF9A0BC24B69951294F37D8C2178ADCB01",STAGE_DAMAGE_SCENE_HAZARD_FALLBACK_DAMAGE}
-};
-#define STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT ((unsigned)(sizeof(stage_damage_scene_hazard_policies)/sizeof(stage_damage_scene_hazard_policies[0])))
+/* Standalone terrain attacks cannot be inferred from type4, HP0, names, or
+ * MMO shape alone: the same shape covers decorative and ambient resources.
+ * The generated registry is fail-closed on resource identity and stage scope;
+ * runtime additionally guards the authored target shape. */
 static int stage_damage_resource_name_equal(const char *left,const char *right){
     if(!left||!right)return 0;
     while(*left&&*right&&*left==*right){left++;right++;}
     return *left==*right;
 }
-static int stage_damage_scene_hazard_policy_matches(const struct stage_damage_scene_hazard_policy *policy,const struct stage_damage_damage_context *ctx,const struct hp_sync_profile_def *profile,const struct hp_sync_target_def *target,unsigned selector,const struct hp_sync_resource_def *resource){
-    return policy&&ctx&&profile&&target&&resource&&policy->hd==ctx->resource_hd&&policy->episode==ctx->resource_episode&&policy->dungeon==ctx->resource_dungeon&&policy->stage==ctx->resource_stage&&
-        (policy->difficulty==0xFFu||policy->difficulty==ctx->difficulty)&&policy->segment==(unsigned)profile->segment&&target->segment==(unsigned)profile->segment&&selector>=policy->selector_first&&selector<=policy->selector_last&&
-        stage_damage_resource_name_equal(resource->name,policy->resource)&&stage_damage_resource_name_equal(resource->sha256,policy->sha256);
+static int stage_damage_scene_hazard_policy_matches(const struct stage_damage_damage_context *ctx,const struct hp_sync_resource_def *resource_def,const char *resource,const struct stage_damage_scene_hazard_policy *policy){
+    return ctx&&resource_def&&policy&&ctx->difficulty<3u&&
+        stage_damage_resource_name_equal(resource,policy->resource)&&stage_damage_resource_name_equal(resource_def->sha256,policy->sha256)&&
+        resource_def->record_count==policy->record_count&&ctx->resource_hd==policy->hd&&ctx->resource_episode==policy->episode&&
+        ctx->resource_dungeon==policy->dungeon&&ctx->resource_stage==policy->stage&&(policy->difficulty_mask&(1u<<ctx->difficulty));
 }
 static unsigned stage_damage_scene_hazard_lookup(const struct stage_damage_damage_context *ctx,unsigned selector,struct stage_damage_damage_lookup *out){
-    const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);const struct hp_sync_target_def *target;const struct hp_sync_resource_def *resource;unsigned i;
+    const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);const struct hp_sync_target_def *target;const struct hp_sync_resource_def *resource_def;const char *resource;unsigned i;
     if(!profile||selector>=(unsigned)profile->target_count)return 0u;
     target=&hp_sync_target_defs[profile->first_row+selector];
-    if((unsigned)target->selector!=selector||target->target_type!=4u||target->resource_index>=HP_SYNC_RESOURCE_COUNT)return 0u;
-    resource=&hp_sync_resources[target->resource_index];
-    for(i=0u;i<STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT;i++)if(stage_damage_scene_hazard_policy_matches(&stage_damage_scene_hazard_policies[i],ctx,profile,target,selector,resource)){
+    if((unsigned)target->selector!=selector||target->target_type!=4u||target->association>=0||target->raw_hp!=0||target->nominal_hp!=0||target->basis!=0||target->reward_kind!=0||target->resource_index>=HP_SYNC_RESOURCE_COUNT)return 0u;
+    resource_def=&hp_sync_resources[target->resource_index];resource=resource_def->name;
+    for(i=0u;i<STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT;i++)if(stage_damage_scene_hazard_policy_matches(ctx,resource_def,resource,&stage_damage_scene_hazard_policies[i])){
         unsigned damage=stage_damage_scene_hazard_policies[i].damage;
         if(out){out->target_type=(unsigned)target->target_type;out->row_count=(unsigned)profile->target_count;out->base=damage;
-            out->status=STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE;out->policy_damage=damage;out->resource=resource->name;}
+            out->status=STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE;out->policy_damage=damage;out->resource=resource;}
         return damage;
     }
     return 0u;
