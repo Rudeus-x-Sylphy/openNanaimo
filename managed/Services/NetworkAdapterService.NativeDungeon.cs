@@ -230,25 +230,18 @@ public sealed partial class NetworkAdapterService
                     _log($"NativeDungeon settlement resources observed: character={resourceCharacter.Id} hp={session.NativeBattleResources.CurrentHp}/{resourceCharacter.MaxHp} mp={session.NativeBattleResources.CurrentMp}/{resourceCharacter.MaxMp} attackMode={session.NativeBattleResources.AttackMode}");
                 }
             }
-            else if (ShouldAuthorizeNativeDungeonNextAction(
-                session.NativeDungeonSettlementAwaitingAction,
-                session.NativeDungeonDeathLatched,
-                frame,
-                opcode))
+            else if (opcode == 0xCF8B)
             {
-                PrepareNativeDungeonRevivalTransition(session, frame);
+                // A reset is not a free-standing worker command: consume
+                // malformed, repeated and pre-settlement requests here.
+                if (!PrepareNativeDungeonRevivalTransition(session, frame))
+                {
+                    _log("NativeDungeon reset ignored outside an armed settlement action");
+                    return true;
+                }
                 session.NativeDungeonSettlementAwaitingAction = false;
                 session.NativeDungeonNextTransitionAuthorized = true;
                 session.NativeDungeonTownTransitionAuthorized = false;
-            }
-            else if (ShouldSuppressNativeDungeonDeathResultReset(session.NativeDungeonDeathLatched, opcode))
-            {
-                // The death-result controller can emit its timer CF8B after
-                // CF87/CF88. It is not a player-selected stage continuation;
-                // forwarding it rebuilds gameplay behind the result music and
-                // leaves the rendered scene stuck in combat.
-                _log("NativeDungeon death-result timer CF8B suppressed; awaiting CF73/CF1D result exit");
-                return true;
             }
             else if (IsNativeDungeonManualTownLeavePrecursor(
                 session.NativeDungeonSettlementAwaitingAction,
@@ -397,12 +390,8 @@ public sealed partial class NetworkAdapterService
         ReadOnlySpan<byte> frame,
         ushort opcode)
         => awaitingAction
-            && !deathLatched
-            && IsAuthorizedNativeDungeonNextAction(frame, opcode);
-
-    internal static bool ShouldSuppressNativeDungeonDeathResultReset(
-        bool deathLatched, ushort opcode)
-        => deathLatched && opcode == 0xCF8B;
+            && IsAuthorizedNativeDungeonNextAction(frame, opcode)
+            && (!deathLatched || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(10, 2)) == 1);
 
     internal static bool TryResolveNativeDungeonTransition(
         byte currentDungeon,
@@ -899,6 +888,9 @@ public sealed partial class NetworkAdapterService
         exchange = new NativeDungeonExchangeResult(
             exchange.State,
             FilterNativeDungeonCheckpointFrames(requestOpcode, exchange.Frames));
+        var acceptedDungeonTransition = false;
+        var deathRetryTransition = requestOpcode == 0xCF8B && frame is not null
+            && IsNativeDungeonDeathRetryTransition(session, frame);
         if (requestOpcode == 0xCF8B
             && frame is not null
             && session.NativeDungeonSelectionValid)
@@ -913,15 +905,38 @@ public sealed partial class NetworkAdapterService
                         response,
                         out var nextDungeon,
                         out var nextStage,
-                        out var nextLogicalDifficulty))
+                        out var nextLogicalDifficulty)
+                    || (deathRetryTransition
+                        && (nextDungeon != session.NativeDungeonDungeon
+                            || nextStage != session.NativeDungeonStage
+                            || nextLogicalDifficulty != session.NativeDungeonLogicalDifficulty)))
                     continue;
                 var previousTuple = $"{session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{session.NativeDungeonDungeon}/{session.NativeDungeonStage}/{session.NativeDungeonLogicalDifficulty}";
                 session.NativeDungeonDungeon = nextDungeon;
                 session.NativeDungeonStage = nextStage;
                 session.NativeDungeonLogicalDifficulty = nextLogicalDifficulty;
+                acceptedDungeonTransition = true;
                 _log($"NativeDungeon effective tuple advanced: old={previousTuple} new={session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{nextDungeon}/{nextStage}/{nextLogicalDifficulty} via=CF8B/CF8C");
                 break;
             }
+        }
+        if (!acceptedDungeonTransition && deathRetryTransition)
+        {
+            session.NativeDungeonNextTransitionAuthorized = false;
+            session.NativeDungeonSettlementAwaitingAction = true;
+            _log($"NativeDungeon death settlement retry rejected: character={session.Character.Id}; result action remains available");
+        }
+        if (acceptedDungeonTransition && deathRetryTransition)
+        {
+            session.NativeDungeonDeathLatched = false;
+            // Restore the new battle's resources, but retain the old-battle
+            // damage barrier until the request-bound CFEC (or CF80) arrives.
+            session.NativeBattleResources = ResetNativeDungeonDeathRetryResources(
+                session.NativeBattleResources) is { } retryResources
+                    ? retryResources with { SettlementFrozen = true }
+                    : null;
+            session.NativeBattleAttackMode = session.NativeBattleResources?.AttackMode;
+            _log($"NativeDungeon death settlement retry accepted: character={session.Character.Id} tuple={session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{session.NativeDungeonDungeon}/{session.NativeDungeonStage}/{session.NativeDungeonLogicalDifficulty}");
         }
         var next = exchange.State;
         session.NativeBattleResources = MergeNativeDungeonRevivalResources(
@@ -1100,6 +1115,7 @@ public sealed partial class NetworkAdapterService
             RememberNativeDungeonRanking(session, response);
         var revivalOwner = ResolveNativeRevivalOwner(session, response);
         PatchNativeRevivalCountFrame(response, revivalOwner);
+        PatchNativeReadyRoomWalletFrame(response, revivalOwner);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(response, "NativeDungeon",
             session.ListenerPort, session.RemoteIp ?? "local", true, false, "retained-native-dungeon"), token);
     }

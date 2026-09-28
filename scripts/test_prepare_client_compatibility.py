@@ -55,7 +55,9 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
                  settlement_gate=compat.SETTLEMENT_AUTO_GATE_OLD,
                  settlement_action_gate=compat.SETTLEMENT_AUTO_ACTION_GATE_OLD,
                  power_hook=compat.POWER_RESTORE_HOOK_OLD,
-                 power_cave=compat.POWER_RESTORE_CAVE_OLD):
+                 power_cave=compat.POWER_RESTORE_CAVE_OLD,
+                 character_skip=bytes.fromhex("685C030000"),
+                 character_gate=bytes.fromhex("6A00")):
     sections = [
         (0x10000, 0x11000, 0x400),
         (0x2E0000, 0x14000, 0x11400),
@@ -68,8 +70,9 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0x1000, 0xF000, 0xE9400),
         (0x840000, 0x10000, 0xF8400),
         (0x18C000, 0x10000, 0x108400),
+        (0x660000, 0x10000, 0x118400),
     ]
-    data = bytearray(0x118400)
+    data = bytearray(0x128400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -85,6 +88,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         offset = compat._va_offset(data, va, len(blob))
         data[offset:offset + len(blob)] = blob
         return offset
+    put(0xA67B73, character_skip)
+    put(0xA67BE3, character_gate)
     furniture_offset = put(compat.FURNITURE_CALL_VA, furniture)
     put(compat.LAND_PURCHASE_VTABLE_VA, compat.LAND_PURCHASE_VTABLE_OLD)
     put(compat.LAND_PURCHASE_CAVE_VA, compat.LAND_PURCHASE_CAVE_OLD)
@@ -426,6 +431,93 @@ class NativeStateMigrationTests(unittest.TestCase):
                 bound = signature.bind(*call.call_args.args, **call.call_args.kwargs)
                 self.assertEqual(bound.arguments['native_state'], flag in ('--native-state', '--all'))
                 self.assertEqual(bound.arguments['revival_display'], flag == '--revival-display')
+
+
+class CharacterCreationCompatibilityTests(unittest.TestCase):
+    # Independent address/encoding expectations, not values copied from the emitter.
+    sites = ((0xA67B73, bytes.fromhex('685C030000'), bytes.fromhex('E96B000000')),
+             (0xA67BE3, bytes.fromhex('6A00'), bytes.fromhex('6A01')))
+
+    def test_reviewed_sites_only_and_all_known_partial_states_are_idempotent(self):
+        original = synthetic_pe()[0]
+        for mask in itertools.product((False, True), repeat=2):
+            with self.subTest(mask=mask):
+                source = original
+                for patched, (va, old, new) in zip(mask, self.sites):
+                    source = replace_site(source, va, new if patched else old)
+                output, report = compat.patch_character_creation(source)
+                allowed = set()
+                for va, old, new in self.sites:
+                    offset = compat._va_offset(output, va, len(new))
+                    self.assertEqual(output[offset:offset + len(new)], new)
+                    allowed.update(range(offset, offset + len(new)))
+                self.assertEqual(len(output), len(source))
+                self.assertTrue(all(i in allowed for i, (a, b) in enumerate(zip(source, output)) if a != b))
+                self.assertEqual(report['changed'], not all(mask))
+                again, second = compat.patch_character_creation(output)
+                self.assertEqual(again, output)
+                self.assertFalse(second['changed'])
+                jump = compat._va_offset(output, 0xA67B73, 5)
+                self.assertEqual(0xA67B78 + struct.unpack_from('<i', output, jump + 1)[0], 0xA67BE3)
+
+    def test_unknown_encoding_at_either_site_is_refused(self):
+        original = synthetic_pe()[0]
+        for va, old, new in self.sites:
+            for index in range(len(old)):
+                with self.subTest(va=hex(va), byte=index):
+                    bad = bytearray(old); bad[index] ^= 0x80
+                    source = replace_site(original, va, bytes(bad))
+                    with self.assertRaises(compat.CompatibilityError):
+                        compat.patch_character_creation(source)
+
+    def test_prepare_dry_run_apply_repeat_and_site_verification(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / 'client'; root.mkdir()
+            overlay = Path(temp) / 'overlay'; game = root / 'game.exe'
+            original = synthetic_pe()[0]; game.write_bytes(original)
+            report = compat.prepare(root, overlay, False, False, character_creation=True, dry_run=True)
+            self.assertTrue(report['verification']['all_pass'])
+            self.assertEqual(game.read_bytes(), original)
+            self.assertFalse(overlay.exists())
+            report = compat.prepare(root, overlay, False, False, character_creation=True, apply=True)
+            self.assertTrue(report['verification']['all_pass'])
+            target = compat.patch_character_creation(original)[0]
+            self.assertEqual(game.read_bytes(), target)
+            checks = compat._verify_client_bytes(target, False, False, False, character_creation=True)
+            self.assertGreaterEqual(len(checks), 2)
+            self.assertTrue(all(row['ok'] for row in checks))
+            for va, old, _ in self.sites:
+                checks = compat._verify_client_bytes(replace_site(target, va, old), False, False, False,
+                                                     character_creation=True)
+                self.assertFalse(all(row['ok'] for row in checks), hex(va))
+            again = compat.prepare(root, overlay, False, False, character_creation=True,
+                                   apply=True, overwrite=True)
+            self.assertTrue(all(row['status'] == 'unchanged' for row in again['apply_results']))
+            self.assertEqual(game.read_bytes(), target)
+
+    def test_unknown_apply_does_not_write_source_or_overlay(self):
+        for va, old, _ in self.sites:
+            with self.subTest(va=hex(va)), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp) / 'client'; root.mkdir()
+                overlay = Path(temp) / 'overlay'; game = root / 'game.exe'
+                original = replace_site(synthetic_pe()[0], va, b'\x90' * len(old))
+                game.write_bytes(original)
+                with self.assertRaises(compat.CompatibilityError):
+                    compat.prepare(root, overlay, False, False, character_creation=True, apply=True)
+                self.assertEqual(game.read_bytes(), original)
+                self.assertFalse(overlay.exists())
+
+    def test_cli_opt_in_all_and_existing_default_contract(self):
+        signature = inspect.signature(compat.prepare)
+        self.assertIs(signature.parameters['character_creation'].default, False)
+        for flag in ('--character-creation', '--all', '--native-state', '--furniture', '--dungeon7'):
+            with self.subTest(flag=flag), mock.patch.object(compat, 'prepare', return_value={}) as call:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(compat.main(['--source-root', 'x', '--output-root', 'y', flag]), 0)
+                bound = signature.bind(*call.call_args.args, **call.call_args.kwargs)
+                bound.apply_defaults()
+                self.assertEqual(bound.arguments['character_creation'], flag in ('--character-creation', '--all'))
+
 
 if __name__ == '__main__':
     unittest.main()

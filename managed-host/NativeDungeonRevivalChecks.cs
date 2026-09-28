@@ -29,6 +29,7 @@ internal static class NativeDungeonRevivalChecks
     internal static async Task RunAsync()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        CheckReadyRoomWallet();
         foreach (ushort variant in new ushort[] { 20, 60 })
             foreach (long wallet in new long[] { 0, 50, 1702319, 0x123456789L })
             {
@@ -48,11 +49,52 @@ internal static class NativeDungeonRevivalChecks
             == NetworkAdapterService.NativeDungeonRevivalBillingMode.None, "alive mode1 requests never bill");
         Check(NetworkAdapterService.ResolveNativeDungeonRevivalBilling(true, 2)
             == NetworkAdapterService.NativeDungeonRevivalBillingMode.None, "unknown CF83 mode has no billing route");
+        var retry = NetworkAdapterService.ResetNativeDungeonDeathRetryResources(
+            new BattleResourceSnapshot(0, 120, 2)
+            {
+                MaximumHp = 2000, MaximumMp = 800, SettlementFrozen = true,
+                HpAuthority = BattleHpAuthority.Settlement
+            });
+        Check(retry is { CurrentHp: 2000, CurrentMp: 800, AttackMode: 0, SettlementFrozen: false,
+                HpAuthority: BattleHpAuthority.Inherited },
+            "failed-settlement retry resets the new battle resource epoch");
         await CheckEchoGate();
+        await CheckStaleSessionWalletRefresh();
         await CheckCoinsThenEggs();
         await CheckEggFirst();
         await CheckInsufficientCoins();
         Console.WriteLine($"NATIVE_DUNGEON_REVIVAL_MANAGED_PASS checks={checks}");
+    }
+
+    private static void CheckReadyRoomWallet()
+    {
+        foreach (long wallet in new long[] { 0, 99_999, 0x123456789L })
+        {
+            var owner = new CharacterRecord { Id = 21, Hans = wallet, RevivalUseCount = 3 };
+            var frame = NativeDungeonClient.Frame(0xCF71, new byte[0xB0]);
+            Put(frame, 0x1A, 21);
+            frame[0xA8] = 3;
+            Check(NetworkAdapterService.PatchNativeReadyRoomWalletFrame(frame, owner)
+                && BinaryPrimitives.ReadInt64LittleEndian(frame.AsSpan(0xA0, 8)) == wallet
+                && frame[0xA8] == 3,
+                "ready-room wallet initializes both balance words and preserves revival eggs: " + wallet);
+            owner.Hans = Math.Max(0, wallet - 50);
+            Check(NetworkAdapterService.PatchNativeReadyRoomWalletFrame(frame, owner)
+                && BinaryPrimitives.ReadInt64LittleEndian(frame.AsSpan(0xA0, 8)) == owner.Hans,
+                "rechallenge initializes the actor with the latest committed balance");
+            var before = frame.ToArray();
+            Check(!NetworkAdapterService.PatchNativeReadyRoomWalletFrame(frame,
+                    new CharacterRecord { Id = 22, Hans = 777 }) && frame.SequenceEqual(before),
+                "another member cannot replace the actor wallet");
+            Check(!NetworkAdapterService.PatchNativeReadyRoomWalletFrame(frame, null)
+                && frame.SequenceEqual(before), "unresolved member retains its balance");
+        }
+        Check(!NetworkAdapterService.PatchNativeReadyRoomWalletFrame(
+                NativeDungeonClient.Frame(0xCF72, new byte[0x6C]), new CharacterRecord { Id = 21 }),
+            "profile-refresh layout uses its own field contract");
+        Check(!NetworkAdapterService.PatchNativeReadyRoomWalletFrame(
+                NativeDungeonClient.Frame(0xCF71, new byte[0xAF]), new CharacterRecord { Id = 21 }),
+            "truncated ready-room input is rejected");
     }
 
     internal static async Task RunContinuationAsync()
@@ -131,6 +173,41 @@ internal static class NativeDungeonRevivalChecks
         f.Character.Id = id;
         await f.Hp(0);
         Check(f.Dead, "complete 36-byte terminal HP response still latches death");
+    }
+
+    private static async Task CheckStaleSessionWalletRefresh()
+    {
+        const long persistedWallet = 99_999;
+        await using var f = await Fixture.Create(persistedWallet, 2);
+        await f.Start();
+        await f.Hp(0);
+        var deadResources = new BattleResourceSnapshot(0, 321, 2)
+        {
+            MaximumHp = 2000, MaximumMp = 800, Epoch = 7,
+            SettlementFrozen = false, HpAuthority = BattleHpAuthority.LocalDamage
+        };
+        Set(f.Session, "NativeBattleResources", deadResources);
+        Set(f.Session, "NativeBattleAttackMode", (byte)2);
+        f.Character.Hans = 0;
+        f.Character.CurrentHp = 777;
+        f.Character.CurrentMp = 666;
+
+        await f.Revive(0, 51);
+        var refreshed = f.Character;
+        var retained = (BattleResourceSnapshot)Get(f.Session, "NativeBattleResources")!;
+        Check(refreshed.Hans == persistedWallet,
+            "CF83 refreshes a stale zero session wallet from persistence before billing validation");
+        Check(refreshed.CurrentHp == 0 && refreshed.CurrentMp == 321
+            && ReferenceEquals(retained, deadResources) && Convert.ToByte(Get(f.Session, "NativeBattleAttackMode")) == 2,
+            "wallet refresh preserves the active battle HP/MP and attack-mode authority");
+        await f.Balance(persistedWallet, 2, "invalid price probe does not debit the refreshed wallet");
+        Check(f.Dead && f.Drain().Count == 0,
+            "invalid price probe remains rejected after refreshing the session wallet");
+
+        await f.Revive(0, 50);
+        await f.Balance(persistedWallet - 50, 2,
+            "valid coin revival debits the persisted wallet after stale-session refresh");
+        f.Recovered(20, 2000, 800);
     }
 
     private static async Task CheckCoinsThenEggs()
@@ -278,7 +355,10 @@ internal static class NativeDungeonRevivalChecks
             Put(frame, 0x18, (ushort)Character.Id); Put(frame, 0x1A, (ushort)Character.Id);
             Put(frame, 0x4A, 2000); Put(frame, 0x4C, 800); Put(frame, 0x4E, 1000); Put(frame, 0x50, 400);
             await (Task)Receive.Invoke(Service, [Session, frame, 7L, Stop.Token])!;
-            Drain();
+            var replies = Drain();
+            Check(replies.Count == 1 && U16(replies[0], 6) == 0xCF71
+                && BinaryPrimitives.ReadInt64LittleEndian(replies[0].AsSpan(0xA0, 8)) == Character.Hans,
+                "production ready-room delivery initializes the actor wallet from its owner");
         }
         public Task Settle() => Send(0xCF87, [32, 3, 0, 0]);
         public async Task Balance(long coins, int eggs, string message)

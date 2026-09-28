@@ -38,6 +38,7 @@ static void setup(void){
     for(i=0;i<2;i++){
         profile(i?"BOB":"ALICE",15009205u);
         g_multi_conn[i].active=1;g_multi_conn[i].room_active=1;g_multi_transport_alive[i]=1;
+        g_profile_coin_hans=i?0x123456789ull:99999ull;
         g_multi_conn[i].uid=21u+i;g_multi_conn[i].socket=100u+i;g_multi_conn[i].join_order=1u+i;
         multi_capture_profile(&g_multi_conn[i].profile);game_session_revival_set(i?3u:7u);
     }
@@ -50,11 +51,12 @@ int main(int argc,char**argv){
     if(test==0){
         send_cf71_member(100,21,21,0);CHECK(count==2);CHECK(sizes[0]==0xB8&&sizes[1]==0x74);
         CHECK(word(frames[0],6)==0xCF71&&word(frames[1],6)==0xCF72);
+        CHECK(dword(frames[0],0xA0)==99999u&&dword(frames[0],0xA4)==0u);
         CHECK(frames[0][0xA8]==7&&frames[1][0x73]==7);CHECK(word(frames[1],0x64)==1);
     }else if(test==1){
         before=game_session_revival_count();memcpy(cached,g_game_session_revival_account,sizeof(cached));
         multi_apply_profile(&g_multi_conn[1].profile);send_cf71_member(100,21,22,1);
-        CHECK(count==2);CHECK(frames[0][0xA8]==3&&frames[1][0x73]==3);
+        CHECK(count==2);CHECK(dword(frames[0],0xA0)==0x23456789u&&dword(frames[0],0xA4)==1u);CHECK(frames[0][0xA8]==3&&frames[1][0x73]==3);
         CHECK(g_game_session_revival_uses==before);CHECK(!memcmp(cached,g_game_session_revival_account,sizeof(cached)));
         CHECK(native_actor_revival_count(999)==0);
     }else if(test==2){

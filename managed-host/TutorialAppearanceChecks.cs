@@ -31,8 +31,8 @@ internal static class TutorialAppearanceChecks
             var noCharacter = NewSession(null);
             var noCharacterLogin = LoginPayload(noCharacter);
             Check(noCharacterLogin.Length == 60 && noCharacterLogin[4] == 0 && noCharacterLogin[5] == 0
-                && noCharacterLogin[6] == 0 && noCharacterLogin.AsSpan(24, 36).ToArray().All(b => b == 0),
-                "no-character creation gate remains unchanged");
+                && noCharacterLogin[6] == 0 && noCharacterLogin.AsSpan(8, 52).ToArray().All(b => b == 0),
+                "no-character creation gate uses an empty identity and appearance projection");
 
             foreach (int gender in new[] { 0, 1 })
             foreach (uint reportedEffect in new uint[] { 0, 10160017, 10160160, 10160024 })

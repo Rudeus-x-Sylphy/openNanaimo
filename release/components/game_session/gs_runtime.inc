@@ -1008,9 +1008,24 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                         unsigned reset_mode=(unsigned char)buf[off+0x0A] | ((unsigned char)buf[off+0x0B]<<8);
                         unsigned effective_real=reset_real;int authored_super=0;
                         unsigned next_dungeon=current_dungeon;int advance_dungeon=0;
-                        if(reset_mode==2u&&current_dungeon<255u&&shop_catalogs_next_dungeon_exists(current_hd,current_stage,current_dungeon+1u,current_difficulty)){next_dungeon=current_dungeon+1u;effective_real=0u;reset_show=0u;advance_dungeon=1;}
-                        if(reset_mode==1u && hp_sync_find_profile(current_stage,current_hd,current_dungeon,1u,current_difficulty,0u)!=0){authored_super=1;if(reset_real==0u)effective_real=1u;}
-                        if(reset_mode==1u || reset_mode==2u){
+                        /* CF87 clears death_latched after publishing failure; the
+                           frozen combat HP/injury state still identifies this result. */
+                        int failed_result=injury_dead || combat_hp==0u;
+                        int death_retry=failed_result && settlement_sent && reset_mode==1u
+                            && (reset_real==current_stage_index || (current_stage_index==1u && reset_real==0u));
+                        if(!failed_result && reset_mode==2u&&current_dungeon<255u&&shop_catalogs_next_dungeon_exists(current_hd,current_stage,current_dungeon+1u,current_difficulty)){next_dungeon=current_dungeon+1u;effective_real=0u;reset_show=0u;advance_dungeon=1;}
+                        if(!failed_result && reset_mode==1u && hp_sync_find_profile(current_stage,current_hd,current_dungeon,1u,current_difficulty,0u)!=0){authored_super=1;if(reset_real==0u)effective_real=1u;}
+                        if((!failed_result && (reset_mode==1u || reset_mode==2u)) || death_retry){
+                            if(death_retry){
+                                /* Rechallenge the failed tuple, never promote it to
+                                   its authored Super-Boss or grant next-stage progress.
+                                   CF7F remains the owner of the new combat epoch. */
+                                effective_real=current_stage_index;
+                                combat_hp=pet_crafting_pet_effective_hp_max();g_profile_hp_current=combat_hp;
+                                g_profile_mp_current=pet_crafting_pet_effective_mp_max();
+                                injury_armed=0;injury_dead=0;death_latched=0;retry_acknowledged=0;lifesteal_remainder=0u;
+                                attack_mode_powerup_reset(&power_ctx,0u,boss_ctx.battle_epoch);
+                            }
                             /* Original v2 first/mid-stage captures: CF8B/12
                                {real=0,show=0,mode=2} -> CF8C/48 with the same
                                stage bytes and room-owner UID at +0x2C. Re-arm

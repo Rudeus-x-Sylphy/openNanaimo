@@ -30,6 +30,7 @@ internal static class RevivalBillingChecks
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         await CheckContinuationResources();
+        await CheckStaleSessionWalletRefresh();
         await CheckLiveBilling();
         await CheckCommittedPaymentRetry();
         await CheckInsufficientFunds();
@@ -62,6 +63,41 @@ internal static class RevivalBillingChecks
         await (Task)Receive.Invoke(f.Service, [f.Session, ack, 7L, f.Stop.Token])!;
         Check(((BattleResourceSnapshot)Get(f.Session, "NativeBattleResources")!).SettlementFrozen,
             "duplicate acknowledgement preserves an already settled resource snapshot");
+    }
+
+    private static async Task CheckStaleSessionWalletRefresh()
+    {
+        const long persistedWallet = 99_999;
+        await using var f = await Fixture.Create(persistedWallet, 2);
+        await f.Start();
+        await f.Hp(0);
+        var deadResources = new BattleResourceSnapshot(0, 321, 2)
+        {
+            MaximumHp = 2000, MaximumMp = 800, Epoch = 7,
+            SettlementFrozen = false, HpAuthority = BattleHpAuthority.LocalDamage
+        };
+        Set(f.Session, "NativeBattleResources", deadResources);
+        Set(f.Session, "NativeBattleAttackMode", (byte)2);
+        f.Character.Hans = 0;
+        f.Character.CurrentHp = 777;
+        f.Character.CurrentMp = 666;
+
+        await f.Revive(0, 51);
+        var refreshed = f.Character;
+        var retained = (BattleResourceSnapshot)Get(f.Session, "NativeBattleResources")!;
+        Check(refreshed.Hans == persistedWallet,
+            "CF83 refreshes a stale zero session wallet from persistence before billing validation");
+        Check(refreshed.CurrentHp == 0 && refreshed.CurrentMp == 321
+            && ReferenceEquals(retained, deadResources) && Convert.ToByte(Get(f.Session, "NativeBattleAttackMode")) == 2,
+            "wallet refresh preserves the active battle HP/MP and attack-mode authority");
+        await f.Balance(persistedWallet, 2, "invalid price probe does not debit the refreshed wallet");
+        Check(f.Dead && f.Drain().Count == 0,
+            "invalid price probe remains rejected after refreshing the session wallet");
+
+        await f.Revive(0, 50);
+        await f.Balance(persistedWallet - 50, 2,
+            "valid coin revival debits the persisted wallet after stale-session refresh");
+        f.Recovered(20, 2000, 800);
     }
 
     private static async Task CheckLiveBilling()
@@ -144,6 +180,10 @@ internal static class RevivalBillingChecks
     private static async Task CheckDeathSettlementFlow()
     {
         await using var f = await Fixture.Create(1000, 2);
+        Set(f.Session, "NativeBattleResources", new BattleResourceSnapshot(2000, 800, 2)
+        {
+            MaximumHp = 2000, MaximumMp = 800, Epoch = 7
+        });
         await f.Start();
         await f.Hp(0);
 
@@ -157,11 +197,44 @@ internal static class RevivalBillingChecks
             "death settlement keeps the death latch while the result page awaits exit");
 
         var resetRequests = f.Worker.ResetRequests;
+        f.Worker.RejectTransition = true;
         await f.Send(0xCF8B, [0, 0, 1, 0]);
-        Check(f.Worker.ResetRequests == resetRequests && f.Drain().Count == 0,
-            "death-result timer CF8B is consumed before the worker can rebuild gameplay");
-        Check(f.Dead && (bool)Get(f.Session, "NativeDungeonSettlementAwaitingAction")!,
-            "suppressed death-result CF8B preserves the CF88 result state");
+        var rejected = f.Drain();
+        Check(f.Worker.ResetRequests == resetRequests + 1 && rejected.Count == 0,
+            "rejected retry does not publish an invalid reset response");
+        Check(f.Dead && (bool)Get(f.Session, "NativeDungeonSettlementAwaitingAction")!
+            && !(bool)Get(f.Session, "NativeDungeonNextTransitionAuthorized")!,
+            "rejected retry keeps the failed result actionable without arming a loader");
+        f.Worker.RejectTransition = false;
+        await f.Send(0xCF8B, [0, 0, 1, 0]);
+        var reset = f.Drain();
+        Check(f.Worker.ResetRequests == resetRequests + 2
+            && reset.Count == 1 && U16(reset[0], 6) == 0xCF8C,
+            "failed-settlement retry reaches the worker and publishes the reset response");
+        Check(!f.Dead && !(bool)Get(f.Session, "NativeDungeonSettlementAwaitingAction")!
+            && (bool)Get(f.Session, "NativeDungeonNextTransitionAuthorized")!,
+            "accepted retry closes the death result and arms one continuation boundary");
+        var resources = (BattleResourceSnapshot)Get(f.Session, "NativeBattleResources")!;
+        Check(resources.CurrentHp == resources.MaximumHp && resources.CurrentMp == resources.MaximumMp
+            && resources.AttackMode == 0 && resources.SettlementFrozen,
+            "accepted retry restores resources and retains the old-damage barrier until reload");
+
+        await f.Send(0xCF73, []);
+        await f.Send(0xCF1D, []);
+        Check(f.Drain().Count == 0 && Get(f.Session, "NativeDungeon") is not null,
+            "retry teardown retains the room until its ready-room reload");
+        await f.ReadyRoom();
+        Check(!(bool)Get(f.Session, "NativeDungeonNextTransitionAuthorized")!,
+            "ready-room arrival closes retry teardown protection");
+        await f.Send(0xCFEB, [0, 0, 0, 0]);
+        var profile = f.Drain();
+        Check(profile.Count == 1 && U16(profile[0], 6) == 0xCFEC
+            && !((BattleResourceSnapshot)Get(f.Session, "NativeBattleResources")!).SettlementFrozen,
+            "retry loader receives the matching battle profile and opens the new damage epoch");
+        await f.Start();
+        await f.Hp(1500);
+        Check(!f.Dead && ((BattleResourceSnapshot)Get(f.Session, "NativeBattleResources")!).CurrentHp == 1500,
+            "rechallenged battle accepts current-epoch combat updates after loading");
     }
 
     private static async Task CheckRejectedTransitions()
@@ -404,6 +477,12 @@ internal static class RevivalBillingChecks
                             settlement[4 + 0x0B] = alive ? (byte)5 : (byte)0;
                             Put32(settlement, 4 + 0x1C, alive ? 100u : 0u);
                             await stream.WriteAsync(NativeDungeonClient.Frame(0xCF88, settlement));
+                            break;
+                        case 0xCFEB:
+                            var profile = new byte[800];
+                            profile[0x2DA - 8] = frame[8];
+                            profile[0x2DB - 8] = frame[10];
+                            await stream.WriteAsync(NativeDungeonClient.Frame(0xCFEC, profile));
                             break;
                         case 0xCF7F:
                             break;

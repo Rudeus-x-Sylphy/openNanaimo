@@ -55,9 +55,9 @@ internal static class DungeonTransitionChecks
         foreach (ushort mode in new ushort[] { 1, 2 })
         {
             var frame = Reset(mode);
-            Check(NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(true, false, frame, 0xCF8B), $"mode {mode} authorizes only a settled live battle");
+            Check(NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(true, false, frame, 0xCF8B), $"mode {mode} authorizes a settled live battle");
             Check(!NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(false, false, frame, 0xCF8B)
-                && !NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(true, true, frame, 0xCF8B), "no pre-settlement/death continuation authorization");
+                && NetworkAdapterService.ShouldAuthorizeNativeDungeonNextAction(true, true, frame, 0xCF8B) == (mode == 1), "failed settlement permits retry, never successful stage advancement");
         }
         var badLength = Reset(2); badLength[4] = 11;
         Check(!NetworkAdapterService.IsAuthorizedNativeDungeonNextAction(badLength, 0xCF8B)
@@ -90,10 +90,14 @@ internal static class DungeonTransitionChecks
         await RunScenario("long battle retry", mode: 1, rearm: true);
         await RunScenario("normal town return");
         await RunScenario("death town return", death: true);
+        await RunScenario("death retry reload", mode: 1, death: true);
+        await RunScenario("death third-stage retry", mode: 1, dungeon: 2, death: true, rearm: true);
+        await RunScenario("death super-boss retry", mode: 1, dungeon: 2, death: true, stage: 1);
+        await RunScenario("death rejected then retry", mode: 1, death: true, rejectFirst: true);
         await RunScenario("town after next battle begins", mode: 2, startBattle: true);
         Console.WriteLine($"DUNGEON_TRANSITION_REGRESSION_PASS checks={checks}");
     }
-    private static async Task RunScenario(string name, ushort mode = 0, byte dungeon = 0, byte real = 0, bool death = false, bool startBattle = false, bool rearm = false)
+    private static async Task RunScenario(string name, ushort mode = 0, byte dungeon = 0, byte real = 0, bool death = false, bool startBattle = false, bool rearm = false, byte stage = 0, bool rejectFirst = false)
     {
         string root = Path.Combine(Path.GetTempPath(), "nanaimo-next-dungeon-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -115,11 +119,11 @@ internal static class DungeonTransitionChecks
             session = Activator.CreateInstance(SessionType, nonPublic: true)!;
             Check(await db.BeginWorldSessionAsync(account, character.Id, (string)Get(session, "SessionId")!, 1, "127.0.0.1", token), name + ": isolated online identity");
             var state = NativeDungeonState.Create(character, [], []);
-            var snapshot = new BattleResourceSnapshot(123, 45, 2) { MaximumHp = 1000, MaximumMp = 500, Epoch = 1 };
+            var snapshot = new BattleResourceSnapshot(death ? (ushort)0 : (ushort)123, 45, 2) { MaximumHp = 1000, MaximumMp = 500, Epoch = 1 };
             snapshot.ApplyTo(state);
             await using var service = new NetworkAdapterService(db, Console.WriteLine, root)
             { NativeDungeonEnabled = true, NativeJournalDirectory = Path.Combine(root, "journal") };
-            worker = ServeWorker(listener, state, dungeon, rearm, token);
+            worker = ServeWorker(listener, state, dungeon, rearm, token, death, stage, rejectFirst);
             var readyDelivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             native = new NativeDungeonClient(async response =>
             {
@@ -130,9 +134,15 @@ internal static class DungeonTransitionChecks
             Set(session, "AccountId", account); Set(session, "Character", character); Set(session, "OnlineTracked", true);
             Set(session, "NativeDungeon", native); Set(session, "NativeCheckpoint", state);
             Set(session, "NativeBattleResources", snapshot); Set(session, "NativeBattleEpoch", 1L);
-            Set(session, "NativeForwarding", true); Set(session, "NativeDungeonDeathLatched", death);
+            Set(session, "NativeForwarding", true);
             Set(session, "NativeDungeonSelectionValid", true); Set(session, "NativeDungeonDungeon", dungeon);
+            Set(session, "NativeDungeonStage", stage);
             async Task Send(byte[] frame) => Check(await (Task<bool>)Route.Invoke(service, [frame, Op(frame), "WorldAdapter", session, token])!, name + $": route {Op(frame):X4}");
+            typeof(NetworkAdapterService).GetMethod("ArmNativeDungeonRevivalCycle", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(service, [session]);
+            await Send(NativeDungeonClient.Frame(0xCF7F, []));
+            Set(session, "NativeDungeonDeathLatched", death);
+            await Send(Reset(1));
+            Check(Drain(session).Count == 0 && !(bool)Get(session, "NativeDungeonNextTransitionAuthorized")!, name + ": pre-settlement reset is consumed");
             var settlement = NativeDungeonClient.Frame(0xCF87, new byte[4]);
             BinaryPrimitives.WriteUInt16LittleEndian(settlement.AsSpan(8), 45);
             await Send(settlement);
@@ -141,12 +151,36 @@ internal static class DungeonTransitionChecks
             Check(Get(session, "NativeDungeon") is not null && Drain(session).Count == 0, name + ": unarmed disconnect suppressed without response");
             if (mode != 0)
             {
+                if (death)
+                {
+                    await Send(Reset(2));
+                    var malformed = Reset(1); malformed[4] = 11;
+                    await Send(malformed);
+                    Check(Drain(session).Count == 0 && (bool)Get(session, "NativeDungeonSettlementAwaitingAction")!, name + ": failed result cannot advance or accept malformed reset");
+                    if (rejectFirst)
+                    {
+                        await Send(Reset(mode, real));
+                        Check(Drain(session).Count == 0 && (bool)Get(session, "NativeDungeonDeathLatched")!
+                            && (bool)Get(session, "NativeDungeonSettlementAwaitingAction")!
+                            && !(bool)Get(session, "NativeDungeonNextTransitionAuthorized")!, name + ": rejected target retains failed settlement without forwarding transition");
+                        Check(Get(session, "NativeBattleResources") is BattleResourceSnapshot { CurrentHp: 0, SettlementFrozen: true }, name + ": rejection cannot restore resources");
+                    }
+                }
                 await Send(Reset(mode, real));
                 Check((bool)Get(session, "NativeDungeonNextTransitionAuthorized")!, name + ": CF8B authorizes continuation");
                 Check(Drain(session).Select(Op).SequenceEqual(rearm ? new ushort[] { 0xCF6D, 0xCF8C } : new ushort[] { 0xCF8C }), name + ": clear/reset order is preserved without unsolicited CF78");
                 var expectedDungeon = mode == 2 ? (byte)(dungeon + 1) : dungeon;
                 Check((byte)Get(session, "NativeDungeonDungeon")! == expectedDungeon
-                    && (byte)Get(session, "NativeDungeonStage")! == real, name + ": accepted target tuple retained");
+                    && (byte)Get(session, "NativeDungeonStage")! == (death ? stage : real), name + ": accepted target tuple retained");
+                await Send(Reset(mode, real));
+                Check(Drain(session).Count == 0, name + ": duplicate reset cannot rebuild twice");
+                if (death)
+                {
+                    var hp = new byte[28]; BinaryPrimitives.WriteUInt16LittleEndian(hp, (ushort)character.Id);
+                    await (Task)Receive.Invoke(service, [session, NativeDungeonClient.Frame(0xD010, hp), 1L, token])!;
+                    Check(!(bool)Get(session, "NativeDungeonDeathLatched")! && Drain(session).Count == 0
+                        && Get(session, "NativeBattleResources") is BattleResourceSnapshot { CurrentHp: 1000, CurrentMp: 500, AttackMode: 0, SettlementFrozen: true }, name + ": retry restores resources but blocks old zero-HP until reload");
+                }
             }
             if (startBattle)
             {
@@ -169,12 +203,29 @@ internal static class DungeonTransitionChecks
                 await Send(NativeDungeonClient.Frame(0xCF1D, []));
                 Check(ReferenceEquals(Get(session, "NativeDungeon"), native) && Drain(session).Count == 0,
                     name + ": continuation CF1D retains worker and emits no CF1E/C368");
-                Check(Get(session, "NativeBattleResources") is BattleResourceSnapshot { CurrentHp: 123, CurrentMp: 45, AttackMode: 2 },
+                Check(death
+                    ? Get(session, "NativeBattleResources") is BattleResourceSnapshot { CurrentHp: 1000, CurrentMp: 500, AttackMode: 0 }
+                    : Get(session, "NativeBattleResources") is BattleResourceSnapshot { CurrentHp: 123, CurrentMp: 45, AttackMode: 2 },
                     name + ": retained worker keeps HP/MP/P carry");
                 await Send(NativeDungeonClient.Frame(0xCF70, []));
                 await readyDelivered.Task.WaitAsync(token);
                 Check(!(bool)Get(session, "NativeDungeonNextTransitionAuthorized")!
                     && Drain(session).Select(Op).SequenceEqual(new ushort[] { 0xCF71 }), name + ": CF70/CF71 reaches next ready room");
+                if (death)
+                {
+                    await Send(NativeDungeonClient.Frame(0xCFEB, [stage, 0, 0, 0]));
+                    Check(Drain(session).Select(Op).SequenceEqual(new ushort[] { 0xCFEC })
+                        && Get(session, "NativeBattleResources") is BattleResourceSnapshot { SettlementFrozen: false, CurrentHp: 1000 }, name + ": request-bound profile completes retry, suppressing pre-profile old damage");
+                    var hp = new byte[28]; BinaryPrimitives.WriteUInt16LittleEndian(hp, (ushort)character.Id);
+                    BinaryPrimitives.WriteUInt16LittleEndian(hp.AsSpan(8), 900);
+                    await (Task)Receive.Invoke(service, [session, NativeDungeonClient.Frame(0xD010, hp), 1L, token])!;
+                    Check(Drain(session).Select(Op).SequenceEqual(new ushort[] { 0xD010 })
+                        && Get(session, "NativeBattleResources") is BattleResourceSnapshot { CurrentHp: 900 }, name + ": new battle accepts damage");
+                    await Send(settlement); Drain(session);
+                    await Send(Reset(1, stage));
+                    Check(Drain(session).Select(Op).SequenceEqual(new ushort[] { 0xCF8C }), name + ": a second settlement can create a fresh transition");
+                    await Send(NativeDungeonClient.Frame(0xCF7F, []));
+                }
                 // Regression for the earlier fix: the ready-room return button
                 // is available before CF7F, not just after a new battle starts.
                 await Send(NativeDungeonClient.Frame(0xCF73, []));
@@ -203,7 +254,7 @@ internal static class DungeonTransitionChecks
             Directory.Delete(root, recursive: true);
         }
     }
-    private static async Task ServeWorker(TcpListener listener, NativeDungeonState state, byte dungeon, bool rearm, CancellationToken token)
+    private static async Task ServeWorker(TcpListener listener, NativeDungeonState state, byte dungeon, bool rearm, CancellationToken token, bool death, byte stage, bool rejectFirst)
     {
         using var peer = await listener.AcceptTcpClientAsync(token);
         var stream = peer.GetStream();
@@ -219,17 +270,25 @@ internal static class DungeonTransitionChecks
                 await stream.WriteAsync(NativeDungeonClient.Frame(0xF102, state.Bytes), token);
             else if (Op(frame) == 0xCF8B)
             {
-                if (rearm)
+                if (rearm && !rejectFirst)
                 {
                     var clear = new byte[36]; clear[0] = 10;
                     await stream.WriteAsync(NativeDungeonClient.Frame(0xCF6D, clear), token);
                     rearm = false;
                 }
                 var reply = new byte[40];
-                reply[0x28 - 8] = frame[8];
+                reply[0x28 - 8] = death ? stage : frame[8];
                 reply[0x29 - 8] = frame[9];
-                reply[0x2E - 8] = frame[10] == 2 ? (byte)(dungeon + 1) : dungeon;
+                reply[0x2E - 8] = rejectFirst ? (byte)99 : frame[10] == 2 ? (byte)(dungeon + 1) : dungeon;
+                rejectFirst = false;
                 await stream.WriteAsync(NativeDungeonClient.Frame(0xCF8C, reply), token);
+            }
+            else if (Op(frame) == 0xCFEB)
+            {
+                var oldHp = new byte[28]; BinaryPrimitives.WriteUInt16LittleEndian(oldHp, (ushort)state.Get(4));
+                await stream.WriteAsync(NativeDungeonClient.Frame(0xD010, oldHp), token);
+                var profile = new byte[800]; profile[0x2DA - 8] = frame[8]; profile[0x2DB - 8] = frame[10];
+                await stream.WriteAsync(NativeDungeonClient.Frame(0xCFEC, profile), token);
             }
             else if (Op(frame) == 0xCF70)
             {

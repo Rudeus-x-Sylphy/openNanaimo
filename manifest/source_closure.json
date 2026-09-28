@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 256,
+  "count": 257,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 19681280,
-      "sha256": "864D85F95293F4AE04D0F835D85E3F5D2768BCAEC7CFB78E6F8D05309C440BFD"
+      "size": 19681792,
+      "sha256": "5BD4F6AE5AC01BEACBF01A540716B2ABE43609AAD18E201734A9C4642D3A8C2F"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 19681280,
-      "sha256": "8A753743C2E66DB13E76C9CBBEFF5A91A63976F53A350F967D907FC89A16CE5E"
+      "size": 19681792,
+      "sha256": "E0346F8F64E02899C1E25BE4917E700E9D420153AD958E61A73FD7EF7C0D8586"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 19710976,
-      "sha256": "4B40D85EF53FCD44A5F20B62A5D39C2556F3FB965C84BB2E79E8512EA8DB6F98"
+      "size": 19711488,
+      "sha256": "174A27D91296A1295B5CC981F04F78B63F236A6A31EA15000A17E52DD5A6CB6B"
     }
   },
   "files": [
@@ -123,8 +123,8 @@
     },
     {
       "path": "managed-host/DungeonRankingChecks.cs",
-      "size": 27700,
-      "sha256": "6CE523B917E11A3986F4860FC3BD12E42735E2E4CB55D088C38BFA9BA53D785B"
+      "size": 27701,
+      "sha256": "B6B552D58EAFF5A46C2B096B1941AA567FDBB3B9B60929179990963F34E616F6"
     },
     {
       "path": "managed-host/DungeonRankingPersistenceChecks.cs",
@@ -193,8 +193,8 @@
     },
     {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 32144,
-      "sha256": "E881D81CEE46266BB4981DE7447144AAB0791720998B717966899DA657A067E8"
+      "size": 32262,
+      "sha256": "5D87D4EF2F0D7D8E66FAE1FBDD1B4FB40B266963B02C997831CC32DA91EB04BF"
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
@@ -203,8 +203,8 @@
     },
     {
       "path": "managed-host/NativeDungeonRevivalChecks.cs",
-      "size": 23463,
-      "sha256": "E0487B4693BF835073903F97C4088F707AD41396F02821964A45388C7C8A5D6D"
+      "size": 28039,
+      "sha256": "2D5BE31CDE451CF5195CAF51CB9BE82E1384C5A251DD6678BC8EB9DC065C22F3"
     },
     {
       "path": "managed-host/NativeDungeonRevivalWorkerChecks.cs",
@@ -228,8 +228,8 @@
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
-      "size": 7036,
-      "sha256": "FE612309AB60D28B3C05F9066D4DF8EC079569D007B35534F8E7EFA785ED4F48"
+      "size": 15587,
+      "sha256": "294B78456E7478B879694E2B2BF74938D042F1C99450248F47C3CED0B4E603A2"
     },
     {
       "path": "managed-host/QuestSystemChecks.cs",
@@ -258,13 +258,13 @@
     },
     {
       "path": "managed-host/TutorialAppearanceChecks.cs",
-      "size": 12107,
-      "sha256": "EB30BA6A40DB3B42C26F484D9A9F8BDEA76C5132EF1CF9172496CAB07AD38CDE"
+      "size": 12137,
+      "sha256": "0E6FDBDD3FF01F0E8E3C34D6B1AD13B23AA2F0A4681CDAF9D7CB8515BB8B7C40"
     },
     {
       "path": "managed-host/VillagePositionChecks.cs",
-      "size": 28676,
-      "sha256": "EAC853EF15EA02330E75DDFDB01C92407F3D13046AA37BBDEF0E4A7709523F99"
+      "size": 29799,
+      "sha256": "381EE49E50A386A64E0B4C40AFF6504D92EFEF3416F34F2F21E31649686DCD46"
     },
     {
       "path": "managed/Compatibility/Net6.cs",
@@ -703,8 +703,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 71093,
-      "sha256": "990BD5B6AFE8E4256906063EFD96F1F2009EB3C2B8D3877F96DDBC03D1D9ADBD"
+      "size": 72415,
+      "sha256": "F5F68EC97B8C4614368A91AFC1FC6B6D53F6CA4264132C7034B031155EE71E07"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
@@ -713,8 +713,13 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonRevival.cs",
-      "size": 9811,
-      "sha256": "F28B67DF74D4E5498C2D0890D656FC8742AAF429E05CB7BD1DAD59EB61467887"
+      "size": 11828,
+      "sha256": "DA3D6AF118CCE78FA8FB904787066F187834140B95E311CAE1B4A606D4484D7B"
+    },
+    {
+      "path": "managed/Services/NetworkAdapterService.NativeDungeonWallet.cs",
+      "size": 845,
+      "sha256": "DAF207BC6587CE228C24565028EBB57AA1AB2951D009709286FE96BE71F32FDF"
     },
     {
       "path": "managed/Services/NetworkAdapterService.PetMaterials.cs",
@@ -728,8 +733,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 950720,
-      "sha256": "9057D848057AD6DE5C75C8C8BED87C2FBFF2FA88F4E9431A74340D3411C3C84F"
+      "size": 950622,
+      "sha256": "D374A8F9AFAC54820838BA0D156EFD5517D11D3CAF20A167F039C846E59FB2C2"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1018,8 +1023,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 136976,
-      "sha256": "58D071C0EBDFE4B6885C27F41733632A162350CEA7EDC3BF1A385607270E712D"
+      "size": 138319,
+      "sha256": "96CCBBA0537D64C47624608FE22489DBD5D2506448EED41D9BDA34603884A838"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
@@ -1158,8 +1163,8 @@
     },
     {
       "path": "release/components/protocol/protocol.inc",
-      "size": 90613,
-      "sha256": "BBECA401C29FE0023A826C9E872A3EE41C109D24ABAFEC531FE4926C0D11BB4E"
+      "size": 90663,
+      "sha256": "CA23B9FB92E8CAC0B633402EE493111A7AC03A853245862D3097E159904FFBDA"
     },
     {
       "path": "release/components/protocol/protocol_state_sync.inc",
@@ -1168,8 +1173,8 @@
     },
     {
       "path": "release/components/protocol/protocol_state_sync_base.inc",
-      "size": 10992,
-      "sha256": "34A62912CAB088E5599DE233F54555C743E1A1C5C1EF4598CA838297C9F8D9B3"
+      "size": 11092,
+      "sha256": "FA920B4417E67FC80CC794368B892492BF484B32AE6425BCDD308E19FA2C6595"
     },
     {
       "path": "release/components/protocol_extensions/protocol_overrides.inc",

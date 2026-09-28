@@ -32,7 +32,7 @@ public sealed partial class NetworkAdapterService
     }
 
     private sealed record NativeRevivalTransition(
-        byte[] Request, byte Dungeon, byte Stage, byte Difficulty);
+        byte[] Request, byte Dungeon, byte Stage, byte Difficulty, bool DeathRetry);
 
     private sealed record NativePaidContinueCommit(
         long Hans, byte RevivalUseCount, int CurrentHp, int CurrentMp, ushort ClientCostField);
@@ -61,17 +61,30 @@ public sealed partial class NetworkAdapterService
         }
     }
 
-    private void PrepareNativeDungeonRevivalTransition(ConnectionSession session, byte[] frame)
+    private bool PrepareNativeDungeonRevivalTransition(ConnectionSession session, byte[] frame)
     {
         if (!session.NativeDungeonSelectionValid
             || !ShouldAuthorizeNativeDungeonNextAction(
                 session.NativeDungeonSettlementAwaitingAction, session.NativeDungeonDeathLatched, frame, 0xCF8B))
-            return;
+            return false;
         var cycle = GetNativeRevivalCycle(session);
         lock (cycle.BoundaryGate)
             if (cycle.BattleStarted && !cycle.BattleStartArmed && cycle.Transition is null)
                 cycle.Transition = new NativeRevivalTransition(frame.ToArray(), session.NativeDungeonDungeon,
-                    session.NativeDungeonStage, session.NativeDungeonLogicalDifficulty);
+                    session.NativeDungeonStage, session.NativeDungeonLogicalDifficulty,
+                    session.NativeDungeonDeathLatched);
+            else
+                return false;
+        return true;
+    }
+
+    private bool IsNativeDungeonDeathRetryTransition(
+        ConnectionSession session, ReadOnlySpan<byte> frame)
+    {
+        var cycle = GetNativeRevivalCycle(session);
+        lock (cycle.BoundaryGate)
+            return cycle.Transition is { DeathRetry: true } transition
+                && frame.SequenceEqual(transition.Request);
     }
 
     private void CompleteNativeDungeonRevivalTransition(
@@ -84,7 +97,9 @@ public sealed partial class NetworkAdapterService
                 || !frame.AsSpan().SequenceEqual(transition.Request))
                 return;
             cycle.Transition = null;
-            if (session.NativeDungeonDeathLatched || session.NativeDungeonTownTransitionAuthorized)
+            if (session.NativeDungeonSettlementAwaitingAction
+                || session.NativeDungeonTownTransitionAuthorized
+                || (session.NativeDungeonDeathLatched && !transition.DeathRetry))
                 return;
             foreach (var response in responses)
             {
@@ -150,8 +165,12 @@ public sealed partial class NetworkAdapterService
         await cycle.Gate.WaitAsync(token);
         try
         {
-            if (session.NativeDungeon is null || !session.OnlineTracked || session.Character is null
+            if (session.NativeDungeon is null || !session.OnlineTracked
                 || !session.NativeDungeonDeathLatched)
+                return;
+
+            await RefreshNativeDungeonContinueBillingStateAsync(session, token);
+            if (session.Character is null)
                 return;
             lock (cycle.BoundaryGate)
                 if (!cycle.BattleStarted)
@@ -182,6 +201,24 @@ public sealed partial class NetworkAdapterService
         }
     }
 
+    private async Task RefreshNativeDungeonContinueBillingStateAsync(
+        ConnectionSession session, CancellationToken token)
+    {
+        // The character cache can lag behind launcher/admin balance changes while
+        // an active battle keeps its own HP/MP authority. Refresh persistence for
+        // billing without replacing the current battle resource snapshot.
+        var battleResources = session.NativeBattleResources;
+        var attackMode = session.NativeBattleAttackMode;
+        await RefreshSessionCharacterAsync(session, token);
+        session.NativeBattleResources = battleResources;
+        session.NativeBattleAttackMode = attackMode;
+        if (session.Character is { } character && battleResources is { } resources)
+        {
+            character.CurrentHp = resources.CurrentHp;
+            character.CurrentMp = resources.CurrentMp;
+        }
+    }
+
     private void RememberNativeDungeonPaidContinue(
         ConnectionSession session, NativePaidContinueCommit committed)
     {
@@ -198,6 +235,17 @@ public sealed partial class NetworkAdapterService
             if (ReferenceEquals(cycle.PendingPaidContinue, committed))
                 cycle.PendingPaidContinue = null;
     }
+
+    internal static BattleResourceSnapshot? ResetNativeDungeonDeathRetryResources(
+        BattleResourceSnapshot? resources)
+        => resources is null ? null : resources with
+        {
+            CurrentHp = resources.MaximumHp,
+            CurrentMp = resources.MaximumMp,
+            AttackMode = 0,
+            SettlementFrozen = false,
+            HpAuthority = BattleHpAuthority.Inherited
+        };
 
     // Only a verified worker debit is allowed to replace the local death HP.
     // Ordinary checkpoints must retain D010/pickup/settlement authority.

@@ -83,6 +83,7 @@
     "output_distribution": "never exported by this repository",
     "launcher_selection": {
       "arguments": [
+        "--character-creation",
         "--furniture",
         "--native-state",
         "--dungeon-state",
@@ -97,7 +98,8 @@
       "modifies_game_exe": true,
       "emotion_page_policy": "adapter C355/728 progression and couple-field boundary; the supported empty-couple state uses the protocol boundary",
       "furniture_policy": "required local compatibility redirect for the reviewed PE site; fixed C393 does not replace the click-time getter",
-      "native_state_policy": "retired revival-HUD and P-sentinel hooks are restored only from exact reviewed bytes; adapter owns CF72 count coherence and continuation rebuild gating; unknown sites refused"
+      "native_state_policy": "reviewed revival-HUD and P-sentinel byte sites are restored; adapter owns CF72 count coherence and continuation rebuild gating",
+      "character_creation_policy": "Network login character-exists status selects native appearance/name creation; exact two-site compatibility enables the empty-account creation state"
     },
     "adapter_protocol_compatibility": {
       "request": "C354/8 with zero-byte payload on the world connection",

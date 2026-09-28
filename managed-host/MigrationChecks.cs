@@ -183,7 +183,9 @@ internal static class MigrationChecks
             await client.ConnectAsync(IPAddress.Loopback, loginPort, token);
             await RequestAsync(client, 0x2730, new byte[360], 0x2731, token);
             var context = await RequestAsync(client, 0x2719, new byte[24], 0x271A, token);
-            Assert(context[4] == 0 && context[5] == 0 && context[8] != 0, "New account has zero-level initial creation context");
+            Assert(context[4] == 0 && context[5] == 0 && context[6] == 0
+                && context.AsSpan(8, 52).ToArray().All(value => value == 0),
+                "New account has an empty character projection for original character creation");
             var creation = new byte[52]; Encoding.ASCII.GetBytes("LocalCheckA").CopyTo(creation, 0);
             var result = await RequestAsync(client, 0x2717, creation, 0x2718, token);
             Assert(BinaryPrimitives.ReadUInt16LittleEndian(result) == 30, "Client character creation accepted");

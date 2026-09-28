@@ -267,19 +267,8 @@ internal static class VillagePositionChecks
                 Check(runtimeCharacter.Hans == beforeHans - expectedFare
                       && (await reopened.GetCharacterAsync(accountId))!.Hans == beforeHans - expectedFare,
                     $"C365/C366 {label} atomically debits exactly {expectedFare} Hans");
-                if (expectedFare > 0)
-                {
-                    Check(c366.Length > 12
-                          && ReadOpcode(c366.AsSpan(12)) == 0xC379
-                          && BinaryPrimitives.ReadUInt64LittleEndian(c366.AsSpan(12 + 208, 8))
-                             == (ulong)(beforeHans - expectedFare),
-                        $"C365/C366 {label} immediately publishes the committed Hans balance through C379");
-                }
-                else
-                {
-                    Check(c366.Length == 12,
-                        $"C365/C366 {label} keeps the existing response-only shape for a free transition");
-                }
+                Check(c366.Length == 12,
+                    $"C365/C366 {label} completes with the fixed transition response and no profile refresh dependency");
                 Check(runtimeCharacter.CurrentMapId == destinationTown
                       && runtimeCharacter.CurrentTownPage == expectedPage,
                     $"C365/C366 {label} stores the canonical destination page");
@@ -292,6 +281,25 @@ internal static class VillagePositionChecks
 
             Check(runtimeCharacter.Hans == 550,
                 "the seven original NPC rides debit 50+50+70+70+70+70+70 Hans while mode0 remains free");
+
+            await RenameCharacterSkillsTableAsync(reopened.DatabasePath, "CharacterSkills", "CharacterSkillsUnavailable");
+            try
+            {
+                await WriteHansAsync(reopened.DatabasePath, runtimeCharacter.Id, 100);
+                runtimeCharacter.Hans = 100;
+                Set(session, "TownId", (byte)0);
+                runtimeCharacter.CurrentMapId = 0;
+                c366 = (await Dispatch(0xC365, BuildC365(1, 0, 1, 240, 320)))!;
+                Check(c366.Length == 12
+                      && ReadOpcode(c366) == 0xC366
+                      && c366[8] == NetworkAdapterService.TownEnterStatusSuccess
+                      && runtimeCharacter.Hans == 50,
+                    "paid town transition completes without reading the unrelated character-skill table");
+            }
+            finally
+            {
+                await RenameCharacterSkillsTableAsync(reopened.DatabasePath, "CharacterSkillsUnavailable", "CharacterSkills");
+            }
             await WriteHansAsync(reopened.DatabasePath, runtimeCharacter.Id, TownTravelPolicy.PlatanosTaoyuanFareHans - 1);
             runtimeCharacter.Hans = TownTravelPolicy.PlatanosTaoyuanFareHans - 1;
             Set(session, "TownId", (byte)0);
@@ -445,6 +453,23 @@ internal static class VillagePositionChecks
         command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
         command.Parameters.AddWithValue("$id", characterId);
         Check(await command.ExecuteNonQueryAsync() == 1, "dirty position fixture written");
+    }
+
+    private static async Task RenameCharacterSkillsTableAsync(
+        string databasePath,
+        string sourceName,
+        string destinationName)
+    {
+        await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = databasePath,
+            Mode = SqliteOpenMode.ReadWrite,
+            ForeignKeys = true
+        }.ToString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"ALTER TABLE {sourceName} RENAME TO {destinationName}";
+        await command.ExecuteNonQueryAsync();
     }
 
     private static async Task WriteHansAsync(string databasePath, long characterId, long hans)

@@ -205,5 +205,154 @@ class UserOwnedNativeWindowTests(unittest.TestCase):
             self.assertEqual(data[off:off + len(expected)], expected, hex(va))
 
 
+
+# Reviewed Network-login branch, gate setter/getter and state-selection fragments.
+# Independent of the compatibility emitter. Resource/UI construction is not emulated.
+CHARACTER_CREATION_NATIVE_CHUNKS = (
+    (0xA67B26, bytes.fromhex('8b55e80fb74206894598817d98312700007405e92a0200008b4de8894de48b55e40fb7420883f8010f854d0100008b4de40fb7510a895594837d9400740f837d94010f8494000000e9f8000000685c030000')),
+    (0xA67BE3, bytes.fromhex('6a008b0dd469d800e87d039aff6a008b0d80f2d600e8f3b299ffe99a0000006a008b0dd469d800e85e039aff')),
+    (0x407F6D, bytes.fromhex('e9dec36600')),
+    (0xA74350, bytes.fromhex('558bec51894dfc8b45fc8a4d088888cb0500008be55dc20400')),
+    (0x4E2F37, bytes.fromhex('8b0dd469d800e83ec3f3ff0fb6c883f901752a68bc37c3008b1568f3d60052e8b00bf3ff83c4086a018b4dfce82d0af2ff8b45fcc7405000000000eb146a008b4dfce8170af2ff8b4dfcc7415001000000')),
+    (0x41F280, bytes.fromhex('e9ab506500')),
+    (0xA74330, bytes.fromhex('558bec51894dfc8b45fc8a80cb0500008be55dc3cccccccc')),
+ )
+
+
+def execute_character_creation_branch(case, chunks, *, opcode=0x2731, status=1,
+                                      has_character=0, initial_gate=0):
+    m = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_32)
+    m.mem_map(0x400000, 0x1000000)
+    m.mem_map(0x2000000, 0x10000)
+    m.mem_map(0x3000000, 0x10000)
+    for va, blob in chunks:
+        m.mem_write(va, blob)
+    manager, packet, state = 0x3000000, 0x3001000, 0x3002000
+    sp, bp = 0x2007000, 0x2008000
+    def write32(va, value):
+        m.mem_write(va, struct.pack('<I', value))
+    def read32(va):
+        return struct.unpack('<I', m.mem_read(va, 4))[0]
+    write32(0xD869D4, manager)
+    m.mem_write(manager + 0x5CB, bytes([initial_gate]))
+    m.mem_write(packet + 6, struct.pack('<HHH', opcode, status, has_character))
+    write32(bp - 0x18, packet)
+    m.reg_write(x86.UC_X86_REG_EBP, bp)
+    m.reg_write(x86.UC_X86_REG_ESP, sp)
+    reached = []
+    stops = {0xA67B78: 'legacy_notice', 0xA67C0F: 'existing_context_request',
+             0xA67CA1: 'login_failure', 0xA67C6B: 'invalid_character_status',
+             0xA67D68: 'other_opcode', 0x402EF0: 'enter_login_state',
+             0x403995: 'select_character_substate'}
+    def visit(machine, address, size, _):
+        esp = machine.reg_read(x86.UC_X86_REG_ESP)
+        if address in stops:
+            reached.append((stops[address], read32(esp + 4)))
+            machine.emu_stop()
+        elif address == 0x413B0B:
+            # Diagnostic formatting only; the native getter/setter and conditional
+            # branches above and below it execute without replacing their results.
+            machine.reg_write(x86.UC_X86_REG_EIP, read32(esp))
+            machine.reg_write(x86.UC_X86_REG_ESP, esp + 4)
+    m.hook_add(uc.UC_HOOK_CODE, visit)
+    m.emu_start(0xA67B26, 0x1400000, count=200)
+    case.assertEqual(len(reached), 1, 'login branch did not reach a reviewed boundary')
+    gate = bytes(m.mem_read(manager + 0x5CB, 1))[0]
+    result = reached[0][0]
+    if result == 'enter_login_state':
+        case.assertEqual(reached[0][1], 0, 'must enter the native login state')
+    if result in ('enter_login_state', 'existing_context_request'):
+        # Execute the real subsequent state-selection instructions. No synthetic
+        # decision based on the server payload is substituted for this branch.
+        write32(bp - 4, state)
+        m.reg_write(x86.UC_X86_REG_ESP, sp)
+        m.emu_start(0x4E2F37, 0x1400000, count=200)
+        case.assertEqual(len(reached), 2)
+        case.assertEqual(reached[1][0], 'select_character_substate')
+        return result, gate, reached[1][1]
+    return result, gate, None
+
+
+@unittest.skipIf(uc is None, 'Unicorn is not installed')
+class CharacterCreationNativeBranchTests(unittest.TestCase):
+    def chunks(self, patched):
+        chunks = list(CHARACTER_CREATION_NATIVE_CHUNKS)
+        if patched:
+            data = compat.patch_character_creation(synthetic_pe()[0])[0]
+            for va, size in ((0xA67B73, 5), (0xA67BE3, 2)):
+                off = compat._va_offset(data, va, size)
+                chunks.append((va, data[off:off + size]))
+        return chunks
+
+    def test_successful_characterless_login_sets_native_gate_and_selects_creation(self):
+        for initial_gate in (0, 1):
+            with self.subTest(initial_gate=initial_gate):
+                self.assertEqual(execute_character_creation_branch(self, self.chunks(True),
+                                 initial_gate=initial_gate), ('enter_login_state', 1, 1))
+
+    def test_existing_character_keeps_context_request_and_never_selects_creation(self):
+        for patched in (False, True):
+            for initial_gate in (0, 1):
+                with self.subTest(patched=patched, initial_gate=initial_gate):
+                    self.assertEqual(execute_character_creation_branch(self, self.chunks(patched),
+                                     has_character=1, initial_gate=initial_gate),
+                                     ('existing_context_request', 0, 0))
+
+    def test_original_characterless_branch_reaches_notice_not_creation(self):
+        self.assertEqual(execute_character_creation_branch(self, self.chunks(False)),
+                         ('legacy_notice', 0, None))
+
+    def test_wrong_opcode_failure_and_unknown_character_status_never_open_creation(self):
+        scenarios = [({'opcode': 0x271A}, 'other_opcode'),
+                     ({'opcode': 0x272F}, 'other_opcode')]
+        scenarios += [({'status': value}, 'login_failure') for value in (0, 2, 10, 0xFFFF)]
+        scenarios += [({'has_character': value}, 'invalid_character_status') for value in (2, 0x100, 0xFFFF)]
+        for patched in (False, True):
+            for kwargs, expected in scenarios:
+                with self.subTest(patched=patched, **kwargs):
+                    self.assertEqual(execute_character_creation_branch(self, self.chunks(patched), **kwargs),
+                                     (expected, 0, None))
+
+
+@unittest.skipIf(uc is None, 'Unicorn is not installed')
+class UserOwnedCharacterCreationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.path = Path(os.environ.get('NANAIMO_AUDIT_CLIENT',
+                       str(Path(__file__).resolve().parents[2] / 'game.exe')))
+        if not cls.path.is_file():
+            raise unittest.SkipTest('optional user-owned PE missing; set NANAIMO_AUDIT_CLIENT')
+        cls.original = cls.path.read_bytes()
+
+    def test_live_pe_fragments_match_native_branch_fixtures(self):
+        # The two intentional migration sites may be old or already migrated.
+        normalized = bytearray(self.original)
+        for va, old, new in ((0xA67B73, bytes.fromhex('685C030000'), bytes.fromhex('E96B000000')),
+                             (0xA67BE3, bytes.fromhex('6A00'), bytes.fromhex('6A01'))):
+            off = compat._va_offset(normalized, va, len(old))
+            self.assertIn(bytes(normalized[off:off + len(old)]), (old, new))
+            normalized[off:off + len(old)] = old
+        for va, expected in CHARACTER_CREATION_NATIVE_CHUNKS:
+            off = compat._va_offset(normalized, va, len(expected))
+            self.assertEqual(normalized[off:off + len(expected)], expected, hex(va))
+
+    def test_live_pe_characterless_and_existing_paths_execute_without_disk_writes(self):
+        output, _ = compat.patch_character_creation(self.original)
+        again, report = compat.patch_character_creation(output)
+        self.assertEqual(again, output)
+        self.assertFalse(report['changed'])
+        chunks = [(va, output[off:off + size]) for va, _, off, size in compat._pe_sections(output)]
+        self.assertEqual(execute_character_creation_branch(self, chunks), ('enter_login_state', 1, 1))
+        self.assertEqual(execute_character_creation_branch(self, chunks, has_character=1, initial_gate=1),
+                         ('existing_context_request', 0, 0))
+        allowed = set()
+        for va, span in ((0xA67B73, 5), (0xA67BE3, 2)):
+            off = compat._va_offset(output, va, span)
+            allowed.update(range(off, off + span))
+        self.assertEqual(len(output), len(self.original))
+        self.assertTrue(all(i in allowed for i, (a, b) in enumerate(zip(self.original, output)) if a != b))
+        self.assertEqual(self.path.read_bytes(), self.original)
+
+
 if __name__ == '__main__':
     unittest.main()

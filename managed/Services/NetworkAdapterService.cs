@@ -2120,6 +2120,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     _log($"{channel}:{remote} rejected channel-list payload={payload.Length}; expected {ChannelListRequestPayloadLength}");
                     return null;
                 }
+                if (session.AccountId > 0 && session.Character is null)
+                {
+                    _log($"{channel}:{remote} rejected channel-list before character creation: account={session.AccountId}");
+                    return null;
+                }
                 if (session.AccountId > 0)
                 {
                     CacheLoginTicket(session);
@@ -2150,7 +2155,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 }
 
                 if (await TryLocalLauncherLoginAsync(session, remoteIp, token))
-                    return BuildNativeFrame(frame, 0x2731, new byte[] { 1, 0, 1, 0 }, session);
+                    return BuildNativeFrame(frame, 0x2731,
+                        new byte[] { 1, 0, session.Character is null ? (byte)0 : (byte)1, 0 }, session);
                 var uin = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
                 var token1Start = 4;
                 var token2Start = token1Start + LegacyTencentToken1Length;
@@ -4613,24 +4619,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 // actor's authoritative landing point. Preserve the last legal
                 // position until the destination C367/CB21 chain reports one.
                 _log($"{channel}:{remote} C365 village transition: source={sourceTownId} destination={townId} requestedPage={townPage} mode={transientFlag} fare={travelFare} remainingHans={session.Character.Hans} -> responsePage={transition.Page} responseFlag={transition.Flag} transientPosition=({requestedPositionX},{requestedPositionY}) retainedPosition=({session.LastReportedPositionX},{session.LastReportedPositionY}) canonicalized={transition.Canonicalized}");
-                var transitionResponse = BuildNativeFrame(
+                // Complete the transport boundary immediately after the fare commit.
+                // A full inventory/profile refresh is independently requested by
+                // the client and must not gate destination scene construction here.
+                return BuildNativeFrame(
                     frame,
                     0xC366,
                     BuildTownEnterPayload(TownEnterStatusSuccess, townId, transition.Page, transition.Flag),
                     session);
-                if (travelFare == 0)
-                    return transitionResponse;
-
-                // C366 carries no wallet field. Publish the committed Hans value
-                // through the established C379 balance carrier immediately after
-                // accepting the paid ride; actor reconstruction remains deferred.
-                var transitionSkills = await _database.GetCharacterSkillsAsync(session.Character.Id, token);
-                var balanceRefresh = BuildNativeFrame(
-                    frame,
-                    0xC379,
-                    BuildBoxInfoPayloadWithSkills(session.Character, transitionSkills),
-                    session);
-                return CombineNativeFrames(transitionResponse, balanceRefresh);
             }
 
             case 0xC367: // move town page: int32 page/sub-mode and transient uint16 X/Y
@@ -14002,8 +13998,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         }
         else
         {
-            // This client requires a zero-level initial context and a nonempty login identity.
-            WriteFixedGbk(payload.AsSpan(8, 16), session.AccountId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            // Character creation is selected from an entirely empty character projection.
+            // Publishing the account id in the name slot makes the client treat that
+            // projection as an existing character and continue to channel selection.
+            payload.AsSpan(8, 52).Clear();
         }
         return payload;
     }
