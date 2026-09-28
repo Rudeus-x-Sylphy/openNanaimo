@@ -343,10 +343,10 @@ $form=New-Object Windows.Forms.Form
 $form.Text="OpenNanaimo Launcher [$ReleaseIdentity]";$form.Size=New-Object Drawing.Size(1120,940);$form.StartPosition='CenterScreen';$form.MinimumSize=New-Object Drawing.Size(1000,870)
 $tabs=New-Object Windows.Forms.TabControl;$tabs.Dock='Fill';$form.Controls.Add($tabs)
 $tabStart=New-Object Windows.Forms.TabPage;$tabStart.Text='启动配置';$tabs.TabPages.Add($tabStart)
-$tabLaunchInfo=New-Object Windows.Forms.TabPage;$tabLaunchInfo.Text='本次启动详情';$tabs.TabPages.Add($tabLaunchInfo)
-$tabResources=New-Object Windows.Forms.TabPage;$tabResources.Text='数值与道具';$tabs.TabPages.Add($tabResources)
-$tabPets=New-Object Windows.Forms.TabPage;$tabPets.Text='宠物查表';$tabs.TabPages.Add($tabPets)
-$tabEquip=New-Object Windows.Forms.TabPage;$tabEquip.Text='装扮查表';$tabs.TabPages.Add($tabEquip)
+$tabResources=New-Object Windows.Forms.TabPage;$tabResources.Text='数值管理';$tabs.TabPages.Add($tabResources)
+$tabLaunchInfo=New-Object Windows.Forms.TabPage;$tabLaunchInfo.Text='本次启动详情'
+$tabPets=New-Object Windows.Forms.TabPage;$tabPets.Text='宠物查表'
+$tabEquip=New-Object Windows.Forms.TabPage;$tabEquip.Text='装扮查表'
 
 $title=New-Object Windows.Forms.Label;$title.Text='OpenNanaimo Launcher';$title.Font=New-Object Drawing.Font('Microsoft YaHei UI',16,[Drawing.FontStyle]::Bold);$title.AutoSize=$true;$title.Location=New-Object Drawing.Point(28,16);$tabStart.Controls.Add($title)
 $releaseLabel=New-Object Windows.Forms.Label;$releaseLabel.Text="Release: $ReleaseIdentity | Canonical entry: start_nanaimo_launcher.bat";$releaseLabel.AutoSize=$true;$releaseLabel.ForeColor=[Drawing.Color]::DarkGreen;$releaseLabel.Location=New-Object Drawing.Point(30,50);$tabStart.Controls.Add($releaseLabel)
@@ -380,25 +380,34 @@ $skillSlotExpiryApplyBox=New-Object Windows.Forms.CheckBox;$skillSlotExpiryApply
 $expansionExpiryNote=New-Object Windows.Forms.Label;$expansionExpiryNote.Text='未来期限表示扩容已生效，原客户端会阻止再次使用对应扩容券；要测试期限券请先明确设为0或过期值。';$expansionExpiryNote.Location=New-Object Drawing.Point(555,570);$expansionExpiryNote.Size=New-Object Drawing.Size(500,42);$expansionExpiryNote.ForeColor=[Drawing.Color]::DarkOrange;$tabResources.Controls.Add($expansionExpiryNote)
 $freeMagicKeyNote=New-Object Windows.Forms.Label;$freeMagicKeyNote.Text='自由钥匙物品：44000010/44000011；C3E8 +0x88启用；真实背包链 C473(mode1)→C474。';$freeMagicKeyNote.Location=New-Object Drawing.Point(555,405);$freeMagicKeyNote.Size=New-Object Drawing.Size(500,45);$freeMagicKeyNote.ForeColor=[Drawing.Color]::DarkGreen;$tabResources.Controls.Add($freeMagicKeyNote)
 $resourceBoundary=New-Object Windows.Forms.Label;$resourceBoundary.Text='Attack is a u32 additive CFEC modifier (0..1000000). Defense uses the local rule max(1, raw-defense) before D010/D015; this is not a recovered original formula. HP/MP use u16, currencies use u64, and card counts use u8. Selected-PET type1 gems are not automatically added again.';$resourceBoundary.Location=New-Object Drawing.Point(45,620);$resourceBoundary.Size=New-Object Drawing.Size(980,72);$resourceBoundary.ForeColor=[Drawing.Color]::DarkOrange;$tabResources.Controls.Add($resourceBoundary)
-$tabResources.AutoScroll=$true;$tabResources.AutoScrollMinSize=New-Object Drawing.Size(1080,1120)
+$tabResources.AutoScroll=$true;$tabResources.AutoScrollMinSize=New-Object Drawing.Size(1080,1180)
 $skillWarning=New-Object Windows.Forms.Label;$skillWarning.Location=New-Object Drawing.Point(45,700);$skillWarning.Size=New-Object Drawing.Size(1000,34);$skillWarning.Font=New-Object Drawing.Font('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold);$tabResources.Controls.Add($skillWarning)
 function New-SkillGradeControl($parent,[int]$idx,[int]$x,[int]$y){$d=$SkillDefs[$idx];Add-Label $parent ("{0} [{1}]"-f$d.Name,$d.Code) $x $y 185|Out-Null;$n=New-Object Windows.Forms.NumericUpDown;$n.Location=New-Object Drawing.Point(($x+188),($y-3));$n.Size=New-Object Drawing.Size(46,25);$n.Minimum=0;$n.Maximum=5;$n.Value=[decimal]$defaultSkillGrades[$idx];$n.Tag=$idx;$parent.Controls.Add($n);return $n}
 $skillGradeBoxes=New-Object object[] 16
-$projectileSkillGroup=New-Object Windows.Forms.GroupBox;$projectileSkillGroup.Text='炮弹型技能树';$projectileSkillGroup.Location=New-Object Drawing.Point(25,750);$projectileSkillGroup.Size=New-Object Drawing.Size(510,190);$tabResources.Controls.Add($projectileSkillGroup)
-$meatSkillGroup=New-Object Windows.Forms.GroupBox;$meatSkillGroup.Text='肉弹型技能树';$meatSkillGroup.Location=New-Object Drawing.Point(550,750);$meatSkillGroup.Size=New-Object Drawing.Size(510,190);$tabResources.Controls.Add($meatSkillGroup)
-Add-Label $projectileSkillGroup '分支路线' 10 22 75|Out-Null;$projectileRouteCombo=New-Object Windows.Forms.ComboBox;$projectileRouteCombo.Location=New-Object Drawing.Point(88,18);$projectileRouteCombo.Size=New-Object Drawing.Size(220,26);$projectileRouteCombo.DropDownStyle='DropDownList';foreach($x in @('未选分支（分支等级全0）','上路线（只允许上路）','下路线（只允许下路）')){[void]$projectileRouteCombo.Items.Add($x)};$projectileRouteCombo.SelectedIndex=if($defaultProjectileRoute-ge0-and$defaultProjectileRoute-le2){$defaultProjectileRoute}else{0};$projectileSkillGroup.Controls.Add($projectileRouteCombo)
-Add-Label $meatSkillGroup '分支路线' 10 22 75|Out-Null;$meatRouteCombo=New-Object Windows.Forms.ComboBox;$meatRouteCombo.Location=New-Object Drawing.Point(88,18);$meatRouteCombo.Size=New-Object Drawing.Size(220,26);$meatRouteCombo.DropDownStyle='DropDownList';foreach($x in @('未选分支（分支等级全0）','上路线（只允许上路）','下路线（只允许下路）')){[void]$meatRouteCombo.Items.Add($x)};$meatRouteCombo.SelectedIndex=if($defaultMeatRoute-ge0-and$defaultMeatRoute-le2){$defaultMeatRoute}else{0};$meatSkillGroup.Controls.Add($meatRouteCombo)
-$skillGradeBoxes[0]=New-SkillGradeControl $projectileSkillGroup 0 10 55;$skillGradeBoxes[1]=New-SkillGradeControl $projectileSkillGroup 1 260 55
-$skillGradeBoxes[2]=New-SkillGradeControl $projectileSkillGroup 2 10 88;$skillGradeBoxes[3]=New-SkillGradeControl $projectileSkillGroup 3 260 88
-$skillGradeBoxes[4]=New-SkillGradeControl $projectileSkillGroup 4 10 119;$skillGradeBoxes[5]=New-SkillGradeControl $projectileSkillGroup 5 260 119
-$skillGradeBoxes[6]=New-SkillGradeControl $projectileSkillGroup 6 10 150;$skillGradeBoxes[7]=New-SkillGradeControl $projectileSkillGroup 7 260 150
-$skillGradeBoxes[8]=New-SkillGradeControl $meatSkillGroup 8 10 55;$skillGradeBoxes[9]=New-SkillGradeControl $meatSkillGroup 9 260 55
-$skillGradeBoxes[10]=New-SkillGradeControl $meatSkillGroup 10 10 88;$skillGradeBoxes[11]=New-SkillGradeControl $meatSkillGroup 11 260 88
-$skillGradeBoxes[12]=New-SkillGradeControl $meatSkillGroup 12 10 119;$skillGradeBoxes[13]=New-SkillGradeControl $meatSkillGroup 13 260 119
-$skillGradeBoxes[14]=New-SkillGradeControl $meatSkillGroup 14 10 150;$skillGradeBoxes[15]=New-SkillGradeControl $meatSkillGroup 15 260 150
-Add-Label $tabResources 'Z 实际装备技能' 45 965 135|Out-Null;$skillZCombo=New-Object Windows.Forms.ComboBox;$skillZCombo.Location=New-Object Drawing.Point(190,961);$skillZCombo.Size=New-Object Drawing.Size(350,28);$skillZCombo.DropDownStyle='DropDownList';$tabResources.Controls.Add($skillZCombo)
-Add-Label $tabResources 'X 实际装备技能' 550 965 135|Out-Null;$skillXCombo=New-Object Windows.Forms.ComboBox;$skillXCombo.Location=New-Object Drawing.Point(695,961);$skillXCombo.Size=New-Object Drawing.Size(350,28);$skillXCombo.DropDownStyle='DropDownList';$tabResources.Controls.Add($skillXCombo)
-$skillRouteNote=New-Object Windows.Forms.Label;$skillRouteNote.Text='互斥规则：炮弹型和肉弹型各自只能选择上/下其中一条路线。切换路线会把另一条路线的3项等级清零；Z/X只能装备等级>0的不同技能。';$skillRouteNote.Location=New-Object Drawing.Point(45,1010);$skillRouteNote.Size=New-Object Drawing.Size(990,38);$skillRouteNote.ForeColor=[Drawing.Color]::DarkRed;$tabResources.Controls.Add($skillRouteNote)
+$projectileSkillGroup=New-Object Windows.Forms.GroupBox;$projectileSkillGroup.Text='炮弹型技能树';$projectileSkillGroup.Location=New-Object Drawing.Point(25,750);$projectileSkillGroup.Size=New-Object Drawing.Size(510,245);$tabResources.Controls.Add($projectileSkillGroup)
+$meatSkillGroup=New-Object Windows.Forms.GroupBox;$meatSkillGroup.Text='肉弹型技能树';$meatSkillGroup.Location=New-Object Drawing.Point(550,750);$meatSkillGroup.Size=New-Object Drawing.Size(510,245);$tabResources.Controls.Add($meatSkillGroup)
+$skillSectionFont=New-Object Drawing.Font('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold)
+$projectilePrerequisiteLabel=Add-Label $projectileSkillGroup '共同前置技能（上/下路线共用）' 10 22 300;$projectilePrerequisiteLabel.Font=$skillSectionFont;$projectilePrerequisiteLabel.ForeColor=[Drawing.Color]::DarkGreen
+$meatPrerequisiteLabel=Add-Label $meatSkillGroup '共同前置技能（上/下路线共用）' 10 22 300;$meatPrerequisiteLabel.Font=$skillSectionFont;$meatPrerequisiteLabel.ForeColor=[Drawing.Color]::DarkGreen
+$skillGradeBoxes[0]=New-SkillGradeControl $projectileSkillGroup 0 10 50;$skillGradeBoxes[1]=New-SkillGradeControl $projectileSkillGroup 1 260 50
+$skillGradeBoxes[8]=New-SkillGradeControl $meatSkillGroup 8 10 50;$skillGradeBoxes[9]=New-SkillGradeControl $meatSkillGroup 9 260 50
+$projectileSkillSeparator=New-Object Windows.Forms.Label;$projectileSkillSeparator.BorderStyle='Fixed3D';$projectileSkillSeparator.Location=New-Object Drawing.Point(10,81);$projectileSkillSeparator.Size=New-Object Drawing.Size(485,2);$projectileSkillGroup.Controls.Add($projectileSkillSeparator)
+$meatSkillSeparator=New-Object Windows.Forms.Label;$meatSkillSeparator.BorderStyle='Fixed3D';$meatSkillSeparator.Location=New-Object Drawing.Point(10,81);$meatSkillSeparator.Size=New-Object Drawing.Size(485,2);$meatSkillGroup.Controls.Add($meatSkillSeparator)
+Add-Label $projectileSkillGroup '分支路线' 10 91 75|Out-Null;$projectileRouteCombo=New-Object Windows.Forms.ComboBox;$projectileRouteCombo.Location=New-Object Drawing.Point(88,87);$projectileRouteCombo.Size=New-Object Drawing.Size(220,26);$projectileRouteCombo.DropDownStyle='DropDownList';foreach($x in @('未选分支（分支等级全0）','上路线（只允许上路）','下路线（只允许下路）')){[void]$projectileRouteCombo.Items.Add($x)};$projectileRouteCombo.SelectedIndex=if($defaultProjectileRoute-ge0-and$defaultProjectileRoute-le2){$defaultProjectileRoute}else{0};$projectileSkillGroup.Controls.Add($projectileRouteCombo)
+Add-Label $meatSkillGroup '分支路线' 10 91 75|Out-Null;$meatRouteCombo=New-Object Windows.Forms.ComboBox;$meatRouteCombo.Location=New-Object Drawing.Point(88,87);$meatRouteCombo.Size=New-Object Drawing.Size(220,26);$meatRouteCombo.DropDownStyle='DropDownList';foreach($x in @('未选分支（分支等级全0）','上路线（只允许上路）','下路线（只允许下路）')){[void]$meatRouteCombo.Items.Add($x)};$meatRouteCombo.SelectedIndex=if($defaultMeatRoute-ge0-and$defaultMeatRoute-le2){$defaultMeatRoute}else{0};$meatSkillGroup.Controls.Add($meatRouteCombo)
+$projectileUpperLabel=Add-Label $projectileSkillGroup '上路线技能' 10 122 235;$projectileUpperLabel.Font=$skillSectionFont;$projectileUpperLabel.ForeColor=[Drawing.Color]::SteelBlue
+$projectileLowerLabel=Add-Label $projectileSkillGroup '下路线技能' 260 122 235;$projectileLowerLabel.Font=$skillSectionFont;$projectileLowerLabel.ForeColor=[Drawing.Color]::DarkOrange
+$meatUpperLabel=Add-Label $meatSkillGroup '上路线技能' 10 122 235;$meatUpperLabel.Font=$skillSectionFont;$meatUpperLabel.ForeColor=[Drawing.Color]::SteelBlue
+$meatLowerLabel=Add-Label $meatSkillGroup '下路线技能' 260 122 235;$meatLowerLabel.Font=$skillSectionFont;$meatLowerLabel.ForeColor=[Drawing.Color]::DarkOrange
+$skillGradeBoxes[2]=New-SkillGradeControl $projectileSkillGroup 2 10 152;$skillGradeBoxes[3]=New-SkillGradeControl $projectileSkillGroup 3 260 152
+$skillGradeBoxes[4]=New-SkillGradeControl $projectileSkillGroup 4 10 182;$skillGradeBoxes[5]=New-SkillGradeControl $projectileSkillGroup 5 260 182
+$skillGradeBoxes[6]=New-SkillGradeControl $projectileSkillGroup 6 10 212;$skillGradeBoxes[7]=New-SkillGradeControl $projectileSkillGroup 7 260 212
+$skillGradeBoxes[10]=New-SkillGradeControl $meatSkillGroup 10 10 152;$skillGradeBoxes[11]=New-SkillGradeControl $meatSkillGroup 11 260 152
+$skillGradeBoxes[12]=New-SkillGradeControl $meatSkillGroup 12 10 182;$skillGradeBoxes[13]=New-SkillGradeControl $meatSkillGroup 13 260 182
+$skillGradeBoxes[14]=New-SkillGradeControl $meatSkillGroup 14 10 212;$skillGradeBoxes[15]=New-SkillGradeControl $meatSkillGroup 15 260 212
+Add-Label $tabResources 'Z 实际装备技能' 45 1020 135|Out-Null;$skillZCombo=New-Object Windows.Forms.ComboBox;$skillZCombo.Location=New-Object Drawing.Point(190,1016);$skillZCombo.Size=New-Object Drawing.Size(350,28);$skillZCombo.DropDownStyle='DropDownList';$tabResources.Controls.Add($skillZCombo)
+Add-Label $tabResources 'X 实际装备技能' 550 1020 135|Out-Null;$skillXCombo=New-Object Windows.Forms.ComboBox;$skillXCombo.Location=New-Object Drawing.Point(695,1016);$skillXCombo.Size=New-Object Drawing.Size(350,28);$skillXCombo.DropDownStyle='DropDownList';$tabResources.Controls.Add($skillXCombo)
+$skillRouteNote=New-Object Windows.Forms.Label;$skillRouteNote.Text='前置关系：两项基础技能位于分支之前，并由上/下路线共用；每类只能选择一条分支。切换路线会把另一条路线的3项等级清零；Z/X只能装备等级>0的不同技能。';$skillRouteNote.Location=New-Object Drawing.Point(45,1065);$skillRouteNote.Size=New-Object Drawing.Size(990,52);$skillRouteNote.ForeColor=[Drawing.Color]::DarkRed;$tabResources.Controls.Add($skillRouteNote)
 function Read-SkillGradesFromControls{$g=New-Object int[] 16;for($i=0;$i-lt16;$i++){$g[$i]=[int]$skillGradeBoxes[$i].Value};return ,$g}
 function Skill-CodeName([uint32]$code){if(-not$code){return '未装备'};$d=$SkillDefs|Where-Object{[uint32]$_.Code-eq$code}|Select-Object -First 1;if($d){return $d.Name};return "未知技能 $code"}
 function Get-SkillComboCode($combo){if($combo.SelectedIndex-ge0-and$combo.Tag-and$combo.SelectedIndex-lt$combo.Tag.Count){return [uint32]$combo.Tag[$combo.SelectedIndex]};return [uint32]0}
@@ -412,9 +421,7 @@ foreach($b in $skillGradeBoxes){$b.add_ValueChanged({Set-SkillSlotChoices $null 
 
 
 Add-Label $tabStart '用户名/角色显示名' 35 108|Out-Null
-$nameBox=New-Object Windows.Forms.TextBox;$nameBox.Location=New-Object Drawing.Point(190,104);$nameBox.Size=New-Object Drawing.Size(320,28);$nameBox.Text=$defaultName;$tabStart.Controls.Add($nameBox)
-$pureNewPlayerBox=New-Object Windows.Forms.CheckBox;$pureNewPlayerBox.Text='构建与启动纯新手档';$pureNewPlayerBox.Location=New-Object Drawing.Point(535,104);$pureNewPlayerBox.Size=New-Object Drawing.Size(260,28);$pureNewPlayerBox.Checked=$false;$tabStart.Controls.Add($pureNewPlayerBox)
-$skipTutorialBox=New-Object Windows.Forms.CheckBox;$skipTutorialBox.Text='跳过新手教程';$skipTutorialBox.Location=New-Object Drawing.Point(810,104);$skipTutorialBox.Size=New-Object Drawing.Size(220,28);$skipTutorialBox.Checked=$defaultSkipTutorial;$tabStart.Controls.Add($skipTutorialBox)
+$nameBox=New-Object Windows.Forms.TextBox;$nameBox.Location=New-Object Drawing.Point(190,104);$nameBox.Size=New-Object Drawing.Size(700,28);$nameBox.Text=$defaultName;$tabStart.Controls.Add($nameBox)
 function Get-SelectedLaunchMode {return 'network'}
 function Get-NetworkIpInput {return '127.0.0.1'}
 function Get-SelectedLaunchModeInfo {return Get-LaunchModeInfo}
@@ -444,24 +451,27 @@ foreach($part in @('body','hair','top','bottom','accessory','effect')){
     $rows=@($equips|Where-Object part -eq $part);$choices=New-ChoiceList $rows;Bind-Combo $c $choices ([uint32]$defaults[$part]);$comboMap[$part]=$c;$y+=46
 }
 $comboMap.body.add_SelectedIndexChanged({$d=Get-SelectedData $comboMap.body;if($d-and$d.gender-eq'M'){$genderCombo.SelectedIndex=1}elseif($d-and$d.gender-eq'F'){$genderCombo.SelectedIndex=0}})
-Add-Label $tabStart '新手档用户名' 35 610 145|Out-Null
-$pureNewPlayerUsernameBox=New-Object Windows.Forms.TextBox;$pureNewPlayerUsernameBox.Location=New-Object Drawing.Point(190,606);$pureNewPlayerUsernameBox.Size=New-Object Drawing.Size(300,28);$pureNewPlayerUsernameBox.Text=$defaultPureNewPlayerUsername;$tabStart.Controls.Add($pureNewPlayerUsernameBox)
-$unlockAllDungeonsBox=New-Object Windows.Forms.CheckBox;$unlockAllDungeonsBox.Text='开启全部地宫进入权限';$unlockAllDungeonsBox.Location=New-Object Drawing.Point(520,606);$unlockAllDungeonsBox.Size=New-Object Drawing.Size(250,28);$unlockAllDungeonsBox.Checked=$defaultUnlockAllDungeons;$tabStart.Controls.Add($unlockAllDungeonsBox)
-$warning=New-Object Windows.Forms.Label;$warning.Text='进入游戏时保存配置并重启本地协议适配器。';$warning.ForeColor=[Drawing.Color]::DarkOrange;$warning.AutoSize=$true;$warning.Location=New-Object Drawing.Point(190,632);$tabStart.Controls.Add($warning)
+$pureNewPlayerBox=New-Object Windows.Forms.CheckBox;$pureNewPlayerBox.Text='构建与启动纯新手档';$pureNewPlayerBox.Location=New-Object Drawing.Point(35,588);$pureNewPlayerBox.Size=New-Object Drawing.Size(260,28);$pureNewPlayerBox.Checked=$false;$tabStart.Controls.Add($pureNewPlayerBox)
+$skipTutorialBox=New-Object Windows.Forms.CheckBox;$skipTutorialBox.Text='跳过新手教程';$skipTutorialBox.Location=New-Object Drawing.Point(330,588);$skipTutorialBox.Size=New-Object Drawing.Size(180,28);$skipTutorialBox.Checked=$defaultSkipTutorial;$tabStart.Controls.Add($skipTutorialBox)
+$unlockAllDungeonsBox=New-Object Windows.Forms.CheckBox;$unlockAllDungeonsBox.Text='开启全部地宫进入权限';$unlockAllDungeonsBox.Location=New-Object Drawing.Point(535,588);$unlockAllDungeonsBox.Size=New-Object Drawing.Size(260,28);$unlockAllDungeonsBox.Checked=$defaultUnlockAllDungeons;$tabStart.Controls.Add($unlockAllDungeonsBox)
 
-$saveBtn=New-Object Windows.Forms.Button;$saveBtn.Text='保存配置';$saveBtn.Size=New-Object Drawing.Size(125,40);$saveBtn.Location=New-Object Drawing.Point(75,650);$tabStart.Controls.Add($saveBtn)
-$clientBtn=New-Object Windows.Forms.Button;$clientBtn.Text='一键进入 Nanaimo';$clientBtn.Size=New-Object Drawing.Size(230,40);$clientBtn.Location=New-Object Drawing.Point(215,650);$clientBtn.BackColor=[Drawing.Color]::LightGreen;$tabStart.Controls.Add($clientBtn)
-$adapterBtn=New-Object Windows.Forms.Button;$adapterBtn.Text='仅启动适配器';$adapterBtn.Size=New-Object Drawing.Size(175,40);$adapterBtn.Location=New-Object Drawing.Point(460,650);$adapterBtn.BackColor=[Drawing.Color]::LightSkyBlue;$tabStart.Controls.Add($adapterBtn)
-$folderBtn=New-Object Windows.Forms.Button;$folderBtn.Text='打开日志目录';$folderBtn.Size=New-Object Drawing.Size(140,40);$folderBtn.Location=New-Object Drawing.Point(650,650);$tabStart.Controls.Add($folderBtn)
-$defaultBtn=New-Object Windows.Forms.Button;$defaultBtn.Text='恢复默认';$defaultBtn.Size=New-Object Drawing.Size(120,40);$defaultBtn.Location=New-Object Drawing.Point(805,650);$tabStart.Controls.Add($defaultBtn)
-$status=New-Object Windows.Forms.Label;$status.Location=New-Object Drawing.Point(35,705);$status.Size=New-Object Drawing.Size(1000,60);$status.ForeColor=[Drawing.Color]::DarkBlue;$tabStart.Controls.Add($status)
+Add-Label $tabStart '新手档用户名' 35 626 145|Out-Null
+$pureNewPlayerUsernameBox=New-Object Windows.Forms.TextBox;$pureNewPlayerUsernameBox.Location=New-Object Drawing.Point(190,622);$pureNewPlayerUsernameBox.Size=New-Object Drawing.Size(700,28);$pureNewPlayerUsernameBox.Text=$defaultPureNewPlayerUsername;$tabStart.Controls.Add($pureNewPlayerUsernameBox)
+$warning=New-Object Windows.Forms.Label;$warning.Text='进入游戏时保存配置并重启本地协议适配器。';$warning.ForeColor=[Drawing.Color]::DarkOrange;$warning.AutoSize=$true;$warning.Location=New-Object Drawing.Point(190,652);$tabStart.Controls.Add($warning)
+
+$saveBtn=New-Object Windows.Forms.Button;$saveBtn.Text='保存配置';$saveBtn.Size=New-Object Drawing.Size(125,40);$saveBtn.Location=New-Object Drawing.Point(75,674);$tabStart.Controls.Add($saveBtn)
+$clientBtn=New-Object Windows.Forms.Button;$clientBtn.Text='一键进入 Nanaimo';$clientBtn.Size=New-Object Drawing.Size(230,40);$clientBtn.Location=New-Object Drawing.Point(215,674);$clientBtn.BackColor=[Drawing.Color]::LightGreen;$tabStart.Controls.Add($clientBtn)
+$adapterBtn=New-Object Windows.Forms.Button;$adapterBtn.Text='仅启动适配器';$adapterBtn.Size=New-Object Drawing.Size(175,40);$adapterBtn.Location=New-Object Drawing.Point(460,674);$adapterBtn.BackColor=[Drawing.Color]::LightSkyBlue;$tabStart.Controls.Add($adapterBtn)
+$folderBtn=New-Object Windows.Forms.Button;$folderBtn.Text='打开日志目录';$folderBtn.Size=New-Object Drawing.Size(140,40);$folderBtn.Location=New-Object Drawing.Point(650,674);$tabStart.Controls.Add($folderBtn)
+$defaultBtn=New-Object Windows.Forms.Button;$defaultBtn.Text='恢复默认';$defaultBtn.Size=New-Object Drawing.Size(120,40);$defaultBtn.Location=New-Object Drawing.Point(805,674);$tabStart.Controls.Add($defaultBtn)
+$status=New-Object Windows.Forms.Label;$status.Location=New-Object Drawing.Point(35,729);$status.Size=New-Object Drawing.Size(1000,60);$status.ForeColor=[Drawing.Color]::DarkBlue;$tabStart.Controls.Add($status)
 function Update-LaunchModePresentation {
     $clientBtn.Text=if($pureNewPlayerBox.Checked){'构建并进入纯新手档'}else{'一键进入 Nanaimo'}
-    $warning.Text=if($pureNewPlayerBox.Checked){'纯新手档：不保存/导入当前GUI角色、任务、库存或数值；由原客户端创建全新角色并进入引导。'}else{'进入游戏时保存配置并重启本地协议适配器。'}
+    $warning.Text=if($pureNewPlayerBox.Checked){if($skipTutorialBox.Checked){'纯新手档：不保存/导入当前GUI角色、任务、库存或数值；由原客户端创建全新角色并跳过新手教程。'}else{'纯新手档：不保存/导入当前GUI角色、任务、库存或数值；由原客户端创建全新角色并进入引导。'}}else{'进入游戏时保存配置并重启本地协议适配器。'}
 }
 function Update-PureNewPlayerPresentation {
     $normal=-not$pureNewPlayerBox.Checked
-    foreach($control in @($nameBox,$skipTutorialBox,$levelBox,$resetProgressBtn,$genderCombo,$attackCombo,$titleCombo,$petCombo,$petAgeCombo)+@($comboMap.Values)){$control.Enabled=$normal}
+    foreach($control in @($nameBox,$levelBox,$resetProgressBtn,$genderCombo,$attackCombo,$titleCombo,$petCombo,$petAgeCombo)+@($comboMap.Values)){$control.Enabled=$normal}
     $pureNewPlayerUsernameBox.Enabled=-not$normal
     $saveBtn.Enabled=$normal;$adapterBtn.Enabled=$normal
     Update-LaunchModePresentation
@@ -547,7 +557,8 @@ $refreshLaunchInfoBtn.add_Click({try{Update-LaunchPreview -ComputeHashes}catch{[
 $copyLaunchInfoBtn.add_Click({if($launchInfoBox.Text){[Windows.Forms.Clipboard]::SetText($launchInfoBox.Text);$status.Text='已复制“本次启动详情”到剪贴板。'}})
 $tabs.add_SelectedIndexChanged({if($tabs.SelectedTab-eq$tabLaunchInfo){Update-LaunchPreview}})
 $skillSlotExpiryApplyBox.add_CheckedChanged({$skillSlotExpiryBox.Enabled=$skillSlotExpiryApplyBox.Checked;if($launchInfoBox){Update-LaunchPreview}})
-$pureNewPlayerBox.add_CheckedChanged({if($pureNewPlayerBox.Checked){$unlockAllDungeonsBox.Checked=$false}else{$unlockAllDungeonsBox.Checked=$defaultUnlockAllDungeons};Update-PureNewPlayerPresentation})
+$pureNewPlayerBox.add_CheckedChanged({Update-PureNewPlayerPresentation})
+$skipTutorialBox.add_CheckedChanged({Update-LaunchModePresentation;if($launchInfoBox){Update-LaunchPreview}})
 $pureNewPlayerUsernameBox.add_TextChanged({if($launchInfoBox){Update-LaunchPreview}})
 $unlockAllDungeonsBox.add_CheckedChanged({if($launchInfoBox){Update-LaunchPreview}})
 
@@ -633,7 +644,7 @@ function Register-ClientProfile([string]$ip){Send-LocalLaunchRegistration $ip ([
 function New-PureNewPlayerAccountName {return 'pure-'+(Get-Date).ToUniversalTime().ToString('yyyyMMddHHmmssfff')+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)}
 function Write-PureNewPlayerRuntimeProfile {
     if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
-    $lines=@('version=2','launch_mode=network','network_ip=127.0.0.1','skip_tutorial=0',"unlock_all_dungeons=$([int]$unlockAllDungeonsBox.Checked)",'gender=0','name_hex=505552454E4557','dungeon_grade=auto','level=1','pet=0','pet_age_a=0','pet_age_b=0','initial_attack_mode=0','equip_hair=0','equip_body=0','equip_top=0','equip_bottom=0','equip_accessory=0','equip_effect=0','hp_max=1500','hp_current=1500','mp_max=100','mp_current=100','attack=0','defense=0','coin=0','nana_point=0','card_key_normal=0','card_key_gold=0','card_key_mystery=0','card_key_special=0','free_magic_key_expiry=2000010100','quickbar_expiry=0','skill_config=1','skill_projectile_route=0','skill_meat_route=0','skill_slot_z=0','skill_slot_x=0')
+    $lines=@('version=2','launch_mode=network','network_ip=127.0.0.1',"skip_tutorial=$([int]$skipTutorialBox.Checked)","unlock_all_dungeons=$([int]$unlockAllDungeonsBox.Checked)",'gender=0','name_hex=505552454E4557','dungeon_grade=auto','level=1','pet=0','pet_age_a=0','pet_age_b=0','initial_attack_mode=0','equip_hair=0','equip_body=0','equip_top=0','equip_bottom=0','equip_accessory=0','equip_effect=0','hp_max=1500','hp_current=1500','mp_max=100','mp_current=100','attack=0','defense=0','coin=0','nana_point=0','card_key_normal=0','card_key_gold=0','card_key_mystery=0','card_key_special=0','free_magic_key_expiry=2000010100','quickbar_expiry=0','skill_config=1','skill_projectile_route=0','skill_meat_route=0','skill_slot_z=0','skill_slot_x=0')
     for($i=0;$i-lt16;$i++){$lines+="skill_grade$i=0"}
     [IO.File]::WriteAllLines($PureNewPlayerProfile,$lines,(New-Object Text.ASCIIEncoding))
     return $PureNewPlayerProfile
@@ -744,7 +755,9 @@ function Start-LocalAdapter([string]$runtimeProfile=$ProfileIni) {
     }
     Stop-LocalAdapter
     throw '适配器未在10秒内准备完成；请检查日志。'
-}$inventoryAdmin=Initialize-InventoryAdmin $tabs $Root $(if($ini.name_hex){[string]$ini.name_hex}else{Encode-NameHex $defaultName})
+}
+$inventoryAdmin=Initialize-InventoryAdmin $tabs $Root $(if($ini.name_hex){[string]$ini.name_hex}else{Encode-NameHex $defaultName})
+$tabs.TabPages.Add($tabLaunchInfo);$tabs.TabPages.Add($tabPets);$tabs.TabPages.Add($tabEquip)
 function Save-Profile {
     if($pureNewPlayerBox.Checked){throw '纯新手档不会保存或导入GUI角色配置；请取消勾选后再保存常规档。'}
     if((Get-LocalAdapters).Count){throw 'Inventory files are live. Stop the local Nanaimo protocol adapter first, or use Save and Enter Game to stop-save-restart safely.'}
@@ -782,7 +795,7 @@ if($SelfTestProfileIO){
 $saveBtn.add_Click({try{Save-Profile;[Windows.Forms.MessageBox]::Show('配置已保存。','Nanaimo 启动器')|Out-Null}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'配置错误')|Out-Null}})
 $folderBtn.add_Click({$target=if(Test-Path -LiteralPath $AdapterLogs){$AdapterLogs}else{$Root};Start-Process explorer.exe -ArgumentList $target})
 $resetProgressBtn.add_Click({try{if((Get-LocalAdapters).Count){throw 'Stop the local Nanaimo protocol adapter first.'};$name=$nameBox.Text.Trim();if(-not$name){throw 'Character name is required.'};$hex=Encode-NameHex $name;$paths=@((Join-Path $Root ("level_progress_state_v1_{0}.dat"-f$hex)),(Join-Path $Root ("level_progress_state_v1_{0}.bak"-f$hex)),(Join-Path $Root ("level_progress_state_v1_{0}.new"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.dat"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.bak"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.new"-f$hex)));Remove-Item -LiteralPath $paths -Force -ErrorAction SilentlyContinue;$status.Text="Reset level, EXP, and dungeon-title progress for $name. Next start seeds level $([int]$levelBox.Value) and dungeon grade 0."}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Reset failed')|Out-Null}})
-$defaultBtn.add_Click({$pureNewPlayerBox.Checked=$false;$skipTutorialBox.Checked=$false;$nameBox.Text='Greyrat';$titleCombo.SelectedIndex=0;$levelBox.Value=25;$hpMaxBox.Value=1500;$mpMaxBox.Value=500;$attackBox.Value=0;$defenseBox.Value=0;$coinBox.Value=0;$nanaPointBox.Value=0;$apartmentPointsBox.Value=1000;$cardKeyNormalBox.Value=99;$cardKeyGoldBox.Value=99;$cardKeyMysteryBox.Value=99;$cardKeySpecialBox.Value=99;$freeMagicKeyExpiryBox.Value=2099123123;$quickbarExpiryBox.Value=0;$skillSlotExpiryBox.Value=0;$skillSlotExpiryApplyBox.Checked=$true;$projectileRouteCombo.SelectedIndex=0;$meatRouteCombo.SelectedIndex=0;for($i=0;$i-lt16;$i++){$skillGradeBoxes[$i].Value=0};foreach($i in 0,1,8,9){$skillGradeBoxes[$i].Value=5};Set-SkillSlotChoices 0 0;Update-SkillWarning;$genderCombo.SelectedIndex=1;Select-ComboId $petCombo 15009205|Out-Null;Update-PetAgeOptions 3;Select-ComboId $comboMap.hair 10130337|Out-Null;Select-ComboId $comboMap.body 10100028|Out-Null;Select-ComboId $comboMap.top 10110337|Out-Null;Select-ComboId $comboMap.bottom 10120352|Out-Null;Select-ComboId $comboMap.accessory 10150103|Out-Null;Select-ComboId $comboMap.effect 10160017|Out-Null;Update-PetDetail;Update-LaunchModePresentation})
+$defaultBtn.add_Click({$pureNewPlayerBox.Checked=$false;$skipTutorialBox.Checked=$false;$unlockAllDungeonsBox.Checked=$true;$nameBox.Text='Greyrat';$titleCombo.SelectedIndex=0;$levelBox.Value=25;$hpMaxBox.Value=1500;$mpMaxBox.Value=500;$attackBox.Value=0;$defenseBox.Value=0;$coinBox.Value=0;$nanaPointBox.Value=0;$apartmentPointsBox.Value=1000;$cardKeyNormalBox.Value=99;$cardKeyGoldBox.Value=99;$cardKeyMysteryBox.Value=99;$cardKeySpecialBox.Value=99;$freeMagicKeyExpiryBox.Value=2099123123;$quickbarExpiryBox.Value=0;$skillSlotExpiryBox.Value=0;$skillSlotExpiryApplyBox.Checked=$true;$projectileRouteCombo.SelectedIndex=0;$meatRouteCombo.SelectedIndex=0;for($i=0;$i-lt16;$i++){$skillGradeBoxes[$i].Value=0};foreach($i in 0,1,8,9){$skillGradeBoxes[$i].Value=5};Set-SkillSlotChoices 0 0;Update-SkillWarning;$genderCombo.SelectedIndex=1;Select-ComboId $petCombo 15009205|Out-Null;Update-PetAgeOptions 3;Select-ComboId $comboMap.hair 10130337|Out-Null;Select-ComboId $comboMap.body 10100028|Out-Null;Select-ComboId $comboMap.top 10110337|Out-Null;Select-ComboId $comboMap.bottom 10120352|Out-Null;Select-ComboId $comboMap.accessory 10150103|Out-Null;Select-ComboId $comboMap.effect 10160017|Out-Null;Update-PetDetail;Update-LaunchModePresentation})
 $adapterBtn.add_Click({
     try{
         if((Get-LocalAdapters).Count){Stop-LocalAdapter;$adapterBtn.Text='仅启动适配器';$status.Text='适配器已停止。';return}
@@ -850,11 +863,17 @@ if($SelfTestLayout){
     $form.ShowInTaskbar=$false;$form.Opacity=0;[void]$form.Show()
     try{
         $tabs.SelectedTab=$tabStart;[Windows.Forms.Application]::DoEvents();$defaultBtn.PerformClick()
+        if((@($tabs.TabPages|ForEach-Object{$_.Text})-join'|')-ne'启动配置|数值管理|衣物箱管理|宠物箱管理|游戏道具管理|装饰家具管理|卡片管理|本次启动详情|宠物查表|装扮查表'){throw 'launcher tab order'}
         if($nameBox.Text-ne'Greyrat'){throw 'default name'}
         if($pureNewPlayerBox.Checked){throw 'default pure-new-player mode'}
         $pureNewPlayerBox.Checked=$true;[Windows.Forms.Application]::DoEvents()
-        if($nameBox.Enabled-or-not$pureNewPlayerUsernameBox.Enabled-or$saveBtn.Enabled-or$adapterBtn.Enabled-or-not$clientBtn.Enabled-or$clientBtn.Text-ne'构建并进入纯新手档'){throw 'pure-new-player control gate'}
+        if($nameBox.Enabled-or-not$skipTutorialBox.Enabled-or-not$unlockAllDungeonsBox.Enabled-or-not$pureNewPlayerUsernameBox.Enabled-or$saveBtn.Enabled-or$adapterBtn.Enabled-or-not$clientBtn.Enabled-or$skipTutorialBox.Checked-or-not$unlockAllDungeonsBox.Checked-or$clientBtn.Text-ne'构建并进入纯新手档'){throw 'pure-new-player control gate'}
         $pureNewPlayerBox.Checked=$false;[Windows.Forms.Application]::DoEvents()
+        if(-not$inventoryAdmin.CardAddAllButton-or-not$inventoryAdmin.CardRemoveAllButton){throw 'card bulk-action button missing'}
+        $tabs.SelectedTab=$inventoryAdmin.CardAddAllButton.Parent;[Windows.Forms.Application]::DoEvents();$inventoryAdmin.CardAddAllButton.PerformClick()
+        $ownedCardCodes=@{};foreach($row in $inventoryAdmin.Cards){$ownedCardCodes[[uint32]$row.code]=$true};$missingCards=@($inventoryAdmin.Catalog.cards|Where-Object{-not$ownedCardCodes.ContainsKey([uint32]$_.id)});if($missingCards.Count){throw 'card add-all action'}
+        $inventoryAdmin.CardRemoveAllButton.PerformClick()
+        if($inventoryAdmin.Cards.Count-ne0){throw 'card remove-all action'}
         $expectedOutfit=@{hair=10130337;body=10100028;top=10110337;bottom=10120352;accessory=10150103;effect=10160017}
         foreach($part in $expectedOutfit.Keys){if((Get-SelectedData $comboMap[$part]).id-ne$expectedOutfit[$part]){throw "default outfit $part"}}
         if((Get-SelectedLaunchModeInfo).AdapterIP-ne'127.0.0.1'){throw 'fixed loopback mode'}
@@ -865,8 +884,11 @@ if($SelfTestLayout){
         $tabs.SelectedTab=$tabLaunchInfo;Update-LaunchPreview -ComputeHashes
         Assert-NoVisibleConnectionText $form
         $tabs.SelectedTab=$tabStart;[Windows.Forms.Application]::DoEvents()
-        if($levelBox.Top-ne144-or$titleCombo.Top-ne190-or$comboMap.body.Top-ne321-or$saveBtn.Top-ne650-or$clientBtn.Left-ne215-or$adapterBtn.Left-ne460-or$status.Top-ne705){throw 'startup row compaction'}
+        if($levelBox.Top-ne144-or$titleCombo.Top-ne190-or$comboMap.body.Top-ne321-or$pureNewPlayerBox.Top-ne588-or$skipTutorialBox.Top-ne588-or$unlockAllDungeonsBox.Top-ne588-or$pureNewPlayerUsernameBox.Top-ne622-or$saveBtn.Top-ne674-or$clientBtn.Left-ne215-or$adapterBtn.Left-ne460-or$status.Top-ne729){throw 'startup row compaction'}
+        if($pureNewPlayerBox.Bottom-ge$pureNewPlayerUsernameBox.Top-or$skipTutorialBox.Bottom-ge$pureNewPlayerUsernameBox.Top-or$unlockAllDungeonsBox.Bottom-ge$pureNewPlayerUsernameBox.Top){throw 'new-player option row placement'}
         if($levelBox.Top-$nameBox.Top-ne40){throw 'empty startup connection row'}
+        if($skillGradeBoxes[0].Bottom-ge$projectileSkillSeparator.Top-or$skillGradeBoxes[1].Bottom-ge$projectileSkillSeparator.Top-or$skillGradeBoxes[8].Bottom-ge$meatSkillSeparator.Top-or$skillGradeBoxes[9].Bottom-ge$meatSkillSeparator.Top){throw 'skill prerequisite separator placement'}
+        if($projectileRouteCombo.Bottom-ge$skillGradeBoxes[2].Top-or$meatRouteCombo.Bottom-ge$skillGradeBoxes[10].Top){throw 'skill branch placement'}
         $tabs.SelectedTab=$tabResources
         $previousScale=1.0
         foreach($scale in @(1.0,1.25,1.5)){
@@ -889,7 +911,7 @@ if($SelfTestLayout){
                 }
             }
         }
-        Write-Output 'GUI_LAYOUT_SELFTEST_PASS sizes=1000x870,1120x940 scales=1,1.25,1.5 skill_grades=16 routes=2 slots=2 overlap=false defaults=PASS connection_text=absent startup_compaction=40 state_writes=0'
+        Write-Output 'GUI_LAYOUT_SELFTEST_PASS sizes=1000x870,1120x940 scales=1,1.25,1.5 skill_grades=16 prerequisite_sections=2 separators=2 routes=2 slots=2 overlap=false defaults=PASS connection_text=absent startup_compaction=40 new_player_options=independent_single_row tabs=ordered card_add_all=PASS card_remove_all=PASS state_writes=0'
     }finally{$form.Close();$form.Dispose()}
     exit 0
 }
@@ -897,18 +919,18 @@ if($SelfTestLayout){
 if($SelfTestPureNewPlayer){
     $savedPurePath=$PureNewPlayerProfile;$savedAccountState=$PureNewPlayerAccountState;$tempPure=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo_pure_new_'+[guid]::NewGuid().ToString('N')+'.ini');$tempAccount=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo_pure_account_'+[guid]::NewGuid().ToString('N')+'.txt')
     try{
-        $PureNewPlayerProfile=$tempPure;$PureNewPlayerAccountState=$tempAccount;$pureNewPlayerBox.Checked=$true;$pureNewPlayerUsernameBox.Text='test';$unlockAllDungeonsBox.Checked=$false
+        $PureNewPlayerProfile=$tempPure;$PureNewPlayerAccountState=$tempAccount;$pureNewPlayerBox.Checked=$true;$skipTutorialBox.Checked=$true;$pureNewPlayerUsernameBox.Text='test';$unlockAllDungeonsBox.Checked=$false
         $beforeIni=if(Test-Path -LiteralPath $ProfileIni){(Get-FileHash -LiteralPath $ProfileIni -Algorithm SHA256).Hash}else{$null}
         $beforeJson=if(Test-Path -LiteralPath $ProfileJson){(Get-FileHash -LiteralPath $ProfileJson -Algorithm SHA256).Hash}else{$null}
         $written=Write-PureNewPlayerRuntimeProfile;$profile=Read-KeyValueFile $written;$account=Save-PureNewPlayerUsername $pureNewPlayerUsernameBox.Text
         $payload=[ordered]@{LocalAccount=$account;PureNewPlayer=$true}|ConvertTo-Json -Compress|ConvertFrom-Json
-        if($written-ne$tempPure-or[string]$profile.skip_tutorial-ne'0'-or[string]$profile.level-ne'1'-or[string]$profile.pet-ne'0'-or[string]$profile.coin-ne'0'-or[string]$profile.skill_grade0-ne'0'-or[string]$profile.unlock_all_dungeons-ne'0'){throw 'pure runtime profile'}
+        if($written-ne$tempPure-or[string]$profile.skip_tutorial-ne'1'-or[string]$profile.level-ne'1'-or[string]$profile.pet-ne'0'-or[string]$profile.coin-ne'0'-or[string]$profile.skill_grade0-ne'0'-or[string]$profile.unlock_all_dungeons-ne'0'){throw 'pure runtime profile'}
         [uint64]$freeExpiry=0;if(-not[uint64]::TryParse([string]$profile.free_magic_key_expiry,[ref]$freeExpiry)-or$freeExpiry-ne2000010100){throw 'pure runtime profile violates native free_magic_key_expiry startup/no-grant contract'}
         if(-not[bool]$payload.PureNewPlayer-or[string]$payload.LocalAccount-ne'test'-or(Read-PureNewPlayerUsername)-ne'test'){throw 'pure registration payload/state'}
         Test-PureNewPlayerNativeStartup $written
         $afterIni=if(Test-Path -LiteralPath $ProfileIni){(Get-FileHash -LiteralPath $ProfileIni -Algorithm SHA256).Hash}else{$null};$afterJson=if(Test-Path -LiteralPath $ProfileJson){(Get-FileHash -LiteralPath $ProfileJson -Algorithm SHA256).Hash}else{$null}
         if($beforeIni-ne$afterIni-or$beforeJson-ne$afterJson){throw 'normal profile mutated'}
-        Write-Output 'GUI_PURE_NEW_PLAYER_SELFTEST_PASS profile=isolated native_startup=listening skip_tutorial=0 level=1 grants=0 registration=json normal_profile_unchanged=true'
+        Write-Output 'GUI_PURE_NEW_PLAYER_SELFTEST_PASS profile=isolated native_startup=listening skip_tutorial=independent level=1 grants=0 registration=json normal_profile_unchanged=true'
     }finally{$PureNewPlayerProfile=$savedPurePath;$PureNewPlayerAccountState=$savedAccountState;Remove-Item -LiteralPath $tempPure,$tempAccount -Force -ErrorAction SilentlyContinue;$form.Close();$form.Dispose()}
     exit 0
 }

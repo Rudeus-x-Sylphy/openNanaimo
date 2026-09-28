@@ -164,7 +164,7 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn('Update-LaunchPreview -ComputeHashes', layout)
         self.assertIn('$levelBox.Top-$nameBox.Top-ne40', layout)
         for guard in ('$levelBox.Top-ne144', '$titleCombo.Top-ne190',
-                      '$comboMap.body.Top-ne321', '$saveBtn.Top-ne650', '$status.Top-ne705'):
+                      '$comboMap.body.Top-ne321', '$saveBtn.Top-ne674', '$status.Top-ne729'):
             self.assertIn(guard, layout)
         self.assertNotIn('Save-Profile', layout)
         self.assertNotIn('Start-Process', layout)
