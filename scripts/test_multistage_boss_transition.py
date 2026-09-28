@@ -240,9 +240,11 @@ static int g_multi_transport_alive[4];
 static unsigned char captured[64];
 static unsigned captured_len,sends,broadcasts,hans_calls;
 static unsigned multiplayer_room_slot_idx(unsigned i){return i;}
-static struct boss_hp_sync_context*multiplayer_shared_boss_context(void){return 0;}
+static struct boss_hp_sync_context g_boss_context;
+static struct boss_hp_sync_context*multiplayer_shared_boss_context(void){return &g_boss_context;}
 static unsigned combat_economy_boss_total_hp(const struct boss_hp_sync_context*c){(void)c;return 15000u;}
 static void teamplay_score_snapshot(unsigned*s){s[0]=9480;s[1]=0;s[2]=0;}
+static unsigned combat_economy_rating(unsigned score,unsigned cleared,unsigned dungeon){unsigned step=dungeon==2u?16000u:10000u,grade;if(!cleared)return 0u;grade=score/step;return grade>5u?5u:grade;}
 static void mkpkt(char*p,unsigned op,int len,int flags){(void)flags;memset(p,0,4096);boss_hp_sync_put16((unsigned char*)p,4,(unsigned)len);boss_hp_sync_put16((unsigned char*)p,6,op);}
 static void stable_put32(char*p,unsigned off,unsigned value){boss_hp_sync_put32((unsigned char*)p,off,value);}
 static unsigned teamplay_boss_final_hans_commit(unsigned hp){assert(hp==15000u);hans_calls++;return 300u;}
@@ -276,7 +278,7 @@ int main(void){
     r.hp=0;r.first_terminal=1u;r.final_terminal=1u;
     send_d012_boss_hp_sync_score(0,&r,0);
     assert(captured_len==64u && hans_calls==1u && card_calls==1u);
-    for(i=0;i<4;i++)assert(captured[0x24+i]==20u && captured[0x3C+i]==5u);
+    for(i=0;i<4;i++)assert(captured[0x24+i]==20u && captured[0x3C+i]==0u);
     for(i=0x2Cu;i<0x3Cu;i++)assert(captured[i]==0u);
     r.first_terminal=0;r.repeated_terminal=1;
     send_d012_boss_hp_sync_score(0,&r,0);

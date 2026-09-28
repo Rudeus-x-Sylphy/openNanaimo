@@ -42,7 +42,7 @@ static int contact(unsigned mode,unsigned child,unsigned ordinal,unsigned damage
     }
     CHECK(terminals==expected_child || (final&&scalar_retired&&terminals==1));
     if(intermediate)for(i=0x1C;i<64;i++)CHECK(frames[count-1][i]==0);
-    if(final){CHECK(frames[count-1][0x24]==20 && frames[count-1][0x3C]==5);CHECK(boss_hp_sync_get32(frames[count-1],0x28)==0);}
+    if(final){CHECK(frames[count-1][0x24]==20 && frames[count-1][0x3C]==0);CHECK(boss_hp_sync_get32(frames[count-1],0x28)==0);}
     return 0;
 }
 int main(void){

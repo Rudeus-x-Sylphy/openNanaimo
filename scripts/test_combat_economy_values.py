@@ -71,6 +71,7 @@ int main(void){
         protocol = (ROOT / "release/components/protocol_extensions/protocol_overrides.inc").read_text("utf-8")
         settlement = (ROOT / "release/components/dungeon_progression/settlement_result_policy.inc").read_text("utf-8")
         self.assertEqual(protocol.count("combat_economy_rating("), 2)
+        self.assertIn("combat_economy_rating(rs<3u?scores[rs]:0u", protocol)
         self.assertIn("dungeon_settlement_visible_rating(unsigned allow_progress)", settlement)
         self.assertNotIn("dungeon_settlement_visible_rating(unsigned score", settlement)
 
