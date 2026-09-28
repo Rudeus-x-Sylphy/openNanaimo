@@ -25,7 +25,7 @@ static unsigned expected_associated(const struct stage_damage_damage_context *ct
 }
 int main(void){
     unsigned char req[28];struct stage_damage_damage_context ctx;struct stage_damage_damage_lookup out;
-    unsigned i,selector,mapped=0u,unmapped=0u,scopes=0u,mapped_scopes=0u,type4_total=0u;
+    unsigned i,selector,mapped=0u,hazards=0u,unmapped=0u,scopes=0u,mapped_scopes=0u,type4_total=0u;
     /* 0x11/source2 is the captured Dungeon 16 / dungeon 3 kind60 tuple from
      * native.log line 13414; keep it explicit rather than relying only on the
      * catalog-wide self-consistency loop. */
@@ -46,12 +46,18 @@ int main(void){
                 CHECK(out.owner==selector&&out.source==2u&&out.associated_selector==parent&&out.target_type==4u);
                 CHECK(out.base==expected&&out.policy_damage==expected&&out.row_count==(unsigned)p->target_count);
                 CHECK(!strcmp(out.resource,hp_sync_resources[child->resource_index].name));mapped++;scope_mapped++;
-            }else{CHECK(actual==0u);CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);unmapped++;}
+            }else{const struct hp_sync_target_def *target=&hp_sync_target_defs[p->first_row+selector];const char *resource=target->resource_index<HP_SYNC_RESOURCE_COUNT?hp_sync_resources[target->resource_index].name:"";
+                if(target->target_type==4u&&!strcmp(resource,"ep01_dg02_new_obj_meteor.mmo")){
+                    CHECK(actual==STAGE_DAMAGE_SCENE_HAZARD_FALLBACK_DAMAGE);CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);
+                    CHECK(out.owner==selector&&out.source==2u&&out.target_type==4u&&out.associated_selector==0u);
+                    CHECK(out.base==actual&&out.policy_damage==actual&&out.row_count==(unsigned)p->target_count);CHECK(!strcmp(out.resource,resource));hazards++;
+                }else{CHECK(actual==0u);CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);unmapped++;}}
+
         }
         if(scope_mapped)mapped_scopes++;
     }
     CHECK(scopes==282u);CHECK(mapped_scopes==261u);CHECK(type4_total==43517u);
-    CHECK(mapped==29172u);CHECK(type4_total-mapped==14345u);CHECK(unmapped>mapped);
+    CHECK(mapped==29172u);CHECK(hazards==216u);CHECK(type4_total-mapped-hazards==14129u);CHECK(unmapped>mapped);
     stage_damage_damage_begin(&ctx,0u,15u,2u,0u,2u,1u,1u);
     CHECK(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])==16u);
     for(i=0u;i<sizeof(ep15_selectors)/sizeof(ep15_selectors[0]);i++){
@@ -60,9 +66,15 @@ int main(void){
         CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE&&out.target_type==4u);
         CHECK(!strncmp(out.resource,"ep15_dg02_m_154_",16));
     }
+    for(i=0u;i<3u;i++){
+        stage_damage_damage_begin(&ctx,0u,0u,2u,0u,i,1u,1u);req[0x0A]=239u;req[0x0B]=0u;req[0x0C]=0u;req[0x0D]=0u;
+        CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==100u);
+        CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE&&out.target_type==4u);
+        CHECK(!strcmp(out.resource,"ep01_dg02_new_obj_meteor.mmo"));
+    }
     req[0x0A]=0u;req[0x0B]=0u;CHECK(stage_damage_player_d00f_damage(&ctx,req,80u,&out)==0u);
     CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);
-    printf("ASSOCIATED_SCENE_DAMAGE_PASS scopes=%u mapped_scopes=%u type4=%u mapped=%u unmapped_type4=%u all_unmapped=%u ep15=%u\n",scopes,mapped_scopes,type4_total,mapped,type4_total-mapped,unmapped,(unsigned)(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])));
+    printf("ASSOCIATED_SCENE_DAMAGE_PASS scopes=%u mapped_scopes=%u type4=%u mapped=%u hazards=%u unmapped_type4=%u all_unmapped=%u ep15=%u\n",scopes,mapped_scopes,type4_total,mapped,hazards,type4_total-mapped-hazards,unmapped,(unsigned)(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])));
     return 0;
 }
 """
@@ -83,12 +95,12 @@ class AssociatedSceneDamageTests(unittest.TestCase):
             run_result = subprocess.run(
                 [str(binary)], cwd=directory, capture_output=True, text=True, errors="replace", timeout=60)
             self.assertEqual(run_result.returncode, 0, run_result.stdout + run_result.stderr)
-            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=282 mapped_scopes=261 type4=43517 mapped=29172 unmapped_type4=14345", run_result.stdout)
+            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=282 mapped_scopes=261 type4=43517 mapped=29172 hazards=216 unmapped_type4=14129", run_result.stdout)
 
     def test_dispatch_is_exact_not_global_kind60_damage(self):
         source = (ROOT / "release/components/game_session/gs_runtime.inc").read_text("utf-8")
-        self.assertIn("scene_resolved.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE", source)
-        self.assertIn("reason=no-exact-associated-target", source)
+        self.assertIn("stage_damage_scene_injury_status(scene_resolved.status)", source)
+        self.assertIn("reason=no-damaging-scene-classification", source)
         self.assertNotIn("request_kind==60u||request_kind==80u){unsigned", source)
 
 if __name__ == "__main__":

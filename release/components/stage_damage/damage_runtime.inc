@@ -16,6 +16,7 @@
 #define STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE 10u
 #define STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE 11u
 #define STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE 12u
+#define STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE 13u
 #define STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND 7u
 #define STAGE_DAMAGE_DAMAGE_STAGE_MISSING 8u
 
@@ -27,6 +28,9 @@
 #endif
 #ifndef STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE
 #define STAGE_DAMAGE_BOSS_COLLISION_PLAYER_DAMAGE STAGE_DAMAGE_PROJECTILE_FALLBACK_DAMAGE
+#endif
+#ifndef STAGE_DAMAGE_SCENE_HAZARD_FALLBACK_DAMAGE
+#define STAGE_DAMAGE_SCENE_HAZARD_FALLBACK_DAMAGE STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE
 #endif
 
 struct stage_damage_damage_context {
@@ -159,6 +163,31 @@ static unsigned stage_damage_scene_associated_lookup(const struct stage_damage_d
         out->resource=child->resource_index<HP_SYNC_RESOURCE_COUNT?hp_sync_resources[child->resource_index].name:"<scene-resource-oob>";}
     return damage;
 }
+/* Some authored terrain attacks are standalone type4 resources and therefore
+ * have no positive-HP parent to inherit from. Keep these collision producers
+ * explicit: decorative and ambient type4 rows remain echo-only. */
+struct stage_damage_scene_hazard_policy { const char *resource; unsigned damage; };
+static const struct stage_damage_scene_hazard_policy stage_damage_scene_hazard_policies[]={
+    {"ep01_dg02_new_obj_meteor.mmo",STAGE_DAMAGE_SCENE_HAZARD_FALLBACK_DAMAGE}
+};
+#define STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT ((unsigned)(sizeof(stage_damage_scene_hazard_policies)/sizeof(stage_damage_scene_hazard_policies[0])))
+static unsigned stage_damage_scene_hazard_lookup(const struct stage_damage_damage_context *ctx,unsigned selector,struct stage_damage_damage_lookup *out){
+    const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);const struct hp_sync_target_def *target;const char *resource;unsigned i;
+    if(!profile||selector>=(unsigned)profile->target_count)return 0u;
+    target=&hp_sync_target_defs[profile->first_row+selector];
+    if((unsigned)target->selector!=selector||target->target_type!=4u||target->resource_index>=HP_SYNC_RESOURCE_COUNT)return 0u;
+    resource=hp_sync_resources[target->resource_index].name;
+    for(i=0u;i<STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT;i++)if(!strcmp(resource,stage_damage_scene_hazard_policies[i].resource)){
+        unsigned damage=stage_damage_scene_hazard_policies[i].damage;
+        if(out){out->target_type=(unsigned)target->target_type;out->row_count=(unsigned)profile->target_count;out->base=damage;
+            out->status=STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE;out->policy_damage=damage;out->resource=resource;}
+        return damage;
+    }
+    return 0u;
+}
+static int stage_damage_scene_injury_status(unsigned status){
+    return status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE||status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE;
+}
 static unsigned stage_damage_player_d00f_damage(const struct stage_damage_damage_context *ctx,const unsigned char *req,unsigned kind,struct stage_damage_damage_lookup *out){
     unsigned owner=(unsigned)req[0x0A]|((unsigned)req[0x0B]<<8),source=(unsigned)req[0x0C]|((unsigned)req[0x0D]<<8);
     if(kind==10u)return stage_damage_damage_projectile_lookup(ctx,owner,source,out);
@@ -166,6 +195,7 @@ static unsigned stage_damage_player_d00f_damage(const struct stage_damage_damage
     if(kind==40u)source=stage_damage_boss_collision_component_index(req);
     if(out){out->kind=kind;out->owner=owner;out->source=source;out->resource=kind==20u?"<ordinary-collision-policy>":kind==40u?"<boss-collision-component>":"<non-damaging-scene-event>";}
     if(kind==60u){unsigned damage=stage_damage_scene_associated_lookup(ctx,owner,out);
+        if(!damage)damage=stage_damage_scene_hazard_lookup(ctx,owner,out);
         if(!damage&&out)out->status=STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND;
         return damage;
     }

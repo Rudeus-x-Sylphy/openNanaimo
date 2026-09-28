@@ -105,10 +105,10 @@ static unsigned native_actor_revival_count(unsigned actor_uid){
 
 #define boss_ctx (*multiplayer_shared_boss_context())
 /* SCENE_INJURY D00F routing.
- * Kind10 uses the projectile route. Kind60 applies damage only when its
- * selected type4 row closes to an exact same-resource positive-HP parent;
- * unmatched kind60 and every kind80 remain compatibility echoes. Kind20 and
- * kind40 retain their separate contact policies below. */
+ * Kind10 uses the projectile route. Kind60 applies damage for an exact
+ * same-resource positive-HP association or an explicitly classified terrain
+ * hazard; unmatched kind60 and every kind80 remain compatibility echoes.
+ * Kind20 and kind40 retain their separate contact policies below. */
 static int scene_injury_direct_projectile_d00f_kind(unsigned kind){return kind==10u;}
 static int scene_injury_fixed_scene_echo_kind(unsigned kind){return kind==60u||kind==80u;}
 #define score_ctx (*multiplayer_shared_score_context())
@@ -227,7 +227,7 @@ static int player_collision_apply_player_d00f_injury(SOCKET c,int port,const uns
     unsigned source_field_140=(unsigned char)req[0x0A]|((unsigned char)req[0x0B]<<8);
     unsigned collision_index=(unsigned char)req[0x0C]|((unsigned char)req[0x0D]<<8);
     unsigned source_field_14=(unsigned char)req[0x0E]|((unsigned char)req[0x0F]<<8);
-    unsigned raw_damage,damage,applied,wire_damage;struct stage_damage_damage_lookup resolved;struct stage_damage_damage_application damage_app;const char *route=request_kind==10u?"kind10":request_kind==20u?"ordinary-kind20":request_kind==40u?"boss-kind40":request_kind==60u?"associated-kind60":"unsupported";
+    unsigned raw_damage,damage,applied,wire_damage;struct stage_damage_damage_lookup resolved;struct stage_damage_damage_application damage_app;const char *route=request_kind==10u?"kind10":request_kind==20u?"ordinary-kind20":request_kind==40u?"boss-kind40":request_kind==60u?"scene-kind60":"unsupported";
 #if TEAMPLAY_FEATURE_MEAT_LIFECYCLE_COMPLETION
     if(skill_effect_cleanup_meat_invulnerable(skill_cleanup_ctx,dungeon_room_epoch,battle_epoch,injury_now)){
         printf("  [INJURY_SCENE] suppress route=%s kind=%u reason=meat-invulnerability actor=%u hp=%u meat_code=%u generation=%u elapsed_ms=%u no-D010 t=%lds\n",route,request_kind,multiplayer_current_uid(),*combat_hp,skill_cleanup_ctx->code,skill_cleanup_ctx->generation,(unsigned)(injury_now-skill_cleanup_ctx->armed_tick),sec());
@@ -250,7 +250,7 @@ static int player_collision_apply_player_d00f_injury(SOCKET c,int port,const uns
         printf("  [INJURY_SCENE] suppress route=%s kind=%u reason=already-dead actor=%u room=%u battle=%u source_field=%u collision_index=%u source_aux=%u no-D010 t=%lds\n",route,request_kind,multiplayer_current_uid(),injury_room_epoch,injury_battle_epoch,source_field_140,collision_index,source_field_14,sec());
         fflush(0);return 0;
     }
-    raw_damage=stage_damage_player_d00f_damage(damage_ctx,req,request_kind,&resolved);damage=multiplayer_combat_profile_reduce_damage(raw_damage);printf("  [INCOMING_COMBAT] wire=%u/%u/%u/st%u/d%u resource_tuple=%u/%u/%u/st%u kind=%u owner=%u source=%u resource=%s selected_smmo=%s rows=%u base=%u lookup_status=%u scope_incomplete=%u translated=%u raw_policy_damage=%u defense=%u final_policy_damage=%u provenance=%s defense_formula=private-flat-floor1\n",resolved.wire_hd,resolved.wire_episode,resolved.wire_dungeon,resolved.wire_stage,resolved.difficulty,resolved.resource_hd,resolved.resource_episode,resolved.resource_dungeon,resolved.resource_stage,request_kind,resolved.owner,resolved.source,resolved.resource?resolved.resource:"<none>",resolved.selected_smmo?resolved.selected_smmo:"<none>",resolved.row_count,resolved.base,resolved.status,resolved.scope_incomplete,resolved.identity_translated,raw_damage,g_profile_defense_flat,damage,(resolved.status==STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT||resolved.status==STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE||resolved.status==STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE||resolved.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE)?"stage-resource-exact":"bounded-fallback");fflush(0);damage_app=stage_damage_apply_actor_damage(*combat_hp,damage);applied=damage_app.actual_damage;*combat_hp=damage_app.hp_after;wire_damage=damage_app.wire_damage;*injury_dead=damage_app.terminal?1:0;
+    raw_damage=stage_damage_player_d00f_damage(damage_ctx,req,request_kind,&resolved);damage=multiplayer_combat_profile_reduce_damage(raw_damage);printf("  [INCOMING_COMBAT] wire=%u/%u/%u/st%u/d%u resource_tuple=%u/%u/%u/st%u kind=%u owner=%u source=%u resource=%s selected_smmo=%s rows=%u base=%u lookup_status=%u scope_incomplete=%u translated=%u raw_policy_damage=%u defense=%u final_policy_damage=%u provenance=%s defense_formula=private-flat-floor1\n",resolved.wire_hd,resolved.wire_episode,resolved.wire_dungeon,resolved.wire_stage,resolved.difficulty,resolved.resource_hd,resolved.resource_episode,resolved.resource_dungeon,resolved.resource_stage,request_kind,resolved.owner,resolved.source,resolved.resource?resolved.resource:"<none>",resolved.selected_smmo?resolved.selected_smmo:"<none>",resolved.row_count,resolved.base,resolved.status,resolved.scope_incomplete,resolved.identity_translated,raw_damage,g_profile_defense_flat,damage,(resolved.status==STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT||resolved.status==STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE||resolved.status==STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE||resolved.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE||resolved.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE)?"stage-resource-exact":"bounded-fallback");fflush(0);damage_app=stage_damage_apply_actor_damage(*combat_hp,damage);applied=damage_app.actual_damage;*combat_hp=damage_app.hp_after;wire_damage=damage_app.wire_damage;*injury_dead=damage_app.terminal?1:0;
 #ifdef MEAT_D010_DAMAGE_ZERO_PROBE
     if(*combat_hp!=0u)wire_damage=0u;
 #endif
@@ -862,12 +862,12 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                             int send_nonlocal_echo=1;
                             if(request_kind==60u){
                                 struct stage_damage_damage_lookup scene_resolved;unsigned scene_damage=stage_damage_player_d00f_damage(&incoming_damage_ctx,(const unsigned char*)&buf[off],request_kind,&scene_resolved);
-                                if(scene_damage&&scene_resolved.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE){
-                                    unsigned injury_now=tickms();send_nonlocal_echo=0;
-                                    printf("  [INJURY_SCENE] associated kind60 selector=%u parent=%u resource=%s damage=%u -> player-injury/no-echo t=%lds\n",scene_resolved.owner,scene_resolved.associated_selector,scene_resolved.resource?scene_resolved.resource:"<none>",scene_damage,sec());fflush(0);
+                                if(scene_damage&&stage_damage_scene_injury_status(scene_resolved.status)){
+                                    unsigned injury_now=tickms();const char *scene_route=scene_resolved.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE?"terrain-hazard":"associated-target";send_nonlocal_echo=0;
+                                    printf("  [INJURY_SCENE] route=%s kind60 selector=%u parent=%u resource=%s damage=%u -> player-injury/no-echo t=%lds\n",scene_route,scene_resolved.owner,scene_resolved.associated_selector,scene_resolved.resource?scene_resolved.resource:"<none>",scene_damage,sec());fflush(0);
                                     player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,injury_now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
                                 }else{
-                                    printf("  [INJURY_SCENE] fixed-scene kind=60 reason=no-exact-associated-target -> echo-only/no-authoritative-HP t=%lds\n",sec());fflush(0);
+                                    printf("  [INJURY_SCENE] fixed-scene kind=60 reason=no-damaging-scene-classification -> echo-only/no-authoritative-HP t=%lds\n",sec());fflush(0);
                                 }
                             }else if(scene_injury_fixed_scene_echo_kind(request_kind)){
                                 printf("  [INJURY_SCENE] fixed-scene kind=%u -> echo-only/no-authoritative-HP t=%lds\n",request_kind,sec());fflush(0);
