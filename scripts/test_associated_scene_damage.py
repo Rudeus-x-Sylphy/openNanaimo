@@ -72,6 +72,14 @@ int main(void){
         CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE&&out.target_type==4u);
         CHECK(!strcmp(out.resource,"ep01_dg02_new_obj_meteor.mmo"));
     }
+    /* The standalone policy is scope/hash/range bound, not a global filename
+     * match: the neighboring selectors and another dungeon remain echo-only. */
+    stage_damage_damage_begin(&ctx,0u,0u,2u,0u,0u,1u,1u);
+    req[0x0A]=238u;req[0x0B]=0u;CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==0u);
+    req[0x0A]=133u;req[0x0B]=1u;CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==0u);
+    stage_damage_damage_begin(&ctx,0u,0u,1u,0u,0u,1u,1u);
+    req[0x0A]=239u;req[0x0B]=0u;CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==0u);
+    CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);
     req[0x0A]=0u;req[0x0B]=0u;CHECK(stage_damage_player_d00f_damage(&ctx,req,80u,&out)==0u);
     CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);
     printf("ASSOCIATED_SCENE_DAMAGE_PASS scopes=%u mapped_scopes=%u type4=%u mapped=%u hazards=%u unmapped_type4=%u all_unmapped=%u ep15=%u\n",scopes,mapped_scopes,type4_total,mapped,hazards,type4_total-mapped-hazards,unmapped,(unsigned)(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])));
