@@ -89,6 +89,12 @@ internal static class ApartmentGameplayChecks
                 var own = One(await Send(service, who, 0xC38D, Move(1)), 0xC38E);
                 Check(own.Length == 112 && own[8] == 10 && own[9] == 20, "own apartment permits decoration without land");
                 Check(U64(own, 64) == 1000 && own.AsSpan(32, 4).ToArray().All(x => x == 0), "room balance and absent street address");
+                Pending(_sessions[who]).Clear();
+                var user = One(await Send(service, who, 0xC38F, Words(320, 240)), 0xC390);
+                var duplicateActors = Pending(_sessions[who]).Cast<object>()
+                    .Count(item => (ushort)item.GetType().GetProperty("Opcode")!.GetValue(item)! == 0xC390);
+                Check(user.Length == 124 && duplicateActors == 0,
+                    "single-player apartment guide receives exactly one local actor publication");
             }
             var visit = One(await Send(service, 1, 0xC38D, Move(2, _characters[0].Name)), 0xC38E);
             Check(visit[9] == 40 && U16(visit, 10) == WireIdentityAllocator.GetCharacterUid(_characters[0].Id),

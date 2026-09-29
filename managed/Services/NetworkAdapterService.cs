@@ -2069,8 +2069,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 }
                 if (payload.Length != FriendRecommendationRequestPayloadLength)
                 {
-                    _log($"{channel}:{remote} 好友推荐包长度无效：期望 {FriendRecommendationRequestPayloadLength}，实际 {payload.Length}；未修改推荐记录");
-                    return null;
+                    _log($"{channel}:{remote} friend recommendation payload length invalid: expected {FriendRecommendationRequestPayloadLength}, actual {payload.Length}; returning a retryable result");
+                    return BuildFriendRecommendationResponse(
+                        frame,
+                        FriendRecommendationNonexistent,
+                        null,
+                        session);
                 }
                 if (!TryDecodeFixedGbkString(payload, false, out var recommendedCharacterName))
                 {
@@ -2082,16 +2086,33 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         session);
                 }
 
-                var recommendation = await _database.RecommendFriendAsync(
-                    session.AccountId,
-                    recommendedCharacterName,
-                    token);
+                FriendRecommendationResult recommendation;
+                try
+                {
+                    recommendation = await _database.RecommendFriendAsync(
+                        session.AccountId,
+                        recommendedCharacterName,
+                        token);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _log($"{channel}:{remote} friend recommendation unavailable: {ex.Message}");
+                    return BuildFriendRecommendationResponse(
+                        frame,
+                        FriendRecommendationNonexistent,
+                        null,
+                        session);
+                }
                 var resultCode = recommendation.Status switch
                 {
                     FriendRecommendationStatus.Nonexistent => FriendRecommendationNonexistent,
                     FriendRecommendationStatus.Self => FriendRecommendationSelf,
                     FriendRecommendationStatus.Success => FriendRecommendationSuccess,
-                    _ => throw new InvalidOperationException($"Unknown friend recommendation result: {recommendation.Status}")
+                    _ => FriendRecommendationNonexistent
                 };
                 _log($"{channel}:{remote} 好友推荐 requester={session.Character.Name} target={recommendedCharacterName} result={recommendation.Status} storedTarget={recommendation.RecommendedCharacterName ?? "none"}");
                 return BuildFriendRecommendationResponse(
@@ -3428,7 +3449,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 LeaveTownScene(session, "apartment enter");
                 LeaveVillageShopScene(session, "apartment enter");
                 LeaveApartmentScene(session, "apartment room change");
-                await _database.RecordApartmentVisitAsync(
+                var apartmentVisits = await _database.RecordApartmentVisitAsync(
                     session.AccountId,
                     session.Character.Id,
                     session.SessionId,
@@ -3444,6 +3465,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 ApplyApartmentHouseState(roomEntry, apartmentOwner.Id == session.Character!.Id,
                     streetHouse, DateTimeOffset.UtcNow);
                 var roomPoints = await _database.GetApartmentRecommendationPointsAsync(apartmentOwner.Id, token);
+                // C38E carries room counters separately from recommendation points:
+                // payload +40 is TODAY, payload +48 is TOTAL, and payload +56/+60
+                // remain the 64-bit recommendation-point balance.
+                BinaryPrimitives.WriteUInt32LittleEndian(roomEntry.AsSpan(40, 4), checked((uint)Math.Clamp(apartmentVisits.Today, 0, uint.MaxValue)));
+                BinaryPrimitives.WriteUInt32LittleEndian(roomEntry.AsSpan(48, 4), checked((uint)Math.Clamp(apartmentVisits.Total, 0, uint.MaxValue)));
                 BinaryPrimitives.WriteUInt64LittleEndian(roomEntry.AsSpan(56, 8), checked((ulong)roomPoints));
                 return BuildNativeFrame(frame, 0xC38E, roomEntry, session);
             }
@@ -10966,8 +10992,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             || !_activeWorldSessions.TryGetValue(source.SessionId, out var sourcePresence))
             return;
 
+        // HandleApartmentUserInfoAsync publishes the requester through its
+        // authoritative C390 response. Peer fan-out targets the other room
+        // sessions, keeping one local actor publication per recipient.
         foreach (var peer in _activeWorldSessions.Values
-                     .Where(item => IsSameApartmentRoom(source, item.Session)))
+                     .Where(item => item.SessionId != source.SessionId
+                         && IsSameApartmentRoom(source, item.Session)))
         {
             var peerCharacter = peer.Session.Character;
             if (peerCharacter is null)
@@ -13789,22 +13819,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         uint resultCode,
         string? recommendedCharacterName,
         ConnectionSession session)
-    {
-        // Recommendation dialogs consume 2726 before the creation state closes.
-        // Queue the normal post-creation context immediately after it so every
-        // result path has a valid continuation into the logged-in flow.
-        var result = BuildNativeFrame(
+        => BuildNativeFrame(
             request,
             0x2726,
             BuildFriendRecommendationResultPayload(resultCode, recommendedCharacterName),
             session);
-        var postCreationContext = BuildNativeFrame(
-            request,
-            0x271A,
-            BuildPostLoginPayload(session),
-            session);
-        return CombineNativeFrames(result, postCreationContext);
-    }
 
     private static byte[] BuildFriendRecommendationResultPayload(
         uint resultCode,
