@@ -1,7 +1,4 @@
 # openNanaimo
-The September 27, 2026 integrated update repairs Dungeon 16 revival billing/effective HP-MP restoration, stage1-only P1..P16/R1..R7 title progression, exact CF16 title grades, and exactly associated kind60 laser damage. The launcher title selector now shows the decoded native grade0..24 names. Immediate inventory refresh and expiry controls remain included.
-
-
 面向韩国的飞行射击游戏 **Nanaimo** 的客户端行为研究与本地协议适配工程，包含 Windows 图形启动器、完整 adapter 源码、构建脚本、验证脚本和工程知识库。
 
 # 寻找拥有韩国Nanaimo客户端安装包的小伙伴
