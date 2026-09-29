@@ -210,6 +210,9 @@ public sealed partial class NetworkAdapterService
                 return true;
             }
 
+            if (opcode == 0xCF87 && (frame.Length != 12
+                || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4, 2)) != 12))
+                return true;
             var deathTownReturn = opcode == 0xCF1D && session.NativeDungeonDeathLatched;
             if (opcode == 0xCF87)
             {
@@ -582,6 +585,15 @@ public sealed partial class NetworkAdapterService
             return false;
 
         var count = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(8, 2));
+        if (count is < 1 or > 3 || frame.Length != 12 + count * 0x34)
+            return false;
+        Span<ushort> members = stackalloc ushort[3];
+        for (var index = 0; index < count; index++)
+        {
+            var uid = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(12 + index * 0x34, 2));
+            if (uid == 0 || members[..index].Contains(uid)) return false;
+            members[index] = uid;
+        }
         for (var index = 0; index < count; index++)
         {
             var recordOffset = 0x0C + index * 0x34;
@@ -961,7 +973,8 @@ public sealed partial class NetworkAdapterService
             GetSceneEntityId(session.Character));
         session.NativeBattleResources?.ApplyTo(next);
         NativeDungeonSettlementRecord? settlement = pendingRanking;
-        if (persistSettlementRank && session.NativeDungeonSelectionValid)
+        if (requestOpcode == 0xCF87 && session.NativeDungeonSelectionValid
+            && session.NativeDungeonSettlementAwaitingAction)
         {
             var memberUid = checked((ushort)Math.Clamp(next.Get(4), 1u, ushort.MaxValue));
             foreach (var response in exchange.Frames)
@@ -969,6 +982,10 @@ public sealed partial class NetworkAdapterService
                 if (!TryReadNativeDungeonSettlementFrame(
                         response, memberUid, out var rating, out var score, out var experienceAward))
                     continue;
+                if (rating > 0 && !session.NativeDungeonDeathLatched
+                    && !TryReadNativeDungeonStageRecordScore(response, out _))
+                    continue;
+                if (session.NativeDungeonDeathLatched) { rating = 0; experienceAward = 0; }
                 settlement = new NativeDungeonSettlementRecord(
                     session.NativeDungeonHdIndex,
                     session.NativeDungeonEpisode,
@@ -977,9 +994,9 @@ public sealed partial class NetworkAdapterService
                     session.NativeDungeonLogicalDifficulty,
                     rating,
                     score,
-                    TryReadNativeDungeonStageRecordScore(response, out var stageRecordScore)
+                    rating > 0 && TryReadNativeDungeonStageRecordScore(response, out var stageRecordScore)
                         ? stageRecordScore : null,
-                    experienceAward);
+                    experienceAward, NativeDungeonSettlementId(session));
                 break;
             }
         }
@@ -1002,7 +1019,7 @@ public sealed partial class NetworkAdapterService
         session.NativeCheckpoint = next;
         File.Delete(journal);
         await RefreshSessionCharacterAsync(session, token);
-        if (settlement is { } completed && persistSettlementRank && !session.NativeDungeonDeathLatched)
+        if (settlement is { Rating: > 0 } completed && persistSettlementRank && !session.NativeDungeonDeathLatched)
         {
             session.QuestClearEpisode = completed.Episode;
             session.QuestClearDifficulty = completed.LogicalDifficulty;
@@ -1130,7 +1147,16 @@ public sealed partial class NetworkAdapterService
         }
         if (!session.NativeForwarding) return;
         if (responseOpcode == 0xCF88)
+        {
+            if (!session.NativeDungeonSettlementAwaitingAction || session.NativeCheckpoint is null
+                || !TryReadNativeDungeonSettlementFrame(response, checked((ushort)session.NativeCheckpoint.Get(4)),
+                    out var settlementRating, out _, out _)
+                || (settlementRating > 0 && !session.NativeDungeonDeathLatched
+                    && !TryReadNativeDungeonStageRecordScore(response, out _))) return;
             RememberNativeDungeonRanking(session, response);
+            await CommitNativeDungeonDeferredSettlementAsync(session, response, token);
+            NormalizeNativeDungeonPublishedSettlement(session, response);
+        }
         var revivalOwner = ResolveNativeRevivalOwner(session, response);
         PatchNativeRevivalCountFrame(response, revivalOwner);
         PatchNativeReadyRoomWalletFrame(response, revivalOwner);

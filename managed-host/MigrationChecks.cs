@@ -14,6 +14,8 @@ internal static class MigrationChecks
 #endif
         await QuestSystemChecks.RunAsync();
         await TutorialAppearanceChecks.RunAsync();
+        await PureNewPlayerChecks.RunAsync();
+        await NativeDungeonExperienceChecks.RunAsync();
         await InventoryDiscardChecks.RunAsync();
         await InventoryExpansionChecks.RunAsync();
         await PetMaterialClassificationChecks.RunAsync();
@@ -26,6 +28,7 @@ internal static class MigrationChecks
         await ApartmentRecommendationChecks.RunAsync();
         await ApartmentShopChecks.RunAsync();
         await ApartmentHousingChecks.RunAsync();
+        await ApartmentGameplayChecks.RunAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var token = timeout.Token;
         InventoryQuickbarChecks.Run();

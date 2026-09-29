@@ -70,10 +70,57 @@ internal static class ApartmentHousingChecks
             await CheckPurchasesAsync();
             await CheckExteriorsAsync();
             await CheckStreetIdentityAsync();
+            await CheckLandCardMigrationAsync();
             if (_failures.Count != 0)
                 throw new InvalidDataException($"APARTMENT_HOUSING_CHECKS_FAILED {_failures.Count}/{_checks}: "
                     + string.Join("; ", _failures));
             Console.WriteLine($"APARTMENT_HOUSING_CHECKS_PASS checks={_checks}");
+        }
+
+        private async Task CheckLandCardMigrationAsync()
+        {
+            var owner = _characters[0];
+            var other = _characters[5];
+            var before = await _db.GetOwnedApartmentHouseAsync(owner.Id);
+            Check(before is not null, "land migration fixture has a purchased home");
+            await Sql($"""
+                DROP TABLE CharacterApartmentLandCards;
+                CREATE TABLE CharacterApartmentLandCards (
+                    CharacterId INTEGER PRIMARY KEY REFERENCES CharacterApartmentHouses(CharacterId) ON DELETE CASCADE,
+                    CardCode INTEGER NOT NULL CHECK(CardCode=12000001),
+                    Town INTEGER NOT NULL, Page INTEGER NOT NULL, Slot INTEGER NOT NULL,
+                    BoundAt TEXT NOT NULL, ExpiresAt TEXT NOT NULL);
+                INSERT INTO CharacterApartmentLandCards
+                    SELECT CharacterId,12000001,Town,Page,Slot,PurchasedAt,ExpiresAt
+                    FROM CharacterApartmentHouses WHERE CharacterId={owner.Id};
+                CREATE TRIGGER CharacterApartmentHouseDeleteLandCard AFTER DELETE ON CharacterApartmentHouses
+                BEGIN DELETE FROM CharacterCards WHERE CharacterId=OLD.CharacterId AND CardCode=12000001; END;
+                INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt)
+                    VALUES({owner.Id},12000001,7,'2026-09-29T00:00:00Z')
+                    ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=7;
+                INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt)
+                    VALUES({other.Id},12000001,4,'2026-09-29T00:00:00Z')
+                    ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=4;
+                """);
+            var upgraded = new DatabaseService(root);
+            var migrated = await upgraded.GetApartmentLandCardAsync(owner.Id);
+            Check(migrated is not null && migrated.CardCode == 60000000
+                && migrated.Town == before!.Town && migrated.Page == before.Page
+                && migrated.Slot == before.Slot && migrated.ExpiresAt == before.ExpiresAt,
+                "legacy home binding migrates to the land identity and preserves address and lease");
+            var otherHouse = _characters[1];
+            Check(await upgraded.GetApartmentLandCardAsync(otherHouse.Id) is { CardCode: 60000000 },
+                "historical purchased home with a missing land binding is backfilled");
+            Check((await upgraded.GetCharacterCardsAsync(owner.Id)).Single(c => c.CardCode == 12000001).Quantity == 7
+                && (await upgraded.GetCharacterCardsAsync(other.Id)).Single(c => c.CardCode == 12000001).Quantity == 4,
+                "migration and inventory reads preserve both owners' and apartment residents' SP cards");
+            Check(await upgraded.DeleteApartmentLandCardAsync(owner.AccountId, owner.Id, _sessions[0])
+                && (await upgraded.GetCharacterCardsAsync(owner.Id)).Single(c => c.CardCode == 12000001).Quantity == 7,
+                "land deletion preserves the independent SP-card inventory");
+            var reopened = new DatabaseService(root);
+            Check(await reopened.GetApartmentLandCardAsync(owner.Id) is null
+                && await reopened.GetApartmentLandCardAsync(otherHouse.Id) is { CardCode: 60000000 },
+                "land migration and deletion remain stable after another reopen");
         }
 
         private void Check(bool condition, string name)
@@ -162,9 +209,8 @@ internal static class ApartmentHousingChecks
             var firstLandCard = await reopened.GetApartmentLandCardAsync(_characters[0].Id);
             var firstCards = await reopened.GetCharacterCardsAsync(_characters[0].Id);
             Check(firstLandCard is { CardCode: ApartmentPopularityPolicy.LandCardCode, Town: 0, Page: 7, Slot: 0 }
-                  && firstCards.Any(card => card.CardCode == ApartmentPopularityPolicy.LandCardCode
-                                            && card.Category == 4 && card.Quantity == 1),
-                "house purchase persists one address-bound land card and exposes it in the card book");
+                  && firstCards.All(card => card.CardCode != ApartmentPopularityPolicy.LandCardCode),
+                "house purchase persists one dedicated address-bound land card");
             await Points(7, 200);
             Check(await Purchase(7, 0, 7, 4) == 10
                   && await _db.GetApartmentLandCardAsync(_characters[7].Id) is { Slot: 4 },

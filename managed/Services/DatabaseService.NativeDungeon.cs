@@ -25,7 +25,8 @@ public readonly record struct NativeDungeonSettlementRecord(
     byte Rating,
     int Score,
     int? StageRecordScore = null,
-    uint? CharacterExperienceAward = null);
+    uint? CharacterExperienceAward = null,
+    string? SettlementId = null);
 
 internal readonly record struct NativeDungeonCharacterProgression(
     int Level,
@@ -728,7 +729,7 @@ public sealed partial class DatabaseService
         var workerExperienceDelta = after.Get(12) > before.Get(12)
             ? after.Get(12) - before.Get(12)
             : 0u;
-        var experienceDelta = settlement is null
+        var experienceDelta = settlement is not { Rating: > 0 and <= DungeonRewardPolicy.ClearRatingS }
             ? 0u
             : settlement.Value.CharacterExperienceAward ?? workerExperienceDelta;
         var experience = storedExperience >= uint.MaxValue
@@ -770,6 +771,28 @@ public sealed partial class DatabaseService
             await transaction.RollbackAsync(token);
             return default;
         }
+        // Invalid result ratings carry no authority to close a battle cycle.
+        // Rating zero is a valid failed result and closes that cycle with zero EXP.
+        if (settlement is { Rating: > DungeonRewardPolicy.ClearRatingS })
+            settlement = null;
+        // The settlement receipt is independent of the checkpoint transaction ID.
+        // Replays may carry a different snapshot or arrive through another request.
+        if (settlement is { SettlementId: not null } receipt)
+        {
+            await Execute("""
+                CREATE TABLE IF NOT EXISTS NativeDungeonSettlements(
+                    CharacterId INTEGER NOT NULL, SessionId TEXT NOT NULL,
+                    SettlementId TEXT NOT NULL, AppliedAt TEXT NOT NULL,
+                    PRIMARY KEY(CharacterId, SessionId, SettlementId))
+                """);
+            if (await Execute("""
+                INSERT OR IGNORE INTO NativeDungeonSettlements VALUES($id,$session,$receipt,$now)
+                """, ("$session", sessionId), ("$receipt", receipt.SettlementId),
+                ("$now", DateTime.UtcNow.ToString("O"))) == 0)
+                settlement = null;
+        }
+        if (settlement is { Rating: 0 })
+            settlement = null;
         int storedLevel;
         long storedExperience;
         int vitality;
@@ -835,8 +858,7 @@ public sealed partial class DatabaseService
 
         var petApply = default(NativeDungeonApplyResult);
         var petItemCode = after.Get(68);
-        var petClearSettled = settlement is not null
-            || NativeDungeonClearSettled(before, after);
+        var petClearSettled = settlement is not null;
         if (petClearSettled
             && petItemCode != 0
             && ShopCatalog.TryGet(15, petItemCode, out var petCatalogItem))
@@ -1267,6 +1289,9 @@ public sealed partial class DatabaseService
                 ? stageScore.GetInt32() : null,
             element.TryGetProperty(nameof(NativeDungeonSettlementRecord.CharacterExperienceAward), out var experienceAward)
                 && experienceAward.ValueKind != System.Text.Json.JsonValueKind.Null
-                ? experienceAward.GetUInt32() : null);
+                ? experienceAward.GetUInt32() : null,
+            element.TryGetProperty(nameof(NativeDungeonSettlementRecord.SettlementId), out var settlementId)
+                && settlementId.ValueKind == System.Text.Json.JsonValueKind.String
+                ? settlementId.GetString() : null);
     }
 }

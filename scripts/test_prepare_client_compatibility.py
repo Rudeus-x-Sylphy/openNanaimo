@@ -25,10 +25,11 @@ def synthetic_pack():
     for index in range(count):
         record_id = 50000 + index if index < 25 else 60000 + index
         if index < 25:
-            body = bytearray(300 + 4 + 50 * 36 * 36)
+            body = bytearray(300 + 50 * 36 * 36 + 16)
             struct.pack_into('<4I', body, 16, 16, 16, 50, 36)
             struct.pack_into('<i', body, 296, -1)
-            grid = 304
+            grid = 300
+            struct.pack_into('<i3I', body, grid + 50 * 36 * 36, -1, 0, 0, 0)
             for cell in range(50 * 36):
                 for field in range(18):
                     struct.pack_into('<h', body, grid + cell * 36 + field * 2, -1)
@@ -71,8 +72,9 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0x840000, 0x10000, 0xF8400),
         (0x18C000, 0x10000, 0x108400),
         (0x660000, 0x10000, 0x118400),
+        (0xE0000, 0x10000, 0x128400),
     ]
-    data = bytearray(0x128400)
+    data = bytearray(0x138400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -90,6 +92,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         return offset
     put(0xA67B73, character_skip)
     put(0xA67BE3, character_gate)
+    for _, va, old, _ in compat._referral_patch_sites():
+        put(va, old)
     furniture_offset = put(compat.FURNITURE_CALL_VA, furniture)
     put(compat.LAND_PURCHASE_VTABLE_VA, compat.LAND_PURCHASE_VTABLE_OLD)
     put(compat.LAND_PURCHASE_CAVE_VA, compat.LAND_PURCHASE_CAVE_OLD)
@@ -122,6 +126,11 @@ def make_client_tree(root: Path):
     (root / 'game.exe').write_bytes(game)
     (root / 'Village_map_image').mkdir()
     (root / 'Village_map_image/Village_map_image.pack').write_bytes(synthetic_pack())
+    for relative in ('images/Village_images/qz_village_arrow_02.im3',
+                     'effs/village/village_inout_01.eff'):
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b'existing scene resource')
     (root / 'flying/pon').mkdir(parents=True)
     (root / 'flying/hd0_ep22_dg01_st01.sstg').write_bytes(b'stage variant')
     (root / 'flying/pon/mis_ep22_dg01_m_196.pon').write_bytes(b'projectile family')
@@ -198,8 +207,8 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
         pack = compat.VillagePack(output)
         self.assertEqual(pack.field(17, 48, 14, 10), 18)
         self.assertEqual(pack.field(18, 0, 14, 10), 17)
-        self.assertEqual(pack.field(18, 25, 3, 13), 166)
-        self.assertEqual(pack.field(18, 25, 6, 14), 169)
+        self.assertEqual(pack.field(18, 10, 7, 13), 166)
+        self.assertEqual(pack.field(18, 10, 15, 14), 169)
         self.assertEqual(pack.field(18, 48, 14, 10), 19)
         self.assertEqual(pack.field(24, 48, 14, 10), -1)
         second, second_report = compat.patch_village_pack(output)
@@ -481,7 +490,7 @@ class CharacterCreationCompatibilityTests(unittest.TestCase):
             self.assertFalse(overlay.exists())
             report = compat.prepare(root, overlay, False, False, character_creation=True, apply=True)
             self.assertTrue(report['verification']['all_pass'])
-            target = compat.patch_character_creation(original)[0]
+            target = compat.patch_referral_dialog(compat.patch_character_creation(original)[0])[0]
             self.assertEqual(game.read_bytes(), target)
             checks = compat._verify_client_bytes(target, False, False, False, character_creation=True)
             self.assertGreaterEqual(len(checks), 2)

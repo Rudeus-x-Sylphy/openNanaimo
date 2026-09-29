@@ -16,8 +16,10 @@ import struct
 
 try:
     from . import apartment_exterior_panel as exterior_panel
+    from . import dungeon7_visuals
 except ImportError:
     import apartment_exterior_panel as exterior_panel
+    import dungeon7_visuals
 from pathlib import Path
 
 ROUTE = [8, 7, 6, 11, 16, 17, 18, 19, 14, 9, 4, 3, 2, 1, 0, 5, 10, 15, 20, 21, 22, 23, 24]
@@ -27,6 +29,15 @@ CHARACTER_CREATION_SKIP_NEW = bytes.fromhex('E96B000000')
 CHARACTER_CREATION_GATE_VA = 0x00A67BE3
 CHARACTER_CREATION_GATE_OLD = bytes.fromhex('6A00')
 CHARACTER_CREATION_GATE_NEW = bytes.fromhex('6A01')
+# The login parent interprets a modal's confirmation value as an exit command.
+# Referral notices keep their native outcome; only this parent query is scoped.
+REFERRAL_QUERY_VA = 0x004E3153
+REFERRAL_QUERY_OLD = bytes.fromhex('E881B9F2FF')
+REFERRAL_GUARD_VA = 0x004E4600
+REFERRAL_RESET_VA = 0x004E4620
+REFERRAL_CAVE_SPAN = 32
+REFERRAL_LOCAL_RESULT_SITES = (0x004E65C6, 0x004E668F)
+REFERRAL_LOCAL_RESULT_OLD = bytes.fromhex('B801000000')
 FURNITURE_CALL_VA = 0x0041235F
 FURNITURE_OLD = bytes.fromhex('E99CC31B00')
 FURNITURE_NEW = bytes.fromhex('E97CCC1B00')
@@ -248,10 +259,19 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
         for x in (48, 49):
             put(17, x, y, 10, 18, 'page17 east exit to page18')
         put(17, 47, y, 11, 18, 'page17 arrival marker for source page18')
-    for x in range(22, 28):
-        for y in (3, 4):
+    for x in range(50):
+        for y in range(36):
+            # Move the trigger and return point with the dedicated gate artwork.
+            if pack.field(18, x, y, 13) == 166:
+                put(18, x, y, 13, -1, 'relocate dungeon7 action region')
+            if pack.field(18, x, y, 14) == 169:
+                put(18, x, y, 14, -1, 'relocate dungeon7 return marker')
+    for x in range(8, 12):
+        for y in range(6, 16):
+            put(18, x, y, 7, 0, 'dedicated dungeon7 gate approach')
+        for y in range(6, 10):
             put(18, x, y, 13, 166, 'dungeon7 action166 region')
-    put(18, 25, 6, 14, 169, 'dungeon7 return marker')
+    put(18, 10, 15, 14, 169, 'dungeon7 return marker')
 
     pages = ROUTE[6:]
     neighbors = {page: {} for page in pages}
@@ -277,16 +297,24 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
                 put(page, x, y, 11, target if target is not None else -1,
                     'source-page arrival marker' if target is not None else 'clear off-route arrival marker')
 
-    result = bytes(output)
+    edits = {offset: row for offset, row in edits.items()
+             if data[offset:offset + 2] != output[offset:offset + 2]}
+    try:
+        result = dungeon7_visuals.patch_scene(bytes(output), pack.pages[18])
+    except ValueError as exc:
+        raise CompatibilityError(str(exc)) from exc
+    changed = result != data
     return result, {
         'operation': 'derive_dungeon7_village_roads',
-        'status': 'already_patched' if not edits else 'patched',
-        'changed': bool(edits),
+        'status': 'patched' if changed else 'already_patched',
+        'changed': changed,
+        'scene_changed': result != bytes(output),
         'input_size': len(data),
         'output_size': len(result),
         'input_sha256': sha256(data),
         'output_sha256': sha256(result),
-        'changed_words': len(edits),
+        'changed_words': sum(struct.unpack_from('<h', data, offset)[0] !=
+                             struct.unpack_from('<h', output, offset)[0] for offset in edits),
         'changed_pages': sorted({row['page'] for row in edits.values()}),
         'hash_gate_used': False,
     }
@@ -340,6 +368,35 @@ def patch_character_creation(data: bytes) -> tuple[bytes, dict]:
         CHARACTER_CREATION_GATE_OLD, CHARACTER_CREATION_GATE_NEW,
         'character_creation_gate', 'the character-creation state setter differs')
     return data, _migration_report('patch_character_creation', entry=entry, gate=gate)
+
+
+def _referral_patch_sites():
+    # Preserve ECX and the dialog's true WORD+0x36. Only notices 40..42 bypass
+    # the login parent's fatal-modal test; other messages use the native getter.
+    guard = bytes.fromhex('0FB6414083E82883F8027706B801000000C3')
+    guard += b'\xE9' + _rel32(REFERRAL_GUARD_VA + len(guard) + 5, 0x0040EAD9)
+    guard = guard.ljust(REFERRAL_CAVE_SPAN, b'\xCC')
+    # Local validation releases the submission gate before returning to input.
+    reset = bytes.fromhex('8B852CFFFFFFC780A403000000000000B801000000C3')
+    reset = reset.ljust(REFERRAL_CAVE_SPAN, b'\xCC')
+    sites = [
+        ('referral_parent_query', REFERRAL_QUERY_VA, REFERRAL_QUERY_OLD,
+         b'\xE8' + _rel32(REFERRAL_QUERY_VA + 5, REFERRAL_GUARD_VA)),
+        ('referral_parent_guard', REFERRAL_GUARD_VA, b'\xCC' * REFERRAL_CAVE_SPAN, guard),
+        ('referral_local_retry', REFERRAL_RESET_VA, b'\xCC' * REFERRAL_CAVE_SPAN, reset),
+    ]
+    for name, va in zip(('referral_empty_retry', 'referral_self_retry'), REFERRAL_LOCAL_RESULT_SITES):
+        sites.append((name, va, REFERRAL_LOCAL_RESULT_OLD,
+                      b'\xE8' + _rel32(va + 5, REFERRAL_RESET_VA)))
+    return sites
+
+
+def patch_referral_dialog(data: bytes) -> tuple[bytes, dict]:
+    rows = {}
+    for name, va, old, new in _referral_patch_sites():
+        data, rows[name] = _patch_site(data, va, old, new, name,
+                                      'the ' + name + ' site differs')
+    return data, _migration_report('patch_referral_dialog', **rows)
 
 
 def patch_furniture_getter(data: bytes) -> tuple[bytes, dict]:
@@ -705,6 +762,8 @@ def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival
         if character_creation:
             data, row = patch_character_creation(data)
             operations.append(row)
+            data, row = patch_referral_dialog(data)
+            operations.append(row)
         if furniture:
             data, row = patch_furniture_getter(data)
             operations.append(row)
@@ -743,6 +802,14 @@ def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival
         data, row = patch_village_pack(village.read_bytes())
         files[village_rel] = data
         operations.append(row)
+        try:
+            artwork = dungeon7_visuals.artwork_outputs()
+        except ValueError as exc:
+            raise CompatibilityError(str(exc)) from exc
+        files.update(artwork)
+        operations.append({'operation': 'install_dungeon7_artwork',
+                           'files': [path.as_posix() for path in artwork],
+                           'artwork': 'dedicated replacement entrance, title and loading background'})
         for source_rel, target_rel, role in ALIAS_SPECS:
             source = source_root / source_rel
             require(source.is_file(), f'source file is missing: {source_rel.as_posix()}')
@@ -842,6 +909,7 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
         expected_sites.extend((
             ('character_creation_entry', CHARACTER_CREATION_SKIP_VA, CHARACTER_CREATION_SKIP_NEW),
             ('character_creation_gate', CHARACTER_CREATION_GATE_VA, CHARACTER_CREATION_GATE_NEW)))
+        expected_sites.extend((name, va, new) for name, va, _, new in _referral_patch_sites())
     if revival_display or native_state:
         expected_sites.extend((
             ('native_revival_hook', REVIVAL_HUD_HOOK_VA, REVIVAL_HUD_HOOK_OLD),
@@ -923,10 +991,19 @@ def _verify_village_bytes(data: bytes):
     page17_ok = all(pack.field(17, x, y, 7) == 0 for x in range(38, 50) for y in range(14, 21))
     page17_ok = page17_ok and all(pack.field(17, x, y, 10) == 18 for x in (48, 49) for y in range(14, 21))
     checks.append(_check('page17_to_page18', page17_ok, 'east corridor and destination page18'))
-    action_ok = all(pack.field(18, x, y, 13) == 166 for x in range(22, 28) for y in (3, 4))
+    action_ok = all((pack.field(18, x, y, 13) == 166) == (8 <= x < 12 and 6 <= y < 10)
+                    for x in range(50) for y in range(36))
     checks.append(_check('dungeon7_action166', action_ok, 'page18 action region'))
-    checks.append(_check('dungeon7_return_marker169', pack.field(18, 25, 6, 14) == 169,
-                         f'actual={pack.field(18, 25, 6, 14)}'))
+    checks.append(_check('dungeon7_return_marker169', all((pack.field(18, x, y, 14) == 169) == ((x, y) == (10, 15))
+                             for x in range(50) for y in range(36)), 'pixel=160,240'))
+    checks.append(_check('dungeon7_gate_approach',
+                         all(pack.field(18, x, y, 7) == 0 for x in range(8, 12) for y in range(6, 16)),
+                         'gate corridor joins the village road'))
+    try:
+        scene_ok = dungeon7_visuals.verify_scene(data, pack.pages[18])
+    except ValueError as exc:
+        raise CompatibilityError(str(exc)) from exc
+    checks.append(_check('dungeon7_scene_artwork', scene_ok, 'gate, title, arrow and entrance effect'))
     route_ok = True
     for source, target in zip(ROUTE[6:-1], ROUTE[7:]):
         for page, other in ((source, target), (target, source)):
@@ -953,6 +1030,12 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
         checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state, apartment_recommendation, character_creation))
     if dungeon7:
         checks.extend(_verify_village_bytes(read(Path('Village_map_image/Village_map_image.pack'))))
+        for _, relative, _, _ in dungeon7_visuals.PLACEMENTS:
+            checks.append(_check('dungeon7_scene_dependency_' + Path(relative).name,
+                                 bool(read(Path(relative))), 'scene resource present'))
+        for relative, expected in dungeon7_visuals.artwork_outputs().items():
+            checks.append(_check('dungeon7_artwork_' + relative.name,
+                                 read(relative) == expected, 'validated dedicated artwork'))
         for source_rel, target_rel, role in ALIAS_SPECS:
             source_data = read(source_rel)
             target_data = read(target_rel)

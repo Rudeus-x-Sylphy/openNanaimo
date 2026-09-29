@@ -9672,8 +9672,10 @@ public sealed partial class DatabaseService
             alreadyDone = reader.GetInt64(5) != 0; pending = reader.GetInt64(6) != 0;
             medals = reader.GetInt64(7);
         }
-        if (!tutorial || (guideId != 0 && !introDone)
-            || (guideId is 4 or 5 && level < 3) || (guideId == 6 && medals < 12))
+        // Apartment entry is available immediately after the tutorial. Its completion
+        // uses the same eligibility, including profiles that predate the intro ledger.
+        if (!tutorial || (guideId is not (0 or 5) && !introDone)
+            || (guideId == 4 && level < 3) || (guideId == 6 && medals < 12))
             return (true, false, false, null);
 
         if (!alreadyDone)

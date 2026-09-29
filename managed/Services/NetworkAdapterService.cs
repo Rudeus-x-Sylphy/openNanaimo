@@ -430,6 +430,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public BattleResourceSnapshot? NativeBattleResources { get; set; }
         public BattleResourceSnapshot? NonCombatResourceSnapshot { get; set; }
         public long NativeBattleEpoch { get; set; }
+        public long NativeSettlementCycle { get; set; }
         public byte? NativeBattleAttackMode { get; set; }
         public bool NativeForwarding { get; set; }
         public bool NativeDungeonDeathLatched { get; set; }
@@ -2784,7 +2785,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             rewardChanged,
                             0,
                             completionKindOverride: submittedTaskType,
-                            failureResult: 1),
+                            // Apartment guide result 1 changes the client to its exit state.
+                            // Result 3 is the recoverable completion-rejection branch.
+                            failureResult: submittedId == 5 ? (byte)3 : (byte)1),
                         session);
                 }
 
@@ -3560,6 +3563,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             case 0xC398:
                 return await HandleApartmentRecommendCountAsync(frame, payload, session, token);
             case 0xC36E:
+            case 0xC370:
             case 0xC407:
             case 0xC40D:
             case 0xC414:
@@ -3929,11 +3933,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var learnedSkills = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(0, 2)) == 40
                     ? await _database.GetCharacterSkillsAsync(session.Character.Id, token)
                     : [];
-                return BuildNativeFrame(
-                    frame,
-                    0xC3E8,
-                    BuildCardListPayload(payload, ownedCards, session.Character, learnedSkills),
-                    session);
+                var cardList = BuildCardListPayload(payload, ownedCards, session.Character, learnedSkills);
+                if (BinaryPrimitives.ReadUInt16LittleEndian(payload) == 30)
+                {
+                    var ownedLand = await _database.GetApartmentLandCardAsync(session.Character.Id, token);
+                    ApplyApartmentLandCardState(cardList, ownedLand, session.ChannelId, DateTimeOffset.UtcNow);
+                }
+                return BuildNativeFrame(frame, 0xC3E8, cardList, session);
 
             case 0xC3FF: // REQ_UPGRADE_SKILL_DDAKGI -> ANS_UPGRADE_SKILL_DDAKGI
             {
@@ -4017,28 +4023,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var page = payload[5];
                 var index = payload[6];
                 var quantity = payload[7];
-                var landCard = cardCode == ApartmentPopularityPolicy.LandCardCode
-                    && chapter == 4 && page == 1 && index == 0
-                    ? await _database.GetApartmentLandCardAsync(session.Character.Id, token)
-                    : null;
-                if (landCard is not null && quantity == 1)
-                {
-                    var deleted = await _database.DeleteApartmentLandCardAsync(
-                        session.AccountId,
-                        session.Character.Id,
-                        session.SessionId,
-                        token);
-                    if (deleted)
-                    {
-                        await RefreshSessionCharacterAsync(session, token);
-                        AccountStateChanged?.Invoke();
-                    }
-                    var landCardResult = new byte[4];
-                    BinaryPrimitives.WriteUInt32LittleEndian(landCardResult, deleted ? 1u : 0u);
-                    _log($"{channel}:{remote} land card removal: character={session.Character.Id} result={(deleted ? "success" : "failure")}");
-                    return BuildNativeFrame(frame, 0xC3F4, landCardResult, session);
-                }
-
                 var sale = await _database.SellCharacterCardAsync(
                     session.AccountId,
                     session.Character.Id,
@@ -19190,7 +19174,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640 or 0xC351 or 0xC353 or 0xC354 or 0xC358 or 0xC365 or 0xC367 or 0xC369 or 0xC36C or 0xC376 or 0xC387 or 0xC388 or 0xC578 or 0xC57D or 0xC57F or 0xC581 or 0xC583 or 0xC584 or 0xC585 or 0xC586 or 0xC587 or 0xCB21 or 0xCB22 or 0xCB23 or 0xCF09 or 0xCF0F or 0xCF15 or 0xCF1D or 0xCF6C or 0xCF6E or 0xCF70 or 0xCF73 or 0xCF75 or 0xCF77 or 0xCF7B or 0xCF7D or 0xCF7F or 0xCF87 or 0xCF8B or 0xCF8D or 0xCF93 or 0xCF95 or 0xCF99 or 0xCF9B or 0xD00D or 0xD00F or 0xD011 or 0xD034
             or 0xCFD1 or 0xCFD3 or 0xCFD5 or 0xCFD9 or 0xCFEB
             or 0xC378 or 0xC37A or 0xC3CB or 0xC3CD or 0xC3CF or 0xC3D1 or 0xC3D4 or 0xC3D6 or 0xC3D8 or 0xC3E7 or 0xC3E9 or 0xC3ED or 0xC3EF or 0xC3F3 or 0xC3FB or 0xC3FF or 0xC401 or 0xC431 or 0xC433 or 0xC469 or 0xC46B or 0xC46D or 0xC46F or 0xC47A or 0xC480 or 0xC491
-            or 0xC36E or 0xC396 or 0xC407 or 0xC40D or 0xC414 or 0xC425 or 0xC38D or 0xC38F or 0xC392 or 0xC398 or 0xC3AB or 0xC3AD or 0xC405 or 0xC409 or 0xC40B or 0xC40F or 0xC411 or 0xC417 or 0xC419 or 0xC41B or 0xC423 or 0xC42D or 0xC437 or 0xC439 or 0xC43B or 0xC42F or 0xC44B or 0xC44D or 0xC44F or 0xC451 or 0xC453 or 0xC473 or 0xC475 or 0xC47D or 0xC4AF or 0xC4B1 or 0xC4B3 or 0xC4B7 or 0xC4B8 or 0xC4BA or 0xC4BC or 0xC4BE or 0xC4BF or 0xC4E0 or 0xC4E1 or 0xC4E3 or 0xC4E5 or 0xC4E7 or 0xC4EA or 0xC595 or 0xC597 or 0xC599 or 0xC59B or 0xC59E or 0xC5AA or 0xC5B0 or 0xC5B2 or 0xC5B4 or 0xC5B6
+            or 0xC36E or 0xC370 or 0xC396 or 0xC407 or 0xC40D or 0xC414 or 0xC425 or 0xC38D or 0xC38F or 0xC392 or 0xC398 or 0xC3AB or 0xC3AD or 0xC405 or 0xC409 or 0xC40B or 0xC40F or 0xC411 or 0xC417 or 0xC419 or 0xC41B or 0xC423 or 0xC42D or 0xC437 or 0xC439 or 0xC43B or 0xC42F or 0xC44B or 0xC44D or 0xC44F or 0xC451 or 0xC453 or 0xC473 or 0xC475 or 0xC47D or 0xC4AF or 0xC4B1 or 0xC4B3 or 0xC4B7 or 0xC4B8 or 0xC4BA or 0xC4BC or 0xC4BE or 0xC4BF or 0xC4E0 or 0xC4E1 or 0xC4E3 or 0xC4E5 or 0xC4E7 or 0xC4EA or 0xC595 or 0xC597 or 0xC599 or 0xC59B or 0xC59E or 0xC5AA or 0xC5B0 or 0xC5B2 or 0xC5B4 or 0xC5B6
             or 0xEB29 or 0xEB8F => "WorldAdapter",
         _ => null
     };

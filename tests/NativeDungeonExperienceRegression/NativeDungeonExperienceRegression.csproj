@@ -8,6 +8,8 @@
     <AssemblyName>Nanaimo.Adapter</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="../../adapter_runtime/资源/数据/**/*" Link="资源/数据/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../../managed-host/NativeDungeonExperienceChecks.cs" Link="NativeDungeonExperienceChecks.cs" />
     <ProjectReference Include="../../managed/Nanaimo.Gameplay.csproj" />
   </ItemGroup>
 </Project>

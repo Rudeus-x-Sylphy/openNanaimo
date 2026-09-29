@@ -73,14 +73,6 @@ public sealed partial class DatabaseService
                 CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
                 ItemCode INTEGER NOT NULL,
                 PRIMARY KEY(CharacterId, ItemCode));
-            CREATE TABLE IF NOT EXISTS CharacterApartmentLandCards (
-                CharacterId INTEGER PRIMARY KEY REFERENCES CharacterApartmentHouses(CharacterId) ON DELETE CASCADE,
-                CardCode INTEGER NOT NULL CHECK(CardCode = 12000001),
-                Town INTEGER NOT NULL CHECK(Town BETWEEN 0 AND 4),
-                Page INTEGER NOT NULL CHECK(Page BETWEEN 0 AND 255),
-                Slot INTEGER NOT NULL CHECK(Slot BETWEEN 0 AND 19),
-                BoundAt TEXT NOT NULL,
-                ExpiresAt TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS CharacterApartmentVisits (
                 OwnerCharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
                 VisitorCharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
@@ -89,12 +81,27 @@ public sealed partial class DatabaseService
                 PRIMARY KEY(OwnerCharacterId, VisitorCharacterId, VisitDate));
             CREATE INDEX IF NOT EXISTS IX_CharacterApartmentVisits_OwnerDate
                 ON CharacterApartmentVisits(OwnerCharacterId, VisitDate);
-            CREATE TRIGGER IF NOT EXISTS CharacterApartmentHouseDeleteLandCard
-            AFTER DELETE ON CharacterApartmentHouses
-            BEGIN
-                DELETE FROM CharacterCards
-                WHERE CharacterId = OLD.CharacterId AND CardCode = 12000001;
-            END;
+            DROP TRIGGER IF EXISTS CharacterApartmentHouseDeleteLandCard;
+            """;
+        await command.ExecuteNonQueryAsync(token);
+        // Land entitlement has a dedicated address record. SP cards retain their
+        // independent quantities when older apartment bindings are migrated.
+        command.CommandText = "SELECT sql FROM sqlite_master WHERE type='table' AND name='CharacterApartmentLandCards'";
+        var landSchema = (string?)await command.ExecuteScalarAsync(token);
+        if (landSchema?.Contains("12000001", StringComparison.Ordinal) == true)
+        {
+            command.CommandText = "DROP TABLE CharacterApartmentLandCards";
+            await command.ExecuteNonQueryAsync(token);
+        }
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS CharacterApartmentLandCards (
+                CharacterId INTEGER PRIMARY KEY REFERENCES CharacterApartmentHouses(CharacterId) ON DELETE CASCADE,
+                CardCode INTEGER NOT NULL CHECK(CardCode = 60000000),
+                Town INTEGER NOT NULL CHECK(Town BETWEEN 0 AND 4),
+                Page INTEGER NOT NULL CHECK(Page BETWEEN 0 AND 255),
+                Slot INTEGER NOT NULL CHECK(Slot BETWEEN 0 AND 19),
+                BoundAt TEXT NOT NULL,
+                ExpiresAt TEXT NOT NULL);
             """;
         await command.ExecuteNonQueryAsync(token);
         command.CommandText = "PRAGMA table_info(CharacterApartmentHouses)";
@@ -121,30 +128,20 @@ public sealed partial class DatabaseService
             command.Parameters.AddWithValue("$expires", ApartmentLeaseTimestamp(row.ExpiresAt));
             await command.ExecuteNonQueryAsync(token);
         }
-        command.CommandText = "DELETE FROM CharacterApartmentHouses WHERE ExpiresAt <= $now";
         command.Parameters.Clear();
         command.Parameters.AddWithValue("$now", ApartmentLeaseTimestamp(DateTimeOffset.UtcNow));
-        await command.ExecuteNonQueryAsync(token);
         command.CommandText = """
             INSERT INTO CharacterApartmentLandCards(CharacterId,CardCode,Town,Page,Slot,BoundAt,ExpiresAt)
-            SELECT CharacterId,12000001,Town,Page,Slot,PurchasedAt,ExpiresAt
+            SELECT CharacterId,60000000,Town,Page,Slot,PurchasedAt,ExpiresAt
             FROM CharacterApartmentHouses
-            WHERE 1=1
+            WHERE ExpiresAt>$now
             ON CONFLICT(CharacterId) DO UPDATE SET
                 CardCode=excluded.CardCode,Town=excluded.Town,Page=excluded.Page,Slot=excluded.Slot,
                 BoundAt=excluded.BoundAt,ExpiresAt=excluded.ExpiresAt;
-            INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt)
-            SELECT CharacterId,12000001,1,$now FROM CharacterApartmentHouses
-            WHERE 1=1
-            ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=1,UpdatedAt=excluded.UpdatedAt;
             DELETE FROM CharacterApartmentLandCards
             WHERE NOT EXISTS (
                 SELECT 1 FROM CharacterApartmentHouses h
                 WHERE h.CharacterId=CharacterApartmentLandCards.CharacterId AND h.ExpiresAt>$now);
-            DELETE FROM CharacterCards
-            WHERE CardCode=12000001 AND NOT EXISTS (
-                SELECT 1 FROM CharacterApartmentHouses h
-                WHERE h.CharacterId=CharacterCards.CharacterId AND h.ExpiresAt>$now);
             """;
         await command.ExecuteNonQueryAsync(token);
         await transaction.CommitAsync(token);
@@ -211,10 +208,7 @@ public sealed partial class DatabaseService
         await insert.ExecuteNonQueryAsync(token);
         insert.CommandText = """
             INSERT INTO CharacterApartmentLandCards(CharacterId,CardCode,Town,Page,Slot,BoundAt,ExpiresAt)
-            VALUES($id,12000001,$town,$page,$slot,$now,$expires);
-            INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt)
-            VALUES($id,12000001,1,$now)
-            ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=1,UpdatedAt=excluded.UpdatedAt;
+            VALUES($id,60000000,$town,$page,$slot,$now,$expires);
             """;
         await insert.ExecuteNonQueryAsync(token);
         await tx.CommitAsync(token); return 10;
@@ -231,20 +225,13 @@ public sealed partial class DatabaseService
         command.Transaction = tx;
         command.CommandText = """
             INSERT INTO CharacterApartmentLandCards(CharacterId,CardCode,Town,Page,Slot,BoundAt,ExpiresAt)
-            SELECT CharacterId,12000001,Town,Page,Slot,PurchasedAt,ExpiresAt
+            SELECT CharacterId,60000000,Town,Page,Slot,PurchasedAt,ExpiresAt
             FROM CharacterApartmentHouses WHERE CharacterId=$id AND ExpiresAt>$now
             ON CONFLICT(CharacterId) DO UPDATE SET
                 CardCode=excluded.CardCode,Town=excluded.Town,Page=excluded.Page,Slot=excluded.Slot,
                 BoundAt=excluded.BoundAt,ExpiresAt=excluded.ExpiresAt;
-            INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt)
-            SELECT CharacterId,12000001,1,$now FROM CharacterApartmentHouses
-            WHERE CharacterId=$id AND ExpiresAt>$now
-            ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=1,UpdatedAt=excluded.UpdatedAt;
             DELETE FROM CharacterApartmentLandCards
             WHERE CharacterId=$id AND NOT EXISTS (
-                SELECT 1 FROM CharacterApartmentHouses h WHERE h.CharacterId=$id AND h.ExpiresAt>$now);
-            DELETE FROM CharacterCards
-            WHERE CharacterId=$id AND CardCode=12000001 AND NOT EXISTS (
                 SELECT 1 FROM CharacterApartmentHouses h WHERE h.CharacterId=$id AND h.ExpiresAt>$now);
             """;
         command.Parameters.AddWithValue("$id", characterId);

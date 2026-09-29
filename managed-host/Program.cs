@@ -17,6 +17,11 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Contains("--native-dungeon-experience-self-test"))
+    {
+        await NativeDungeonExperienceChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--quest-system-self-test"))
     {
         await QuestSystemChecks.RunAsync();

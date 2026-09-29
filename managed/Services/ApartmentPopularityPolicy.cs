@@ -6,7 +6,7 @@ namespace OpenNanaimo.Adapter.Services;
 /// </summary>
 internal static class ApartmentPopularityPolicy
 {
-    internal const uint LandCardCode = 12_000_001;
+    internal const uint LandCardCode = 60_000_000;
 
     internal static HealthRecoveryParameters GetRecoveryParameters(long totalVisitIndex)
         => totalVisitIndex switch

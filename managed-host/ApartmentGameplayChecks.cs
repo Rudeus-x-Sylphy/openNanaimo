@@ -77,6 +77,8 @@ internal static class ApartmentGameplayChecks
                 await CheckExteriorAsync(service);
                 await CheckRejectionAsync(service);
                 await CheckExpiredLeaseAsync(service);
+                await CheckLandDeletionAsync(service);
+                await CheckFirstVisitGuideAsync(service);
             }
             finally { presences.GetType().GetMethod("Clear")!.Invoke(presences, null); }
             Console.WriteLine($"APARTMENT_GAMEPLAY_CHECKS_PASS checks={_checks} roles=PASS purchase=PASS balance=PASS exterior=PASS text=PASS persistence=PASS");
@@ -139,6 +141,17 @@ internal static class ApartmentGameplayChecks
             var visit = One(await Send(service, 1, 0xC38D, Move(2, _characters[0].Name)), 0xC38E);
             Check(visit[9] == 30 && U32(visit, 40) == U32(own, 40) && U32(visit, 44) >= U32(own, 44),
                 "visitor receives the same leased address dates with visitor menus");
+            var landRequest = new byte[] { 30, 0, 0, 0 };
+            var landPage = One(await Send(service, 0, 0xC3E7, landRequest), 0xC3E8);
+            Check(landPage.Length == 140 && landPage[8] == 30 && landPage[9] == 1,
+                "purchased land appears immediately in the dedicated land-card page");
+            Check(landPage[68] == 0 && landPage[69] == 0 && landPage[70] == 7 && landPage[71] == 0
+                && U32(landPage, 72) == NetworkAdapterService.EncodeApartmentHouseTime(persistedHouse.ExpiresAt)
+                && U32(landPage, 76) >= 2000010100,
+                "land-card page carries the active channel address and lease calendar");
+            var emptyLand = One(await Send(service, 2, 0xC3E7, landRequest), 0xC3E8);
+            Check(emptyLand[9] == 0 && emptyLand.AsSpan(68, 12).ToArray().All(b => b == 0),
+                "free apartment has an empty dedicated land-card page");
             var reopened = new DatabaseService(root);
             Check(await reopened.GetApartmentRecommendationPointsAsync(_characters[0].Id) == 800
                 && (await reopened.GetOwnedApartmentHouseAsync(_characters[0].Id))?.Slot == 0, "purchase survives database reopen");
@@ -202,6 +215,9 @@ internal static class ApartmentGameplayChecks
             await Sql($"UPDATE CharacterApartmentHouses SET ExpiresAt='{expiration}' WHERE CharacterId={_characters[0].Id}");
             var info = One(await Send(service, 0, 0xC425, []), 0xC426);
             Check(info.AsSpan(8).ToArray().All(b => b == 0), "expired address resets exterior preview to empty land");
+            var land = One(await Send(service, 0, 0xC3E7, new byte[] { 30, 0, 0, 0 }), 0xC3E8);
+            Check(land.Length == 140 && land[9] == 0 && land.AsSpan(68, 12).ToArray().All(b => b == 0),
+                "expired lease clears the dedicated land-card visibility and address");
             var inventory = One(await Send(service, 0, 0xC409, Dword(30)), 0xC40A);
             Check(inventory[11] == 2, "expired address preserves purchased exterior and banner inventory");
             Check(U32(One(await Send(service, 0, 0xC414, new byte[54]), 0xC415), 8) == 1000,
@@ -233,6 +249,81 @@ internal static class ApartmentGameplayChecks
             Check(U32(One(await Send(service, 2, 0xC36E, Words(7, 1)), 0xC36F), 8) != 10, "inactive town cannot buy land");
             Set(_sessions[2], "OnlineTracked", false);
             Check(await Send(service, 2, 0xC425, []) is null, "offline housing access is silent");
+        }
+
+        private async Task CheckLandDeletionAsync(NetworkAdapterService service)
+        {
+            var character = _characters[0];
+            await Sql($"INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt) "
+                + $"VALUES({character.Id},12000001,7,'2026-09-29T00:00:00Z') "
+                + "ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=7;");
+            Check(await Send(service, 0, 0xC370, new byte[1]) is null
+                && await _db.GetApartmentLandCardAsync(character.Id) is not null,
+                "malformed land deletion preserves ownership");
+            var reply = One(await Send(service, 0, 0xC370, []), 0xC371);
+            Check(reply.Length == 12 && U32(reply, 8) == 0
+                && await _db.GetOwnedApartmentHouseAsync(character.Id) is null,
+                "native land deletion confirms committed ownership removal");
+            var land = One(await Send(service, 0, 0xC3E7, new byte[] { 30, 0, 0, 0 }), 0xC3E8);
+            Check(land[9] == 0 && land.AsSpan(68, 12).ToArray().All(b => b == 0)
+                && (await _db.GetCharacterCardsAsync(character.Id)).Single(c => c.CardCode == 12000001).Quantity == 7,
+                "native deletion clears the land page while preserving SP cards");
+            reply = One(await Send(service, 0, 0xC370, []), 0xC371);
+            Check(reply.Length == 12 && U32(reply, 8) == 1,
+                "repeated land deletion returns the native failure result");
+        }
+
+        private async Task CheckFirstVisitGuideAsync(NetworkAdapterService service)
+        {
+            const int who = 0;
+            var character = _characters[who];
+            var account = character.AccountId;
+            var sessionId = (string)Get(_sessions[who], "SessionId")!;
+            foreach (var level in new[] { 1, 2, 3 })
+            {
+                await Sql($"UPDATE Characters SET TutorialCompleted=1,Level={level},Hans=1000 WHERE Id={character.Id};"
+                    + $"DELETE FROM CharacterStoryGuides WHERE CharacterId={character.Id} AND GuideId IN (0,5);");
+                var entry = One(await Send(service, who, 0xC38D, Move(1)), 0xC38E);
+                Check(entry.Length == 112 && entry[8] == 10, $"LV{level} first apartment entry has complete room state");
+                Check(One(await Send(service, who, 0xC38F, Words(320, 240)), 0xC390).Length == 124,
+                    "first-visit local actor covers its final coordinate");
+                Check(One(await Send(service, who, 0xC392, Dword(0)), 0xC393).Length == 1020,
+                    "first-visit furniture snapshot covers all fixed records");
+                var request = new byte[80];
+                BinaryPrimitives.WriteUInt32LittleEndian(request.AsSpan(4), 5);
+                request.AsSpan(8).Fill(0xCC);
+                var reply = One(await Send(service, who, 0xC599, request), 0xC59A);
+                Check(reply.Length == 36 && reply[8] == 0 && U32(reply, 12) == 5 && U16(reply, 16) == 0,
+                    $"LV{level} apartment guide confirms its own ID and completion kind");
+                Check((await _db.GetCharacterAsync(account))!.Hans == 1100,
+                    "apartment welcome reward and completion commit together");
+                var repeated = One(await Send(service, who, 0xC599, request), 0xC59A);
+                Check(repeated[8] == 0 && U32(repeated, 12) == 5
+                    && (await _db.GetCharacterAsync(account))!.Hans == 1100,
+                    "repeated apartment confirmation is idempotent");
+                var reopened = new DatabaseService(root);
+                var saved = await reopened.GetStoryGuideStateAsync(account, character.Id, sessionId);
+                Check(saved.Authorized && (saved.Mask & (1u << 5)) != 0,
+                    "completed apartment guide survives database reopen");
+                var balances = One(await Send(service, who, 0xC37A, Dword(uint.MaxValue)), 0xC37B);
+                Check(balances.Length == 32 && U64(balances, 8) == 1100,
+                    "guide confirmation keeps the session available for wallet refresh");
+                Check(One(await Send(service, who, 0xC38F, Words(321, 241)), 0xC390).Length == 124,
+                    "guide confirmation keeps apartment actor requests available");
+            }
+            var invalid = new byte[80];
+            BinaryPrimitives.WriteUInt16LittleEndian(invalid, 7);
+            BinaryPrimitives.WriteUInt32LittleEndian(invalid.AsSpan(4), 5);
+            var rejected = One(await Send(service, who, 0xC599, invalid), 0xC59A);
+            Check(rejected.Length == 36 && rejected[8] == 3
+                && (await _db.GetCharacterAsync(account))!.Hans == 1100,
+                "invalid apartment guide kind returns the recoverable rejection branch");
+            await Sql($"UPDATE Characters SET TutorialCompleted=0 WHERE Id={character.Id}");
+            BinaryPrimitives.WriteUInt16LittleEndian(invalid, 0);
+            rejected = One(await Send(service, who, 0xC599, invalid), 0xC59A);
+            Check(rejected[8] == 3 && (await _db.GetCharacterAsync(account))!.Hans == 1100,
+                "pre-tutorial apartment completion is rejected with a recoverable result");
+            await Sql($"UPDATE Characters SET TutorialCompleted=1 WHERE Id={character.Id}");
         }
 
         private void Check(bool valid, string name)

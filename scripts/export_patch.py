@@ -38,6 +38,12 @@ FORBIDDEN_SUFFIXES = {
     ".dat", ".pack", ".pon", ".sstg", ".mmo", ".rom", ".st", ".zip", ".whl",
     ".png", ".gif", ".jpg", ".jpeg", ".bmp", ".dds", ".ogg", ".wav", ".mp3",
 }
+# Exact replacement-artwork payloads; original game assets retain their policy.
+DUNGEON7_ARTWORK = {
+    'scripts/assets/dungeon7/vill05_gate_ep07_restored.im3',
+    'scripts/assets/dungeon7/vill05_guide_ru7_restored.im3',
+    'scripts/assets/dungeon7/dg_intro_hd0_ep23.im3',
+}
 RESERVED = re.compile(r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)", re.I)
 SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"\r\n]+)"', re.M)
@@ -93,6 +99,7 @@ def payload_policy(value: str, layer: str) -> None:
         good = ((parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"})
                 or (parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"})
                 or (parts[0] == "scripts" and p.suffix in {".py", ".ps1"})
+                or value in DUNGEON7_ARTWORK
                 or value in card_generation_sources
                 or value == "manifest/source_closure.json")
     elif layer == "docs":

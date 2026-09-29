@@ -81,12 +81,13 @@ internal static class DungeonRankingPersistenceChecks
                 Check(await (Task<bool>)Route.Invoke(service, [frame, opcode, "WorldAdapter", session, token])!,
                     $"native participant {actor} routed {opcode:X4}");
             }
-            async Task Settle()
+            async Task Settle(bool valid = true)
             {
                 await Send(0xCF87, [0, 0, 0, 0]);
                 var replies = Drain(session);
-                Check(replies.Count == 1 && U16(replies[0], 6) == 0xCF88,
-                    "checkpoint commits before forwarding CF88, without pushing a ranking");
+                Check(valid ? replies.Count == 1 && U16(replies[0], 6) == 0xCF88 : replies.Count == 0,
+                    valid ? "checkpoint commits before forwarding CF88, without pushing a ranking"
+                        : "invalid result is suppressed at the settlement boundary");
             }
             await Settle();
             var leaderboard = await db.GetDungeonStageLeaderboardAsync(0, 8, 1, 0, 2);
@@ -126,7 +127,7 @@ internal static class DungeonRankingPersistenceChecks
                 Check((await db.GetDungeonStageLeaderboardAsync(0, 10, 1, 0, 2)).Count == 0,
                     "no-progress rating-zero CF88 cannot fabricate a stage record");
                 Select(session, 0, 11, 1, 0, 2);
-                result = Result([character, character], [200u, 600u]); await Settle();
+                result = Result([character, character], [200u, 600u]); await Settle(valid: false);
                 Check((await db.GetDungeonStageLeaderboardAsync(0, 11, 1, 0, 2)).Count == 0,
                     "duplicate-UID CF88 is not summed into a fictitious team record");
                 await CheckJournal(db, root, character, sessionId, state);
@@ -220,6 +221,7 @@ internal static class DungeonRankingPersistenceChecks
     }
     private static void Select(object session, byte hd, byte episode, byte dungeon, byte stage, byte difficulty)
     {
+        Set(session, "NativeSettlementCycle", (long)Get(session, "NativeSettlementCycle")! + 1);
         Set(session, "NativeDungeonHdIndex", hd); Set(session, "NativeDungeonEpisode", episode);
         Set(session, "NativeDungeonDungeon", dungeon); Set(session, "NativeDungeonStage", stage);
         Set(session, "NativeDungeonLogicalDifficulty", difficulty);

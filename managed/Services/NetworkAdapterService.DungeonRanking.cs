@@ -67,9 +67,14 @@ public sealed partial class NetworkAdapterService
         return BuildNativeFrame(request, 0xCF16, payload, session);
     }
 
+    private static string NativeDungeonSettlementId(ConnectionSession session)
+        => $"{session.NativeBattleEpoch}:{session.NativeSettlementCycle}";
+
     private sealed class NativeDungeonRankingMemo
     {
         public long Epoch = -1;
+        public long Cycle = -1;
+        public bool Published;
         public long CharacterId;
         public NativeDungeonSettlementRecord? Committed;
         public NativeDungeonSettlementRecord? Pending;
@@ -80,10 +85,12 @@ public sealed partial class NetworkAdapterService
     private static void BindNativeDungeonRankingMemo(ConnectionSession session, NativeDungeonRankingMemo memo)
     {
         var characterId = session.Character?.Id ?? 0;
-        if (memo.Epoch == session.NativeBattleEpoch && memo.CharacterId == characterId) return;
+        if (memo.Epoch == session.NativeBattleEpoch && memo.Cycle == session.NativeSettlementCycle && memo.CharacterId == characterId) return;
         memo.Epoch = session.NativeBattleEpoch;
+        memo.Cycle = session.NativeSettlementCycle;
         memo.CharacterId = characterId;
         memo.Committed = memo.Pending = null;
+        memo.Published = false;
     }
 
     private NativeDungeonSettlementRecord? GetPendingNativeDungeonRanking(ConnectionSession session)
@@ -107,13 +114,13 @@ public sealed partial class NetworkAdapterService
 
     private void MarkNativeDungeonRankingCommitted(ConnectionSession session, NativeDungeonSettlementRecord? settlement)
     {
-        if (settlement is not { StageRecordScore: not null } committed) return;
+        if (settlement is not { } committed) return;
         var memo = _nativeDungeonRankings.GetOrCreateValue(session);
         lock (memo)
         {
             BindNativeDungeonRankingMemo(session, memo);
             memo.Committed = committed;
-            if (memo.Pending == committed) memo.Pending = null;
+            memo.Pending = null;
         }
     }
 
@@ -130,13 +137,46 @@ public sealed partial class NetworkAdapterService
         var observed = new NativeDungeonSettlementRecord(
             session.NativeDungeonHdIndex, session.NativeDungeonEpisode, session.NativeDungeonDungeon,
             session.NativeDungeonStage, session.NativeDungeonLogicalDifficulty, rating, personalScore, teamScore,
-            experienceAward);
+            experienceAward, NativeDungeonSettlementId(session));
         var memo = _nativeDungeonRankings.GetOrCreateValue(session);
         lock (memo)
         {
             BindNativeDungeonRankingMemo(session, memo);
-            if (memo.Committed != observed) memo.Pending = observed;
+            if (memo.Committed is null && memo.Pending is null) memo.Pending = observed;
         }
+    }
+
+    private void NormalizeNativeDungeonPublishedSettlement(ConnectionSession session, byte[] response)
+    {
+        if (session.Character is not { } character || session.NativeCheckpoint is not { } checkpoint) return;
+        var memo = _nativeDungeonRankings.GetOrCreateValue(session);
+        lock (memo)
+        {
+            BindNativeDungeonRankingMemo(session, memo);
+            if (memo.Published || memo.Committed is null || memo.Committed.Value.Rating == 0)
+                PatchNativeCharacterProgressionFrame(response, checkpoint.Get(4), character, character);
+            memo.Published = true;
+        }
+    }
+
+    // Deferred results are persisted before publication. This path performs only
+    // a database transaction, leaving the worker reader free of nested exchanges.
+    private async Task CommitNativeDungeonDeferredSettlementAsync(
+        ConnectionSession session, byte[] response, CancellationToken token)
+    {
+        if (GetPendingNativeDungeonRanking(session) is not { } settlement
+            || session.Character is not { } before || session.NativeCheckpoint is not { } checkpoint)
+            return;
+        var after = new NativeDungeonState(checkpoint.Bytes.ToArray());
+        session.NativeBattleResources?.ApplyTo(after);
+        var applied = await _database.ApplyNativeDungeonDeltaAsync(
+            session.AccountId, before.Id, session.SessionId, checkpoint, after, token,
+            settlement: settlement);
+        if (applied.Applied) MarkNativeDungeonRankingCommitted(session, settlement);
+        await RefreshSessionCharacterAsync(session, token);
+        PatchNativeCharacterProgressionFrame(response, checkpoint.Get(4), before, session.Character!);
+        PatchNativePetSettlementFrame(response, checkpoint.Get(4), applied);
+        PatchNativeDungeonTitleFrame(response, checkpoint.Get(4), CharacterTitleState.GetGrade(session.Character));
     }
 
     internal static bool TryReadNativeDungeonStageRecordScore(ReadOnlySpan<byte> frame, out int score)

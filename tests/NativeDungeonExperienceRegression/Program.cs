@@ -4,7 +4,7 @@ using OpenNanaimo.Adapter.Services;
 
 internal static class Program
 {
-    public static void Main()
+    public static async Task Main()
     {
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         var levelOne = NewCharacter(1, 0);
@@ -76,6 +76,14 @@ internal static class Program
                 frame, checked((ushort)levelOne.Id), out _, out _, out var parsedAward)
             && parsedAward == 20,
             "CF88 settlement parsing retains the per-result character award");
+        var malformed = frame.ToArray();
+        BinaryPrimitives.WriteUInt16LittleEndian(malformed.AsSpan(8, 2), 1);
+        Check(!NetworkAdapterService.TryReadNativeDungeonSettlementFrame(malformed, 1, out _, out _, out _),
+            "settlement count must match the full frame length");
+        malformed = frame.ToArray();
+        BinaryPrimitives.WriteUInt16LittleEndian(malformed.AsSpan(12 + 0x34, 2), 1);
+        Check(!NetworkAdapterService.TryReadNativeDungeonSettlementFrame(malformed, 1, out _, out _, out _),
+            "duplicate local identity is rejected before selecting its award");
         var untouchedRemote = frame.AsSpan(0x0C + 0x34, 0x34).ToArray();
         var committedCharacter = NewCharacter(2, 110);
         Check(NetworkAdapterService.PatchNativeCharacterProgressionFrame(
@@ -90,7 +98,8 @@ internal static class Program
             && HasValidChecksum(frame),
             "CF88 client synchronization uses committed progression and preserves other members");
 
-        Console.WriteLine("NATIVE_DUNGEON_EXPERIENCE_REGRESSION_PASS checks=6");
+        await NativeDungeonExperienceChecks.RunAsync();
+        Console.WriteLine("NATIVE_DUNGEON_EXPERIENCE_REGRESSION_PASS");
     }
 
     private static CharacterRecord NewCharacter(int level, long experience) => new()

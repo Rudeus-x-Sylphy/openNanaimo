@@ -106,6 +106,7 @@ public sealed partial class NetworkAdapterService
                 if (!TryResolveNativeDungeonTransition(transition.Dungeon, transition.Stage, transition.Difficulty,
                         frame, response, out _, out _, out _))
                     continue;
+                session.NativeSettlementCycle = checked(session.NativeSettlementCycle + 1);
                 cycle.BattleStartArmed = true;
                 cycle.BattleStarted = false;
                 ArmNativeDungeonContinuationReload(session, response);

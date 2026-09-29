@@ -51,6 +51,23 @@ internal static class ApartmentProtocolChecks
             && capped[1011] == 83,
             "C393 object 84 exactly fills the final 12-byte row");
 
+        var now = new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero);
+        var land = new ApartmentLandCardRecord(1, 60000000, 4, 31, 19, now, now.AddDays(14));
+        var landPayload = new byte[132];
+        landPayload[0] = 30;
+        landPayload[56] = 9;
+        NetworkAdapterService.ApplyApartmentLandCardState(landPayload, land, 3, now);
+        Check(landPayload[0] == 30 && landPayload[1] == 1 && landPayload[56] == 9,
+            "land presence is independent of page mode and key counters");
+        Check(landPayload.AsSpan(60, 4).SequenceEqual(new byte[] { 2, 4, 31, 19 })
+            && BinaryPrimitives.ReadUInt32LittleEndian(landPayload.AsSpan(64)) == 2026101312
+            && BinaryPrimitives.ReadUInt32LittleEndian(landPayload.AsSpan(68)) == 2026092912,
+            "land card uses channel town page slot and UTC calendar-hour fields");
+        NetworkAdapterService.ApplyApartmentLandCardState(landPayload, land, 3, now.AddDays(14));
+        Check(landPayload[1] == 0 && landPayload.AsSpan(60, 12).ToArray().All(b => b == 0)
+            && landPayload[56] == 9 && landPayload[0] == 30,
+            "lease boundary clears only the dedicated land entitlement fields");
+
         Console.WriteLine("APARTMENT_PROTOCOL_CHECKS_PASS c393_payload=1012 frame=1020 final=2000 rows=84 zero_fill=PASS");
     }
 

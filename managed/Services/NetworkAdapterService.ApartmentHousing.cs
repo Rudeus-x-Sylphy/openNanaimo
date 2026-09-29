@@ -32,6 +32,23 @@ public sealed partial class NetworkAdapterService
         BinaryPrimitives.WriteUInt32LittleEndian(roomEntry.Slice(36, 4), EncodeApartmentHouseTime(now));
     }
 
+    internal static void ApplyApartmentLandCardState(Span<byte> payload,
+        ApartmentLandCardRecord? card, int channelId, DateTimeOffset now)
+    {
+        // C3E8 mode 30 carries one land card: BYTE frame+9 enables it;
+        // +68..71 is channel/town/page/slot, +72/+76 are calendar hours.
+        payload[1] = 0;
+        payload.Slice(60, 12).Clear();
+        if (card is null || card.ExpiresAt <= now) return;
+        payload[1] = 1;
+        payload[60] = (byte)Math.Clamp(channelId - 1, 0, byte.MaxValue);
+        payload[61] = card.Town;
+        payload[62] = card.Page;
+        payload[63] = card.Slot;
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.Slice(64, 4), EncodeApartmentHouseTime(card.ExpiresAt));
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.Slice(68, 4), EncodeApartmentHouseTime(now));
+    }
+
     private async Task<byte[]?> HandleApartmentHousingAsync(byte[] frame, ushort opcode, byte[] payload,
         ConnectionSession session, CancellationToken token)
     {
@@ -56,6 +73,15 @@ public sealed partial class NetworkAdapterService
                 await RefreshSessionCharacterAsync(session, token);
                 return CombineNativeFrames(purchaseReply, BuildNativeFrame(frame, 0xC37B,
                     await BuildApartmentBalancesAsync(session.Character!, token), session));
+            }
+            case 0xC370:
+            {
+                if (payload.Length != 0) return null;
+                var deleted = await _database.DeleteApartmentLandCardAsync(
+                    session.AccountId, session.Character.Id, session.SessionId, token);
+                if (deleted) AccountStateChanged?.Invoke();
+                // The native land-card window consumes a DWORD: 0 success, 1 failure.
+                return BuildNativeFrame(frame, 0xC371, ApartmentDword(deleted ? 0u : 1u), session);
             }
             case 0xC407:
             {

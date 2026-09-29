@@ -30,12 +30,15 @@ static int managed_bridge_resources_valid(const unsigned char*p){
     return managed_get(p,20)<=hm&&managed_get(p,28)<=mm;
 }
 static int managed_bridge_import(const unsigned char*p){
-    unsigned i,n=managed_get(p,1952),nl=managed_get(p,88);
+    unsigned i,n=managed_get(p,1952),nl=managed_get(p,88),same_progression_actor;
     struct progression_progression_state st;
     struct progression_dungeon_grade_state grade;
     if(managed_get(p,0)!=1u||n>255u||nl<1u||nl>14u||managed_get(p,4)<1u||managed_get(p,4)>65535u)return 0;
     if(managed_get(p,8)!=progression_progression_level_for_exp(managed_get(p,12)))return 0;
     if(!managed_bridge_resources_valid(p))return 0;
+    same_progression_actor=g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS
+        &&g_multi_conn[g_multi_current].uid==managed_get(p,4)&&g_stable_name_len==nl;
+    for(i=0;same_progression_actor&&i<nl;i++)if(g_stable_name[i]!=p[96+i])same_progression_actor=0u;
     for(i=0;i<16u;i++)if(managed_get(p,160+i*4)>5u)return 0;
     g_account_name[0]=0;
     memset(g_stable_name,0,16);memcpy(g_stable_name,p+96,nl);g_stable_name_len=nl;
@@ -77,7 +80,8 @@ static int managed_bridge_import(const unsigned char*p){
     if(!progression_dungeon_grade_save_name(g_stable_name,g_stable_name_len,&grade))return 0;
     g_progression_profile_dungeon_grade=grade.grade;
     if(g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS){
-        g_progression_settlement_epoch_valid[g_multi_current]=0u;
+        /* Active-room refreshes preserve this battle's settlement receipt. */
+        if(!same_progression_actor||!g_multi_conn[g_multi_current].room_active)g_progression_settlement_epoch_valid[g_multi_current]=0u;
         memset(g_managed_clear_masks[g_multi_current],0,60);
         if(managed_get(p,5112)==1u)memcpy(g_managed_clear_masks[g_multi_current],p+5052,60);
     }
