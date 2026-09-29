@@ -73,6 +73,28 @@ public sealed partial class DatabaseService
                 CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
                 ItemCode INTEGER NOT NULL,
                 PRIMARY KEY(CharacterId, ItemCode));
+            CREATE TABLE IF NOT EXISTS CharacterApartmentLandCards (
+                CharacterId INTEGER PRIMARY KEY REFERENCES CharacterApartmentHouses(CharacterId) ON DELETE CASCADE,
+                CardCode INTEGER NOT NULL CHECK(CardCode = 12000001),
+                Town INTEGER NOT NULL CHECK(Town BETWEEN 0 AND 4),
+                Page INTEGER NOT NULL CHECK(Page BETWEEN 0 AND 255),
+                Slot INTEGER NOT NULL CHECK(Slot BETWEEN 0 AND 19),
+                BoundAt TEXT NOT NULL,
+                ExpiresAt TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS CharacterApartmentVisits (
+                OwnerCharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                VisitorCharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                VisitDate TEXT NOT NULL,
+                FirstVisitedAt TEXT NOT NULL,
+                PRIMARY KEY(OwnerCharacterId, VisitorCharacterId, VisitDate));
+            CREATE INDEX IF NOT EXISTS IX_CharacterApartmentVisits_OwnerDate
+                ON CharacterApartmentVisits(OwnerCharacterId, VisitDate);
+            CREATE TRIGGER IF NOT EXISTS CharacterApartmentHouseDeleteLandCard
+            AFTER DELETE ON CharacterApartmentHouses
+            BEGIN
+                DELETE FROM CharacterCards
+                WHERE CharacterId = OLD.CharacterId AND CardCode = 12000001;
+            END;
             """;
         await command.ExecuteNonQueryAsync(token);
         command.CommandText = "PRAGMA table_info(CharacterApartmentHouses)";
@@ -99,6 +121,32 @@ public sealed partial class DatabaseService
             command.Parameters.AddWithValue("$expires", ApartmentLeaseTimestamp(row.ExpiresAt));
             await command.ExecuteNonQueryAsync(token);
         }
+        command.CommandText = "DELETE FROM CharacterApartmentHouses WHERE ExpiresAt <= $now";
+        command.Parameters.Clear();
+        command.Parameters.AddWithValue("$now", ApartmentLeaseTimestamp(DateTimeOffset.UtcNow));
+        await command.ExecuteNonQueryAsync(token);
+        command.CommandText = """
+            INSERT INTO CharacterApartmentLandCards(CharacterId,CardCode,Town,Page,Slot,BoundAt,ExpiresAt)
+            SELECT CharacterId,12000001,Town,Page,Slot,PurchasedAt,ExpiresAt
+            FROM CharacterApartmentHouses
+            WHERE 1=1
+            ON CONFLICT(CharacterId) DO UPDATE SET
+                CardCode=excluded.CardCode,Town=excluded.Town,Page=excluded.Page,Slot=excluded.Slot,
+                BoundAt=excluded.BoundAt,ExpiresAt=excluded.ExpiresAt;
+            INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt)
+            SELECT CharacterId,12000001,1,$now FROM CharacterApartmentHouses
+            WHERE 1=1
+            ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=1,UpdatedAt=excluded.UpdatedAt;
+            DELETE FROM CharacterApartmentLandCards
+            WHERE NOT EXISTS (
+                SELECT 1 FROM CharacterApartmentHouses h
+                WHERE h.CharacterId=CharacterApartmentLandCards.CharacterId AND h.ExpiresAt>$now);
+            DELETE FROM CharacterCards
+            WHERE CardCode=12000001 AND NOT EXISTS (
+                SELECT 1 FROM CharacterApartmentHouses h
+                WHERE h.CharacterId=CharacterCards.CharacterId AND h.ExpiresAt>$now);
+            """;
+        await command.ExecuteNonQueryAsync(token);
         await transaction.CommitAsync(token);
     }
 
@@ -160,7 +208,249 @@ public sealed partial class DatabaseService
         insert.Parameters.AddWithValue("$page", page); insert.Parameters.AddWithValue("$slot", slot);
         insert.Parameters.AddWithValue("$now", ApartmentLeaseTimestamp(now));
         insert.Parameters.AddWithValue("$expires", ApartmentLeaseTimestamp(now + ApartmentHousingPolicy.LeaseDuration));
-        await insert.ExecuteNonQueryAsync(token); await tx.CommitAsync(token); return 10;
+        await insert.ExecuteNonQueryAsync(token);
+        insert.CommandText = """
+            INSERT INTO CharacterApartmentLandCards(CharacterId,CardCode,Town,Page,Slot,BoundAt,ExpiresAt)
+            VALUES($id,12000001,$town,$page,$slot,$now,$expires);
+            INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt)
+            VALUES($id,12000001,1,$now)
+            ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=1,UpdatedAt=excluded.UpdatedAt;
+            """;
+        await insert.ExecuteNonQueryAsync(token);
+        await tx.CommitAsync(token); return 10;
+    }
+
+    internal async Task SynchronizeApartmentLandCardAsync(
+        long characterId, CancellationToken token = default)
+    {
+        if (characterId <= 0) return;
+        await using var connection = await OpenApartmentHousingConnectionAsync(token);
+        await using var tx = connection.BeginTransaction(deferred: false);
+        await RemoveExpiredApartmentHousesAsync(connection, tx, token);
+        await using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = """
+            INSERT INTO CharacterApartmentLandCards(CharacterId,CardCode,Town,Page,Slot,BoundAt,ExpiresAt)
+            SELECT CharacterId,12000001,Town,Page,Slot,PurchasedAt,ExpiresAt
+            FROM CharacterApartmentHouses WHERE CharacterId=$id AND ExpiresAt>$now
+            ON CONFLICT(CharacterId) DO UPDATE SET
+                CardCode=excluded.CardCode,Town=excluded.Town,Page=excluded.Page,Slot=excluded.Slot,
+                BoundAt=excluded.BoundAt,ExpiresAt=excluded.ExpiresAt;
+            INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt)
+            SELECT CharacterId,12000001,1,$now FROM CharacterApartmentHouses
+            WHERE CharacterId=$id AND ExpiresAt>$now
+            ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=1,UpdatedAt=excluded.UpdatedAt;
+            DELETE FROM CharacterApartmentLandCards
+            WHERE CharacterId=$id AND NOT EXISTS (
+                SELECT 1 FROM CharacterApartmentHouses h WHERE h.CharacterId=$id AND h.ExpiresAt>$now);
+            DELETE FROM CharacterCards
+            WHERE CharacterId=$id AND CardCode=12000001 AND NOT EXISTS (
+                SELECT 1 FROM CharacterApartmentHouses h WHERE h.CharacterId=$id AND h.ExpiresAt>$now);
+            """;
+        command.Parameters.AddWithValue("$id", characterId);
+        command.Parameters.AddWithValue("$now", ApartmentLeaseTimestamp(DateTimeOffset.UtcNow));
+        await command.ExecuteNonQueryAsync(token);
+        await tx.CommitAsync(token);
+    }
+
+    internal async Task<ApartmentLandCardRecord?> GetApartmentLandCardAsync(
+        long characterId, CancellationToken token = default)
+    {
+        if (characterId <= 0) return null;
+        await using var connection = await OpenApartmentHousingConnectionAsync(token);
+        await using var tx = connection.BeginTransaction(deferred: false);
+        await RemoveExpiredApartmentHousesAsync(connection, tx, token);
+        await using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = """
+            SELECT CharacterId,CardCode,Town,Page,Slot,BoundAt,ExpiresAt
+            FROM CharacterApartmentLandCards WHERE CharacterId=$id
+            """;
+        command.Parameters.AddWithValue("$id", characterId);
+        ApartmentLandCardRecord? result = null;
+        await using (var reader = await command.ExecuteReaderAsync(token))
+            if (await reader.ReadAsync(token))
+                result = new ApartmentLandCardRecord(
+                    reader.GetInt64(0), checked((uint)reader.GetInt64(1)),
+                    checked((byte)reader.GetInt32(2)), checked((byte)reader.GetInt32(3)),
+                    checked((byte)reader.GetInt32(4)), ReadApartmentLeaseTimestamp(reader.GetString(5)),
+                    ReadApartmentLeaseTimestamp(reader.GetString(6)));
+        await tx.CommitAsync(token);
+        return result;
+    }
+
+    internal async Task<bool> DeleteApartmentLandCardAsync(
+        long accountId, long characterId, string sessionId, CancellationToken token = default)
+    {
+        await using var connection = await OpenApartmentHousingConnectionAsync(token);
+        await using var tx = connection.BeginTransaction(deferred: false);
+        if (!await AuthorizeApartmentHousingAsync(connection, tx, accountId, characterId, sessionId, token))
+            return false;
+        await using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = "DELETE FROM CharacterApartmentHouses WHERE CharacterId=$id";
+        command.Parameters.AddWithValue("$id", characterId);
+        if (await command.ExecuteNonQueryAsync(token) != 1)
+            return false;
+        await tx.CommitAsync(token);
+        return true;
+    }
+
+    internal async Task<ApartmentVisitIndexRecord> RecordApartmentVisitAsync(
+        long accountId, long visitorCharacterId, string sessionId, long ownerCharacterId,
+        DateTimeOffset? nowUtc = null, CancellationToken token = default)
+    {
+        var now = (nowUtc ?? DateTimeOffset.UtcNow).ToUniversalTime();
+        var day = DateOnly.FromDateTime(now.UtcDateTime);
+        if (ownerCharacterId <= 0)
+            return new ApartmentVisitIndexRecord(ownerCharacterId, 0, 0, day);
+        await using var connection = await OpenApartmentHousingConnectionAsync(token);
+        await using var tx = connection.BeginTransaction(deferred: false);
+        if (!await AuthorizeApartmentHousingAsync(connection, tx, accountId, visitorCharacterId, sessionId, token)
+            || !await ApartmentOwnerExistsAsync(connection, tx, ownerCharacterId, token))
+            return new ApartmentVisitIndexRecord(ownerCharacterId, 0, 0, day);
+        if (visitorCharacterId != ownerCharacterId)
+        {
+            await using var insert = connection.CreateCommand();
+            insert.Transaction = tx;
+            insert.CommandText = """
+                INSERT OR IGNORE INTO CharacterApartmentVisits(
+                    OwnerCharacterId,VisitorCharacterId,VisitDate,FirstVisitedAt)
+                VALUES($owner,$visitor,$day,$now)
+                """;
+            insert.Parameters.AddWithValue("$owner", ownerCharacterId);
+            insert.Parameters.AddWithValue("$visitor", visitorCharacterId);
+            insert.Parameters.AddWithValue("$day", day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            insert.Parameters.AddWithValue("$now", ApartmentLeaseTimestamp(now));
+            await insert.ExecuteNonQueryAsync(token);
+        }
+        var result = await ReadApartmentVisitIndexAsync(connection, tx, ownerCharacterId, day, token);
+        await tx.CommitAsync(token);
+        return result;
+    }
+
+    internal async Task<ApartmentVisitIndexRecord> GetApartmentVisitIndexAsync(
+        long ownerCharacterId, DateTimeOffset? nowUtc = null, CancellationToken token = default)
+    {
+        var day = DateOnly.FromDateTime((nowUtc ?? DateTimeOffset.UtcNow).UtcDateTime);
+        await using var connection = await OpenApartmentHousingConnectionAsync(token);
+        await using var tx = connection.BeginTransaction();
+        var result = await ReadApartmentVisitIndexAsync(connection, tx, ownerCharacterId, day, token);
+        await tx.CommitAsync(token);
+        return result;
+    }
+
+    internal async Task<ApartmentRecoveryState> GetApartmentRecoveryStateAsync(
+        long visitorCharacterId, long ownerCharacterId, DateTimeOffset? nowUtc = null,
+        CancellationToken token = default)
+    {
+        var visits = await GetApartmentVisitIndexAsync(ownerCharacterId, nowUtc, token);
+        await using var connection = await OpenApartmentHousingConnectionAsync(token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COALESCE(p.RecommendationPoints,0),
+                   EXISTS(SELECT 1 FROM CharacterApartmentHouses h WHERE h.CharacterId=c.Id AND h.ExpiresAt>$now),
+                   EXISTS(SELECT 1 FROM CharacterApartmentLandCards l WHERE l.CharacterId=c.Id AND l.ExpiresAt>$now),
+                   COALESCE((SELECT Level FROM Characters WHERE Id=$visitor),0)
+            FROM Characters c LEFT JOIN CharacterApartmentProfile p ON p.CharacterId=c.Id
+            WHERE c.Id=$owner
+            """;
+        command.Parameters.AddWithValue("$owner", ownerCharacterId);
+        command.Parameters.AddWithValue("$visitor", visitorCharacterId);
+        command.Parameters.AddWithValue("$now", ApartmentLeaseTimestamp(nowUtc ?? DateTimeOffset.UtcNow));
+        long points = 0; bool hasAddress = false; bool hasCard = false; int visitorLevel = 0;
+        await using (var reader = await command.ExecuteReaderAsync(token))
+            if (await reader.ReadAsync(token))
+            {
+                points = reader.GetInt64(0);
+                hasAddress = reader.GetInt64(1) != 0;
+                hasCard = reader.GetInt64(2) != 0;
+                visitorLevel = reader.GetInt32(3);
+            }
+        var context = new ApartmentRecoveryContext(ownerCharacterId, visitorCharacterId == ownerCharacterId,
+            visits.Today, visits.Total, points, hasAddress, hasCard);
+        var parameters = HealthRecoveryPolicy.GetApartmentParameters(context);
+        return new ApartmentRecoveryState(ownerCharacterId, context.IsOwner,
+            visitorLevel >= HealthRecoveryPolicy.MinimumAutomaticRecoveryLevel,
+            HealthRecoveryPolicy.MinimumAutomaticRecoveryLevel, visits.Today, visits.Total, points,
+            parameters.HpStep, parameters.MpStep, HealthRecoveryPolicy.TickInterval, hasAddress, hasCard);
+    }
+
+    internal async Task<HealthRecoveryPersistenceResult> ApplyApartmentHealthRecoveryStepAsync(
+        long accountId, long characterId, string sessionId, long ownerCharacterId,
+        CancellationToken token = default)
+    {
+        var state = await GetApartmentRecoveryStateAsync(characterId, ownerCharacterId, null, token);
+        if (!state.Eligible)
+            return new HealthRecoveryPersistenceResult(false, 0, 0);
+        var now = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+        await using var connection = await OpenConnectionAsync(token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE Characters
+            SET CurrentHp = MIN(MaxHp, MAX(0, CurrentHp) + $hpStep),
+                CurrentMp = MIN(MaxMp, MAX(0, CurrentMp) + $mpStep),
+                LastSavedAt = $now
+            WHERE Id = $characterId
+              AND AccountId = $accountId
+              AND IsOnline = 1
+              AND ActiveSessionId = $sessionId
+              AND Level >= $minimumLevel
+              AND (CurrentHp < MaxHp OR CurrentMp < MaxMp)
+            RETURNING CurrentHp, CurrentMp
+            """;
+        command.Parameters.AddWithValue("$hpStep", state.HpPerTick);
+        command.Parameters.AddWithValue("$mpStep", state.MpPerTick);
+        command.Parameters.AddWithValue("$now", now);
+        command.Parameters.AddWithValue("$characterId", characterId);
+        command.Parameters.AddWithValue("$accountId", accountId);
+        command.Parameters.AddWithValue("$sessionId", sessionId);
+        command.Parameters.AddWithValue("$minimumLevel", HealthRecoveryPolicy.MinimumAutomaticRecoveryLevel);
+        await using var reader = await command.ExecuteReaderAsync(token);
+        return await reader.ReadAsync(token)
+            ? new HealthRecoveryPersistenceResult(true, reader.GetInt32(0), reader.GetInt32(1))
+            : new HealthRecoveryPersistenceResult(false, 0, 0);
+    }
+
+    private static async Task RemoveExpiredApartmentHousesAsync(
+        SqliteConnection connection, SqliteTransaction tx, CancellationToken token)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = "DELETE FROM CharacterApartmentHouses WHERE ExpiresAt<=$now";
+        command.Parameters.AddWithValue("$now", ApartmentLeaseTimestamp(DateTimeOffset.UtcNow));
+        await command.ExecuteNonQueryAsync(token);
+    }
+
+    private static async Task<bool> ApartmentOwnerExistsAsync(
+        SqliteConnection connection, SqliteTransaction tx, long ownerCharacterId, CancellationToken token)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = "SELECT EXISTS(SELECT 1 FROM Characters WHERE Id=$owner)";
+        command.Parameters.AddWithValue("$owner", ownerCharacterId);
+        return Convert.ToInt64(await command.ExecuteScalarAsync(token), CultureInfo.InvariantCulture) != 0;
+    }
+
+    private static async Task<ApartmentVisitIndexRecord> ReadApartmentVisitIndexAsync(
+        SqliteConnection connection, SqliteTransaction tx, long ownerCharacterId, DateOnly day,
+        CancellationToken token)
+    {
+        if (ownerCharacterId <= 0)
+            return new ApartmentVisitIndexRecord(ownerCharacterId, 0, 0, day);
+        await using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = """
+            SELECT SUM(CASE WHEN VisitDate=$day THEN 1 ELSE 0 END),COUNT(*)
+            FROM CharacterApartmentVisits WHERE OwnerCharacterId=$owner
+            """;
+        command.Parameters.AddWithValue("$owner", ownerCharacterId);
+        command.Parameters.AddWithValue("$day", day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        await using var reader = await command.ExecuteReaderAsync(token);
+        if (!await reader.ReadAsync(token))
+            return new ApartmentVisitIndexRecord(ownerCharacterId, 0, 0, day);
+        return new ApartmentVisitIndexRecord(ownerCharacterId,
+            reader.IsDBNull(0) ? 0 : reader.GetInt64(0), reader.GetInt64(1), day);
     }
 
     internal async Task<IReadOnlyList<ApartmentHouse>> GetApartmentHousesAsync(byte town, byte page, CancellationToken token = default)

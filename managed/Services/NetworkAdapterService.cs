@@ -2075,10 +2075,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 if (!TryDecodeFixedGbkString(payload, false, out var recommendedCharacterName))
                 {
                     _log($"{channel}:{remote} 好友推荐角色名字段无效；未修改推荐记录");
-                    return BuildNativeFrame(
+                    return BuildFriendRecommendationResponse(
                         frame,
-                        0x2726,
-                        BuildFriendRecommendationResultPayload(FriendRecommendationNonexistent, null),
+                        FriendRecommendationNonexistent,
+                        null,
                         session);
                 }
 
@@ -2094,14 +2094,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     _ => throw new InvalidOperationException($"Unknown friend recommendation result: {recommendation.Status}")
                 };
                 _log($"{channel}:{remote} 好友推荐 requester={session.Character.Name} target={recommendedCharacterName} result={recommendation.Status} storedTarget={recommendation.RecommendedCharacterName ?? "none"}");
-                var recommendationResult = BuildNativeFrame(
+                return BuildFriendRecommendationResponse(
                     frame,
-                    0x2726,
-                    BuildFriendRecommendationResultPayload(resultCode, recommendation.RecommendedCharacterName),
+                    resultCode,
+                    recommendation.RecommendedCharacterName,
                     session);
-                // Retail closes CMakeCharState after the success dialog, then
-                // sends a fresh 0x2719. Its normal handler supplies 0x271A.
-                return recommendationResult;
             }
 
             case 0x2719: // post-login client/version context
@@ -3431,6 +3428,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 LeaveTownScene(session, "apartment enter");
                 LeaveVillageShopScene(session, "apartment enter");
                 LeaveApartmentScene(session, "apartment room change");
+                await _database.RecordApartmentVisitAsync(
+                    session.AccountId,
+                    session.Character.Id,
+                    session.SessionId,
+                    apartmentOwner.Id,
+                    token: token);
                 session.ApartmentOwnerCharacterId = apartmentOwner.Id;
                 ActivateNonCombatHealthRecovery(session, HealthRecoveryScene.Apartment);
                 QueueUserAutoHealing(session, session, "synchronize apartment HP/MP after C38D");
@@ -3988,6 +3991,28 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var page = payload[5];
                 var index = payload[6];
                 var quantity = payload[7];
+                var landCard = cardCode == ApartmentPopularityPolicy.LandCardCode
+                    && chapter == 4 && page == 1 && index == 0
+                    ? await _database.GetApartmentLandCardAsync(session.Character.Id, token)
+                    : null;
+                if (landCard is not null && quantity == 1)
+                {
+                    var deleted = await _database.DeleteApartmentLandCardAsync(
+                        session.AccountId,
+                        session.Character.Id,
+                        session.SessionId,
+                        token);
+                    if (deleted)
+                    {
+                        await RefreshSessionCharacterAsync(session, token);
+                        AccountStateChanged?.Invoke();
+                    }
+                    var landCardResult = new byte[4];
+                    BinaryPrimitives.WriteUInt32LittleEndian(landCardResult, deleted ? 1u : 0u);
+                    _log($"{channel}:{remote} land card removal: character={session.Character.Id} result={(deleted ? "success" : "failure")}");
+                    return BuildNativeFrame(frame, 0xC3F4, landCardResult, session);
+                }
+
                 var sale = await _database.SellCharacterCardAsync(
                     session.AccountId,
                     session.Character.Id,
@@ -13759,6 +13784,28 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return response;
     }
 
+    private static byte[] BuildFriendRecommendationResponse(
+        byte[] request,
+        uint resultCode,
+        string? recommendedCharacterName,
+        ConnectionSession session)
+    {
+        // Recommendation dialogs consume 2726 before the creation state closes.
+        // Queue the normal post-creation context immediately after it so every
+        // result path has a valid continuation into the logged-in flow.
+        var result = BuildNativeFrame(
+            request,
+            0x2726,
+            BuildFriendRecommendationResultPayload(resultCode, recommendedCharacterName),
+            session);
+        var postCreationContext = BuildNativeFrame(
+            request,
+            0x271A,
+            BuildPostLoginPayload(session),
+            session);
+        return CombineNativeFrames(result, postCreationContext);
+    }
+
     private static byte[] BuildFriendRecommendationResultPayload(
         uint resultCode,
         string? recommendedCharacterName)
@@ -14746,10 +14793,28 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         if (character is null || !IsNonCombatRecoverySceneActive(session, scene))
             return;
 
+        HealthRecoveryParameters parameters;
+        ApartmentRecoveryState? apartmentState = null;
+        if (scene == HealthRecoveryScene.Apartment)
+        {
+            apartmentState = await _database.GetApartmentRecoveryStateAsync(
+                character.Id,
+                session.ApartmentOwnerCharacterId,
+                token: token);
+            if (!apartmentState.Eligible)
+                return;
+            parameters = new HealthRecoveryParameters(apartmentState.HpPerTick, apartmentState.MpPerTick);
+        }
+        else
+        {
+            if (character.Level < HealthRecoveryPolicy.MinimumAutomaticRecoveryLevel)
+                return;
+            parameters = HealthRecoveryPolicy.GetParameters(scene);
+        }
+
         EnsureNonCombatInventoryVitals(session);
         if (session.NonCombatResourceSnapshot is { } visibleResources)
         {
-            var parameters = HealthRecoveryPolicy.GetParameters(scene);
             var recovered = visibleResources.ApplyNonCombatRecovery(parameters.HpStep, parameters.MpStep);
             if (recovered == visibleResources)
                 return;
@@ -14779,12 +14844,19 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         var profileBeforeHp = character.CurrentHp;
         var profileBeforeMp = character.CurrentMp;
-        var persisted = await _database.ApplyHealthRecoveryStepAsync(
-            session.AccountId,
-            character.Id,
-            session.SessionId,
-            scene,
-            token);
+        var persisted = scene == HealthRecoveryScene.Apartment
+            ? await _database.ApplyApartmentHealthRecoveryStepAsync(
+                session.AccountId,
+                character.Id,
+                session.SessionId,
+                session.ApartmentOwnerCharacterId,
+                token)
+            : await _database.ApplyHealthRecoveryStepAsync(
+                session.AccountId,
+                character.Id,
+                session.SessionId,
+                scene,
+                token);
         if (!persisted.Applied || session.Character is not { } current || current.Id != character.Id)
             return;
 

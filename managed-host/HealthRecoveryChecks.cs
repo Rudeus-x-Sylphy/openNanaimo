@@ -10,12 +10,12 @@ internal static class HealthRecoveryChecks
     {
         CheckPolicyAndSchedule();
         await CheckPersistenceSceneDeathAndReconnectAsync();
-        Console.WriteLine("HEALTH_RECOVERY_CHECKS_PASS five-second-tick town apartment metadata-independent scene-sync persistence cap reconnect death-return battle-suspend");
+        Console.WriteLine("HEALTH_RECOVERY_CHECKS_PASS level-four five-second-tick town apartment-popularity owner-visitor visit-persistence cap reconnect death-return battle-suspend");
     }
 
     private static void CheckPolicyAndSchedule()
     {
-        var character = new CharacterRecord { MaxHp = 5400, MaxMp = 520, CurrentHp = 900, CurrentMp = 375 };
+        var character = new CharacterRecord { Level = 4, MaxHp = 5400, MaxMp = 520, CurrentHp = 900, CurrentMp = 375 };
         Check(HealthRecoveryPolicy.TickInterval == TimeSpan.FromSeconds(5),
             "recovery interval is five seconds");
         Check(HealthRecoveryPolicy.Town == new HealthRecoveryParameters(100, 10)
@@ -23,20 +23,23 @@ internal static class HealthRecoveryChecks
             "town and apartment use 100 HP / 10 MP ticks");
 
         var ownerWithPopularHouse = new ApartmentRecoveryContext(
+            OwnerCharacterId: 10,
             IsOwner: true,
+            TodayVisitIndex: 25,
+            TotalVisitIndex: 500,
             RecommendationPoints: 999_999,
             HasStreetAddress: true,
-            ExteriorCode: 11_070_001,
-            BannerCode: 11_080_001);
-        var visitorWithoutHouse = new ApartmentRecoveryContext(
-            IsOwner: false,
-            RecommendationPoints: 0,
-            HasStreetAddress: false,
-            ExteriorCode: 0,
-            BannerCode: 0);
-        Check(HealthRecoveryPolicy.GetApartmentParameters(ownerWithPopularHouse) == new HealthRecoveryParameters(100, 10)
-              && HealthRecoveryPolicy.GetApartmentParameters(visitorWithoutHouse) == new HealthRecoveryParameters(100, 10),
-            "current policy keeps owner visitor recommendation and house metadata separate from recovery");
+            HasLandCard: true);
+        var visitorInSameRoom = ownerWithPopularHouse with { IsOwner = false };
+        var quietRoom = ownerWithPopularHouse with
+        {
+            TodayVisitIndex = 0, TotalVisitIndex = 0, RecommendationPoints = 0,
+            HasStreetAddress = false, HasLandCard = false
+        };
+        Check(HealthRecoveryPolicy.GetApartmentParameters(ownerWithPopularHouse) == new HealthRecoveryParameters(500, 50)
+              && HealthRecoveryPolicy.GetApartmentParameters(visitorInSameRoom) == new HealthRecoveryParameters(500, 50)
+              && HealthRecoveryPolicy.GetApartmentParameters(quietRoom) == new HealthRecoveryParameters(100, 10),
+            "apartment visit tiers apply the same persisted room rate to owners and visitors");
 
         var town = HealthRecoveryPolicy.Resolve(character, HealthRecoveryScene.Town, true, false);
         Check(town.Eligible && town.Changed && town.CurrentHp == 1000 && town.CurrentMp == 385,
@@ -44,6 +47,11 @@ internal static class HealthRecoveryChecks
         var battle = HealthRecoveryPolicy.Resolve(character, HealthRecoveryScene.Town, true, true);
         Check(!battle.Eligible && !battle.Changed,
             "battle epoch blocks non-combat recovery");
+        character.Level = 3;
+        var belowLevel = HealthRecoveryPolicy.Resolve(character, HealthRecoveryScene.Town, true, false);
+        Check(!belowLevel.Eligible && !belowLevel.Changed,
+            "automatic recovery starts at level four");
+        character.Level = 4;
 
         character.CurrentHp = 5360;
         character.CurrentMp = 515;
@@ -104,6 +112,10 @@ internal static class HealthRecoveryChecks
             string sessionId = (string)Get(session, "SessionId")!;
             Check(await database.BeginWorldSessionAsync(accountId, characterId, sessionId, 1, "127.0.0.1"),
                 "fixture world session opened");
+            await WriteResourcesAsync(database.DatabasePath, characterId, 5400, 520, 900, 375, level: 3);
+            Check(!(await database.ApplyHealthRecoveryStepAsync(
+                    accountId, characterId, sessionId, HealthRecoveryScene.Town)).Applied,
+                "level-three persistence rejects automatic recovery");
             await WriteResourcesAsync(database.DatabasePath, characterId, 5400, 520, 900, 375);
             Set(session, "AccountId", accountId);
             Set(session, "Username", "health-recovery-check");
@@ -195,6 +207,28 @@ internal static class HealthRecoveryChecks
             CheckResources(await database.GetCharacterAsync(accountId), 900, 375,
                 "death-return initializer persists partial HP and retained MP");
 
+            long ownerAccountId = await database.OpenLocalAccountAsync("health-recovery-owner");
+            long ownerCharacterId = await database.CreateLocalCharacterAsync(ownerAccountId, "PopularRoom", 0);
+            var visitDay = new DateTimeOffset(2026, 9, 28, 12, 0, 0, TimeSpan.Zero);
+            for (var dayOffset = 9; dayOffset >= 0; dayOffset--)
+                await database.RecordApartmentVisitAsync(accountId, characterId, sessionId, ownerCharacterId,
+                    visitDay.AddDays(-dayOffset));
+            var duplicateVisit = await database.RecordApartmentVisitAsync(
+                accountId, characterId, sessionId, ownerCharacterId, visitDay);
+            Check(duplicateVisit.Today == 1 && duplicateVisit.Total == 10,
+                "room visit index persists one entry per visitor and UTC day");
+            var apartmentState = await database.GetApartmentRecoveryStateAsync(
+                characterId, ownerCharacterId, visitDay);
+            Check(apartmentState.Eligible && !apartmentState.IsOwner
+                  && apartmentState.TodayVisitIndex == 1 && apartmentState.TotalVisitIndex == 10
+                  && apartmentState.HpPerTick == 150 && apartmentState.MpPerTick == 15,
+                "persisted room popularity resolves a verifiable visitor recovery rate");
+            await WriteResourcesAsync(database.DatabasePath, characterId, 5400, 520, 900, 375);
+            var popularTick = await database.ApplyApartmentHealthRecoveryStepAsync(
+                accountId, characterId, sessionId, ownerCharacterId);
+            Check(popularTick.Applied && popularTick.CurrentHp == 1050 && popularTick.CurrentMp == 390,
+                "apartment persistence applies the room owner's popularity tier");
+
             await WriteResourcesAsync(database.DatabasePath, characterId, 5400, 520, 1000, 385);
             var reconnectState = new CharacterRuntimeState(1000, 385, 1, 0, 400, 96, 1);
             Check(await database.EndWorldSessionAsync(accountId, characterId, sessionId, reconnectState),
@@ -231,7 +265,7 @@ internal static class HealthRecoveryChecks
     }
 
     private static async Task WriteResourcesAsync(
-        string databasePath, long characterId, int maxHp, int maxMp, int currentHp, int currentMp)
+        string databasePath, long characterId, int maxHp, int maxMp, int currentHp, int currentMp, int level = 4)
     {
         await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
@@ -239,7 +273,8 @@ internal static class HealthRecoveryChecks
         }.ToString());
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE Characters SET MaxHp=$maxHp,MaxMp=$maxMp,CurrentHp=$hp,CurrentMp=$mp WHERE Id=$id";
+        command.CommandText = "UPDATE Characters SET Level=$level,MaxHp=$maxHp,MaxMp=$maxMp,CurrentHp=$hp,CurrentMp=$mp WHERE Id=$id";
+        command.Parameters.AddWithValue("$level", level);
         command.Parameters.AddWithValue("$maxHp", maxHp);
         command.Parameters.AddWithValue("$maxMp", maxMp);
         command.Parameters.AddWithValue("$hp", currentHp);

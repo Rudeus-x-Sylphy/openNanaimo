@@ -24,7 +24,18 @@ public readonly record struct NativeDungeonSettlementRecord(
     byte LogicalDifficulty,
     byte Rating,
     int Score,
-    int? StageRecordScore = null);
+    int? StageRecordScore = null,
+    uint? CharacterExperienceAward = null);
+
+internal readonly record struct NativeDungeonCharacterProgression(
+    int Level,
+    long Experience,
+    int GainedLevels,
+    int MaxHp,
+    int MaxMp,
+    int CurrentHp,
+    int CurrentMp,
+    uint AppliedExperience);
 
 public sealed partial class DatabaseService
 {
@@ -699,6 +710,41 @@ public sealed partial class DatabaseService
         }
     }
 
+    internal static NativeDungeonCharacterProgression ResolveNativeDungeonCharacterProgression(
+        NativeDungeonState before,
+        NativeDungeonState after,
+        NativeDungeonSettlementRecord? settlement,
+        int storedLevel,
+        long storedExperience,
+        int vitality,
+        int intelligence,
+        int storedMaxHp,
+        int storedMaxMp)
+    {
+        // Character progression is settlement-owned. Intermediate checkpoints are
+        // normalized back to the managed ledger, while a completed result applies
+        // exactly the award carried by that result. Legacy settlement journals fall
+        // back to their positive snapshot delta; ordinary checkpoints never do.
+        var workerExperienceDelta = after.Get(12) > before.Get(12)
+            ? after.Get(12) - before.Get(12)
+            : 0u;
+        var experienceDelta = settlement is null
+            ? 0u
+            : settlement.Value.CharacterExperienceAward ?? workerExperienceDelta;
+        var experience = storedExperience >= uint.MaxValue
+            ? uint.MaxValue
+            : Math.Min((long)uint.MaxValue, Math.Max(0L, storedExperience) + experienceDelta);
+        var level = Math.Max(Math.Clamp(storedLevel, 1, CharacterProgression.MaximumLevel),
+            CharacterProgression.CalculateLevel(experience));
+        var gainedLevels = Math.Max(0, level - storedLevel);
+        var maxHp = Math.Max(storedMaxHp, CharacterProgression.CalculateMaxHp(level, vitality));
+        var maxMp = Math.Max(storedMaxMp, CharacterProgression.CalculateMaxMp(level, intelligence));
+        var currentHp = gainedLevels > 0 ? maxHp : Math.Min(checked((int)after.Get(20)), maxHp);
+        var currentMp = gainedLevels > 0 ? maxMp : Math.Min(checked((int)after.Get(28)), maxMp);
+        return new NativeDungeonCharacterProgression(
+            level, experience, gainedLevels, maxHp, maxMp, currentHp, currentMp, experienceDelta);
+    }
+
     public async Task<NativeDungeonApplyResult> ApplyNativeDungeonDeltaAsync(long accountId, long characterId, string sessionId,
         NativeDungeonState before, NativeDungeonState after, CancellationToken token, string? commitId = null,
         bool recovering = false, NativeDungeonSettlementRecord? settlement = null)
@@ -754,22 +800,16 @@ public sealed partial class DatabaseService
             storedMaxMp = reader.GetInt32(5);
         }
 
-        // Only the settlement snapshot can advance character experience. Commit its
-        // positive delta onto the managed cumulative total and derive the level from
-        // the shared threshold table; stale worker snapshots cannot regress either.
-        var experienceDelta = after.Get(12) > before.Get(12)
-            ? after.Get(12) - before.Get(12)
-            : 0u;
-        var experience = storedExperience >= uint.MaxValue
-            ? uint.MaxValue
-            : Math.Min((long)uint.MaxValue, Math.Max(0L, storedExperience) + experienceDelta);
-        var level = Math.Max(Math.Clamp(storedLevel, 1, CharacterProgression.MaximumLevel),
-            CharacterProgression.CalculateLevel(experience));
-        var gainedLevels = Math.Max(0, level - storedLevel);
-        var maxHp = Math.Max(storedMaxHp, CharacterProgression.CalculateMaxHp(level, vitality));
-        var maxMp = Math.Max(storedMaxMp, CharacterProgression.CalculateMaxMp(level, intelligence));
-        var currentHp = gainedLevels > 0 ? maxHp : Math.Min(checked((int)after.Get(20)), maxHp);
-        var currentMp = gainedLevels > 0 ? maxMp : Math.Min(checked((int)after.Get(28)), maxMp);
+        var progressionState = ResolveNativeDungeonCharacterProgression(
+            before, after, settlement, storedLevel, storedExperience,
+            vitality, intelligence, storedMaxHp, storedMaxMp);
+        var experience = progressionState.Experience;
+        var level = progressionState.Level;
+        var gainedLevels = progressionState.GainedLevels;
+        var maxHp = progressionState.MaxHp;
+        var maxMp = progressionState.MaxMp;
+        var currentHp = progressionState.CurrentHp;
+        var currentMp = progressionState.CurrentMp;
         BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(8, 4), checked((uint)level));
         BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(12, 4), checked((uint)experience));
         BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(16, 4), checked((uint)maxHp));
@@ -795,7 +835,7 @@ public sealed partial class DatabaseService
 
         var petApply = default(NativeDungeonApplyResult);
         var petItemCode = after.Get(68);
-        var petClearSettled = settlement is { Rating: >= DungeonRewardPolicy.ClearRatingC }
+        var petClearSettled = settlement is not null
             || NativeDungeonClearSettled(before, after);
         if (petClearSettled
             && petItemCode != 0
@@ -1171,11 +1211,7 @@ public sealed partial class DatabaseService
             if ((current[index] & ~previous[index]) != 0)
                 return true;
 
-        // Re-clears do not add another clear-mask bit. The native clear award is
-        // the same 100 EXP base used by the managed settlement policy; failures
-        // are below this boundary (currently zero on the playable route).
-        return after.Get(12) >= before.Get(12)
-            && after.Get(12) - before.Get(12) >= DungeonRewardPolicy.BaseCharacterExperience;
+        return false;
     }
 
     private static byte[] NativeClearMasks(NativeDungeonState state)
@@ -1228,6 +1264,9 @@ public sealed partial class DatabaseService
             element.GetProperty(nameof(NativeDungeonSettlementRecord.Score)).GetInt32(),
             element.TryGetProperty(nameof(NativeDungeonSettlementRecord.StageRecordScore), out var stageScore)
                 && stageScore.ValueKind != System.Text.Json.JsonValueKind.Null
-                ? stageScore.GetInt32() : null);
+                ? stageScore.GetInt32() : null,
+            element.TryGetProperty(nameof(NativeDungeonSettlementRecord.CharacterExperienceAward), out var experienceAward)
+                && experienceAward.ValueKind != System.Text.Json.JsonValueKind.Null
+                ? experienceAward.GetUInt32() : null);
     }
 }

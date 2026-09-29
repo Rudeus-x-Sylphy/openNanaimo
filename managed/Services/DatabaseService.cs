@@ -2224,6 +2224,7 @@ public sealed partial class DatabaseService
         if (characterId <= 0)
             return [];
 
+        await SynchronizeApartmentLandCardAsync(characterId, cancellationToken);
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT CardCode, Quantity FROM CharacterCards WHERE CharacterId = $characterId ORDER BY CardCode";
@@ -8610,6 +8611,7 @@ public sealed partial class DatabaseService
               AND AccountId = $accountId
               AND IsOnline = 1
               AND ActiveSessionId = $sessionId
+              AND Level >= $minimumLevel
               AND (CurrentHp < MaxHp OR CurrentMp < MaxMp)
             RETURNING CurrentHp, CurrentMp
             """;
@@ -8619,6 +8621,7 @@ public sealed partial class DatabaseService
         command.Parameters.AddWithValue("$characterId", characterId);
         command.Parameters.AddWithValue("$accountId", accountId);
         command.Parameters.AddWithValue("$sessionId", sessionId);
+        command.Parameters.AddWithValue("$minimumLevel", HealthRecoveryPolicy.MinimumAutomaticRecoveryLevel);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         return await reader.ReadAsync(cancellationToken)
             ? new HealthRecoveryPersistenceResult(true, reader.GetInt32(0), reader.GetInt32(1))

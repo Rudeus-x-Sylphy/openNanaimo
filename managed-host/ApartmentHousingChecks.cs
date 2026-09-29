@@ -54,7 +54,7 @@ internal static class ApartmentHousingChecks
                 await (Task)initialize.Invoke(null, [connection, CancellationToken.None])!;
                 await (Task)initialize.Invoke(null, [connection, CancellationToken.None])!;
             }
-            for (var index = 0; index < 7; index++)
+            for (var index = 0; index < 8; index++)
             {
                 if (index == 2) await Sql("UPDATE sqlite_sequence SET seq=70000 WHERE name='Characters'");
                 var accountId = await _db.OpenLocalAccountAsync($"housing-check-{index}");
@@ -159,6 +159,31 @@ internal static class ApartmentHousingChecks
             Check((await reopened.GetApartmentHousesAsync(0, 8)).Count == 0
                 && (await reopened.GetApartmentHousesAsync(1, 7)).Count == 0,
                 "page and town filters do not materialize one's house on other maps");
+            var firstLandCard = await reopened.GetApartmentLandCardAsync(_characters[0].Id);
+            var firstCards = await reopened.GetCharacterCardsAsync(_characters[0].Id);
+            Check(firstLandCard is { CardCode: ApartmentPopularityPolicy.LandCardCode, Town: 0, Page: 7, Slot: 0 }
+                  && firstCards.Any(card => card.CardCode == ApartmentPopularityPolicy.LandCardCode
+                                            && card.Category == 4 && card.Quantity == 1),
+                "house purchase persists one address-bound land card and exposes it in the card book");
+            await Points(7, 200);
+            Check(await Purchase(7, 0, 7, 4) == 10
+                  && await _db.GetApartmentLandCardAsync(_characters[7].Id) is { Slot: 4 },
+                "a second buyer receives an independently bound land card");
+            Check(await _db.DeleteApartmentLandCardAsync(
+                      _characters[7].AccountId, _characters[7].Id, _sessions[7])
+                  && await _db.GetOwnedApartmentHouseAsync(_characters[7].Id) is null
+                  && await _db.GetApartmentLandCardAsync(_characters[7].Id) is null
+                  && !(await _db.GetCharacterCardsAsync(_characters[7].Id))
+                      .Any(card => card.CardCode == ApartmentPopularityPolicy.LandCardCode),
+                "deleting a land card atomically returns the character to the free apartment");
+            await Points(7, 200);
+            Check(await Purchase(7, 0, 7, 4) == 10, "land-card expiration fixture repurchases the released address");
+            await Sql($"UPDATE CharacterApartmentHouses SET ExpiresAt='{DateTime.UtcNow.AddSeconds(-1):O}' WHERE CharacterId={_characters[7].Id}");
+            Check(!(await _db.GetCharacterCardsAsync(_characters[7].Id))
+                      .Any(card => card.CardCode == ApartmentPopularityPolicy.LandCardCode)
+                  && await _db.GetApartmentLandCardAsync(_characters[7].Id) is null
+                  && await _db.GetOwnedApartmentHouseAsync(_characters[7].Id) is null,
+                "lease expiration removes the address-bound land card and preserves the free apartment");
             await Points(6, 2);
             Check(await Purchase(6, 0, 7, 5) != 10 && await Balance(6) == 2,
                 "invalid slot fails without point debit");

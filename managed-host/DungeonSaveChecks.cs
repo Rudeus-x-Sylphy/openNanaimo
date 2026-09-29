@@ -204,7 +204,10 @@ internal static class DungeonSaveChecks
             var thresholdAfter = new NativeDungeonState(thresholdAfterBytes);
             await db.ApplyNativeDungeonDeltaAsync(
                 account, character.Id, session, thresholdBefore, thresholdAfter, token,
-                "character-threshold-crossing");
+                "character-threshold-crossing",
+                settlement: new NativeDungeonSettlementRecord(
+                    0, 1, 0, 0, 0, DungeonRewardPolicy.ClearRatingS, 0,
+                    CharacterExperienceAward: 20));
             var thresholdPersisted = (await db.GetCharacterAsync(account, token))!;
             Check(thresholdPersisted.Experience == 110 && thresholdPersisted.Level == 2
                 && thresholdPersisted.AttributePoints == CharacterProgression.AttributePointsPerLevel,
@@ -243,7 +246,10 @@ internal static class DungeonSaveChecks
             Put(firstClearAfterBytes, 12, checked(firstClearBefore.Get(12) + 100u));
             await db.ApplyNativeDungeonDeltaAsync(
                 account, character.Id, session, firstClearBefore,
-                new NativeDungeonState(firstClearAfterBytes), token, "pet-first-clear");
+                new NativeDungeonState(firstClearAfterBytes), token, "pet-first-clear",
+                settlement: new NativeDungeonSettlementRecord(
+                    0, 1, 0, 0, 0, DungeonRewardPolicy.ClearRatingS, 0,
+                    CharacterExperienceAward: 100));
             var firstClearPet = PetProgression.GetState(
                 (await db.GetCharacterAsync(account, token))!, petCatalog.ItemCode);
             Check(firstClearPet.Experience == expectedFirstStageReward,
@@ -268,7 +274,10 @@ internal static class DungeonSaveChecks
                 petAfter = new NativeDungeonState(petAfterBytes);
                 petCommit = $"pet-progression-check-{award}";
                 petApply = await db.ApplyNativeDungeonDeltaAsync(
-                    account, character.Id, session, petBefore, petAfter, token, petCommit);
+                    account, character.Id, session, petBefore, petAfter, token, petCommit,
+                    settlement: new NativeDungeonSettlementRecord(
+                        0, 1, 0, 0, 0, DungeonRewardPolicy.ClearRatingS, 0,
+                        CharacterExperienceAward: 100));
                 progressedCharacter = (await db.GetCharacterAsync(account, token))!;
                 progressedPet = PetProgression.GetState(progressedCharacter, petCatalog.ItemCode);
                 if (progressedPet.CurrentStage == 2 && progressedPet.Level > 0) break;
@@ -278,7 +287,10 @@ internal static class DungeonSaveChecks
                 && progressedPet.Level > 0,
                 "native settlement advances and persists pet stage/level instead of remaining 0/0");
             await db.ApplyNativeDungeonDeltaAsync(
-                account, character.Id, session, petBefore, petAfter, token, petCommit);
+                account, character.Id, session, petBefore, petAfter, token, petCommit,
+                settlement: new NativeDungeonSettlementRecord(
+                    0, 1, 0, 0, 0, DungeonRewardPolicy.ClearRatingS, 0,
+                    CharacterExperienceAward: 100));
             var replayedPet = PetProgression.GetState(
                 (await db.GetCharacterAsync(account, token))!, petCatalog.ItemCode);
             Check(replayedPet == progressedPet,

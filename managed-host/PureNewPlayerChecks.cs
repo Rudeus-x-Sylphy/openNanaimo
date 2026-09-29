@@ -131,30 +131,34 @@ internal static class PureNewPlayerChecks
             Check(Encoding.GetEncoding(936).GetString(login.AsSpan(8, 16)).TrimEnd('\0') == chosenName,
                 "post-creation context carries the player-selected name, not the account identity");
 
-            var emptyRecommendation = CheckPayload(
-                await Send(service, session, 0x2725, new byte[16]), 0x2726, 20);
+            var emptyRecommendation = CheckRecommendationResponse(
+                await Send(service, session, 0x2725, new byte[16]), login);
             Check(BinaryPrimitives.ReadUInt32LittleEndian(emptyRecommendation) == 10
                 && emptyRecommendation.AsSpan(4).ToArray().All(value => value == 0),
                 "empty recommender name receives the client-defined nonexistent result without closing the connection");
-            var missingRecommendation = CheckPayload(
-                await Send(service, session, 0x2725, Recommendation("MissingReferrer")), 0x2726, 20);
+            var missingRecommendation = CheckRecommendationResponse(
+                await Send(service, session, 0x2725, Recommendation("MissingReferrer")), login);
             Check(BinaryPrimitives.ReadUInt32LittleEndian(missingRecommendation) == 10,
                 "unknown recommender name receives the client-defined nonexistent result");
+            var selfRecommendation = CheckRecommendationResponse(
+                await Send(service, session, 0x2725, Recommendation(chosenName)), login);
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(selfRecommendation) == 20,
+                "the created character cannot recommend itself and still receives the continuation context");
 
             const string referrerName = "ReferrerOne";
             long referrerAccount = await database.OpenLocalAccountAsync("referrer-" + Guid.NewGuid().ToString("N"));
             long referrerCharacterId = await database.CreateLocalCharacterAsync(referrerAccount, referrerName, 0);
             Check(await database.GetApartmentRecommendationPointsAsync(referrerCharacterId) == 0,
                 "new recommender profile starts without referral points");
-            var acceptedRecommendation = CheckPayload(
-                await Send(service, session, 0x2725, Recommendation(referrerName)), 0x2726, 20);
+            var acceptedRecommendation = CheckRecommendationResponse(
+                await Send(service, session, 0x2725, Recommendation(referrerName)), login);
             Check(BinaryPrimitives.ReadUInt32LittleEndian(acceptedRecommendation) == 30
                 && Encoding.GetEncoding(936).GetString(acceptedRecommendation.AsSpan(4, 16)).TrimEnd('\0') == referrerName,
                 "existing recommender receives the exact result-30/name response required by the client");
             Check(await database.GetApartmentRecommendationPointsAsync(referrerCharacterId) == 200,
                 "first successful character recommendation grants the referrer profile 200 recommendation points");
-            var repeatedRecommendation = CheckPayload(
-                await Send(service, session, 0x2725, Recommendation(referrerName)), 0x2726, 20);
+            var repeatedRecommendation = CheckRecommendationResponse(
+                await Send(service, session, 0x2725, Recommendation(referrerName)), login);
             Check(BinaryPrimitives.ReadUInt32LittleEndian(repeatedRecommendation) == 30
                 && await database.GetApartmentRecommendationPointsAsync(referrerCharacterId) == 200,
                 "recommendation replay reuses the accepted response without duplicating the 200-point grant");
@@ -255,6 +259,24 @@ internal static class PureNewPlayerChecks
         var payload = new byte[16];
         Encoding.GetEncoding(936).GetBytes(name).CopyTo(payload, 0);
         return payload;
+    }
+
+    private static byte[] CheckRecommendationResponse(byte[]? frames, byte[] expectedPostLoginPayload)
+    {
+        const int recommendationFrameLength = 28;
+        const int postLoginFrameLength = 68;
+        Check(frames is { Length: recommendationFrameLength + postLoginFrameLength },
+            "recommendation returns exactly one 2726 result followed by one 271A continuation");
+        var response = frames!;
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(4, 2)) == recommendationFrameLength
+            && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6, 2)) == 0x2726,
+            "recommendation result is the first complete frame");
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(recommendationFrameLength + 4, 2)) == postLoginFrameLength
+            && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(recommendationFrameLength + 6, 2)) == 0x271A
+            && response.AsSpan(recommendationFrameLength + 8, expectedPostLoginPayload.Length)
+                .SequenceEqual(expectedPostLoginPayload),
+            "post-creation login context follows every recommendation result");
+        return response[8..recommendationFrameLength];
     }
 
     private static byte[] CheckPayload(byte[]? frame, ushort opcode, int? length = null)

@@ -124,11 +124,13 @@ public sealed partial class NetworkAdapterService
             || session.Character is null || session.NativeCheckpoint is null
             || !TryReadNativeDungeonStageRecordScore(response, out var teamScore)
             || !TryReadNativeDungeonSettlementFrame(response,
-                checked((ushort)session.NativeCheckpoint.Get(4)), out var rating, out var personalScore))
+                checked((ushort)session.NativeCheckpoint.Get(4)), out var rating, out var personalScore,
+                out var experienceAward))
             return;
         var observed = new NativeDungeonSettlementRecord(
             session.NativeDungeonHdIndex, session.NativeDungeonEpisode, session.NativeDungeonDungeon,
-            session.NativeDungeonStage, session.NativeDungeonLogicalDifficulty, rating, personalScore, teamScore);
+            session.NativeDungeonStage, session.NativeDungeonLogicalDifficulty, rating, personalScore, teamScore,
+            experienceAward);
         var memo = _nativeDungeonRankings.GetOrCreateValue(session);
         lock (memo)
         {

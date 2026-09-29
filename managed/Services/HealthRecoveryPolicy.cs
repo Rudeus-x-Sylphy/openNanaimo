@@ -10,22 +10,14 @@ internal enum HealthRecoveryScene
 
 internal readonly record struct HealthRecoveryParameters(int HpStep, int MpStep);
 
-/// <summary>
-/// Apartment metadata is deliberately separated from the recovery quantum.
-/// The exact 2026-09-27 client (SHA-256 EA2D71F570B9CB9E0BA8C5E9EAAC37656A9FBCB0131893D87AEEDB7C7C413CF3) stores room
-/// recommendation data in the C38E handler at 0x00531BD0, while the D8FF
-/// consumer at 0x005408D0 reads only frame +0x10/+0x12/+0x14/+0x16 for
-/// maximum/current HP/MP. No client call chain connects ownership,
-/// recommendation points, lease/address, exterior, or banner fields to HP/MP.
-/// Keep these inputs explicit so a future original-server formula can be
-/// introduced without inferring one from unrelated apartment fields.
-/// </summary>
 internal readonly record struct ApartmentRecoveryContext(
+    long OwnerCharacterId,
     bool IsOwner,
+    long TodayVisitIndex,
+    long TotalVisitIndex,
     long RecommendationPoints,
     bool HasStreetAddress,
-    uint ExteriorCode,
-    uint BannerCode);
+    bool HasLandCard);
 
 internal readonly record struct HealthRecoveryResolution(
     bool Eligible,
@@ -43,10 +35,8 @@ internal readonly record struct HealthRecoveryPersistenceResult(
 internal readonly record struct DungeonDeathReturnResources(int CurrentHp, int CurrentMp);
 
 /// <summary>
-/// Per-world-session schedule for the retail non-combat recovery stream.
-/// Scene changes between town pages and apartments preserve the next due tick;
-/// entering combat suspends the schedule and a later town return starts a new
-/// five-second interval.
+/// Per-world-session schedule for non-combat recovery. Scene changes between town pages
+/// and apartments preserve the next due tick; combat suspends the schedule.
 /// </summary>
 internal sealed class HealthRecoverySchedule
 {
@@ -99,7 +89,6 @@ internal sealed class HealthRecoverySchedule
                 return false;
             }
             scene = active;
-            // Never replay a burst after a blocked scene or a stalled process.
             _nextTickUtc = nowUtc + HealthRecoveryPolicy.TickInterval;
             return true;
         }
@@ -108,9 +97,10 @@ internal sealed class HealthRecoverySchedule
 
 internal static class HealthRecoveryPolicy
 {
+    internal const int MinimumAutomaticRecoveryLevel = 4;
     internal static TimeSpan TickInterval { get; } = TimeSpan.FromSeconds(5);
     internal static HealthRecoveryParameters Town { get; } = new(100, 10);
-    internal static HealthRecoveryParameters Apartment { get; } = new(100, 10);
+    internal static HealthRecoveryParameters Apartment { get; } = ApartmentPopularityPolicy.GetRecoveryParameters(0);
 
     internal static HealthRecoveryParameters GetParameters(
         HealthRecoveryScene scene,
@@ -118,30 +108,26 @@ internal static class HealthRecoveryPolicy
         => scene switch
         {
             HealthRecoveryScene.Town => Town,
-            HealthRecoveryScene.Apartment => GetApartmentParameters(apartmentContext),
+            HealthRecoveryScene.Apartment => ApartmentPopularityPolicy.GetRecoveryParameters(
+                Math.Max(0, apartmentContext.TotalVisitIndex)),
             _ => throw new ArgumentOutOfRangeException(nameof(scene))
         };
 
     internal static HealthRecoveryParameters GetApartmentParameters(ApartmentRecoveryContext context)
-    {
-        // Static client closure proves these fields are display/room-state data,
-        // not recovery operands. The observed D8FF stream remains server-owned:
-        // one 100 HP / 10 MP step at the established five-second cadence.
-        _ = context;
-        return Apartment;
-    }
+        => GetParameters(HealthRecoveryScene.Apartment, context);
 
     internal static HealthRecoveryResolution Resolve(
         CharacterRecord character,
         HealthRecoveryScene scene,
         bool onlineTracked,
-        bool battleEpochActive)
+        bool battleEpochActive,
+        ApartmentRecoveryContext apartmentContext = default)
     {
         ArgumentNullException.ThrowIfNull(character);
-        if (!onlineTracked || battleEpochActive)
+        if (!onlineTracked || battleEpochActive || character.Level < MinimumAutomaticRecoveryLevel)
             return new HealthRecoveryResolution(false, false, character.CurrentHp, character.CurrentMp, 0, 0);
 
-        var parameters = GetParameters(scene);
+        var parameters = GetParameters(scene, apartmentContext);
         var currentHp = Math.Clamp(character.CurrentHp, 0, Math.Max(0, character.MaxHp));
         var currentMp = Math.Clamp(character.CurrentMp, 0, Math.Max(0, character.MaxMp));
         var nextHp = Math.Min(Math.Max(0, character.MaxHp), currentHp + parameters.HpStep);
@@ -160,10 +146,6 @@ internal static class HealthRecoveryPolicy
         int battleCurrentMp)
     {
         ArgumentNullException.ThrowIfNull(character);
-        // The current retail tuple returns a defeated actor with one sixth of
-        // maximum HP while retaining the battle's remaining MP.  D8FF then
-        // advances the same 100/10 non-combat stream used by ordinary town and
-        // apartment scenes.
         var maximumHp = Math.Max(1, character.MaxHp);
         var maximumMp = Math.Max(0, character.MaxMp);
         return new DungeonDeathReturnResources(

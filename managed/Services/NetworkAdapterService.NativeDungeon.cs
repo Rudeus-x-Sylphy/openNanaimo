@@ -78,7 +78,6 @@ public sealed partial class NetworkAdapterService
         }
         return false;
     }
-
     private async Task<bool> RouteNativeDungeonAsync(byte[] frame, ushort opcode, string channel,
         ConnectionSession session, CancellationToken token)
     {
@@ -563,9 +562,19 @@ public sealed partial class NetworkAdapterService
         ushort memberUid,
         out byte rating,
         out int score)
+        => TryReadNativeDungeonSettlementFrame(
+            frame, memberUid, out rating, out score, out _);
+
+    internal static bool TryReadNativeDungeonSettlementFrame(
+        ReadOnlySpan<byte> frame,
+        ushort memberUid,
+        out byte rating,
+        out int score,
+        out uint characterExperienceAward)
     {
         rating = 0;
         score = 0;
+        characterExperienceAward = 0;
         if (memberUid == 0
             || frame.Length < 0x0C + 0x34
             || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) != frame.Length
@@ -586,6 +595,8 @@ public sealed partial class NetworkAdapterService
                 return false;
             rating = recordRating;
             score = checked((int)recordScore);
+            characterExperienceAward = BinaryPrimitives.ReadUInt32LittleEndian(
+                frame.Slice(recordOffset + 0x0C, 4));
             return true;
         }
         return false;
@@ -883,6 +894,7 @@ public sealed partial class NetworkAdapterService
         // Snapshot pending ranking before a CF8B acknowledgement can advance
         // the selection tuple; the result belongs to the completed stage.
         var pendingRanking = GetPendingNativeDungeonRanking(session);
+        var progressionBefore = session.Character;
         var exchange = await session.NativeDungeon.ExchangeCapturedAsync(frame, null, token);
         var requestOpcode = frame is { Length: >= 8 }
             ? BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2))
@@ -954,7 +966,8 @@ public sealed partial class NetworkAdapterService
             var memberUid = checked((ushort)Math.Clamp(next.Get(4), 1u, ushort.MaxValue));
             foreach (var response in exchange.Frames)
             {
-                if (!TryReadNativeDungeonSettlementFrame(response, memberUid, out var rating, out var score))
+                if (!TryReadNativeDungeonSettlementFrame(
+                        response, memberUid, out var rating, out var score, out var experienceAward))
                     continue;
                 settlement = new NativeDungeonSettlementRecord(
                     session.NativeDungeonHdIndex,
@@ -965,7 +978,8 @@ public sealed partial class NetworkAdapterService
                     rating,
                     score,
                     TryReadNativeDungeonStageRecordScore(response, out var stageRecordScore)
-                        ? stageRecordScore : null);
+                        ? stageRecordScore : null,
+                    experienceAward);
                 break;
             }
         }
@@ -1001,6 +1015,8 @@ public sealed partial class NetworkAdapterService
         }
         foreach (var response in exchange.Frames)
         {
+            PatchNativeCharacterProgressionFrame(
+                response, next.Get(4), progressionBefore, session.Character);
             PatchNativePetSettlementFrame(response, next.Get(4), applied);
             PatchNativeDungeonTitleFrame(response, next.Get(4), CharacterTitleState.GetGrade(session.Character));
         }
@@ -1303,6 +1319,52 @@ public sealed partial class NetworkAdapterService
                     checked((ushort)Math.Clamp(character.CurrentMp, 0, ushort.MaxValue)),
                     BattleResourceSnapshot.NormalizeAttackMode(mode))
                 : null);
+
+    internal static bool PatchNativeCharacterProgressionFrame(
+        byte[] frame,
+        uint characterId,
+        CharacterRecord before,
+        CharacterRecord after)
+    {
+        if (frame.Length < 12
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4, 2)) != frame.Length
+            || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2)) != 0xCF88)
+            return false;
+
+        var count = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(8, 2));
+        var targetUid = checked((ushort)Math.Clamp(characterId, 1u, ushort.MaxValue));
+        for (var index = 0; index < count; index++)
+        {
+            var recordOffset = 0x0C + index * 0x34;
+            if (recordOffset + 0x34 > frame.Length
+                || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(recordOffset, 2)) != targetUid)
+                continue;
+
+            var level = Math.Clamp(after.Level, 1, CharacterProgression.MaximumLevel);
+            var currentExperience = checked((uint)Math.Clamp(after.Experience, 0L, uint.MaxValue));
+            var lowerExperience = checked((uint)CharacterProgression.ExperienceRequiredForLevel(level));
+            var nextExperience = level < CharacterProgression.MaximumLevel
+                ? checked((uint)CharacterProgression.ExperienceRequiredForLevel(level + 1))
+                : checked(lowerExperience + (uint)level * 100u);
+            var addedExperience = after.Experience > before.Experience
+                ? checked((uint)Math.Min(uint.MaxValue, after.Experience - before.Experience))
+                : 0u;
+
+            frame[recordOffset + 0x04] = after.Level > before.Level ? (byte)1 : (byte)0;
+            frame[recordOffset + 0x0A] = checked((byte)level);
+            BinaryPrimitives.WriteUInt32LittleEndian(
+                frame.AsSpan(recordOffset + 0x0C, 4), addedExperience);
+            BinaryPrimitives.WriteUInt32LittleEndian(
+                frame.AsSpan(recordOffset + 0x10, 4), currentExperience);
+            BinaryPrimitives.WriteUInt32LittleEndian(
+                frame.AsSpan(recordOffset + 0x14, 4), lowerExperience);
+            BinaryPrimitives.WriteUInt32LittleEndian(
+                frame.AsSpan(recordOffset + 0x18, 4), nextExperience);
+            RewriteNativeChecksum(frame);
+            return true;
+        }
+        return false;
+    }
 
     internal static bool PatchNativePetSettlementFrame(
         byte[] frame,
