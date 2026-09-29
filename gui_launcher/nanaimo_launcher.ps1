@@ -543,7 +543,7 @@ function Update-LaunchPreview([switch]$ComputeHashes){
         "Profile INI : $ProfileIni","Profile JSON: $ProfileJson",'',
         '=== Binary validation ===',"Release identity: $ReleaseIdentity","Canonical launcher: $CanonicalLauncher",$adapterState,$bridgeState,
         (Client-State-Line),
-        'Client compatibility is prepared from the local user-owned tree at launch: the furniture Index redirect, ready-room revival HUD refresh, manual ordinary-stage settlement confirmation, consecutive-stage power-form restoration, P03 roads, SSTG alias, and PON fallback. Emotion-page safety uses the adapter''s bounded C355 couple/progression fields; no emotion EXE guard is derived. Fixed C393 is protocol hygiene, not the click-time Index repair.',
+        'Client compatibility is prepared from the local user-owned tree at launch: the furniture Index redirect, native revival/P-state migration, manual settlement with settlement-only EXP display preserving live score, P03 roads and minimap boundary, retirement of recognized generated chapter-seven artwork, SSTG alias, and PON fallback. Emotion-page safety uses the adapter''s bounded C355 couple/progression fields; the dedicated Index redirect provides click-time furniture access while C393 provides the bounded scene snapshot.',
         '=== Pre-launch actions ===',
         ('Processes to stop: '+($running-join ', ')),
         'Adapter button: save profile; start/stop the complete local adapter; never launch the game.',

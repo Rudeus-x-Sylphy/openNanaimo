@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 261,
+  "count": 265,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -43,13 +43,18 @@
     },
     {
       "path": "managed-host/ApartmentGameplayChecks.cs",
-      "size": 28003,
-      "sha256": "0B0FF3FDFBFF7926512AFE66DF2B9DCB1FC946A4F42B1EAA3C778A942D4171AE"
+      "size": 36061,
+      "sha256": "B728336C93FD28D2F5842B72B5407D61886509BE55F9B3A7FACF21CE6023EB11"
+    },
+    {
+      "path": "managed-host/ApartmentGuideLifecycleChecks.cs",
+      "size": 11219,
+      "sha256": "424CAA862D9874F88D7A910876EADAC8E0CCA71019D22FDAB5D4AE2C724C3850"
     },
     {
       "path": "managed-host/ApartmentHousingChecks.cs",
-      "size": 38396,
-      "sha256": "CCC4AF35DE0D09623F57E9DA373CA2A571E857335B8779DC8CD614595FA91159"
+      "size": 38441,
+      "sha256": "CC645ACF997E51BA9D71E7DDB6E92A08D95D8793E9A69581AB0C18175106418F"
     },
     {
       "path": "managed-host/ApartmentInventoryChecks.cs",
@@ -203,8 +208,8 @@
     },
     {
       "path": "managed-host/NativeDungeonExperienceChecks.cs",
-      "size": 17181,
-      "sha256": "724C1E2C14DD656A25FE1FAE8C4949C2C2A3A18D8961E053FBFACD36AB1752AB"
+      "size": 19424,
+      "sha256": "F4682E039999503517DD6F46F40A9AA8F58F41FEBA435E5563410469FA0C8138"
     },
     {
       "path": "managed-host/NativeDungeonRevivalChecks.cs",
@@ -233,8 +238,8 @@
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
-      "size": 21339,
-      "sha256": "C904473F77069DB6330B020C712A7CFE327E6EBF6EBD4013768C17647E512DA0"
+      "size": 25904,
+      "sha256": "614C0B6C72BC8A7C80B6E5EA3BF2548310D3C4CA03D54D6EAEA52C7D7268E7C5"
     },
     {
       "path": "managed-host/QuestSystemChecks.cs",
@@ -262,14 +267,19 @@
       "sha256": "651014EA07F967CB640F6618B5DE79A73EA05041F5B19782FF8F1B2D8921A450"
     },
     {
+      "path": "managed-host/TownPetSceneLifecycleChecks.cs",
+      "size": 12415,
+      "sha256": "58169AE1A3E139EA51162B9CA45F9D467DE85DDD87046EDAD97E3135E1DBFFC3"
+    },
+    {
       "path": "managed-host/TutorialAppearanceChecks.cs",
       "size": 13141,
       "sha256": "A2E44DF6D45F25ED15A38640253AEE605590859176FBEDA13D5CA389DE1EFFAE"
     },
     {
       "path": "managed-host/VillagePositionChecks.cs",
-      "size": 29799,
-      "sha256": "381EE49E50A386A64E0B4C40AFF6504D92EFEF3416F34F2F21E31649686DCD46"
+      "size": 29857,
+      "sha256": "32D4E42CE2EB976916428B64B97D3F3996BEA946CE4254E27CDC467B4B94482A"
     },
     {
       "path": "managed/Compatibility/Net6.cs",
@@ -478,8 +488,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.ApartmentHousing.cs",
-      "size": 34181,
-      "sha256": "D9DC1EDCE081945D4A6948A6DA12AA949D9B9553BEA4EB19D05CC4DA89D8B697"
+      "size": 35083,
+      "sha256": "6E2B554EE84C9D562974857FB884EB50451D7FA8BAFF35BED4900E596FCB5B65"
     },
     {
       "path": "managed/Services/DatabaseService.ApartmentInventory.cs",
@@ -647,9 +657,14 @@
       "sha256": "2081F3E8D3AD593CBC97859F6A33172D3D76FCDD99EC36964BAA34C73DEE6885"
     },
     {
+      "path": "managed/Services/NetworkAdapterService.ApartmentGuideLifecycle.cs",
+      "size": 1528,
+      "sha256": "0215263CF65D3D637C7DFB58509501AC657119A28DDF1E09B4F34FC48F14B74C"
+    },
+    {
       "path": "managed/Services/NetworkAdapterService.ApartmentHousing.cs",
-      "size": 12161,
-      "sha256": "450100AE4269653AA6D20B9B99993ADA5BB073862B3086B3D7B858ABB669890C"
+      "size": 13613,
+      "sha256": "6EC3B58621A5F2C645CC412744E9917629958E6A97E884073A25D72C3BDAF15B"
     },
     {
       "path": "managed/Services/NetworkAdapterService.ApartmentInventory.cs",
@@ -747,9 +762,14 @@
       "sha256": "44597E55270A563CA9BA12357825E54AC10B92E1B7B7E21569409A3409BCE15A"
     },
     {
+      "path": "managed/Services/NetworkAdapterService.TownPetLifecycle.cs",
+      "size": 2293,
+      "sha256": "9EE922771A0EF761C3F26A3BC4ED50B3B3F473E79CB34BC2AAC2E6A29ADD066F"
+    },
+    {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 959233,
-      "sha256": "118C81605DD90E5A351AA20E33A7024B3804992C7245945FD98AF29E7D4DE225"
+      "size": 961556,
+      "sha256": "C0FD5D91AB7AD66F392AD3658956A31D9E2DDF7EF1C09B83399591B279FD41AB"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

@@ -393,6 +393,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte TownId { get; set; }
         public byte TownPage { get; set; }
         public bool TownSceneActive { get; set; }
+        public bool TownPetSceneCompletionPending { get; set; }
         public bool TownMapMarkerInitialized { get; set; }
         public long ApartmentOwnerCharacterId { get; set; }
         public HealthRecoverySchedule HealthRecovery { get; } = new();
@@ -2070,7 +2071,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 }
                 if (payload.Length != FriendRecommendationRequestPayloadLength)
                 {
-                    _log($"{channel}:{remote} friend recommendation payload length invalid: expected {FriendRecommendationRequestPayloadLength}, actual {payload.Length}; returning a retryable result");
+                    _log($"{channel}:{remote} friend recommendation payload length invalid: expected {FriendRecommendationRequestPayloadLength}, actual {payload.Length}; returning native result 10 (dialog continuation is client-local)");
                     return BuildFriendRecommendationResponse(
                         frame,
                         FriendRecommendationNonexistent,
@@ -2778,7 +2779,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return BuildNativeFrame(
                         frame,
                         0xC59A,
-                        BuildTaskCompletionResultPayload(
+                        submittedId == 5
+                            ? BuildApartmentGuideCompletionPayload(
+                                guideCompletion.Success,
+                                guideCompletion.Character ?? session.Character,
+                                rewardChanged,
+                                submittedTaskType,
+                                session.NonCombatResourceSnapshot)
+                            : BuildTaskCompletionResultPayload(
                             guideCompletion.Success,
                             submittedId,
                             guideCompletion.Character ?? session.Character,
@@ -4741,6 +4749,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     }
                     session.TownPage = (byte)roomIndex;
                     session.TownSceneActive = false;
+                    session.TownPetSceneCompletionPending = false;
                     _log($"{channel}:{remote} Dungeon transition bridge entered: room={bridgeRoomId} action={bridgeAction} townPage={roomIndex} requested=({requestedPositionX},{requestedPositionY}) wirePosition=({transitionPosition.WireX},{transitionPosition.WireY}) persisted={transitionPosition.PersistPosition}; returned C368 and awaiting C36C before the client-driven game-service handshake");
                     return BuildNativeFrame(
                         frame,
@@ -4768,6 +4777,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 LeaveVillageShopScene(session, "town page enter");
                 LeaveTownScene(session, "town page change");
                 session.TownPage = (byte)effectiveRoomIndex;
+                // Selector4 omits C36C: defer its scene/PET attachment until the
+                // first valid CB21 after this client-driven C367/C368 boundary.
+                session.TownPetSceneCompletionPending = session.TownId == 4;
                 session.Character.CurrentMapId = session.TownId;
                 session.Character.CurrentTownPage = effectiveRoomIndex;
                 if (entryPosition.PersistPosition)
@@ -5200,6 +5212,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         return null;
                     }
 
+                    session.TownPetSceneCompletionPending = false;
                     var initializedTownScene = !session.TownSceneActive;
                     var saved = await _database.SaveCharacterRuntimeStateAsync(
                         session.AccountId,
@@ -9587,6 +9600,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     session.Character.PositionX = movementPositionX;
                     session.Character.PositionY = movementPositionY;
                 }
+                await CompleteTownPetSceneOnActivityAsync(session, token);
                 // FFFF/FFFF is an observed CB21 activity sentinel. Relay the
                 // frame unchanged for the page-scoped client state machine, but
                 // never let it replace the last legal persistent town position.
@@ -10888,6 +10902,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     private void LeaveTownScene(ConnectionSession session, string reason)
     {
+        // Invalidate even an unfinished page: it may never have sent C36C.
+        session.TownPetSceneCompletionPending = false;
         if (!session.TownSceneActive || session.Character is null)
         {
             session.TownMapMarkerInitialized = false;
@@ -13813,6 +13829,25 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         uint resultCode,
         string? recommendedCharacterName)
     {
+        // sub_4E5E50 recognizes only 10/20/30, all of which create a modal
+        // (40/41/42). No result code is a server-side "continue without dialog".
+        // Reject invented statuses and incomplete/truncated success names rather
+        // than silently emitting a frame that cannot represent the stored result.
+        if (resultCode is not (FriendRecommendationNonexistent
+            or FriendRecommendationSelf or FriendRecommendationSuccess))
+            throw new ArgumentOutOfRangeException(nameof(resultCode));
+        if (resultCode == FriendRecommendationSuccess)
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            var gbk = Encoding.GetEncoding(936,
+                EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+            if (string.IsNullOrWhiteSpace(recommendedCharacterName)
+                || recommendedCharacterName.Any(char.IsControl)
+                || gbk.GetByteCount(recommendedCharacterName) >= FriendRecommendationRequestPayloadLength)
+                throw new ArgumentException("Recommendation success requires a complete, NUL-terminated GBK name.",
+                    nameof(recommendedCharacterName));
+        }
+
         var payload = new byte[FriendRecommendationResponsePayloadLength];
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0, 4), resultCode);
         if (resultCode == FriendRecommendationSuccess

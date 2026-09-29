@@ -79,9 +79,13 @@ public sealed partial class NetworkAdapterService
                 if (payload.Length != 0) return null;
                 var deleted = await _database.DeleteApartmentLandCardAsync(
                     session.AccountId, session.Character.Id, session.SessionId, token);
-                if (deleted) AccountStateChanged?.Invoke();
-                // The native land-card window consumes a DWORD: 0 success, 1 failure.
-                return BuildNativeFrame(frame, 0xC371, ApartmentDword(deleted ? 0u : 1u), session);
+                if (deleted is not null)
+                {
+                    QueueApartmentHouseRemoval(session, deleted);
+                    AccountStateChanged?.Invoke();
+                }
+                // Native 0x863790: DWORD 1 clears the land-card state; 0 is failure.
+                return BuildNativeFrame(frame, 0xC371, ApartmentDword(deleted is not null ? 1u : 0u), session);
             }
             case 0xC407:
             {
@@ -188,6 +192,30 @@ public sealed partial class NetworkAdapterService
         payload[72]=house.Page;payload[73]=house.Slot;payload[74]=house.Town;
         payload[75]=(byte)Math.Clamp(house.Gender,0,1);payload[76]=100;
         return payload;
+    }
+
+    internal static byte[] BuildApartmentHouseRemovalPayload(ApartmentHouseAddress address)
+    {
+        // C372 -> 0x52CF00: WORD frame+80=20 resets the plot selected by
+        // BYTE frame+82. 0x511DB0 releases the house/door/banner objects, restores
+        // the sale sign and sets its old owner UID to -1. A zero C36D is NOT a
+        // removal: that handler still selects the built-house state (2).
+        var payload = new byte[80];
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(72), 20);
+        payload[74] = address.Slot;
+        return payload;
+    }
+
+    private void QueueApartmentHouseRemoval(ConnectionSession source, ApartmentHouseAddress address)
+    {
+        // C372 identifies only a slot; never send it into another page/controller.
+        // Addresses are global across channels, matching purchase/exterior updates.
+        var payload = BuildApartmentHouseRemovalPayload(address);
+        foreach (var target in _activeWorldSessions.Values.Where(p => p.Session.OnlineTracked
+            && p.Session.TownSceneActive && p.Session.TownId == address.Town
+            && p.Session.TownPage == address.Page))
+            source.PendingBroadcasts.Add(new PendingNativeBroadcast(target, 0xC372,
+                payload, "apartment street address released"));
     }
 
     private async Task QueueApartmentHousePageAsync(ConnectionSession session, bool includePeers, CancellationToken token)

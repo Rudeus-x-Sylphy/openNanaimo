@@ -17,9 +17,11 @@ import struct
 try:
     from . import apartment_exterior_panel as exterior_panel
     from . import dungeon7_visuals
+    from . import dungeon_experience_compat
 except ImportError:
     import apartment_exterior_panel as exterior_panel
     import dungeon7_visuals
+    import dungeon_experience_compat
 from pathlib import Path
 
 ROUTE = [8, 7, 6, 11, 16, 17, 18, 19, 14, 9, 4, 3, 2, 1, 0, 5, 10, 15, 20, 21, 22, 23, 24]
@@ -261,17 +263,15 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
         put(17, 47, y, 11, 18, 'page17 arrival marker for source page18')
     for x in range(50):
         for y in range(36):
-            # Move the trigger and return point with the dedicated gate artwork.
+            # Retire the generated-art relocation; restore the pre-art entry.
             if pack.field(18, x, y, 13) == 166:
                 put(18, x, y, 13, -1, 'relocate dungeon7 action region')
             if pack.field(18, x, y, 14) == 169:
                 put(18, x, y, 14, -1, 'relocate dungeon7 return marker')
-    for x in range(8, 12):
-        for y in range(6, 16):
-            put(18, x, y, 7, 0, 'dedicated dungeon7 gate approach')
-        for y in range(6, 10):
+    for x in range(22, 28):
+        for y in (3, 4):
             put(18, x, y, 13, 166, 'dungeon7 action166 region')
-    put(18, 10, 15, 14, 169, 'dungeon7 return marker')
+    put(18, 25, 6, 14, 169, 'dungeon7 return marker')
 
     pages = ROUTE[6:]
     neighbors = {page: {} for page in pages}
@@ -300,7 +300,7 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
     edits = {offset: row for offset, row in edits.items()
              if data[offset:offset + 2] != output[offset:offset + 2]}
     try:
-        result = dungeon7_visuals.patch_scene(bytes(output), pack.pages[18])
+        result = dungeon7_visuals.restore_scene(bytes(output), pack.pages[18])
     except ValueError as exc:
         raise CompatibilityError(str(exc)) from exc
     changed = result != data
@@ -508,7 +508,7 @@ def restore_native_state(data: bytes) -> tuple[bytes, dict]:
 
 
 def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
-    """Manual-only result policy for both controllers; keep native mouse input."""
+    """Manual results and settlement-only EXP display; retain mouse and live score."""
     data, timer = _patch_site(data, SETTLEMENT_AUTO_GATE_VA,
         SETTLEMENT_AUTO_GATE_OLD, SETTLEMENT_AUTO_GATE_NEW,
         'patch_settlement_manual_confirmation', 'the settlement timer gate differs')
@@ -519,8 +519,10 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
         SETTLEMENT_AUTO_ACTION_GATE_OLD, (SETTLEMENT_AUTO_ACTION_GATE_LEGACY,),
         'restore_settlement_mouse_confirmation', 'the settlement automatic action gate differs')
     data, power = restore_native_power(data)
+    data, experience = dungeon_experience_compat.patch_experience_preview(data, _patch_site)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
-        other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power)
+        other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power,
+        settlement_experience=experience)
 
 
 def _gift_preview_patch_bytes() -> tuple[bytes, bytes]:
@@ -796,6 +798,15 @@ def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival
                            'input_sha256': sha256(original), 'output_sha256': sha256(data),
                            'changed': data != original, 'hash_gate_used': False})
     if dungeon7:
+        executable = files.get(Path('game.exe'))
+        if executable is None:
+            require((source_root / 'game.exe').is_file(), 'source game.exe is missing for dungeon7 minimap')
+            executable = (source_root / 'game.exe').read_bytes()
+        executable, row = _patch_site(executable, dungeon7_visuals.MINIMAP_VA,
+            dungeon7_visuals.MINIMAP_OLD, dungeon7_visuals.MINIMAP_NEW,
+            'dungeon7_minimap_release_boundary', 'unknown dungeon7 minimap initializer')
+        files[Path('game.exe')] = executable
+        operations.append(row)
         village_rel = Path('Village_map_image/Village_map_image.pack')
         village = source_root / village_rel
         require(village.is_file(), f'source file is missing: {village_rel.as_posix()}')
@@ -803,13 +814,17 @@ def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival
         files[village_rel] = data
         operations.append(row)
         try:
-            artwork = dungeon7_visuals.artwork_outputs()
+            artwork = dungeon7_visuals.retired_outputs(source_root)
         except ValueError as exc:
             raise CompatibilityError(str(exc)) from exc
         files.update(artwork)
-        operations.append({'operation': 'install_dungeon7_artwork',
+        operations.append({'operation': 'retire_generated_dungeon7_artwork',
                            'files': [path.as_posix() for path in artwork],
-                           'artwork': 'dedicated replacement entrance, title and loading background'})
+                           'artwork': 'exact-hash removal only; no replacement artwork installed',
+                           'preserved_unknown': [(Path(folder) / name).as_posix()
+                               for name, folder, _, _, _, _ in dungeon7_visuals.ARTWORK
+                               if (source_root / folder / name).is_file()
+                               and Path(folder) / name not in artwork]})
         for source_rel, target_rel, role in ALIAS_SPECS:
             source = source_root / source_rel
             require(source.is_file(), f'source file is missing: {source_rel.as_posix()}')
@@ -840,6 +855,22 @@ def _write_overlay(output_root: Path, files: dict[Path, bytes], overwrite: bool)
     for relative, data in files.items():
         relative = _safe_relative(relative)
         target = output_root / relative
+        if data is None:
+            # A copy-only overlay cannot express deletion: report an explicit tombstone.
+            # Never leave an earlier overlay image where a later copy could reinstall it.
+            if target.exists():
+                old = target.read_bytes()
+                expected = {Path(folder) / name: digest
+                            for name, folder, _, _, _, digest in dungeon7_visuals.ARTWORK}
+                require(relative in expected and sha256(old) == expected[relative].upper(),
+                        f'unknown retired overlay file; use a fresh output root: {target}')
+                require(overwrite, f'retired artwork exists in overlay (use --overwrite): {target}')
+                backup = output_root / 'backups' / sha256(old) / relative
+                if not backup.exists():
+                    _atomic_write(backup, old)
+                target.unlink()
+            rows.append({'path': relative.as_posix(), 'status': 'remove_on_apply', 'sha256': None})
+            continue
         if target.exists():
             current = target.read_bytes()
             if current == data:
@@ -870,14 +901,17 @@ def _apply_outputs(source_root: Path, output_root: Path, files: dict[Path, bytes
                 _atomic_write(backup, current)
         rows.append({'path': relative.as_posix(), 'status': 'pending',
                      'before_sha256': sha256(current) if current is not None else None,
-                     'after_sha256': sha256(data), 'backup': str(backup) if backup is not None else None})
+                     'after_sha256': sha256(data) if data is not None else None, 'backup': str(backup) if backup is not None else None})
     applied = []
     try:
         for row in rows:
             if row['status'] != 'pending':
                 continue
             relative = Path(row['path'])
-            _atomic_write(source_root / relative, files[relative])
+            if files[relative] is None:
+                (source_root / relative).unlink()
+            else:
+                _atomic_write(source_root / relative, files[relative])
             row['status'] = 'applied'
             applied.append(relative)
     except Exception:
@@ -923,6 +957,8 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
             ('settlement_manual_confirmation', SETTLEMENT_AUTO_GATE_VA, SETTLEMENT_AUTO_GATE_NEW),
             ('settlement_other_controller_timer', SETTLEMENT_OTHER_AUTO_GATE_VA, SETTLEMENT_OTHER_AUTO_GATE_NEW),
             ('settlement_mouse_confirmation', SETTLEMENT_AUTO_ACTION_GATE_VA, SETTLEMENT_AUTO_ACTION_GATE_OLD)))
+        expected_sites.extend((name, va, new)
+                              for name, va, _, new in dungeon_experience_compat.patch_sites())
     for name, va, expected in expected_sites:
         offset = _va_offset(data, va, len(expected))
         checks.append(_check(name, data[offset:offset + len(expected)] == expected,
@@ -991,19 +1027,16 @@ def _verify_village_bytes(data: bytes):
     page17_ok = all(pack.field(17, x, y, 7) == 0 for x in range(38, 50) for y in range(14, 21))
     page17_ok = page17_ok and all(pack.field(17, x, y, 10) == 18 for x in (48, 49) for y in range(14, 21))
     checks.append(_check('page17_to_page18', page17_ok, 'east corridor and destination page18'))
-    action_ok = all((pack.field(18, x, y, 13) == 166) == (8 <= x < 12 and 6 <= y < 10)
+    action_ok = all((pack.field(18, x, y, 13) == 166) == (22 <= x < 28 and y in (3, 4))
                     for x in range(50) for y in range(36))
     checks.append(_check('dungeon7_action166', action_ok, 'page18 action region'))
-    checks.append(_check('dungeon7_return_marker169', all((pack.field(18, x, y, 14) == 169) == ((x, y) == (10, 15))
-                             for x in range(50) for y in range(36)), 'pixel=160,240'))
-    checks.append(_check('dungeon7_gate_approach',
-                         all(pack.field(18, x, y, 7) == 0 for x in range(8, 12) for y in range(6, 16)),
-                         'gate corridor joins the village road'))
+    checks.append(_check('dungeon7_return_marker169', all((pack.field(18, x, y, 14) == 169) == ((x, y) == (25, 6))
+                             for x in range(50) for y in range(36)), 'pixel=400,96'))
     try:
-        scene_ok = dungeon7_visuals.verify_scene(data, pack.pages[18])
+        scene_ok = dungeon7_visuals.verify_restored_scene(data, pack.pages[18])
     except ValueError as exc:
         raise CompatibilityError(str(exc)) from exc
-    checks.append(_check('dungeon7_scene_artwork', scene_ok, 'gate, title, arrow and entrance effect'))
+    checks.append(_check('dungeon7_no_generated_scene_artwork', scene_ok, 'pre-art entry behavior'))
     route_ok = True
     for source, target in zip(ROUTE[6:-1], ROUTE[7:]):
         for page, other in ((source, target), (target, source)):
@@ -1030,12 +1063,19 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
         checks.extend(_verify_client_bytes(read(Path('game.exe')), furniture, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state, apartment_recommendation, character_creation))
     if dungeon7:
         checks.extend(_verify_village_bytes(read(Path('Village_map_image/Village_map_image.pack'))))
-        for _, relative, _, _ in dungeon7_visuals.PLACEMENTS:
-            checks.append(_check('dungeon7_scene_dependency_' + Path(relative).name,
-                                 bool(read(Path(relative))), 'scene resource present'))
-        for relative, expected in dungeon7_visuals.artwork_outputs().items():
-            checks.append(_check('dungeon7_artwork_' + relative.name,
-                                 read(relative) == expected, 'validated dedicated artwork'))
+        exe = read(Path('game.exe'))
+        at = _va_offset(exe, dungeon7_visuals.MINIMAP_VA, len(dungeon7_visuals.MINIMAP_NEW))
+        checks.append(_check('dungeon7_minimap_boundary',
+            exe[at:at + len(dungeon7_visuals.MINIMAP_NEW)] == dungeon7_visuals.MINIMAP_NEW,
+            'chapter7 condition preserved; forced close applies to chapter8'))
+        for name, folder, _, _, _, digest in dungeon7_visuals.ARTWORK:
+            relative = Path(folder) / name
+            removed = files is not None and relative in files and files[relative] is None
+            target = source_root / relative
+            unknown = target.is_file() and sha256(target.read_bytes()) != digest.upper()
+            checks.append(_check('dungeon7_retired_' + name,
+                removed or not target.exists() or unknown,
+                'unknown file preserved; provenance NOT established' if unknown else 'known generated artwork absent'))
         for source_rel, target_rel, role in ALIAS_SPECS:
             source_data = read(source_rel)
             target_data = read(target_rel)
@@ -1056,7 +1096,8 @@ def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: boo
     require(files, 'no compatibility operation selected')
     report = {'schema_version': 2, 'source_root': str(source_root), 'output_root': str(output_root),
               'hash_gate_used': False, 'dry_run': bool(dry_run), 'apply_requested': bool(apply),
-              'operations': operations, 'planned_files': [relative.as_posix() for relative in files]}
+              'operations': operations, 'planned_files': [relative.as_posix() for relative in files],
+              'planned_removals': [relative.as_posix() for relative, data in files.items() if data is None]}
     report['planned_verification'] = _verify_data(source_root, files, furniture, dungeon7, revival_display, dungeon_state, inventory_gift_display, land_purchase, apartment_exterior, native_state, apartment_recommendation, character_creation)
     require(report['planned_verification']['all_pass'], 'derived compatibility verification failed')
     if dry_run:
@@ -1089,7 +1130,7 @@ def main(argv=None) -> int:
     parser.add_argument('--revival-display', action='store_true',
                         help='deprecated alias for --native-state; removes old patches')
     parser.add_argument('--dungeon-state', action='store_true',
-                        help='manual confirmation in both result controllers; restore mouse and remove legacy P hook')
+                        help='manual results, settlement-only EXP display with live score; restore mouse and native P')
     parser.add_argument('--inventory-gift-display', action='store_true',
                         help='preserve preview HP/MP maxima across C476 inventory refresh cleanup')
     parser.add_argument('--land-purchase', action='store_true',

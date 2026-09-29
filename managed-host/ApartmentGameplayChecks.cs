@@ -18,6 +18,7 @@ internal static class ApartmentGameplayChecks
             using (File.Create(Path.Combine(root, "game.db"))) { }
             await new Suite(root).RunAsync();
             await ApartmentLandPriceChecks.RunAsync();
+            await ApartmentGuideLifecycleChecks.RunAsync();
         }
         finally
         {
@@ -254,23 +255,128 @@ internal static class ApartmentGameplayChecks
         private async Task CheckLandDeletionAsync(NetworkAdapterService service)
         {
             var character = _characters[0];
+            var house = (await _db.GetOwnedApartmentHouseAsync(character.Id))!;
+            Town(_sessions[0], house.Town, house.Page);
+            Town(_sessions[1], house.Town, house.Page);
+            Town(_sessions[2], house.Town, (byte)(house.Page + 1));
+            Set(_sessions[2], "OnlineTracked", true);
+            foreach (var session in _sessions)
+            {
+                Pending(session).Clear();
+                Set(session, "TownMapMarkerInitialized", true);
+            }
             await Sql($"INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt) "
                 + $"VALUES({character.Id},12000001,7,'2026-09-29T00:00:00Z') "
                 + "ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=7;");
+            var furniture = ShopCatalog.All.Where(i => i.Section == InventorySection.Furniture && i.InteriorType == 2)
+                .OrderBy(i => i.ItemCode).First().ItemCode;
+            await Sql($"INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) "
+                + $"VALUES({character.Id},{furniture},1,'land-test') ON CONFLICT(CharacterId,ItemCode) DO NOTHING;"
+                + $"INSERT INTO CharacterApartmentItems(CharacterId,SlotIndex,ItemCode,PositionX,PositionY,Layer,Mirror,InteriorType,UpdatedAt) "
+                + $"VALUES({character.Id},0,{furniture},123,234,7,1,2,'land-test') "
+                + "ON CONFLICT(CharacterId,SlotIndex) DO UPDATE SET ItemCode=excluded.ItemCode,PositionX=123,PositionY=234,Layer=7,Mirror=1,InteriorType=2;");
+            var placements = await _db.GetApartmentPlacementsAsync(character.Id);
+            static string PlacementSnapshot(IEnumerable<ApartmentPlacementRecord> rows) => string.Join(";",
+                rows.Select(p => $"{p.SlotIndex}:{p.ItemCode}:{p.X}:{p.Y}:{p.Layer}:{p.Mirror}:{p.InteriorType}"));
+            var exterior = await _db.GetApartmentExteriorStateAsync(character.Id);
+            var points = await Points(0);
+            var wallet = (await _db.GetCharacterAsync(character.AccountId))!.Hans;
             Check(await Send(service, 0, 0xC370, new byte[1]) is null
-                && await _db.GetApartmentLandCardAsync(character.Id) is not null,
-                "malformed land deletion preserves ownership");
+                && await _db.GetApartmentLandCardAsync(character.Id) is not null
+                && Pending(_sessions[0]).Count == 0,
+                "malformed land deletion preserves ownership without street events");
+            Set(_sessions[0], "AccountId", _characters[1].AccountId);
+            var denied = One(await Send(service, 0, 0xC370, []), 0xC371);
+            Set(_sessions[0], "AccountId", character.AccountId);
+            Check(U32(denied, 8) == 0 && Pending(_sessions[0]).Count == 0
+                && await _db.GetOwnedApartmentHouseAsync(character.Id) is not null,
+                "unauthorized deletion uses native failure and does not remove or broadcast");
+
             var reply = One(await Send(service, 0, 0xC370, []), 0xC371);
-            Check(reply.Length == 12 && U32(reply, 8) == 0
-                && await _db.GetOwnedApartmentHouseAsync(character.Id) is null,
-                "native land deletion confirms committed ownership removal");
+            Check(reply.Length == 12 && U32(reply, 8) == 1
+                && await _db.GetOwnedApartmentHouseAsync(character.Id) is null
+                && await _db.GetApartmentLandCardAsync(character.Id) is null,
+                "native land deletion result one confirms committed house and card removal");
+            var pending = Pending(_sessions[0]);
+            Check(pending.Count == 2, "deletion immediately reaches owner and cross-channel same-page viewer only");
+            var targets = new List<object>();
+            foreach (var broadcast in pending.Cast<object>())
+            {
+                var type = broadcast.GetType();
+                var payload = (byte[])type.GetProperty("Payload")!.GetValue(broadcast)!;
+                var target = type.GetProperty("Target")!.GetValue(broadcast)!;
+                targets.Add(target.GetType().GetProperty("Session")!.GetValue(target)!);
+                Check((ushort)type.GetProperty("Opcode")!.GetValue(broadcast)! == 0xC372
+                    && payload.Length == 80 && U16(payload, 72) == 20 && payload[74] == house.Slot
+                    && payload.Where((_, i) => i != 72 && i != 74).All(b => b == 0),
+                    "street removal uses C372 mode20 and frame+82 slot, not a vacant C36D");
+            }
+            Check(targets.Contains(_sessions[0]) && targets.Contains(_sessions[1])
+                && !targets.Contains(_sessions[2]), "removal routing matches the released address");
+            pending.Clear();
             var land = One(await Send(service, 0, 0xC3E7, new byte[] { 30, 0, 0, 0 }), 0xC3E8);
             Check(land[9] == 0 && land.AsSpan(68, 12).ToArray().All(b => b == 0)
                 && (await _db.GetCharacterCardsAsync(character.Id)).Single(c => c.CardCode == 12000001).Quantity == 7,
                 "native deletion clears the land page while preserving SP cards");
+            var reopened = new DatabaseService(root);
+            Check(await reopened.GetOwnedApartmentHouseAsync(character.Id) is null
+                && await reopened.GetApartmentLandCardAsync(character.Id) is null
+                && (await reopened.GetApartmentExteriorStateAsync(character.Id)).Items.SequenceEqual(exterior.Items)
+                && PlacementSnapshot(await reopened.GetApartmentPlacementsAsync(character.Id)) == PlacementSnapshot(placements)
+                && (await reopened.GetCharacterAsync(character.AccountId))!.Items.Any(i => i.ItemCode == furniture && i.Quantity > 0)
+                && await Points(0) == points && (await _db.GetCharacterAsync(character.AccountId))!.Hans == wallet,
+                "reopen preserves deletion, furniture, exterior inventory and balances");
             reply = One(await Send(service, 0, 0xC370, []), 0xC371);
-            Check(reply.Length == 12 && U32(reply, 8) == 1,
-                "repeated land deletion returns the native failure result");
+            Check(reply.Length == 12 && U32(reply, 8) == 0 && pending.Count == 0,
+                "repeated deletion returns native failure without duplicate street removals");
+
+            var street = Move(3);
+            BinaryPrimitives.WriteUInt16LittleEndian(street.AsSpan(2), WireIdentityAllocator.GetCharacterUid(character.Id));
+            var failedEntry = One(await Send(service, 1, 0xC38D, street), 0xC38E);
+            Check(failedEntry[8] == 30 && (bool)Get(_sessions[1], "TownSceneActive")!
+                && (long)Get(_sessions[1], "ApartmentOwnerCharacterId")! == 0,
+                "stale street UID fails without changing the viewer scene");
+            // This is the housing portion of the ordinary new-page snapshot. No
+            // cached marker or deleted owner may be reintroduced on the next epoch.
+            await (Task)ServiceType.GetMethod("QueueApartmentHousePageAsync", Private)!.Invoke(service,
+                [_sessions[0], false, CancellationToken.None])!;
+            Check(pending.Cast<object>().All(b => U16((byte[])b.GetType().GetProperty("Payload")!.GetValue(b)!, 70)
+                != WireIdentityAllocator.GetCharacterUid(character.Id)),
+                "next page snapshot cannot resurrect the deleted street house");
+            pending.Clear();
+            var own = One(await Send(service, 0, 0xC38D, Move(1)), 0xC38E);
+            Check(own[8] == 10 && own[9] == 20 && U32(own, 40) == 0 && U32(own, 44) == 0,
+                "deleted land owner still enters the free apartment without a street lease");
+            var visit = One(await Send(service, 1, 0xC38D, Move(2, character.Name)), 0xC38E);
+            Check(visit[8] == 10 && visit[9] == 40,
+                "name-based visits to the preserved free apartment remain available");
+
+            Town(_sessions[0], house.Town, house.Page);
+            var repurchase = Frames(await Send(service, 0, 0xC36E, Words(house.Page, house.Slot)));
+            Check(U32(repurchase[0], 8) == 10 && await _db.GetApartmentLandCardAsync(character.Id) is not null,
+                "released address can be purchased and bound again");
+            Town(_sessions[1], house.Town, house.Page);
+            Check(One(await Send(service, 1, 0xC38D, street), 0xC38E)[8] == 10,
+                "repurchased address restores its street entry route");
+            // Deletion is also legal from a different page or inside a room: the
+            // notification's scope must come from the transaction, not the sender.
+            Town(_sessions[0], house.Town, (byte)(house.Page + 1));
+            Town(_sessions[2], house.Town, house.Page);
+            pending.Clear();
+            reply = One(await Send(service, 0, 0xC370, []), 0xC371);
+            Check(U32(reply, 8) == 1 && pending.Count == 1
+                && (long)Get(_sessions[1], "ApartmentOwnerCharacterId")! == character.Id,
+                "off-page deletion notifies only the old address and preserves existing room visitors");
+            pending.Clear();
+            // Scope guards also apply to offline sessions and same-page other towns.
+            var address = new ApartmentHouseAddress(house.Town, house.Page, house.Slot);
+            var removal = ServiceType.GetMethod("QueueApartmentHouseRemoval", Private)!;
+            Town(_sessions[2], (byte)(house.Town + 1), house.Page);
+            removal.Invoke(service, [_sessions[0], address]);
+            Check(pending.Count == 0, "same page in another town receives no removal");
+            Town(_sessions[2], house.Town, house.Page); Set(_sessions[2], "OnlineTracked", false);
+            removal.Invoke(service, [_sessions[0], address]);
+            Check(pending.Count == 0, "offline viewers receive no removal");
         }
 
         private async Task CheckFirstVisitGuideAsync(NetworkAdapterService service)

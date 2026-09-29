@@ -29,11 +29,11 @@
     "derived_outputs": [
       {
         "path": "game.exe",
-        "operation": "native character-creation entry; referral-only parent confirmation guard and local input retry; reviewed furniture Index redirect; restore retired revival HUD and P-sentinel patches to native bytes; manual confirmation for both settlement controllers preserving mouse and keyboard; scoped gift-refresh preview HP/MP preservation; purchase-window type25 entry plus required no-shop C37B yield patch; complete exterior lifecycle, resources and localized text; request-bound apartment recommendation point refresh and bounded duplicate-popup lines"
+        "operation": "native character-creation entry; referral-only parent confirmation guard and local input retry; reviewed furniture Index redirect; restore retired revival HUD and P-sentinel patches to native bytes; manual confirmation for both settlement controllers preserving mouse and keyboard; scoped gift-refresh preview HP/MP preservation; purchase-window type25 entry plus required no-shop C37B yield patch; complete exterior lifecycle, resources and localized text; request-bound apartment recommendation point refresh and bounded duplicate-popup lines; dungeon7 minimap release-boundary correction; zero only score-derived provisional EXP, preserving live score and CF88 settlement awards"
       },
       {
         "path": "Village_map_image/Village_map_image.pack",
-        "operation": "dungeon7/P03 cell-grid, gate trigger, return position and record 50018 scene artwork transformation"
+        "operation": "dungeon7/P03 cell-grid; restore pre-generated-art entrance and return position; remove only recognized generated scene objects from record 50018"
       },
       {
         "path": "flying/hd0_ep22_dg00_st01.sstg",
@@ -80,19 +80,19 @@
       },
       {
         "path": "images/Village_images/vill05_gate_ep07_restored.im3",
-        "operation": "install bounded, structurally verified chapter-seven replacement artwork"
+        "operation": "retire only exact recognized generated artwork with backup and rollback; do not install replacement art"
       },
       {
         "path": "images/Village_images/vill05_guide_ru7_restored.im3",
-        "operation": "install bounded, structurally verified chapter-seven replacement artwork"
+        "operation": "retire only exact recognized generated artwork with backup and rollback; do not install replacement art"
       },
       {
         "path": "images/interface_images/shootingsky_inter_image/dg_intro_hd0_ep23.im3",
-        "operation": "install bounded, structurally verified chapter-seven replacement artwork"
+        "operation": "retire only exact recognized generated artwork with backup and rollback; do not install replacement art"
       }
     ],
     "output_validation_policy": "structural derivation plus byte-exact post-apply verification; no fixed input hash gate",
-    "output_distribution": "user-derived client files are local; named replacement artwork is included in the reviewed project resources",
+    "output_distribution": "user-derived client files remain local; generated dungeon7 artwork is retired and excluded from installation dependencies",
     "launcher_selection": {
       "arguments": [
         "--character-creation",
@@ -124,14 +124,11 @@
       "consecutive_power": "keep native actor P across same-PET continuation; CF72 WORD+0x64 controls PET rebuild, not P level; no synthetic FFFF D035 restoration"
     },
     "support_files": [
-      "scripts/apartment_exterior_panel.py"
-    ],
-    "bundled_resources": [
+      "scripts/apartment_exterior_panel.py",
       "scripts/dungeon7_visuals.py",
-      "scripts/assets/dungeon7/vill05_gate_ep07_restored.im3",
-      "scripts/assets/dungeon7/vill05_guide_ru7_restored.im3",
-      "scripts/assets/dungeon7/dg_intro_hd0_ep23.im3"
-    ]
+      "scripts/dungeon_experience_compat.py"
+    ],
+    "bundled_resources": []
   },
   "provided_in_repository": [
     {

@@ -98,6 +98,28 @@ internal static class Program
             && HasValidChecksum(frame),
             "CF88 client synchronization uses committed progression and preserves other members");
 
+        // Multiplayer settlement retains each real score/rating and only patches local EXP.
+        var teamPayload = new byte[4 + 3 * 0x34];
+        BinaryPrimitives.WriteUInt16LittleEndian(teamPayload, 3);
+        for (var slot = 0; slot < 3; slot++)
+        {
+            var off = 4 + slot * 0x34;
+            BinaryPrimitives.WriteUInt16LittleEndian(teamPayload.AsSpan(off), (ushort)(slot + 1));
+            teamPayload[off + 0x0B] = (byte)(3 + slot);
+            Put(teamPayload, off + 0x1C, 100_080u + (uint)slot * 200u);
+        }
+        var teamResult = NativeDungeonClient.Frame(0xCF88, teamPayload);
+        var teamBefore = teamResult.ToArray();
+        Check(NetworkAdapterService.PatchNativeCharacterProgressionFrame(teamResult, 1, thresholdCharacter, committedCharacter), "local multiplayer EXP patched");
+        for (var slot = 0; slot < 3; slot++)
+        {
+            var off = 12 + slot * 0x34;
+            Check(U32(teamResult, off + 0x1C) == 100_080u + (uint)slot * 200u
+                && teamResult[off + 0x0B] == 3 + slot, $"slot{slot} real settlement score/rating preserved");
+            if (slot > 0)
+                Check(teamResult.AsSpan(off, 0x34).SequenceEqual(teamBefore.AsSpan(off, 0x34)), $"remote slot{slot} entire result preserved");
+        }
+
         await NativeDungeonExperienceChecks.RunAsync();
         Console.WriteLine("NATIVE_DUNGEON_EXPERIENCE_REGRESSION_PASS");
     }

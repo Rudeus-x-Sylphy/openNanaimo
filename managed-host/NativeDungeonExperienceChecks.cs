@@ -70,8 +70,16 @@ internal static class NativeDungeonExperienceChecks
 
             await Send(0xC378, []);
             await Expect(0, 1, "combat snapshot cannot grant EXP or levels");
-            await Egress(NativeDungeonClient.Frame(0xD00E, new byte[36]));
-            await Egress(NativeDungeonClient.Frame(0xD012, new byte[56]));
+            foreach (var (opcode, size, offset, fields) in new (ushort, int, int, int)[]
+                     { (0xD00E, 48, 8, 3), (0xD012, 60, 8, 3), (0xD012, 64, 8, 3), (0xD010, 36, 12, 1) })
+            {
+                var kill = NativeDungeonClient.Frame(opcode, new byte[size - 8]);
+                for (var i = 0; i < fields; i++) Put(kill, offset + 4 * i, 100_080u + (uint)i);
+                await Egress(kill);
+                var published = Drain(session).Single();
+                for (var i = 0; i < fields; i++)
+                    Check(U32(published, offset + 4 * i) == 100_080u + (uint)i, $"combat {opcode:X4}/{size} slot{i} retains real score for EXP-neutral client");
+            }
             await Send(0xC378, []);
             await Expect(0, 1, "ordinary kill and Boss terminal alone preserve progression");
             Drain(session);
@@ -134,7 +142,9 @@ internal static class NativeDungeonExperienceChecks
             await Expect(100, 2, "pending result carries zero snapshot EXP");
             await Egress(Result((ushort)id, 100));
             await Expect(200, 2, "deferred result commits before publication");
-            Check(U32(Drain(session).Single(), 24) == 100, "deferred result publishes committed award");
+            var deferred = Drain(session).Single();
+            Check(U32(deferred, 24) == 100 && U32(deferred, 40) == 100,
+                "deferred result publishes committed award and real score");
             await Send(0xC378, []);
             await Expect(200, 2, "post-deferred save remains single-award");
             Set(session, "NativeDungeonSettlementAwaitingAction", false);
@@ -216,6 +226,22 @@ internal static class NativeDungeonExperienceChecks
             new NativeDungeonState(after.Bytes.ToArray()), token, "pet-result-2", settlement: settlement);
         current = PetProgression.GetState((await db.GetCharacterAsync(account, token))!, pet.ItemCode);
         Check(current == expected, "fresh checkpoint commit cannot replay pet reward");
+        var failed = settlement with { Rating = 0, SettlementId = "pet-failed-cycle" };
+        await db.ApplyNativeDungeonDeltaAsync(account, id, session, before,
+            new NativeDungeonState(after.Bytes.ToArray()), token, "pet-fail", settlement: failed);
+        await db.ApplyNativeDungeonDeltaAsync(account, id, session, before,
+            new NativeDungeonState(after.Bytes.ToArray()), token, "pet-fail-replay", settlement: failed with { Rating = 5 });
+        current = PetProgression.GetState((await db.GetCharacterAsync(account, token))!, pet.ItemCode);
+        Check(current == expected, "failed battle closes pet reward even if a later duplicate claims success");
+        var retryExpected = PetProgression.AddExperience(expected, PetProgression.GetNativeClearReward(expected)).State;
+        await db.ApplyNativeDungeonDeltaAsync(account, id, session, before,
+            new NativeDungeonState(after.Bytes.ToArray()), token, "pet-retry", settlement: settlement with { SettlementId = "pet-retry-cycle" });
+        current = PetProgression.GetState((await db.GetCharacterAsync(account, token))!, pet.ItemCode);
+        Check(current == retryExpected, "authorized new settlement cycle grants one further pet reward");
+        await db.ApplyNativeDungeonDeltaAsync(account, id, session, before,
+            new NativeDungeonState(after.Bytes.ToArray()), token, "pet-active-leave");
+        current = PetProgression.GetState((await db.GetCharacterAsync(account, token))!, pet.ItemCode);
+        Check(current == retryExpected, "active leave checkpoint has no pet clear reward");
     }
 
     private static async Task Serve(TcpListener listener, NativeDungeonState state, Func<byte[]?> result, CancellationToken token)

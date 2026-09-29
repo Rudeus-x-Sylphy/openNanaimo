@@ -6,6 +6,7 @@ namespace OpenNanaimo.Adapter.Services;
 
 internal sealed record ApartmentHouse(long CharacterId, byte Town, byte Page, byte Slot,
     uint Exterior, uint Banner, string Text, string OwnerName, int Gender, DateTimeOffset ExpiresAt = default);
+internal sealed record ApartmentHouseAddress(byte Town, byte Page, byte Slot);
 internal sealed record ApartmentExteriorState(bool HasHouse, uint Exterior, uint Banner, string Text,
     IReadOnlyList<ApartmentExteriorItem> Items, uint RemainingSeconds = 0);
 
@@ -266,21 +267,32 @@ public sealed partial class DatabaseService
         return result;
     }
 
-    internal async Task<bool> DeleteApartmentLandCardAsync(
+    internal async Task<ApartmentHouseAddress?> DeleteApartmentLandCardAsync(
         long accountId, long characterId, string sessionId, CancellationToken token = default)
     {
         await using var connection = await OpenApartmentHousingConnectionAsync(token);
         await using var tx = connection.BeginTransaction(deferred: false);
         if (!await AuthorizeApartmentHousingAsync(connection, tx, accountId, characterId, sessionId, token))
-            return false;
+            return null;
         await using var command = connection.CreateCommand();
         command.Transaction = tx;
-        command.CommandText = "DELETE FROM CharacterApartmentHouses WHERE CharacterId=$id";
+        // Capture the released address inside the deletion transaction. Looking it
+        // up after commit loses it; looking it up before the transaction can notify
+        // the wrong plot if a concurrent delete/repurchase changes the ownership.
+        command.CommandText = "SELECT Town,Page,Slot FROM CharacterApartmentHouses WHERE CharacterId=$id";
         command.Parameters.AddWithValue("$id", characterId);
-        if (await command.ExecuteNonQueryAsync(token) != 1)
-            return false;
+        ApartmentHouseAddress address;
+        await using (var reader = await command.ExecuteReaderAsync(token))
+        {
+            if (!await reader.ReadAsync(token)) return null;
+            address = new((byte)reader.GetInt32(0), (byte)reader.GetInt32(1), (byte)reader.GetInt32(2));
+        }
+        command.CommandText = "DELETE FROM CharacterApartmentHouses WHERE CharacterId=$id";
+        if (await command.ExecuteNonQueryAsync(token) != 1) return null;
+        // CharacterApartmentLandCards is an ON DELETE CASCADE child. Room
+        // furniture, exterior inventory and the free apartment are not children.
         await tx.CommitAsync(token);
-        return true;
+        return address;
     }
 
     internal async Task<ApartmentVisitIndexRecord> RecordApartmentVisitAsync(

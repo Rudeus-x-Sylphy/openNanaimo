@@ -1,7 +1,7 @@
-"""Dedicated chapter-seven artwork and scene placement for the fifth village.
+"""Migrate registered chapter-seven replacement artwork and the minimap boundary.
 
-The three bundled IM3 files are replacement artwork. Scene records are rebuilt
-from the user's own pack, retaining its directory, other pages and decorations.
+The three archived IM3 files are exact migration fixtures. Production uses
+restore_scene, registered SHA-256 identities, and the guarded minimap patch.
 """
 from pathlib import Path
 import hashlib
@@ -176,4 +176,78 @@ def verify_scene(data, grid_start):
         require(len(matches) == 1 and matches[0][0] == layer and
                 struct.unpack('<I3f', matches[0][1])[1:] == (x, y, 0.),
                 'dungeon7 scene placement differs: ' + path)
+    return True
+
+# Supported minimap initializer bytes. Match the complete function so the
+# single boundary-byte change remains scoped and reversible.
+MINIMAP_VA = 0x9000D0
+MINIMAP_OLD = bytes.fromhex(
+    '558bec83ec08894df88b45f8c780640b000001000000c745fc01000000eb09'
+    '8b4dfc83c101894dfc837dfc167f2e8b55fc83ea0152a1d469d8008b88a0260000'
+    'e8c182b1ff85c074118b4dfc8b55f8c7848a640b000001000000ebc38b45f8'
+    'c7807c0b0000000000008b4df8c781c00b0000010000008b55f8c782c40b0000010000008be55dc3')
+MINIMAP_NEW = MINIMAP_OLD[:0x61] + b'\x80' + MINIMAP_OLD[0x62:]
+
+
+def restore_scene(data, grid_start):
+    """Remove only the recognized four-object generated-art installation.
+
+    Other textures, placements, record tails and pages remain byte-identical.
+    Unknown edits to the retired entrance/title fail closed for manual review.
+    """
+    start, end, directory, textures, layers, tail = scene_record(data, grid_start)
+    names = {index: _name(raw) for index, raw in textures}
+    retired = {PLACEMENTS[0][1].encode().lower(), PLACEMENTS[3][1].encode().lower()}
+    if not any(name in retired for name in names.values()):
+        return data
+    remove_ids = set()
+    for layer, path, x, y in PLACEMENTS:
+        name = path.encode().lower()
+        ids = {index for index, raw in textures if _name(raw) == name}
+        matches = [(li, row) for li, rows in enumerate(layers) for row in rows
+                   if struct.unpack_from('<I', row)[0] in ids]
+        if name in retired:
+            require(matches and all(li == layer and struct.unpack('<I3f', row)[1:] == (x, y, 0.)
+                                    for li, row in matches),
+                    'unknown retired dungeon7 placement; preserve for review: ' + path)
+        for index in ids:
+            expected = struct.pack('<I3f', index, x, y, 0.)
+            layers[layer] = [row for row in layers[layer] if row != expected]
+            if not any(struct.unpack_from('<I', row)[0] == index for rows in layers for row in rows):
+                remove_ids.add(index)
+    record = bytearray(data[start:grid_start + 64800])
+    for index, raw in textures:
+        if index not in remove_ids:
+            record += struct.pack('<i', index) + raw
+    record += struct.pack('<i', -1)
+    for rows in layers:
+        record += struct.pack('<I', len(rows)) + b''.join(rows)
+    record += tail
+    struct.pack_into('<I', record, 0, len(record) - 4)
+    result = bytearray(data[:start] + record + data[end:])
+    delta = len(record) - (end - start)
+    for i, (key, offset) in enumerate(directory):
+        if offset >= end:
+            struct.pack_into('<I', result, 13 + i * 8 + 4, offset + delta)
+    return bytes(result)
+
+
+def retired_outputs(root):
+    """Deletion plan for exact known generated images; never guess by filename."""
+    outputs = {}
+    for name, folder, _, _, _, digest in ARTWORK:
+        relative = Path(folder) / name
+        target = root / relative
+        if target.is_file():
+            if hashlib.sha256(target.read_bytes()).hexdigest() == digest:
+                outputs[relative] = None
+            # Unknown bytes, especially the native ep23 path, are user-owned.
+            # The operation report flags them for provenance review, not deletion.
+    return outputs
+
+
+def verify_restored_scene(data, grid_start):
+    _, _, _, textures, _, _ = scene_record(data, grid_start)
+    retired = {PLACEMENTS[0][1].encode().lower(), PLACEMENTS[3][1].encode().lower()}
+    require(not any(_name(raw) in retired for _, raw in textures), 'retired dungeon7 art still referenced')
     return True

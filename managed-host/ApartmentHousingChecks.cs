@@ -114,7 +114,7 @@ internal static class ApartmentHousingChecks
             Check((await upgraded.GetCharacterCardsAsync(owner.Id)).Single(c => c.CardCode == 12000001).Quantity == 7
                 && (await upgraded.GetCharacterCardsAsync(other.Id)).Single(c => c.CardCode == 12000001).Quantity == 4,
                 "migration and inventory reads preserve both owners' and apartment residents' SP cards");
-            Check(await upgraded.DeleteApartmentLandCardAsync(owner.AccountId, owner.Id, _sessions[0])
+            Check(await upgraded.DeleteApartmentLandCardAsync(owner.AccountId, owner.Id, _sessions[0]) is not null
                 && (await upgraded.GetCharacterCardsAsync(owner.Id)).Single(c => c.CardCode == 12000001).Quantity == 7,
                 "land deletion preserves the independent SP-card inventory");
             var reopened = new DatabaseService(root);
@@ -216,7 +216,7 @@ internal static class ApartmentHousingChecks
                   && await _db.GetApartmentLandCardAsync(_characters[7].Id) is { Slot: 4 },
                 "a second buyer receives an independently bound land card");
             Check(await _db.DeleteApartmentLandCardAsync(
-                      _characters[7].AccountId, _characters[7].Id, _sessions[7])
+                      _characters[7].AccountId, _characters[7].Id, _sessions[7]) is { Town: 0, Page: 7, Slot: 4 }
                   && await _db.GetOwnedApartmentHouseAsync(_characters[7].Id) is null
                   && await _db.GetApartmentLandCardAsync(_characters[7].Id) is null
                   && !(await _db.GetCharacterCardsAsync(_characters[7].Id))

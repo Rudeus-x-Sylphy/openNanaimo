@@ -77,7 +77,7 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn('function Ensure-ClientCompatibility', text)
         self.assertIn("'--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--apartment-recommendation','--dungeon7','--overwrite','--apply'", text)
         self.assertNotIn("'--emotion'", text)
-        self.assertIn('Fixed C393 is protocol hygiene, not the click-time Index repair.', text)
+        self.assertIn('the dedicated Index redirect provides click-time furniture access while C393 provides the bounded scene snapshot.', text)
         self.assertNotIn("'--all','--overwrite','--apply'", text)
         self.assertIn('$report.verification.all_pass', text)
         click = text.split('$clientBtn.add_Click({', 1)[1].split('# Pet lookup tab', 1)[0]

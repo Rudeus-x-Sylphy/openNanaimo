@@ -73,8 +73,10 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0x18C000, 0x10000, 0x108400),
         (0x660000, 0x10000, 0x118400),
         (0xE0000, 0x10000, 0x128400),
+        (0x500000, 0x1000, 0x138400),
+        (0x340000, 0x10000, 0x139400),
     ]
-    data = bytearray(0x138400)
+    data = bytearray(0x149400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -90,6 +92,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         offset = compat._va_offset(data, va, len(blob))
         data[offset:offset + len(blob)] = blob
         return offset
+    put(compat.dungeon7_visuals.MINIMAP_VA, compat.dungeon7_visuals.MINIMAP_OLD)
+    put(compat.dungeon_experience_compat.SETTER_VA, compat.dungeon_experience_compat.SETTER_OLD)
     put(0xA67B73, character_skip)
     put(0xA67BE3, character_gate)
     for _, va, old, _ in compat._referral_patch_sites():
@@ -207,8 +211,8 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
         pack = compat.VillagePack(output)
         self.assertEqual(pack.field(17, 48, 14, 10), 18)
         self.assertEqual(pack.field(18, 0, 14, 10), 17)
-        self.assertEqual(pack.field(18, 10, 7, 13), 166)
-        self.assertEqual(pack.field(18, 10, 15, 14), 169)
+        self.assertEqual(pack.field(18, 25, 3, 13), 166)
+        self.assertEqual(pack.field(18, 25, 6, 14), 169)
         self.assertEqual(pack.field(18, 48, 14, 10), 19)
         self.assertEqual(pack.field(24, 48, 14, 10), -1)
         second, second_report = compat.patch_village_pack(output)
@@ -252,7 +256,7 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
             self.assertTrue(second['verification']['all_pass'])
             self.assertTrue(all(row['status'] == 'unchanged' for row in second['apply_results']))
 
-    def test_dungeon7_only_never_plans_or_modifies_game_exe(self):
+    def test_dungeon7_only_changes_minimap_boundary_in_game_exe(self):
         with tempfile.TemporaryDirectory(prefix='nanaimo-compat-adapter-protocol-') as temp:
             root = Path(temp) / 'client'
             out = Path(temp) / 'overlay'
@@ -260,9 +264,11 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
             before = (root / 'game.exe').read_bytes()
             report = compat.prepare(root, out, furniture=False, dungeon7=True,
                                     overwrite=True, apply=True)
-            self.assertNotIn('game.exe', report['planned_files'])
-            self.assertEqual((root / 'game.exe').read_bytes(), before)
-            self.assertFalse(any((out / 'backups').rglob('game.exe')))
+            self.assertIn('game.exe', report['planned_files'])
+            after = (root / 'game.exe').read_bytes()
+            at = compat._va_offset(before, 0x900131, 1)
+            self.assertEqual([i for i, (a, b) in enumerate(zip(before, after)) if a != b], [at])
+            self.assertTrue(any((out / 'backups').rglob('game.exe')))
 
     def test_prepare_derives_aliases_without_checking_outputs(self):
         with tempfile.TemporaryDirectory(prefix='nanaimo-compat-test-') as temp:

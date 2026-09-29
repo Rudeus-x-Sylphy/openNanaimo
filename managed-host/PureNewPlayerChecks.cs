@@ -20,6 +20,7 @@ internal static class PureNewPlayerChecks
     public static async Task RunAsync()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        CheckReferralResponseContract();
         string temp = Path.GetFullPath(Path.GetTempPath());
         string root = Path.GetFullPath(Path.Combine(temp,
             "open-nanaimo-pure-new-player-" + Guid.NewGuid().ToString("N")));
@@ -134,7 +135,7 @@ internal static class PureNewPlayerChecks
             var shortRecommendation = CheckRecommendationResponse(
                 await Send(service, session, 0x2725, new byte[15]));
             Check(BinaryPrimitives.ReadUInt32LittleEndian(shortRecommendation) == 10,
-                "short recommender input receives a retryable nonexistent result");
+                "short recommender input receives native result 10 (not a client UI retry guarantee)");
             CheckPostRecommendationContext(
                 await Send(service, session, 0x2719, new byte[24]), login, "short input");
 
@@ -158,6 +159,28 @@ internal static class PureNewPlayerChecks
             CheckPostRecommendationContext(
                 await Send(service, session, 0x2719, new byte[24]), login, "self recommendation");
 
+            // Validate malformed/self request construction and login-session scope.
+            foreach (var malformed in new[]
+            {
+                new byte[17], Enumerable.Repeat((byte)'A', 16).ToArray(),
+                new byte[] { 0x81, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                Recommendation("Bad\nName")
+            })
+            {
+                var rejected = CheckRecommendationResponse(await Send(service, session, 0x2725, malformed));
+                Check(BinaryPrimitives.ReadUInt32LittleEndian(rejected) == 10
+                    && rejected.AsSpan(4).ToArray().All(value => value == 0),
+                    "malformed referral has one zero-tailed native failure, never a fabricated success");
+            }
+            Check(await Send(service, NewSession(), 0x2725, Recommendation("MissingReferrer")) is null,
+                "unauthenticated referral does not push a result or login context");
+            var wrongChannel = (Task<byte[]?>)Dispatch.Invoke(service,
+                [NativeDungeonClient.Frame(0x2725, Recommendation(chosenName)), (ushort)0x2725,
+                    "WorldAdapter", "127.0.0.1:30000", "127.0.0.1", session, CancellationToken.None])!;
+            Check(await wrongChannel is null, "referral remains scoped to the login connection");
+            CheckPostRecommendationContext(
+                await Send(service, session, 0x2719, new byte[24]), login, "malformed/wrong-channel probes");
+
             const string referrerName = "ReferrerOne";
             long referrerAccount = await database.OpenLocalAccountAsync("referrer-" + Guid.NewGuid().ToString("N"));
             long referrerCharacterId = await database.CreateLocalCharacterAsync(referrerAccount, referrerName, 0);
@@ -177,6 +200,23 @@ internal static class PureNewPlayerChecks
             Check(BinaryPrimitives.ReadUInt32LittleEndian(repeatedRecommendation) == 30
                 && await database.GetApartmentRecommendationPointsAsync(referrerCharacterId) == 200,
                 "recommendation replay reuses the accepted response without duplicating the 200-point grant");
+
+            var differentReplay = CheckRecommendationResponse(
+                await Send(service, session, 0x2725, Recommendation("OtherMissing")));
+            Check(differentReplay.SequenceEqual(acceptedRecommendation)
+                && await database.GetApartmentRecommendationPointsAsync(referrerCharacterId) == 200,
+                "accepted referral is immutable across changed-name replay and rewards only once");
+            for (byte tag = 0; tag < 32; tag++)
+            {
+                var taggedRequest = NativeDungeonClient.Frame(0x2725, Recommendation(referrerName));
+                taggedRequest[0] = tag;
+                var taggedResponse = await (Task<byte[]?>)Dispatch.Invoke(service,
+                    [taggedRequest, (ushort)0x2725, "GameAdapter", "127.0.0.1:30000",
+                        "127.0.0.1", session, CancellationToken.None])!;
+                Check(CheckRecommendationResponse(taggedResponse).SequenceEqual(acceptedRecommendation)
+                    && (taggedResponse![0] & 0x1F) == tag,
+                    "all request-low tags preserve a single result, not an unsolicited context burst");
+            }
 
             CheckPayload(await Send(service, session, 0x271B, new byte[4]), 0x271C);
             CheckResult(await Send(service, session, 0x2717, Creation("Replacement", chosenAppearance)), 10,
@@ -267,6 +307,37 @@ internal static class PureNewPlayerChecks
         Encoding.GetEncoding(936).GetBytes(name).CopyTo(payload, 0);
         appearance.CopyTo(payload, 16);
         return payload;
+    }
+
+    private static void CheckReferralResponseContract()
+    {
+        var build = typeof(NetworkAdapterService).GetMethod("BuildFriendRecommendationResultPayload",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        byte[] Build(uint result, string? name) => (byte[])build.Invoke(null, [result, name])!;
+        foreach (uint result in new uint[] { 10, 20 })
+        {
+            var payload = Build(result, "ignored");
+            Check(payload.Length == 20 && BinaryPrimitives.ReadUInt32LittleEndian(payload) == result
+                && payload.AsSpan(4).ToArray().All(value => value == 0),
+                "native referral failures fully initialize the name tail");
+        }
+        foreach (string name in new[] { "123456789012345", "\u63a8\u8350\u4eba" })
+        {
+            var payload = Build(30, name);
+            Check(payload.Length == 20 && BinaryPrimitives.ReadUInt32LittleEndian(payload) == 30
+                && Encoding.GetEncoding(936).GetString(payload.AsSpan(4, 16)).TrimEnd('\0') == name
+                && payload[19] == 0, "successful referral preserves the complete GBK name and terminator");
+        }
+        void Reject(uint result, string? name)
+        {
+            try { Build(result, name); }
+            catch (TargetInvocationException ex) when (ex.InnerException is ArgumentException) { return; }
+            throw new InvalidOperationException("Invalid referral result/name must not produce a wire response.");
+        }
+        foreach (uint result in new uint[] { 0, 1, 40, 2000, uint.MaxValue }) Reject(result, "name");
+        foreach (string? name in new string?[] { null, "", " ", "1234567890123456",
+            "a\0b", "a\nb", "\ud83d\ude00", new string('\u63a8', 8) }) Reject(30, name);
+        Console.WriteLine("PASS referral response guard: native statuses, complete GBK name, no invented continue result");
     }
 
     private static byte[] Recommendation(string name)
