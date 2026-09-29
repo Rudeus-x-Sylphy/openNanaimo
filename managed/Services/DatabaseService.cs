@@ -9687,26 +9687,17 @@ public sealed partial class DatabaseService
                 1 => [15005007u, 17000003u, 21000001u, 14000005u],
                 3 => gender == 1 ? [10110300u, 10120300u, 10130300u] : [10010300u, 10020300u, 10030300u],
                 4 => [11000009u, 11110004u, 11460048u, 11250026u],
+                0 or 5 => [46_000_008u],
                 _ => []
             };
             foreach (var itemCode in items)
                 if (!ShopCatalog.TryGet(itemCode, out _))
                     throw new InvalidDataException($"Missing story guide reward {itemCode}");
-            // The owner chose direct 100-Hans credit for the two legacy coupons.
             // The unverified Hasio gift-box definition stays an explicit debt.
             pending = guideId == 6;
             // A full key counter keeps its reward pending; never silently clamp.
             if (guideId == 2 && keys > 245) pending = true;
             var now = DateTime.UtcNow.ToString("O");
-            if (guideId is 0 or 5)
-            {
-                using var grant = connection.CreateCommand();
-                grant.Transaction = transaction;
-                grant.CommandText = "UPDATE Characters SET Hans=MIN(4294967295,Hans+100),LastSavedAt=$now WHERE Id=$id";
-                grant.Parameters.AddWithValue("$id", characterId);
-                grant.Parameters.AddWithValue("$now", now);
-                await grant.ExecuteNonQueryAsync(cancellationToken);
-            }
             foreach (var itemCode in items)
             {
                 using var grant = connection.CreateCommand();

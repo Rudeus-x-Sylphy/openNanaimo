@@ -388,7 +388,8 @@ internal static class ApartmentGameplayChecks
             foreach (var level in new[] { 1, 2, 3 })
             {
                 await Sql($"UPDATE Characters SET TutorialCompleted=1,Level={level},Hans=1000 WHERE Id={character.Id};"
-                    + $"DELETE FROM CharacterStoryGuides WHERE CharacterId={character.Id} AND GuideId IN (0,5);");
+                    + $"DELETE FROM CharacterStoryGuides WHERE CharacterId={character.Id} AND GuideId IN (0,5);"
+                    + $"DELETE FROM CharacterItems WHERE CharacterId={character.Id} AND ItemCode=46000008;");
                 var entry = One(await Send(service, who, 0xC38D, Move(1)), 0xC38E);
                 Check(entry.Length == 112 && entry[8] == 10, $"LV{level} first apartment entry has complete room state");
                 Check(One(await Send(service, who, 0xC38F, Words(320, 240)), 0xC390).Length == 124,
@@ -401,18 +402,22 @@ internal static class ApartmentGameplayChecks
                 var reply = One(await Send(service, who, 0xC599, request), 0xC59A);
                 Check(reply.Length == 36 && reply[8] == 0 && U32(reply, 12) == 5 && U16(reply, 16) == 0,
                     $"LV{level} apartment guide confirms its own ID and completion kind");
-                Check((await _db.GetCharacterAsync(account))!.Hans == 1100,
-                    "apartment welcome reward and completion commit together");
+                var completed = (await _db.GetCharacterAsync(account))!;
+                Check(completed.Hans == 1000
+                    && completed.Items.Single(item => item.ItemCode == 46_000_008u).Quantity == 1,
+                    "apartment welcome certificate and completion commit together");
                 var repeated = One(await Send(service, who, 0xC599, request), 0xC59A);
+                var afterRepeated = (await _db.GetCharacterAsync(account))!;
                 Check(repeated[8] == 0 && U32(repeated, 12) == 5
-                    && (await _db.GetCharacterAsync(account))!.Hans == 1100,
+                    && afterRepeated.Hans == 1000
+                    && afterRepeated.Items.Single(item => item.ItemCode == 46_000_008u).Quantity == 1,
                     "repeated apartment confirmation is idempotent");
                 var reopened = new DatabaseService(root);
                 var saved = await reopened.GetStoryGuideStateAsync(account, character.Id, sessionId);
                 Check(saved.Authorized && (saved.Mask & (1u << 5)) != 0,
                     "completed apartment guide survives database reopen");
                 var balances = One(await Send(service, who, 0xC37A, Dword(uint.MaxValue)), 0xC37B);
-                Check(balances.Length == 32 && U64(balances, 8) == 1100,
+                Check(balances.Length == 32 && U64(balances, 8) == 1000,
                     "guide confirmation keeps the session available for wallet refresh");
                 Check(One(await Send(service, who, 0xC38F, Words(321, 241)), 0xC390).Length == 124,
                     "guide confirmation keeps apartment actor requests available");
@@ -422,12 +427,12 @@ internal static class ApartmentGameplayChecks
             BinaryPrimitives.WriteUInt32LittleEndian(invalid.AsSpan(4), 5);
             var rejected = One(await Send(service, who, 0xC599, invalid), 0xC59A);
             Check(rejected.Length == 36 && rejected[8] == 3
-                && (await _db.GetCharacterAsync(account))!.Hans == 1100,
+                && (await _db.GetCharacterAsync(account))!.Hans == 1000,
                 "invalid apartment guide kind returns the recoverable rejection branch");
             await Sql($"UPDATE Characters SET TutorialCompleted=0 WHERE Id={character.Id}");
             BinaryPrimitives.WriteUInt16LittleEndian(invalid, 0);
             rejected = One(await Send(service, who, 0xC599, invalid), 0xC59A);
-            Check(rejected[8] == 3 && (await _db.GetCharacterAsync(account))!.Hans == 1100,
+            Check(rejected[8] == 3 && (await _db.GetCharacterAsync(account))!.Hans == 1000,
                 "pre-tutorial apartment completion is rejected with a recoverable result");
             await Sql($"UPDATE Characters SET TutorialCompleted=1 WHERE Id={character.Id}");
         }

@@ -43,13 +43,13 @@
     },
     {
       "path": "managed-host/ApartmentGameplayChecks.cs",
-      "size": 36061,
-      "sha256": "B728336C93FD28D2F5842B72B5407D61886509BE55F9B3A7FACF21CE6023EB11"
+      "size": 36468,
+      "sha256": "733286CC5B9CF270768AC97AFEDCFC170788AC46A4535ED2890F1D594493D089"
     },
     {
       "path": "managed-host/ApartmentGuideLifecycleChecks.cs",
-      "size": 11219,
-      "sha256": "424CAA862D9874F88D7A910876EADAC8E0CCA71019D22FDAB5D4AE2C724C3850"
+      "size": 11623,
+      "sha256": "215CE89D1BD7794BC2614FA4A10FFF2E552BE7F8FF1FBA2389819E79DCE4C325"
     },
     {
       "path": "managed-host/ApartmentHousingChecks.cs",
@@ -243,8 +243,8 @@
     },
     {
       "path": "managed-host/QuestSystemChecks.cs",
-      "size": 18227,
-      "sha256": "D2CA9D61A10B19B94BDC5E486AA562F0D48A3A1A55D06D1BC3E6880757CAA783"
+      "size": 20129,
+      "sha256": "FA4B05AECB85EE17D26FF9713A6CE86EA11EE75F590BBB5BF28533A613B5D283"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -523,8 +523,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.Inventory.cs",
-      "size": 20920,
-      "sha256": "6E1A2C62A5D571576B94BB3BFD3264EC593D4C8E8474DF766A5385D4AF3D3B01"
+      "size": 25665,
+      "sha256": "53FB6A4EF7AFB6E9F5840067AF367215AEB09DF524E1A96F9A9B7AF440D1C2F0"
     },
     {
       "path": "managed/Services/DatabaseService.InventoryCoupons.cs",
@@ -568,8 +568,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 621167,
-      "sha256": "6D3B8E16285E8F75BDA522F59632D494F38529BF6691C1CC0A317890A2A1A701"
+      "size": 620635,
+      "sha256": "EF89DE0F6C06F62837D147D6BAA2A56078773D3292E46BDDB52B710CB4DED042"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -768,8 +768,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 961556,
-      "sha256": "C0FD5D91AB7AD66F392AD3658956A31D9E2DDF7EF1C09B83399591B279FD41AB"
+      "size": 963932,
+      "sha256": "A42B5E24658DECDEEC81216D444931B3306A2C1633157D24B2EFB74CBFAA9EAF"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -783,8 +783,8 @@
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
-      "size": 42431,
-      "sha256": "701269E01064A63596F0D93A001E0B07ED4C5312C13D9FE14BF21D1AF88BCC50"
+      "size": 44212,
+      "sha256": "D86784F415719774C6A2B3A4455F0001308A3423DF172887EFB5D77346164375"
     },
     {
       "path": "managed/Services/ProtocolInspector.cs",

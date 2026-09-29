@@ -1,4 +1,4 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
 using System.Reflection;
 using Microsoft.Data.Sqlite;
 using OpenNanaimo.Adapter.Models;
@@ -95,13 +95,36 @@ internal static class QuestSystemChecks
                 && BinaryPrimitives.ReadUInt32LittleEndian(nemoFrame.AsSpan(12, 4)) == 0
                 && BinaryPrimitives.ReadUInt16LittleEndian(nemoFrame.AsSpan(16, 2)) == 0,
                 "Nemo C599 type0/guide0 receives the exact C59A success tuple that closes the client guide state");
+            static ushort Quantity(CharacterRecord character, uint itemCode)
+                => character.Items.FirstOrDefault(item => item.ItemCode == itemCode)?.Quantity ?? 0;
             Check(nemoState.Authorized && (nemoState.Mask & 1) != 0
-                && afterNemo.Hans == beforeNemo.Hans + 100,
-                "Nemo completion persists guide bit zero and its one-time 100-Hans reward");
+                && afterNemo.Hans == beforeNemo.Hans
+                && Quantity(afterNemo, 46_000_008u) == Quantity(beforeNemo, 46_000_008u) + 1,
+                "Nemo completion persists guide bit zero and its one-time 100-Hans certificate");
             var repeatedNemo = await Dispatch(0xC599, nemoCompletion);
+            var afterRepeatedNemo = (await db.GetCharacterAsync(account))!;
             Check(repeatedNemo[8] == 0 && repeatedNemo[9] == 0
-                && (await db.GetCharacterAsync(account))!.Hans == afterNemo.Hans,
+                && afterRepeatedNemo.Hans == afterNemo.Hans
+                && Quantity(afterRepeatedNemo, 46_000_008u) == Quantity(afterNemo, 46_000_008u),
                 "repeated Nemo completion acknowledges the waiting client without duplicating rewards");
+            var certificateInventory = await Dispatch(0xC42F, []);
+            Check(ReadOpcode(certificateInventory) == 0xC430
+                && BinaryPrimitives.ReadUInt16LittleEndian(certificateInventory.AsSpan(10, 2)) == 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(certificateInventory.AsSpan(12, 4)) == 46_000_008u,
+                "Nemo certificate is restored through the ordinary game-item inventory");
+            var redeemCertificate = new byte[8];
+            BinaryPrimitives.WriteUInt32LittleEndian(redeemCertificate, 46_000_008u);
+            BinaryPrimitives.WriteUInt32LittleEndian(redeemCertificate.AsSpan(4), 0);
+            var redeemedFrames = await Dispatch(0xC46D, redeemCertificate);
+            var redeemResult = FindFrame(redeemedFrames, 0xC46E);
+            var afterRedeem = (await db.GetCharacterAsync(account))!;
+            Check(Opcodes(redeemedFrames).SequenceEqual(new ushort[] { 0xC430, 0xC46E })
+                && BinaryPrimitives.ReadUInt32LittleEndian(redeemResult.AsSpan(8, 4)) == 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(redeemResult.AsSpan(12, 4)) == 46_000_008u
+                && BinaryPrimitives.ReadUInt32LittleEndian(redeemResult.AsSpan(16, 4)) == 0
+                && afterRedeem.Hans == afterNemo.Hans + 100
+                && Quantity(afterRedeem, 46_000_008u) == 0,
+                "using the 100-Hans certificate refreshes inventory, reports zero remaining and credits the wallet atomically");
 
             var firstProgress = await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true,
                 new QuestRunRestrictions(false, false, false, true, 0, 0, 0, 1000)

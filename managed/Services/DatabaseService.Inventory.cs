@@ -48,6 +48,95 @@ public sealed partial class DatabaseService
             : DungeonQuickItemConsumeResult.Failed;
     }
 
+    public async Task<(bool Success, ushort Quantity, long Hans)> RedeemHansGiftCertificateAsync(
+        long accountId,
+        long characterId,
+        string sessionId,
+        uint itemCode,
+        byte inventoryIndex,
+        CancellationToken cancellationToken = default)
+    {
+        if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId)
+            || !ShopCatalog.TryGet(itemCode, out var item)
+            || !item.IsHansGiftCertificate
+            || inventoryIndex > 83)
+            return (false, 0, 0);
+
+        await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        long quantity;
+        long hans;
+        await using (var current = connection.CreateCommand())
+        {
+            current.Transaction = transaction;
+            current.CommandText = """
+                SELECT item.Quantity, character.Hans
+                FROM CharacterItems AS item
+                INNER JOIN Characters AS character ON character.Id = item.CharacterId
+                INNER JOIN Accounts AS account ON account.Id = character.AccountId
+                WHERE item.CharacterId = $characterId AND item.ItemCode = $itemCode
+                  AND item.Quantity > 0 AND character.AccountId = $accountId
+                  AND character.IsOnline = 1 AND character.ActiveSessionId = $sessionId
+                  AND account.IsOnline = 1 AND account.ActiveSessionId = $sessionId
+                """;
+            current.Parameters.AddWithValue("$characterId", characterId);
+            current.Parameters.AddWithValue("$itemCode", itemCode);
+            current.Parameters.AddWithValue("$accountId", accountId);
+            current.Parameters.AddWithValue("$sessionId", sessionId);
+            await using var reader = await current.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+                return (false, 0, 0);
+            quantity = reader.GetInt64(0);
+            hans = reader.GetInt64(1);
+        }
+
+        if (hans < 0 || hans > uint.MaxValue || item.HansGiftValue > uint.MaxValue - hans)
+            return (false, checked((ushort)Math.Min(quantity, ushort.MaxValue)), hans);
+
+        var before = await GetGameInventoryItemCodesAsync(
+            connection, transaction, characterId, cancellationToken);
+        if (inventoryIndex >= before.Count || before[inventoryIndex] != itemCode)
+            return (false, checked((ushort)Math.Min(quantity, ushort.MaxValue)), hans);
+
+        var remaining = quantity - 1;
+        var now = DateTime.UtcNow.ToString("O");
+        await using (var consume = connection.CreateCommand())
+        {
+            consume.Transaction = transaction;
+            consume.CommandText = remaining == 0
+                ? "DELETE FROM CharacterItems WHERE CharacterId=$characterId AND ItemCode=$itemCode AND Quantity=$quantity"
+                : "UPDATE CharacterItems SET Quantity=$remaining,UpdatedAt=$now WHERE CharacterId=$characterId AND ItemCode=$itemCode AND Quantity=$quantity";
+            consume.Parameters.AddWithValue("$characterId", characterId);
+            consume.Parameters.AddWithValue("$itemCode", itemCode);
+            consume.Parameters.AddWithValue("$quantity", quantity);
+            if (remaining != 0)
+            {
+                consume.Parameters.AddWithValue("$remaining", remaining);
+                consume.Parameters.AddWithValue("$now", now);
+            }
+            if (await consume.ExecuteNonQueryAsync(cancellationToken) != 1)
+                return (false, checked((ushort)Math.Min(quantity, ushort.MaxValue)), hans);
+        }
+
+        await ReindexGameQuickSlotsAfterRemovalAsync(
+            connection, transaction, characterId, before, inventoryIndex, cancellationToken);
+        var creditedHans = checked(hans + item.HansGiftValue);
+        await using (var credit = connection.CreateCommand())
+        {
+            credit.Transaction = transaction;
+            credit.CommandText = "UPDATE Characters SET Hans=$hans,LastSavedAt=$now WHERE Id=$characterId AND Hans=$oldHans";
+            credit.Parameters.AddWithValue("$hans", creditedHans);
+            credit.Parameters.AddWithValue("$oldHans", hans);
+            credit.Parameters.AddWithValue("$now", now);
+            credit.Parameters.AddWithValue("$characterId", characterId);
+            if (await credit.ExecuteNonQueryAsync(cancellationToken) != 1)
+                return (false, checked((ushort)Math.Min(quantity, ushort.MaxValue)), hans);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return (true, checked((ushort)Math.Min(remaining, ushort.MaxValue)), creditedHans);
+    }
+
     private async Task<(bool Success, ushort Quantity)> DeleteGameInventoryItemCoreAsync(
         long accountId,
         long characterId,

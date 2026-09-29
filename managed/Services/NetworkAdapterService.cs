@@ -3169,7 +3169,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var tokenItemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(0, 4));
                 var tokenSelector = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4, 4));
                 if (!ShopCatalog.TryGet(tokenItemCode, out var tokenCatalogItem)
-                    || tokenCatalogItem.Category is not (14 or 42 or 47 or 48))
+                    || tokenCatalogItem.Category is not (14 or 42 or 46 or 47 or 48))
                 {
                     _log($"{channel}:{remote} token use fields invalid: item={tokenItemCode} selector={tokenSelector}; inventory unchanged");
                     return null;
@@ -3216,6 +3216,42 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         BuildTokenUseResultPayload(true, tokenItemCode, tokenSelector),
                         session);
                     return BuildInventoryMutationRefresh(frame, foodAcknowledgement, session, shoppingCoupon: false);
+                }
+
+                if (tokenCatalogItem.Category == 46)
+                {
+                    await RefreshSessionCharacterAsync(session, token);
+                    if (!TryResolveSessionInventoryIdentity(
+                            session, tokenSelector, out var giftStorageIndex, out var selectedGiftCode)
+                        || selectedGiftCode != tokenItemCode)
+                    {
+                        _log($"{channel}:{remote} Hans gift identity invalid: item={tokenItemCode} identity={tokenSelector}; inventory unchanged");
+                        return BuildNativeFrame(
+                            frame, 0xC46E,
+                            BuildTokenUseResultPayload(false, tokenItemCode, tokenSelector), session);
+                    }
+
+                    var giftResult = await _database.RedeemHansGiftCertificateAsync(
+                        session.AccountId, session.Character!.Id, session.SessionId,
+                        tokenItemCode, giftStorageIndex, token);
+                    if (!giftResult.Success)
+                    {
+                        _log($"{channel}:{remote} Hans gift redemption rejected: item={tokenItemCode} identity={tokenSelector} quantity={giftResult.Quantity}; inventory and wallet unchanged");
+                        return BuildNativeFrame(
+                            frame, 0xC46E,
+                            BuildTokenUseResultPayload(false, tokenItemCode, tokenSelector), session);
+                    }
+
+                    session.GameInventoryIdentities.Remove(tokenSelector);
+                    await RefreshSessionCharacterAsync(session, token);
+                    AccountStateChanged?.Invoke();
+                    _log($"{channel}:{remote} Hans gift redeemed: item={tokenItemCode} name={tokenCatalogItem.Name} identity={tokenSelector} value={tokenCatalogItem.HansGiftValue} remaining={giftResult.Quantity} hans={giftResult.Hans}");
+                    var giftAcknowledgement = BuildNativeFrame(
+                        frame, 0xC46E,
+                        BuildTokenUseResultPayload(true, tokenItemCode, giftResult.Quantity), session);
+                    var giftInventory = BuildNativeFrame(
+                        frame, 0xC430, BuildGameInventoryPayload(session.Character), session);
+                    return CombineNativeFrames(giftInventory, giftAcknowledgement);
                 }
 
                 if (tokenCatalogItem.Category == 48)

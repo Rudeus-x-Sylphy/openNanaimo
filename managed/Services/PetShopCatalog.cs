@@ -60,6 +60,8 @@ public sealed class ShopCatalogItem
     public bool IsShoppingCoupon => Category == 41;
     public byte ShoppingCouponDomain { get; init; } = byte.MaxValue;
     public uint ShoppingCouponValue { get; init; }
+    public uint HansGiftValue { get; init; }
+    public bool IsHansGiftCertificate => Category == 46 && HansGiftValue > 0;
 
     public bool IsPurchasable => HansPrice > 0 || CashPrice > 0;
     public bool PaysWithCash => CashPrice > 0 && HansPrice == 0;
@@ -104,6 +106,7 @@ internal static class ShopCatalog
     private const string InventoryExpansionResourceName = "OpenNanaimo.Adapter.ClientData.IE._D23";
     private const string MiscItemResourceName = "OpenNanaimo.Adapter.ClientData.MI._D22";
     private const string FaceCouponResourceName = "OpenNanaimo.Adapter.ClientData.SF._D21";
+    private const string HansGiftResourceName = "OpenNanaimo.Adapter.ClientData.htoken._D25";
     private const int PetRecordCount = 868;
     private static readonly Lazy<IReadOnlyDictionary<uint, ShopCatalogItem>> Items = new(Load);
     private static IReadOnlyDictionary<byte, PetGrowthStage[]> _petGrowthStages =
@@ -159,6 +162,7 @@ internal static class ShopCatalog
         LoadInventoryExpansionItems(result);
         LoadMiscItems(result);
         LoadFaceCoupons(result);
+        LoadHansGiftCertificates(result);
         LoadShoppingCoupons(result);
         LoadCardSynthesisRewards(result);
         return result;
@@ -587,6 +591,33 @@ internal static class ShopCatalog
         }
     }
 
+    private static void LoadHansGiftCertificates(Dictionary<uint, ShopCatalogItem> result)
+    {
+        const int headerFields = 3;
+        const int recordFields = 7;
+        var fields = ReadFixedCatalog(
+            HansGiftResourceName, "HansGiftCertificate", headerFields, recordFields, out var count);
+        for (var index = 0; index < count; index++)
+        {
+            var offset = headerFields + index * recordFields;
+            var itemCode = ReadCatalogUInt(fields[offset], "Hans gift item code");
+            var value = ReadCatalogUInt(fields[offset + 6], "Hans gift value");
+            if (itemCode / 1_000_000 != 46 || value == 0)
+                throw new InvalidDataException($"The embedded Hans gift row {index} is invalid.");
+            if (!result.TryAdd(itemCode, new ShopCatalogItem
+            {
+                Category = 46,
+                ItemCode = itemCode,
+                Name = fields[offset + 2],
+                Section = InventorySection.GameItem,
+                HansGiftValue = value,
+                IconPath = fields[offset + 1],
+                Source = "htoken._D25"
+            }))
+                throw new InvalidDataException($"Duplicate Hans gift certificate {itemCode}.");
+        }
+    }
+
     private static void LoadFaceCoupons(Dictionary<uint, ShopCatalogItem> result)
     {
         const int headerFields = 3;
@@ -602,6 +633,11 @@ internal static class ShopCatalog
                 faceOptionsFirstField: 8);
         }
     }
+
+    private static uint ReadCatalogUInt(string field, string label)
+        => uint.TryParse(field, NumberStyles.None, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : throw new InvalidDataException($"The embedded {label} is invalid: {field}");
 
     private static string[] ReadFixedCatalog(string resourceName, string expectedHeader, int headerFields, int recordFields, out int count)
     {

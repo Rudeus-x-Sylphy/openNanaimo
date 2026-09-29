@@ -10,7 +10,7 @@ The original client starts the apartment guide for an owner room at LV3 or above
 
 The Jack Dudu guide uses guide ID 5. Its completion response carries the same effective maximum HP and MP as the room's current resource snapshot. The client applies these maximum values before it displays the guide reward window, while retaining its existing current HP and MP. Keeping both values in the same resource model prevents the guide health bars from exceeding their texture bounds.
 
-Completion retains the existing actor, furniture, recovery schedule, current HP/MP, and saved base attributes. A character without an effective-resource snapshot uses the same profile maxima as ordinary room synchronization. Welcome rewards and completion are committed together, and repeated confirmation grants the reward once.
+Completion retains the existing actor, furniture, recovery schedule, current HP/MP, and saved base attributes. A character without an effective-resource snapshot uses the same profile maxima as ordinary room synchronization. The welcome reward is one 100-Hans certificate in the ordinary game-item inventory. Using the certificate credits 100 Hans in the same transaction that consumes it. Reward and completion are committed together, and repeated confirmation grants the certificate once.
 
 Subsequent refresh, recommendation, decoration, and exit operations use the ordinary room lifecycle. Visit counters, recommendation points, and recovery state remain separate persisted values.
 

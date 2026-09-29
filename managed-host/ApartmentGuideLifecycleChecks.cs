@@ -86,14 +86,20 @@ internal static class ApartmentGuideLifecycleChecks
             var other = await Send(service, session, 0xC599, completion);
             Check(other is { Length: 36 } && U16(other, 20) == character.MaxHp,
                 "out-of-order other-guide completion keeps its own unchanged contract");
-            var hansBefore = (await db.GetCharacterAsync(account))!.Hans;
+            var beforeGuideReward = (await db.GetCharacterAsync(account))!;
+            var hansBefore = beforeGuideReward.Hans;
+            var certificatesBefore = beforeGuideReward.Items.FirstOrDefault(
+                item => item.ItemCode == 46_000_008u)?.Quantity ?? 0;
             BinaryPrimitives.WriteUInt32LittleEndian(completion.AsSpan(4), 5);
             var done = await Send(service, session, 0xC599, completion);
             Check(done is { Length: 36 } && done[8] == 0 && U16(done, 20) == resources.MaximumHp
                 && U16(done, 22) == resources.MaximumMp, "dispatch uses effective maxima before reward-window handling");
             await Send(service, session, 0xC599, completion);
-            Check((await db.GetCharacterAsync(account))!.Hans == hansBefore + 100,
-                "repeated completion pays exactly once");
+            var afterGuideReward = (await db.GetCharacterAsync(account))!;
+            Check(afterGuideReward.Hans == hansBefore
+                && afterGuideReward.Items.Single(item => item.ItemCode == 46_000_008u).Quantity
+                    == certificatesBefore + 1,
+                "repeated completion grants exactly one certificate");
             var schedule = (HealthRecoverySchedule)Get(session, "HealthRecovery")!;
             var clock = DateTimeOffset.UtcNow;
             schedule.Activate(HealthRecoveryScene.Apartment, clock);
