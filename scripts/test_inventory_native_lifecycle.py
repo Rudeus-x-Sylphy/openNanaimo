@@ -63,7 +63,7 @@ static int roundtrip(void){
     shopping_fill_appearance(a);
     for(i=0;i<8;i++)CHECK(a[i]==0);
     CHECK(a[8]==1&&g_equipped_n==0&&g_effect_equipped==0&&g_pet_equipped==0);
-    managed_bridge_snapshot(1,1);CHECK(sends==1&&frame_is(0xF102,5128));
+    managed_bridge_snapshot(1,1);CHECK(sends==1&&frame_is(0xF102,MANAGED_STATE_SIZE+8));
     for(i=0;i<6;i++)CHECK(rd(8+112+4*i)==0);
     CHECK(rd(8+68)==0);
     /* Re-import a persisted/checkpointed unequipped state: no default refill. */
@@ -93,13 +93,13 @@ static int request_boundary(void){
     unsigned char f[MANAGED_STATE_SIZE+8];
     memset(f,0,sizeof(f));seed(f+8,0);
     CHECK(managed_bridge_handle(1,0xF100,sizeof(f),f));
-    CHECK(sends==1&&frame_is(0xF102,5128)&&rd(8)==1);
+    CHECK(sends==1&&frame_is(0xF102,MANAGED_STATE_SIZE+8)&&rd(8)==1);
     CHECK(managed_bridge_handle(1,0xF101,8,f));
-    CHECK(sends==2&&frame_is(0xF102,5128)&&rd(8)==1);
+    CHECK(sends==2&&frame_is(0xF102,MANAGED_STATE_SIZE+8)&&rd(8)==1);
     CHECK(managed_bridge_handle(1,0xF100,sizeof(f)-1,f));
-    CHECK(sends==3&&frame_is(0xF102,5128)&&rd(8)==0);
+    CHECK(sends==3&&frame_is(0xF102,MANAGED_STATE_SIZE+8)&&rd(8)==0);
     CHECK(managed_bridge_handle(1,0xF101,9,f));
-    CHECK(sends==4&&frame_is(0xF102,5128)&&rd(8)==0);
+    CHECK(sends==4&&frame_is(0xF102,MANAGED_STATE_SIZE+8)&&rd(8)==0);
     /* The control dispatcher owns F100/F101; town inventory routes remain in gs_runtime. */
     CHECK(!managed_bridge_handle(1,0xC480,12,f));
     CHECK(!managed_bridge_handle(1,0xC47D,144,f));CHECK(sends==4);
@@ -117,10 +117,30 @@ static int inventory_reimport(void){
     /* Managed consumes/drops the final stock; next F100 replaces the ledger. */
     seed(state,0);CHECK(managed_bridge_import(state));
     CHECK(g_card_synth_item_n==0&&g_quickbar_code[0]==0&&g_quickbar_handles[17]==0);
-    managed_bridge_snapshot(1,1);CHECK(sends==1&&frame_is(0xF102,5128));
+    managed_bridge_snapshot(1,1);CHECK(sends==1&&frame_is(0xF102,MANAGED_STATE_SIZE+8));
     CHECK(rd(8+1952)==0&&rd(8+224)==0&&rd(8+4000+17*4)==0);
     send_c379_profile_profile_snapshot(1);
     CHECK(sends==2&&frame_is(0xC379,324)&&rd(0xE4)==0&&rd(0xE8)==0);
+    return 0;
+}
+static int couple_metadata_only(void){
+    unsigned char state[MANAGED_STATE_SIZE],before[MANAGED_STATE_SIZE],request[20];unsigned i;
+    g_multi_conn[0].active=1;g_multi_conn[0].uid=21;g_multi_conn[0].join_order=1;
+    g_multi_conn[1].active=1;g_multi_transport_alive[1]=1;g_multi_conn[1].uid=22;g_multi_conn[1].join_order=2;
+    seed(state,0);managed_put(state,20,251);managed_put(state,28,33);
+    managed_put(state,1952,1);managed_put(state,1956,14000001);managed_put(state,1960,1);
+    managed_put(state,224,14000001);managed_put(state,228,3);managed_put(state,4012,14000001);
+    CHECK(managed_bridge_import(state));managed_bridge_snapshot(1,1);memcpy(before,captured+8,MANAGED_STATE_SIZE);
+    memset(request,0,sizeof(request));managed_put(request,8,21);managed_put(request,12,43000002);managed_put(request,16,22);
+    CHECK(managed_bridge_handle(1,0xF106,20,request)&&sends==1);
+    managed_bridge_snapshot(1,1);CHECK(sends==2&&rd(8+3996)==43000002&&rd(8+5120)==22);
+    for(i=0;i<MANAGED_STATE_SIZE;i++)if(!(i>=3996&&i<4000)&&!(i>=5120&&i<5124))CHECK(before[i]==captured[8+i]);
+    CHECK(g_quickbar_handles[3]==14000001&&g_profile_hp_current==251&&g_profile_mp_current==33);
+    managed_put(request,12,0);CHECK(managed_bridge_handle(1,0xF106,19,request));CHECK(g_managed_couple_ring[0]==43000002);
+    managed_put(request,8,22);CHECK(managed_bridge_handle(1,0xF106,20,request));CHECK(g_managed_couple_ring[0]==43000002);
+    g_multi_conn[0].room_active=1;managed_put(state,20,0);managed_put(state,28,0);CHECK(managed_bridge_import(state));CHECK(g_profile_hp_current==0&&g_profile_mp_current==0);
+    managed_put(state,16,2000);managed_put(state,20,1900);managed_put(state,24,900);managed_put(state,28,800);
+    CHECK(managed_bridge_import(state));CHECK(g_profile_hp_current==1900&&g_profile_mp_current==800);
     return 0;
 }
 int main(int argc,char **argv){
@@ -131,6 +151,7 @@ int main(int argc,char **argv){
         case 1:return profile_carriers();
         case 2:return request_boundary();
         case 3:return inventory_reimport();
+        case 4:return couple_metadata_only();
     }
     return 2;
 }
@@ -161,6 +182,9 @@ class InventoryNativeLifecycleTests(unittest.TestCase):
                                 capture_output=True, text=True,
                                 errors="replace", timeout=30)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_couple_metadata_cannot_import_gameplay_state(self):
+        self.run_case(4)
 
     def test_zero_equipment_effect_and_pet_survive_checkpoint(self):
         self.run_case(0)

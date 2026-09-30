@@ -7,7 +7,16 @@ public sealed partial class NetworkAdapterService
 {
     private readonly Dictionary<int, EntertainmentRoom> _entertainmentRooms = [];
     private readonly object _entertainmentRoomGate = new();
+    private readonly Dictionary<string, EntertainmentInvitation> _entertainmentInvitationsByInvitee = new(StringComparer.Ordinal);
     private int _nextEntertainmentRoomId;
+
+    private sealed class EntertainmentInvitation
+    {
+        public required ConnectionSession Inviter { get; init; }
+        public required ConnectionSession Invitee { get; init; }
+        public required int RoomId { get; init; }
+        public DateTime CreatedUtc { get; init; } = DateTime.UtcNow;
+    }
 
     private sealed class EntertainmentRoom
     {
@@ -132,6 +141,78 @@ public sealed partial class NetworkAdapterService
         }
         while (_entertainmentRooms.ContainsKey(_nextEntertainmentRoomId));
         return _nextEntertainmentRoomId;
+    }
+
+    private ConnectionSession? FindEntertainmentInvitationTarget(ConnectionSession source, ushort entityUid)
+        => _activeArenaSessions.Values.FirstOrDefault(target =>
+            target.SessionId != source.SessionId && target.OnlineTracked && target.AuxiliaryGameSession
+            && target.Character is not null && target.ChannelId == source.ChannelId
+            && target.ArenaGameType == source.ArenaGameType && target.EntertainmentRoomId == 0
+            && GetSceneEntityId(target.Character) == entityUid);
+
+    private bool TryCreateEntertainmentInvitation(ConnectionSession inviter, ConnectionSession invitee)
+    {
+        lock (_entertainmentRoomGate)
+        {
+            PruneEntertainmentInvitationsLocked();
+            if (inviter.Character is null || invitee.Character is null || inviter.SessionId == invitee.SessionId
+                || !inviter.OnlineTracked || !invitee.OnlineTracked || !inviter.AuxiliaryGameSession
+                || !invitee.AuxiliaryGameSession || inviter.ChannelId != invitee.ChannelId
+                || inviter.ArenaGameType != invitee.ArenaGameType || invitee.EntertainmentRoomId != 0
+                || !_entertainmentRooms.TryGetValue(inviter.EntertainmentRoomId, out var room)
+                || room.OwnerSessionId != inviter.SessionId || room.Started
+                || room.Members.Count >= EntertainmentProtocol.MaximumMembers)
+                return false;
+            _entertainmentInvitationsByInvitee[invitee.SessionId] = new EntertainmentInvitation
+            { Inviter = inviter, Invitee = invitee, RoomId = room.Id };
+            return true;
+        }
+    }
+
+    private bool TryResolveEntertainmentInvitation(ConnectionSession invitee, ushort inviterEntityUid,
+        ushort resultCode, out ConnectionSession? inviter, out byte[] unionPayload)
+    {
+        inviter = null;
+        unionPayload = [];
+        lock (_entertainmentRoomGate)
+        {
+            PruneEntertainmentInvitationsLocked();
+            if (!_entertainmentInvitationsByInvitee.Remove(invitee.SessionId, out var invitation)
+                || invitation.Inviter.Character is not { } inviterCharacter
+                || GetSceneEntityId(inviterCharacter) != inviterEntityUid
+                || !invitation.Inviter.OnlineTracked || !invitee.OnlineTracked
+                || !_entertainmentRooms.TryGetValue(invitation.RoomId, out var room)
+                || room.OwnerSessionId != invitation.Inviter.SessionId || room.Started)
+                return false;
+            inviter = invitation.Inviter;
+            if (resultCode == PartyAgreementAccepted)
+            {
+                if (room.Members.Count >= EntertainmentProtocol.MaximumMembers) return false;
+                var occupied = room.Members.Values.Select(value => value.EntertainmentSlotIndex).ToHashSet();
+                byte freeSlot = 0;
+                while (freeSlot < EntertainmentProtocol.MaximumMembers && occupied.Contains(freeSlot)) freeSlot++;
+                if (freeSlot >= EntertainmentProtocol.MaximumMembers) return false;
+                room.Members[invitee.SessionId] = invitee;
+                room.GameDataPages.Clear();
+                room.GameDataPagesDeliveredBySession.Clear();
+                InitializeEntertainmentMemberLocked(invitee, room.Id, freeSlot);
+                unionPayload = BuildPartyUnionPayload(inviterCharacter, BuildDefaultPartyMetadata(inviterCharacter),
+                    [invitee.Character!], checked((byte)PartyAgreementAccepted));
+            }
+            else
+                unionPayload = BuildPartyUnionPayload(inviterCharacter, BuildDefaultPartyMetadata(inviterCharacter),
+                    [], checked((byte)resultCode));
+            return true;
+        }
+    }
+
+    private void PruneEntertainmentInvitationsLocked()
+    {
+        var cutoff = DateTime.UtcNow.AddSeconds(-30);
+        foreach (var key in _entertainmentInvitationsByInvitee
+            .Where(item => item.Value.CreatedUtc < cutoff || !item.Value.Inviter.OnlineTracked || !item.Value.Invitee.OnlineTracked)
+            .Select(item => item.Key).ToArray())
+            _entertainmentInvitationsByInvitee.Remove(key);
     }
 
     private EntertainmentRoom? GetEntertainmentRoom(ConnectionSession member)
@@ -770,6 +851,11 @@ public sealed partial class NetworkAdapterService
             return;
         }
         room.Members.Remove(member.SessionId);
+        _entertainmentInvitationsByInvitee.Remove(member.SessionId);
+        foreach (var key in _entertainmentInvitationsByInvitee
+            .Where(item => item.Value.Inviter.SessionId == member.SessionId)
+            .Select(item => item.Key).ToArray())
+            _entertainmentInvitationsByInvitee.Remove(key);
         room.ScoresBySession.Remove(member.SessionId);
         room.WaitingRoomInitializedSessions.Remove(member.SessionId);
         room.EntityInitializedSessions.Remove(member.SessionId);

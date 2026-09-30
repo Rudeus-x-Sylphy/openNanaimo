@@ -31,6 +31,37 @@ public static class CardCatalog
     public static bool TryGet(uint cardCode, out CardCatalogEntry entry)
         => EntriesByCode.Value.TryGetValue(cardCode, out entry!);
 
+    public static bool IsSkillPointCard(uint code)
+        => code is >= 12_000_001u and <= 12_000_020u;
+
+    public static bool TryGetSkillPointToken(uint token, out uint cardCode)
+    {
+        cardCode = token is >= 0xFFF0BDC1u and <= 0xFFF0BDD4u
+            ? 12_000_000u + (token - 0xFFF0BDC0u)
+            : 0u;
+        return IsSkillPointCard(cardCode);
+    }
+
+    public static bool TryResolveSkillPointUnion(
+        uint token,
+        uint slot0,
+        uint slot1,
+        uint slot2,
+        out uint resolvedToken)
+    {
+        resolvedToken = token;
+        if (TryGetSkillPointToken(token, out _))
+            return true;
+
+        // The client may submit a zero token while echoing one selected card in
+        // all three slots. Mixed-card submissions are not a valid SP action.
+        if (token != 0 || !IsSkillPointCard(slot0) || slot1 != slot0 || slot2 != slot0)
+            return false;
+
+        resolvedToken = 0xFFF0BDC0u + (slot0 - 12_000_000u);
+        return true;
+    }
+
     public static bool IsGoldPowder(uint cardCode)
         => cardCode is >= 13000201 and <= 13000210 or >= 13000411 and <= 13000420;
 
@@ -44,11 +75,12 @@ public static class CardCatalog
             slot = checked((byte)(eventOrdinal % 10u));
             return true;
         }
-        if (cardCode is >= 12000001 and <= 12000020)
+        if (IsSkillPointCard(cardCode))
         {
-            category = 4;
-            page = 1;
-            slot = checked((byte)(cardCode - 12000001u));
+            var skillCardOrdinal = cardCode - 12_000_001u;
+            category = 3;
+            page = checked((byte)(skillCardOrdinal / 10u + 1u));
+            slot = checked((byte)(skillCardOrdinal % 10u));
             return true;
         }
         if (TryGet(cardCode, out var entry))
@@ -234,7 +266,48 @@ public static class CardCatalog
         // purchasable flag and Cash price. Field 4 disables the tenth row.
         LoadFixedRecords(result, SpecialResourceName, "SPECIALDDAKGI", 4, 18, 10, 3, 0, 2, 10, 13, null, null,
             specialShopPurchasableField: 4, specialShopPriceField: 5);
+        LoadSkillPointCardEntries(result);
         return result;
+    }
+
+    private static void LoadSkillPointCardEntries(List<CardCatalogEntry> result)
+    {
+        var fields = DecryptFields(NormalResourceName);
+        const int start = 3 + 630 * 17;
+        if (fields.Length < start + 20 * 16)
+            throw new InvalidDataException("The embedded SP card catalog is incomplete.");
+
+        for (var index = 0; index < 20; index++)
+        {
+            var offset = start + index * 16;
+            var code = uint.Parse(fields[offset], CultureInfo.InvariantCulture);
+            var skillPointValue = byte.Parse(fields[offset + 15], CultureInfo.InvariantCulture);
+            if (code != 12_000_001u + (uint)index
+                || skillPointValue != index % 10 + 1
+                || !fields[offset + 3].Trim().EndsWith("+" + skillPointValue, StringComparison.Ordinal))
+                throw new InvalidDataException("The embedded SP card identity or increment is invalid.");
+
+            byte.TryParse(fields[offset + 12], NumberStyles.None, CultureInfo.InvariantCulture, out var episode);
+            if (episode != 0
+                && !result.Any(card => card.CardCode / 1_000_000u == 13u
+                    && card.Episode == episode
+                    && card.MapName == fields[offset + 14]))
+                throw new InvalidDataException("The embedded SP card stage mapping is invalid.");
+
+            result.Add(new CardCatalogEntry
+            {
+                CardCode = code,
+                Name = fields[offset + 1],
+                Category = 3,
+                Page = checked((byte)(index / 10 + 1)),
+                Slot = checked((byte)(index % 10)),
+                IconPath = fields[offset + 10],
+                SkillPointValue = skillPointValue,
+                Episode = episode,
+                MapName = fields[offset + 14],
+                SourceMonsters = [fields[offset + 13]]
+            });
+        }
     }
 
     private static void LoadFixedRecords(

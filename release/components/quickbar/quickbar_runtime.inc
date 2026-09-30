@@ -1,6 +1,15 @@
 #ifndef NANAIMO_QUICKBAR_RUNTIME_QUICKBAR_INC
 #define NANAIMO_QUICKBAR_RUNTIME_QUICKBAR_INC
 #define QUICKBAR_SLOT_COUNT 6u
+static unsigned g_managed_couple_ring[MULTI_MAX_PLAYERS];
+static unsigned g_managed_couple_partner[MULTI_MAX_PLAYERS];
+static unsigned g_couple_resource_sync_order[MULTI_MAX_PLAYERS];
+static unsigned g_managed_couple_partner_order[MULTI_MAX_PLAYERS];
+/* Shared recovery updates the actor profile under the multiplayer lock. The
+   receiving connection adopts it before processing its next combat request. */
+static void quickbar_sync_shared_resources_current(unsigned*hp){int i=g_multi_current;if(i>=0&&i<MULTI_MAX_PLAYERS&&g_couple_resource_sync_order[i]&&g_couple_resource_sync_order[i]==g_multi_conn[i].join_order){if(hp)*hp=g_profile_hp_current;g_couple_resource_sync_order[i]=0u;}}
+
+static unsigned couple_recovery_amount(unsigned amount){unsigned ring=(g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS)?g_managed_couple_ring[g_multi_current]:0u;unsigned percent=ring==43000001u?120u:ring==43000002u?150u:ring==43000003u?200u:100u;unsigned long long scaled=((unsigned long long)amount*percent)/100u;return scaled>65535u?65535u:(unsigned)scaled;}
 static unsigned g_quickbar_code[QUICKBAR_SLOT_COUNT],g_quickbar_instance[QUICKBAR_SLOT_COUNT];
 static unsigned g_quickbar_old_code[QUICKBAR_SLOT_COUNT],g_quickbar_old_instance[QUICKBAR_SLOT_COUNT];
 static int g_quickbar_loaded=0,g_quickbar_backup_valid=0;static char g_quickbar_account[32];
@@ -112,7 +121,7 @@ static int quickbar_consume_reward(unsigned code,unsigned row_token,unsigned*rem
 /* CF94 case53140 applies adapter-provided WORD +0x10 HP and +0x12 MP.
    MEAT_DAMAGE_POLICY uses the complete 2001-row GI._D6 definition map instead of a code whitelist. */
 #include "../cards/gameitem_effect_data.inc"
-static int quickbar_gameitem_effect(unsigned code,unsigned*hp,unsigned*mp){if(gameitem_effect_lookup(code,hp,mp))return 1;if(code/1000000u==21u){if(hp)*hp=0u;if(mp)*mp=0u;return 1;}return 0;}
+static int quickbar_gameitem_effect(unsigned code,unsigned*hp,unsigned*mp){if(gameitem_effect_lookup(code,hp,mp)){if(hp)*hp=couple_recovery_amount(*hp);if(mp)*mp=couple_recovery_amount(*mp);return 1;}if(code/1000000u==21u){if(hp)*hp=0u;if(mp)*mp=0u;return 1;}return 0;}
 static int quickbar_apply_gameitem_effect(unsigned code,unsigned*hp,unsigned*mp){unsigned dh=0u,dm=0u;if(!hp||!mp||!quickbar_gameitem_effect(code,&dh,&dm))return 0;*hp+=dh;if(*hp>pet_crafting_pet_effective_hp_max())*hp=pet_crafting_pet_effective_hp_max();*mp+=dm;if(*mp>pet_crafting_pet_effective_mp_max())*mp=pet_crafting_pet_effective_mp_max();return 1;}
 
 static int quickbar_consume_slot_gameitem(unsigned slot,unsigned*code,unsigned*remaining,unsigned*dh,unsigned*dm){unsigned c,identity,victim;quickbar_load();quickbar_handles_load();if(slot>=QUICKBAR_SLOT_COUNT)return 0;c=g_quickbar_code[slot];identity=g_quickbar_instance[slot];if(!c||!identity||g_quickbar_handles[identity]!=c||!quickbar_gameitem_effect(c,dh,dm))return 0;/* QUICKBAR ruling: CF93 carries only the slot, so the slot's own identity is the one consumed. */
@@ -120,8 +129,32 @@ static int quickbar_consume_slot_gameitem(unsigned slot,unsigned*code,unsigned*r
 /* CF94 case53140 consumes actor_uid:u16 +8, slot:u16 +0A, code:u32 +0C,
    HP/MP deltas:u16 +10/+12 and two further u16 values +14/+16. */
 static void send_cf94_gameitem_result(SOCKET c,int ok,unsigned code,unsigned slot,unsigned dh,unsigned dm){char p[4096];unsigned actor_uid=multiplayer_current_uid();mkpkt(p,0xCF94,24,1);stable_resource_put16(p,8,actor_uid);stable_resource_put16(p,0x0A,slot);stable_put32(p,0x0C,ok?code:0u);stable_resource_put16(p,0x10,ok?dh:0u);stable_resource_put16(p,0x12,ok?dm:0u);stable_resource_put16(p,0x14,0u);stable_resource_put16(p,0x16,0u);sendbuf(c,p,24);printf("  S0xCF94 ITEM_EFFECTS success=%d actor_uid=%u code=%u domain=%u slot=%u hp_delta=%u mp_delta=%u exact-code=%u len=24 t=%lds\n",ok,actor_uid,code,code/1000000u,slot,dh,dm,(unsigned)(ok&&code/1000000u==21u),sec());fflush(0);}
+/* A shared item never consumes the partner's inventory or starts flight-item
+   effects. Both actor deltas use the consuming actor's resolved recovery. */
+static void quickbar_share_couple_gameitem(SOCKET c,unsigned code,unsigned slot,unsigned dh,unsigned dm){
+    int src=g_multi_current,target=-1,i;unsigned uid,partner;char p[4096];
+    if(src<0||src>=MULTI_MAX_PLAYERS||slot>=QUICKBAR_SLOT_COUNT||code/1000000u!=14u||(!dh&&!dm))return;
+    uid=g_multi_conn[src].uid;partner=g_managed_couple_partner[src];
+    if(!partner||partner==uid||!g_managed_couple_ring[src]||!g_multi_conn[src].room_active)return;
+    for(i=0;i<MULTI_MAX_PLAYERS;i++)if(i!=src&&g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active&&g_multi_conn[i].uid==partner&&g_multi_conn[i].join_order==g_managed_couple_partner_order[src]
+        &&g_multi_conn[i].real_stage==g_multi_conn[src].real_stage&&g_multi_conn[i].show_stage==g_multi_conn[src].show_stage
+        &&g_multi_conn[i].dungeon==g_multi_conn[src].dungeon&&g_multi_conn[i].difficulty==g_multi_conn[src].difficulty){target=i;break;}
+    if(target<0||!g_multi_conn[target].profile.hp_current)return;
+    multi_switch_to(target,src);
+    g_profile_hp_current=pet_crafting_pet_effective_hp_current()+dh;
+    if(g_profile_hp_current>pet_crafting_pet_effective_hp_max())g_profile_hp_current=pet_crafting_pet_effective_hp_max();
+    g_profile_mp_current=pet_crafting_pet_effective_mp_current()+dm;
+    if(g_profile_mp_current>pet_crafting_pet_effective_mp_max())g_profile_mp_current=pet_crafting_pet_effective_mp_max();
+    g_couple_resource_sync_order[target]=g_multi_conn[target].join_order;
+    /* Owner effect first, then the no-debit partner effect, on each view. */
+    mkpkt(p,0xCF94,24,1);stable_resource_put16(p,8,uid);stable_resource_put16(p,10,slot);stable_put32(p,12,code);
+    stable_resource_put16(p,16,dh);stable_resource_put16(p,18,dm);stable_resource_put16(p,20,0u);stable_resource_put16(p,22,0u);
+    sendbuf(g_multi_conn[target].socket,p,24);
+    send_cf94_gameitem_result(g_multi_conn[target].socket,1,code,0xFFFFu,dh,dm);
+    multi_switch_back(src,target);
+    mkpkt(p,0xCF94,24,1);stable_resource_put16(p,8,partner);stable_resource_put16(p,10,0xFFFFu);stable_put32(p,12,code);
+    stable_resource_put16(p,16,dh);stable_resource_put16(p,18,dm);stable_resource_put16(p,20,0u);stable_resource_put16(p,22,0u);sendbuf(c,p,24);
+}
 static void send_c379_profile_profile_snapshot(SOCKET c){char p[4096];unsigned codes[5],i,count=0;mkpkt(p,0xC379,0x144,1);memcpy(p+8,stable_1full_c379,sizeof(stable_1full_c379));zero_def_ptrs(p+8,sizeof(stable_1full_c379));codes[0]=g_stable_equip[0];codes[1]=g_stable_equip[2];codes[2]=g_stable_equip[3];codes[3]=g_stable_equip[4];codes[4]=g_stable_effect;p[8]=0;p[9]=1;p[0x0A]=0;for(i=0;i<5u;i++)if(codes[i])count++;p[0x0B]=(char)count;memset(p+0x0C,0,0x78);count=0;for(i=0;i<5u;i++)if(codes[i]){unsigned handle=shopping_equipment_handle(codes[i]);int r=0x0C+(int)(count*12u);stable_put32(p,r,codes[i]);stable_put32(p,r+4,handle);stable_put32(p,r+8,0x7D2D55DCu);count++;}stable_appearance36(p,0x84);pet_crafting_pet_write_c379_summary(p);quickbar_load();quickbar_handles_load();inventory_instances_instances_reconcile();for(i=0;i<QUICKBAR_SLOT_COUNT;i++){unsigned r=0xE4u+12u*i;if(g_quickbar_code[i]&&!quickbar_reward_quantity(g_quickbar_code[i])){g_quickbar_code[i]=0;g_quickbar_instance[i]=0;}else if(g_quickbar_code[i]&&(!g_quickbar_instance[i]||g_quickbar_handles[g_quickbar_instance[i]]!=g_quickbar_code[i]))g_quickbar_instance[i]=quickbar_item_handle_excluding(g_quickbar_code[i],i);stable_put32(p,r,g_quickbar_code[i]);stable_put32(p,r+4,g_quickbar_instance[i]);stable_put32(p,r+8,0u);}quickbar_entitlement_load();stable_put32(p,0x12C,quickbar_entitlement_active()?g_quickbar_entitlement_expiry:0u);stable_put32(p,0x140,g_profile_quickbar_current);stable_profile_write_c379_balances(p);sendbuf(c,p,0x144);printf("  S0xC379 PET_CRAFTING PET-coherent quickbar_expiry=%u current=%u equipped=%u quickbar=%u/%u,%u/%u,%u/%u,%u/%u,%u/%u,%u/%u len=324 t=%lds\n",g_quickbar_entitlement_expiry,g_profile_quickbar_current,count,g_quickbar_code[0],g_quickbar_instance[0],g_quickbar_code[1],g_quickbar_instance[1],g_quickbar_code[2],g_quickbar_instance[2],g_quickbar_code[3],g_quickbar_instance[3],g_quickbar_code[4],g_quickbar_instance[4],g_quickbar_code[5],g_quickbar_instance[5],sec());fflush(0);}
 #endif
-
-
 

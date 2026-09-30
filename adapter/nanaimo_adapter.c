@@ -69,4 +69,3 @@
 #include "../release/components/pet_gems/pet_gem_effect_catalog.inc"
 #include "../release/components/dungeon_unlock/unlock_patch.inc"
 #include "../release/teamplay_common.inc"
-

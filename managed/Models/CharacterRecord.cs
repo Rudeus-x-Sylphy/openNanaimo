@@ -12,7 +12,10 @@ public sealed class CharacterRecord
     public int Gender { get; set; }
     public int Face { get; set; }
     public byte[] Appearance { get; set; } = new byte[36];
+    public bool HasPersistedAppearance => Appearance.Length == 36 && Appearance.Any(value => value != 0);
     public bool TutorialCompleted { get; set; }
+    public bool PureNewProfile { get; set; }
+    public ushort SkillPointsMeat { get; set; }
     public byte CardGuideStep { get; set; }
     public byte CardSummonCount { get; set; }
     public byte CardMysteryKeyCount { get; set; }
@@ -45,6 +48,10 @@ public sealed class CharacterRecord
     public int Level { get; set; } = 1;
     public long Experience { get; set; }
     public byte DungeonGrade { get; set; }
+    // Native option[0]: 0 hidden, 1 alternate title, 2 couple title.
+    // Missing legacy settings use the observed retail default, not an account UID.
+    public ushort TownTitleDisplayMode { get; set; } = 2;
+    public ushort TownOptionFlags { get; set; }
     public int AttributePoints { get; set; }
     public int Strength { get; set; } = 5;
     public int Vitality { get; set; } = 5;
@@ -67,6 +74,8 @@ public sealed class CharacterRecord
     public DateTime? LastOfflineAt { get; set; }
     public DateTime? LastSavedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public uint ActiveCoupleRingItemCode { get; set; }
+    public string ActiveCouplePartnerName { get; set; } = string.Empty;
 
     public string OnlineStatus => IsOnline ? "在线" : "离线";
     public string GenderStatus => Gender switch

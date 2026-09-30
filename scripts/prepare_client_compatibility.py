@@ -112,6 +112,13 @@ APARTMENT_RECOMMEND_SUCCESS_NEW = bytes.fromhex(
 APARTMENT_RECOMMEND_DUPLICATE_LINES_VA = 0x0058CE56
 APARTMENT_RECOMMEND_DUPLICATE_LINES_OLD = bytes.fromhex('837DF803')
 APARTMENT_RECOMMEND_DUPLICATE_LINES_NEW = bytes.fromhex('837DF802')
+# C38E room-image loading can reach the CRT reader after an absent room asset.
+# The generic wrapper's invalid-parameter call is the exact C000000D boundary
+# observed at RVA 0x74D060; return an empty read instead of terminating the
+# original client. The caller already treats a zero read as a missing asset.
+APARTMENT_ROOM_RESOURCE_GUARD_VA = 0x00B4D05B
+APARTMENT_ROOM_RESOURCE_GUARD_OLD = bytes.fromhex('E816A9FFFF')
+APARTMENT_ROOM_RESOURCE_GUARD_NEW = bytes.fromhex('31C0909090')
 
 APARTMENT_EXTERIOR_CALL_VA = 0x005DAB27
 APARTMENT_EXTERIOR_CALL_OLD = bytes.fromhex('E87824E3FF')
@@ -643,6 +650,19 @@ def _apartment_exterior_patch_bytes() -> tuple[bytes, bytes]:
     return call, bytes(code)
 
 
+def patch_apartment_room_resource_guard(data: bytes) -> tuple[bytes, dict]:
+    data, row = _patch_site(
+        data, APARTMENT_ROOM_RESOURCE_GUARD_VA,
+        APARTMENT_ROOM_RESOURCE_GUARD_OLD,
+        APARTMENT_ROOM_RESOURCE_GUARD_NEW,
+        'patch_apartment_room_resource_invalid_handle_guard',
+        'apartment room resource reader differs; reviewed mapping required')
+    return data, {'operation': 'patch_apartment_room_resource_guard',
+                  'changed': row['changed'],
+                  'status': 'patched' if row['changed'] else 'already_patched',
+                  'site': row, 'hash_gate_used': False}
+
+
 def patch_apartment_recommendation(data: bytes) -> tuple[bytes, dict]:
     rows = []
     for name, va, old, new in (
@@ -785,6 +805,8 @@ def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival
             data, row = patch_apartment_recommendation(data)
             operations.append(row)
         if apartment_exterior:
+            data, row = patch_apartment_room_resource_guard(data)
+            operations.append(row)
             data, row = patch_apartment_exterior(data)
             operations.append(row)
             data, row = patch_apartment_exterior_layout(data)
@@ -992,6 +1014,12 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
             checks.append(_check('apartment_recommendation_' + name, actual == expected,
                                  f'VA=0x{va:08X} actual={actual.hex().upper()}'))
     if apartment_exterior:
+        offset = _va_offset(data, APARTMENT_ROOM_RESOURCE_GUARD_VA,
+                            len(APARTMENT_ROOM_RESOURCE_GUARD_NEW))
+        actual = data[offset:offset + len(APARTMENT_ROOM_RESOURCE_GUARD_NEW)]
+        checks.append(_check('apartment_room_resource_guard',
+                             actual == APARTMENT_ROOM_RESOURCE_GUARD_NEW,
+                             f'VA=0x{APARTMENT_ROOM_RESOURCE_GUARD_VA:08X} actual={actual.hex().upper()}'))
         call, cave = _apartment_exterior_patch_bytes()
         for name, va, expected in (('call', APARTMENT_EXTERIOR_CALL_VA, call),
                                    ('cave', APARTMENT_EXTERIOR_CAVE_VA, cave)):

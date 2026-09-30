@@ -9,6 +9,21 @@ public sealed partial class DatabaseService
     private const byte FriendDefaultCategoryProperty = 3;
     private const byte FriendDefaultAllowType = 1;
 
+    internal async Task<bool> IsPrivateChatBlockedAsync(
+        long senderCharacterId, long recipientCharacterId, CancellationToken token)
+    {
+        await using var connection = await OpenConnectionAsync(token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT EXISTS(SELECT 1 FROM FriendBlocks
+                WHERE (OwnerCharacterId = $sender AND FriendCharacterId = $recipient)
+                   OR (OwnerCharacterId = $recipient AND FriendCharacterId = $sender))
+            """;
+        command.Parameters.AddWithValue("$sender", senderCharacterId);
+        command.Parameters.AddWithValue("$recipient", recipientCharacterId);
+        return Convert.ToInt32(await command.ExecuteScalarAsync(token)) != 0;
+    }
+
     internal async Task<FriendListSnapshot> GetFriendListSnapshotAsync(
         long ownerCharacterId,
         CancellationToken cancellationToken = default)

@@ -22,5 +22,21 @@
       2048,
       3584
     ]
+  },
+  {
+    "name": "furniture_icons",
+    "unique_sources": 623,
+    "decoded": 617,
+    "failures": {
+      "pack_record_missing": 6
+    },
+    "mapped_ids": 781,
+    "available_ids": 775,
+    "atlas_size": [
+      1152,
+      4160
+    ],
+    "preview_kind": "client-resource",
+    "resource_container": "images/InteriorIcon.pack"
   }
 ]

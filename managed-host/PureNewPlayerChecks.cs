@@ -16,6 +16,12 @@ internal static class PureNewPlayerChecks
         .GetNestedType("ConnectionSession", BindingFlags.NonPublic)!;
     private static readonly MethodInfo Dispatch = typeof(NetworkAdapterService)
         .GetMethod("HandleNativeFrameAsync", PrivateInstance)!;
+    private static readonly MethodInfo TryLauncherLogin = typeof(NetworkAdapterService)
+        .GetMethod("TryLocalLauncherLoginAsync", PrivateInstance)!;
+    private static readonly MethodInfo BuildTownUserInfo = typeof(NetworkAdapterService)
+        .GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+        .Single(method => method.Name == "BuildTownUserInfoPayload"
+            && method.GetParameters().Length == 1);
 
     public static async Task RunAsync()
     {
@@ -33,9 +39,34 @@ internal static class PureNewPlayerChecks
             var database = new DatabaseService(root);
             await database.InitializeAsync();
             await database.EnsureLocalInitialGrantSettingsAsync();
+            Check(!NetworkAdapterService.ResolveLauncherPureNewProfile(IPAddress.Loopback, false)
+                && !NetworkAdapterService.ResolveLauncherPureNewProfile(IPAddress.Parse("198.51.100.25"), false)
+                && NetworkAdapterService.ResolveLauncherPureNewProfile(IPAddress.Loopback, true)
+                && NetworkAdapterService.ResolveLauncherPureNewProfile(IPAddress.Parse("198.51.100.25"), true),
+                "launcher registrations preserve the explicit pure-new flag across loopback and social sources");
+            long socialAccountId = await database.OpenPureNewLocalAccountAsync(
+                "social-ip-check", "198.51.100.25", stop.Token);
+            await using (var registration = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={database.DatabasePath}"))
+            {
+                await registration.OpenAsync(stop.Token);
+                await using var command = registration.CreateCommand();
+                command.CommandText = "SELECT RegistrationIp FROM Accounts WHERE Id=$id";
+                command.Parameters.AddWithValue("$id", socialAccountId);
+                Check((string?)await command.ExecuteScalarAsync(stop.Token) == "198.51.100.25",
+                    "pure social launcher accounts persist the actual IPv4 registration source");
+            }
+            string normalAccount = "normal-" + Guid.NewGuid().ToString("N");
+            long normalAccountId = await database.OpenLocalAccountAsync(normalAccount, stop.Token);
+            await database.CreateLocalCharacterAsync(normalAccountId, "NormalExisting", 1, stop.Token);
+            long attachedNormal = await database.OpenPureNewLocalAccountAsync(normalAccount, stop.Token);
+            var preservedNormal = (await database.GetCharacterAsync(normalAccountId, stop.Token))!;
+            Check(attachedNormal == normalAccountId && preservedNormal.Name == "NormalExisting"
+                && !preservedNormal.PureNewProfile,
+                "pure-new request reuses an existing ordinary character without changing profile origin");
+
             await using var service = new NetworkAdapterService(database, _ => { }, root);
             int port = ReserveLoopbackPort();
-            listener = service.RunLocalProfileListenerAsync(port, stop.Token, root);
+            listener = service.RunLocalProfileListenerAsync(IPAddress.Loopback, port, stop.Token, root);
 
             string account = "pure-" + Guid.NewGuid().ToString("N");
             byte[] request = JsonSerializer.SerializeToUtf8Bytes(new
@@ -50,6 +81,10 @@ internal static class PureNewPlayerChecks
             long accountId = (await database.GetAccountIdByUsernameAsync(account))!.Value;
             Check(await database.GetCharacterAsync(accountId) is null,
                 "pure registration leaves account characterless for retail creation");
+
+            object wrongSource = NewSession();
+            Check(!await TryLogin(service, wrongSource, "127.0.0.2"),
+                "launcher registration is isolated by source IP and a mismatch does not consume the queued account");
 
             object session = NewSession();
             Check(await Send(service, session, 0x2719, new byte[24]) is null,
@@ -97,8 +132,9 @@ internal static class PureNewPlayerChecks
             var character = (await database.GetCharacterAsync(accountId))!;
             Check(character.Name == chosenName && character.Gender == 1
                 && character.Appearance.SequenceEqual(chosenAppearance)
+                && character.PureNewProfile
                 && ((CharacterRecord)SessionType.GetProperty("Character")!.GetValue(session)!).Id == character.Id,
-                "creation commits the selected name/appearance and updates the same login session");
+                "creation commits the selected name/appearance and persistent pure-new origin on the same login session");
             Check(!character.TutorialCompleted && character.Level == 1 && character.Experience == 0,
                 "created character enters unfinished level-1 tutorial state");
             Check(character.Hans == 0 && character.Cash == 0 && character.SkillPoints == 0,
@@ -122,6 +158,7 @@ internal static class PureNewPlayerChecks
                     "pure character consumes convenience grant and starts without task rows");
             }
 
+            SessionType.GetProperty("PureNewPlayer")!.SetValue(session, false);
             byte[] login = CheckPayload(await Send(service, session, 0x2719, new byte[24]), 0x271A, 60);
             byte[] tutorialAppearance = chosenAppearance.ToArray();
             tutorialAppearance.AsSpan(24, 8).Clear();
@@ -129,8 +166,17 @@ internal static class PureNewPlayerChecks
                 && login.AsSpan(24, 36).SequenceEqual(tutorialAppearance),
                 "271A preserves the player-created avatar while withholding tutorial-unsafe effect/pet slots");
 
-            Check(Encoding.GetEncoding(936).GetString(login.AsSpan(8, 16)).TrimEnd('\0') == chosenName,
-                "post-creation context carries the player-selected name, not the account identity");
+            Check(Encoding.GetEncoding(936).GetString(login.AsSpan(8, 16)).TrimEnd('\0') == chosenName
+                && (bool)SessionType.GetProperty("PureNewPlayer")!.GetValue(session)!,
+                "post-creation context reloads persistent pure-new origin and carries the selected name");
+
+            byte[] storedAppearance = DatabaseService.NormalizeAppearanceForGender(chosenAppearance, 1, 0);
+            byte[] tutorialRoom = NetworkAdapterService.BuildRoomEnterPayload(character, 0, 320, 240);
+            Check(tutorialRoom.AsSpan(4, 36).SequenceEqual(storedAppearance),
+                "C368 tutorial/village actor creation uses the persisted player appearance");
+            byte[] villagePeer = (byte[])BuildTownUserInfo.Invoke(null, [character])!;
+            Check(villagePeer.AsSpan(16, 36).SequenceEqual(storedAppearance),
+                "C36A village visibility uses the same persisted player appearance before Nemo completion");
 
             var shortRecommendation = CheckRecommendationResponse(
                 await Send(service, session, 0x2725, new byte[15]));
@@ -267,12 +313,36 @@ internal static class PureNewPlayerChecks
             var secondCharacter = (await database.GetCharacterAsync(secondId))!;
             Check(secondId != accountId && secondCharacter.Gender == 0
                 && secondCharacter.Appearance.SequenceEqual(femaleAppearance)
+                && secondCharacter.PureNewProfile
                 && secondCharacter.Hans == 0 && secondCharacter.Cash == 0 && secondCharacter.SkillPoints == 0
                 && secondCharacter.Items.Count == 0 && !secondCharacter.TutorialCompleted,
                 "second pure character remains isolated with no convenience grants");
             Check((await database.GetCharacterAsync(accountId))!.Appearance.SequenceEqual(chosenAppearance),
                 "second launch leaves the first character unchanged");
             CheckPayload(await Send(service, second, 0x271B, new byte[4]), 0x271C);
+
+            string existingSocialAccount = "social-existing-" + Guid.NewGuid().ToString("N");
+            long existingSocialId = await database.OpenLocalAccountAsync(existingSocialAccount, stop.Token);
+            byte[] existingAppearance = DatabaseService.CreateDefaultAppearance(0);
+            BinaryPrimitives.WriteUInt32LittleEndian(existingAppearance.AsSpan(0, 4), 10130337u - 100000u);
+            BinaryPrimitives.WriteUInt32LittleEndian(existingAppearance.AsSpan(8, 4), 10110337u - 100000u);
+            var existingCreation = await database.CreateCharacterAsync(
+                existingSocialId, "OldSocial", 0, 0, existingAppearance, pureNewProfile: false, cancellationToken: stop.Token);
+            Check(existingCreation.Success, "ordinary social account fixture creates its persisted character");
+            byte[] existingBefore = (await database.GetCharacterAsync(existingSocialId, stop.Token))!.Appearance.ToArray();
+            Check((await RegisterAsync(port, JsonSerializer.SerializeToUtf8Bytes(
+                    new { LocalAccount = existingSocialAccount, PureNewPlayer = true }))).AsSpan().SequenceEqual("OK\n"u8),
+                "social registration accepts a pure-new request for an existing account");
+            object existingSession = NewSession();
+            Check(CheckPayload(await Send(service, existingSession, 0x2730, new byte[360]), 0x2731, 4)
+                .AsSpan().SequenceEqual(new byte[] { 1, 0, 1, 0 }),
+                "existing social account login reports its persisted character");
+            byte[] existingLogin = CheckPayload(await Send(service, existingSession, 0x2719, new byte[24]), 0x271A, 60);
+            byte[] expectedExistingGuide = DatabaseService.NormalizeAppearanceForGender(existingBefore, 0, 0);
+            expectedExistingGuide.AsSpan(24, 8).Clear();
+            Check(existingLogin.AsSpan(24, 36).SequenceEqual(expectedExistingGuide)
+                && (await database.GetCharacterAsync(existingSocialId, stop.Token))!.Appearance.SequenceEqual(existingBefore),
+                "existing ordinary social account keeps its original appearance through 271A and tutorial reentry");
 
             Console.WriteLine("PURE_NEW_PLAYER_CHECKS_PASS registration=no-profile creation_projection=empty premature_channel=rejected character=dispatcher-created grants=0 tasks=0 tutorial=unfinished; host construction only");
         }
@@ -293,6 +363,9 @@ internal static class PureNewPlayerChecks
         }
     }
 
+
+    private static Task<bool> TryLogin(NetworkAdapterService service, object session, string remoteIp)
+        => (Task<bool>)TryLauncherLogin.Invoke(service, [session, remoteIp, CancellationToken.None])!;
 
     private static object NewSession()
     {

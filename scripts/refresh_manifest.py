@@ -20,6 +20,7 @@ REPOSITORY_FILES = [
     'scripts/dungeon7_visuals.py',
     'scripts/dungeon_experience_compat.py',
     'gui_launcher/nanaimo_launcher.ps1',
+    'gui_launcher/start_social_client.ps1',
     'gui_launcher/client_connect.ps1',
     'gui_launcher/inventory_admin_gui.ps1',
     'gui_launcher/inventory_admin_backend.py',

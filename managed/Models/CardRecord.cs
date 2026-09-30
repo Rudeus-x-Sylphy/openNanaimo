@@ -22,6 +22,7 @@ public sealed class CardCatalogEntry
     public uint MonsterTargetCode { get; init; }
     public IReadOnlyList<string> SourceMonsters { get; init; } = [];
     public string MapName { get; init; } = string.Empty;
+    public byte SkillPointValue { get; init; }
 
     public string CategoryName => Category switch
     {

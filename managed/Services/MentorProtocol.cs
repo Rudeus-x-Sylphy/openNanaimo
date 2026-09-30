@@ -67,6 +67,8 @@ internal static class MentorProtocol
         StudentResponseOpcode => StudentResponsePayloadLength,
         TeacherRequestOpcode => TeacherRequestPayloadLength,
         TeacherResponseOpcode => TeacherResponsePayloadLength,
+        ListRequestOpcode => ListRequestPayloadLength,
+        CreateSchoolingRoomRequestOpcode => 0,
         _ => -1
     };
 
@@ -136,7 +138,7 @@ internal static class MentorProtocol
                 EncoderFallback.ExceptionFallback,
                 DecoderFallback.ExceptionFallback);
             name = strictGbk.GetString(encoded);
-            return !string.IsNullOrWhiteSpace(name);
+            return !string.IsNullOrWhiteSpace(name) && !name.Any(char.IsControl);
         }
         catch (DecoderFallbackException)
         {
@@ -250,11 +252,49 @@ internal static class MentorProtocol
         return payload;
     }
 
+    internal static bool IsSharedRelationshipOpcode(ushort opcode)
+        => opcode is StudentRequestOpcode or StudentResponseOpcode
+            or TeacherRequestOpcode or TeacherResponseOpcode;
+
+    internal static bool IsSupportedMentorshipOpcode(ushort opcode)
+        => opcode is CreateSchoolingRoomRequestOpcode or ListRequestOpcode
+            or AdvertiseRequestOpcode or StopAdvertisingRequestOpcode;
+
     internal static ushort GetLessonPeerUid(CharacterRecord character)
+        => WireIdentityAllocator.GetSceneEntityId(character.Id);
+
+    internal static MentorshipPolicy CreateProductionPolicy()
     {
-        // The retail transition consumer takes this WORD and passes only its
-        // low byte to the local character lookup.
-        return (ushort)Math.Clamp(character.Id, 1L, (long)byte.MaxValue);
+        try
+        {
+            return CreateProductionPolicyFromCatalog();
+        }
+        catch (FileNotFoundException)
+        {
+            // Lightweight host checks do not carry client catalogs. The production
+            // tuple is fixed by the validated quest/resource definitions.
+            return new(2, 1, 1, TimeSpan.FromMinutes(2), 1, [75000138],
+                [new(75000138, 0, 0)], new(17000015, 1, 71000012));
+        }
+    }
+
+    private static MentorshipPolicy CreateProductionPolicyFromCatalog()
+    {
+        if (!QuestCatalog.TryGetQuest(71000000, out var courseQuest)
+            || !QuestCatalog.TryGetQuest(71000012, out var rewardQuest))
+            throw new InvalidDataException("Mentorship resource definitions are unavailable.");
+        var objective = courseQuest.Objectives.Single(item => item.ObjectiveId == 75000138);
+        if (objective.ObjectiveType != 2 || objective.RequiredCount != 1
+            || !QuestCatalog.TryGetDungeonClearCondition(objective, out var episode, out var dungeonBit, out var pet)
+            || pet != 0)
+            throw new InvalidDataException("Mentorship course definition is incompatible.");
+        var reward = rewardQuest.Rewards.Single(item => item.RewardType == 2 && item.RewardCode == 17000015);
+        if (reward.Amount is 0 or > ushort.MaxValue || !ShopCatalog.TryGet(reward.RewardCode, out var item)
+            || item.Section != InventorySection.Pet)
+            throw new InvalidDataException("Mentorship graduation item definition is incompatible.");
+        return new(2, 1, 1, TimeSpan.FromMinutes(2), 1, [objective.ObjectiveId],
+            [new(objective.ObjectiveId, episode, dungeonBit)],
+            new(reward.RewardCode, checked((ushort)reward.Amount), rewardQuest.QuestId));
     }
 
     private static void WriteFixedGbk(Span<byte> destination, string value)

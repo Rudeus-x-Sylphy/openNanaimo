@@ -90,8 +90,8 @@ internal static class MigrationChecks
             nativeRoomSelection[29] = 0;
             BinaryPrimitives.WriteUInt16LittleEndian(nativeRoomSelection.AsSpan(30, 2), 2);
             await RequestAsync(world, 0xCF6C, nativeRoomSelection, 0xCF6D, token);
-            await RequestAsync(world, 0xC587, [], 0xC588, token);
-            var nativeRoomMember = await RequestAsync(world, 0xCF70, new byte[4], 0xCF71, token);
+            await world.GetStream().WriteAsync(NativeDungeonClient.Frame(0xC587, []), token);
+            var nativeRoomMember = await RequestAsync(world, 0xCF70, new byte[4], 0xCF71, token, forbidden: 0xC588);
             var nativeRatings = await database.GetDungeonBestRatingsAsync(character.Id, token);
             var expectedNativeRank = NetworkAdapterService.ExtractPackedDungeonReadyRoomRank(
                 nativeRatings[0], dungeon: 1, stage: 0);
@@ -170,7 +170,7 @@ internal static class MigrationChecks
         {
             using var client = new TcpClient();
             await client.ConnectAsync(IPAddress.Loopback, profilePort, token);
-            byte[] request = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { LocalAccount = account, CreateCharacter = create, CharacterName = name, Gender = 1 });
+            byte[] request = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { LocalAccount = account, PureNewPlayer = true, CreateCharacter = create, CharacterName = name, Gender = 1 });
             await client.GetStream().WriteAsync(BitConverter.GetBytes(request.Length), token);
             await client.GetStream().WriteAsync(request, token);
             var ack = new byte[3]; await client.GetStream().ReadExactlyAsync(ack, token);
@@ -235,8 +235,12 @@ internal static class MigrationChecks
             Assert(BinaryPrimitives.ReadUInt16LittleEndian(result) == 30, "Original game creates launcher account character");
         }
         var launchedCharacter = (await db.GetCharacterAsync(launched, token))!;
-        Assert(!launchedCharacter.TutorialCompleted && launchedCharacter.Hans == 9999999 && launchedCharacter.Cash == 9999999,
-            "New character retains tutorial and baseline initial currencies");
+        Assert(launchedCharacter.PureNewProfile && !launchedCharacter.TutorialCompleted
+            && launchedCharacter.Level == 1 && launchedCharacter.Experience == 0
+            && launchedCharacter.Hans == 0 && launchedCharacter.Cash == 0
+            && launchedCharacter.SkillPoints == 0 && launchedCharacter.Items.Count == 0
+            && launchedCharacter.EquippedPetItemCode == 0,
+            "New launcher character starts with an isolated pure-new profile and clean resources");
         using (var world = new TcpClient())
         {
             await world.ConnectAsync(IPAddress.Loopback, worldPort, token);
@@ -434,7 +438,7 @@ internal static class MigrationChecks
 
     private static void Assert(bool passed, string name)
     { if (!passed) throw new InvalidDataException($"CHECK_FAILED {name}"); Console.WriteLine($"CHECK_PASS {name}"); }
-    private static async Task<byte[]> RequestAsync(TcpClient client, ushort opcode, byte[] payload, ushort expected, CancellationToken token)
+    private static async Task<byte[]> RequestAsync(TcpClient client, ushort opcode, byte[] payload, ushort expected, CancellationToken token, ushort? forbidden = null)
     {
         var stream = client.GetStream(); await stream.WriteAsync(NativeDungeonClient.Frame(opcode, payload), token);
         for (int i = 0; i < 32; i++)
@@ -444,6 +448,7 @@ internal static class MigrationChecks
             if (size < 8) throw new InvalidDataException("Invalid response frame.");
             var body = new byte[size - 8]; await stream.ReadExactlyAsync(body, token);
             ushort actual = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(6));
+            if (actual == forbidden) throw new InvalidDataException($"Response {actual:X4} precedes its authorized phase.");
             if (actual == expected) { Assert(true, $"{opcode:X4}->{expected:X4} length={size}"); return body; }
         }
         throw new InvalidDataException($"Missing response {expected:X4}");

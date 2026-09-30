@@ -8,7 +8,9 @@ public sealed class AuctionListingRecord
     public uint ItemCode { get; init; }
     public byte OriginalQuantity { get; init; }
     public byte RemainingQuantity { get; init; }
+    // Historical price names are kept for compatibility; all exchange prices are NaNa points.
     public uint HansPerItem { get; init; }
+    public uint NanaPointsPerItem => HansPerItem;
 }
 
 public readonly record struct AuctionListQueryResult(
@@ -24,13 +26,15 @@ public readonly record struct AuctionRegistrationResult(
 public readonly record struct AuctionPurchaseResult(
     uint ResultCode,
     byte CardQuantity,
-    long Hans);
+    long Hans,
+    long NanaPoints = 0);
 
 public readonly record struct AuctionRetrievalResult(
     uint ResultCode,
     byte ReturnedQuantity,
     byte CardQuantity,
-    long Hans);
+    long Hans,
+    long NanaPoints = 0);
 
 public sealed class AuctionListingAdminRecord
 {
@@ -43,8 +47,11 @@ public sealed class AuctionListingAdminRecord
     public string ItemName { get; init; } = string.Empty;
     public byte OriginalQuantity { get; init; }
     public byte RemainingQuantity { get; init; }
+    // Historical price names are kept for compatibility; all exchange prices are NaNa points.
     public uint HansPerItem { get; init; }
+    public uint NanaPointsPerItem => HansPerItem;
     public uint PendingHans { get; init; }
+    public uint PendingNanaPoints => PendingHans;
     public byte Status { get; init; }
     public DateTime CreatedAtUtc { get; init; }
     public DateTime UpdatedAtUtc { get; init; }

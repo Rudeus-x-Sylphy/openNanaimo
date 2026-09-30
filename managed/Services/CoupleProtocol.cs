@@ -18,9 +18,57 @@ internal static class CoupleProtocol
     internal const int SeparationResponsePayloadLength = 24;
     internal const int PeerNameLength = 16;
 
+    internal static bool TryReadDungeonResponseOpcode(ReadOnlySpan<byte> response, out ushort opcode)
+    {
+        opcode = 0;
+        if (response.Length < 8 || BinaryPrimitives.ReadUInt16LittleEndian(response[4..]) != response.Length)
+            return false;
+        opcode = BinaryPrimitives.ReadUInt16LittleEndian(response[6..]);
+        return opcode is 0xCF80 or 0xCFEC;
+    }
+
+    internal static bool IsNativeStartResponse(ReadOnlySpan<byte> response)
+        => TryReadDungeonResponseOpcode(response, out var opcode) && opcode == 0xCF80
+            && response.Length == 8;
+
     internal const ushort Accepted = 10;
     internal const ushort Refused = 20;
     internal const ushort Unavailable = 2;
+    internal const ushort InvalidPartner = 3;
+    internal const ushort AlreadyRelated = 7;
+
+    internal readonly record struct Request(string PeerName, uint ItemCode, ushort InventorySlot);
+    internal readonly record struct Answer(Request Request, ushort Status);
+
+    internal static bool TryReadRequest(ushort opcode, ReadOnlySpan<byte> payload, out Request request)
+    {
+        request = default;
+        if (!IsRequestOpcode(opcode) || payload.Length != GetPayloadLength(opcode)
+            || !TryReadPeerName(payload, out var name)) return false;
+        var item = ReadItemCode(payload);
+        var slot = ReadInventorySlot(opcode, payload);
+        if (slot >= 84 || (opcode == RingRequestOpcode
+                ? !CoupleBenefitPolicy.IsRingItemCode(item)
+                : !CoupleBenefitPolicy.IsSeparationItemCode(item))) return false;
+        request = new Request(name, item, slot);
+        return true;
+    }
+
+    internal static bool TryReadAnswer(ushort opcode, ReadOnlySpan<byte> payload, out Answer answer)
+    {
+        answer = default;
+        if (!IsResponseOpcode(opcode) || payload.Length != GetPayloadLength(opcode)
+            || !TryReadPeerName(payload, out var name)) return false;
+        var status = ReadStatus(opcode, payload);
+        var item = ReadItemCode(payload);
+        var slot = ReadInventorySlot(opcode, payload);
+        if (!IsOfficialResponseStatus(status) || slot >= 84
+            || (opcode == RingResponseOpcode
+                ? !CoupleBenefitPolicy.IsRingItemCode(item)
+                : !CoupleBenefitPolicy.IsSeparationItemCode(item))) return false;
+        answer = new Answer(new Request(name, item, slot), status);
+        return true;
+    }
 
     static CoupleProtocol()
         => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -99,7 +147,7 @@ internal static class CoupleProtocol
         var payload = request.ToArray();
         WriteName(payload.AsSpan(0, PeerNameLength), sender.Name);
         payload[22] = (byte)Math.Clamp(sender.Level, 1, byte.MaxValue);
-        payload[23] = (byte)Math.Clamp(sender.Gender, 0, 1);
+        payload[23] = CharacterTitleState.GetGrade(sender);
         return payload;
     }
 
@@ -116,13 +164,13 @@ internal static class CoupleProtocol
         var payload = new byte[GetPayloadLength(responseOpcode)];
         WriteName(payload.AsSpan(0, PeerNameLength), partnerName);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(16, 4), itemCode);
-        var peerUid = (ushort)Math.Clamp(partner.Id, 1L, byte.MaxValue);
+        var peerUid = WireIdentityAllocator.GetSceneEntityId(partner.Id);
         if (responseOpcode == RingResponseOpcode)
         {
             BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(20, 2), inventorySlot);
             BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(22, 2), status);
             payload[24] = (byte)Math.Clamp(partner.Level, 1, byte.MaxValue);
-            payload[25] = (byte)Math.Clamp(partner.Gender, 0, 1);
+            payload[25] = CharacterTitleState.GetGrade(partner);
             BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(26, 2), peerUid);
         }
         else
@@ -132,6 +180,22 @@ internal static class CoupleProtocol
             BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(22, 2), peerUid);
         }
         return payload;
+    }
+
+    internal static void WriteTownRelationship(Span<byte> payload, string partnerName, uint ringItemCode)
+    {
+        if (payload.Length != TownTitleProjection.UserInfoPayloadLength)
+            throw new InvalidDataException("Invalid town character state length.");
+
+        var name = payload.Slice(84, PeerNameLength);
+        var ring = payload.Slice(100, 2);
+        name.Clear();
+        ring.Clear();
+        if (string.IsNullOrWhiteSpace(partnerName) || CoupleBenefitPolicy.NormalizeRingItemCode(ringItemCode) == 0)
+            return;
+
+        WriteName(name, partnerName);
+        BinaryPrimitives.WriteUInt16LittleEndian(ring, checked((ushort)(ringItemCode - 43_000_000u)));
     }
 
     private static void WriteName(Span<byte> destination, string value)

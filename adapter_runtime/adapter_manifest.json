@@ -1,8 +1,8 @@
 {
     "version":  1,
     "role":  "full Nanaimo adapter",
-    "built_at":  "2026-09-29T16:08:06Z",
-    "framework":  "net6.0/win-x64/self-contained",
+    "built_at":  "2026-10-02T15:21:05Z",
+    "framework":  "net8.0/win-x64/self-contained",
     "sdk":  "8.0.425",
     "files":  [
                   {
@@ -217,23 +217,28 @@
                   },
                   {
                       "name":  "clretwrc.dll",
-                      "size":  304952,
-                      "sha256":  "9E389DB21A3D1205425A27910C8938F8B89F497DAF838DEFEFA78CF86AF86202"
+                      "size":  310568,
+                      "sha256":  "BC233572D7702EC8D8763C143EC62687C38ABC3AAD26336FB45C26657BF3A5E7"
+                  },
+                  {
+                      "name":  "clrgc.dll",
+                      "size":  667944,
+                      "sha256":  "B09898E142791EA3B96FD1B432D0E5C8AD51C81CD99B608ACCD2981E78A93CDF"
                   },
                   {
                       "name":  "clrjit.dll",
-                      "size":  1436968,
-                      "sha256":  "CDBA2919E1F7288E8F07986D9D4927F1114433DB7FB6FD352F8FAB03C53668E0"
+                      "size":  1777960,
+                      "sha256":  "697C09AC310B8FB8118863971955DA135AEE348116816E3B511BF5957DC6253A"
                   },
                   {
                       "name":  "coreclr.dll",
-                      "size":  5125432,
-                      "sha256":  "FE0AE2120E2B298E1C40F8FDA3845AA44D3DA6AFE3037AF4F982B0DD63E4356E"
+                      "size":  4995880,
+                      "sha256":  "BBBCAEDB369617695280CAAA60CDA1ABA4FA3C5B557532A89D9F4A9174A5B692"
                   },
                   {
                       "name":  "createdump.exe",
-                      "size":  58216,
-                      "sha256":  "EFADEDF5F5673D162A4CD6806D2FBE9A85327EBA862D41E937A6ACD68E0F9184"
+                      "size":  71512,
+                      "sha256":  "BEBA75FFCD188A0CE594C304C737CAF16681E1AF19BDD7BB47B3F0EB8636C320"
                   },
                   {
                       "name":  "dbgshim.dll",
@@ -247,53 +252,53 @@
                   },
                   {
                       "name":  "hostfxr.dll",
-                      "size":  378168,
-                      "sha256":  "82AB369E059533EB7952855B7CC55916AB6B91FB36B2922F269037B1974BE627"
+                      "size":  366376,
+                      "sha256":  "4F5A0500CD2A2439B0D5EDBF242950233AEC4539EC9A5E7BA9B8A9B0079F63AF"
                   },
                   {
                       "name":  "hostpolicy.dll",
-                      "size":  394552,
-                      "sha256":  "266D2AE85FFF170EB2795B495B019264D5A0E1CBD7F3F1C6A9CFE0317928399F"
+                      "size":  406824,
+                      "sha256":  "24F18CCB306D5E614932478471AD276E2B041A723A45E571073DB383B37C5120"
                   },
                   {
                       "name":  "Microsoft.CSharp.dll",
-                      "size":  1042728,
-                      "sha256":  "19923483D8D10F4BB6192A06F277AB01700540705A095F6BA55B55BE3DFC29BA"
+                      "size":  1005392,
+                      "sha256":  "30704C86C4C052AC630E5B5BF9E04AEB1EB0677FE3C5CF8A7DF36C8AB78D0B56"
                   },
                   {
                       "name":  "Microsoft.Data.Sqlite.dll",
-                      "size":  176160,
-                      "sha256":  "BAF56E6A97F90BF3C8E2EE99ED752D3B0DC86A0D8B76BA1DCA345F423B8B5447"
+                      "size":  175160,
+                      "sha256":  "4D07D26FAB99C561BC5DB1C62A06EF1D804FA92DF021CD7483FF6B62C2FA70D2"
                   },
                   {
                       "name":  "Microsoft.DiaSymReader.Native.amd64.dll",
-                      "size":  2309152,
-                      "sha256":  "7F8DCF37D9D66EAE14C48A79FA2FCD447BD0F38A21BE0203A9C4A89398AACF28"
+                      "size":  2377016,
+                      "sha256":  "70E4B89978CE57EF87B28F4921F3140C383B04AA96E7F3BDB3C4EBB898FD8A72"
                   },
                   {
                       "name":  "Microsoft.VisualBasic.Core.dll",
-                      "size":  1245496,
-                      "sha256":  "BA13E6C6D2E5ED7F3C80EE5D2E6926C4D2478492D93C940021525F6810B9F44F"
+                      "size":  1247056,
+                      "sha256":  "BDCDD4BD2B6E2C0EEC9A93187CD57CE9437C9A2324A6C6C20C55A2D1A27823BE"
                   },
                   {
                       "name":  "Microsoft.VisualBasic.dll",
-                      "size":  18216,
-                      "sha256":  "6734B47DCDF40DDE4A9D4813B130A1B409940F063B1D4EF05FC3D242822F7657"
+                      "size":  17192,
+                      "sha256":  "A172FAD5B53A27D32B21BA3B18E27046C1DAF7451C46BEA4F57F515D0EEF756A"
                   },
                   {
                       "name":  "Microsoft.Win32.Primitives.dll",
-                      "size":  26416,
-                      "sha256":  "BF331D23DC7E740EC28121A57BB09EE29ACC1240CB34B151ED9202E00F9D76AF"
+                      "size":  15184,
+                      "sha256":  "596160C8491D2110A36CE4CB93C736905B2C83B9B50496369F32E32AD28D2A20"
                   },
                   {
                       "name":  "Microsoft.Win32.Registry.dll",
-                      "size":  87848,
-                      "sha256":  "BE5D31D5428C3FDEAFC5708CEA76237401A746E39BE8A0CE4E914CBA376EC457"
+                      "size":  120656,
+                      "sha256":  "A8CC5503BBBA36472D1DD3A8EEBC3A8B26F0B2882E770851AAB486690B23EAD9"
                   },
                   {
                       "name":  "mscordaccore.dll",
-                      "size":  1320488,
-                      "sha256":  "97468531D7009E36C338B47FB19E0C6BF210F013610F413C852A4CC27E84B514"
+                      "size":  1348960,
+                      "sha256":  "A277F63F5722E1ED59A791FC5D30C53ED263ABEF4ADF12D0BF494897D796C3E0"
                   },
                   {
                       "name":  "mscordaccore_amd64_amd64_6.0.3624.51421.dll",
@@ -301,69 +306,74 @@
                       "sha256":  "97468531D7009E36C338B47FB19E0C6BF210F013610F413C852A4CC27E84B514"
                   },
                   {
+                      "name":  "mscordaccore_amd64_amd64_8.0.3126.42015.dll",
+                      "size":  1348960,
+                      "sha256":  "A277F63F5722E1ED59A791FC5D30C53ED263ABEF4ADF12D0BF494897D796C3E0"
+                  },
+                  {
                       "name":  "mscordbi.dll",
-                      "size":  1268248,
-                      "sha256":  "A884D1BBB1AF2BD3C83A97A8F73CC5DC3FB57703DCAA6ECB11422F52EDCB96AC"
+                      "size":  1233800,
+                      "sha256":  "20140E71ED6DD59E6736E455B7BE2784D7AC0B3F43839148A134AEC3E7622DE0"
                   },
                   {
                       "name":  "mscorlib.dll",
-                      "size":  58640,
-                      "sha256":  "6D3477814270826F216ACCD4E41C6734660E2D2DBC7292B6D17A633F64689CE5"
+                      "size":  59216,
+                      "sha256":  "EE4983E136AB524F29D2F43D01D1DEB978F4948EB5CA05B5D6E40BE37EC43023"
                   },
                   {
                       "name":  "mscorrc.dll",
-                      "size":  147232,
-                      "sha256":  "ACBC031209E59E7ECE9AA362900590B65BEA7F6B5D25900B44D9FCC7ACE5881E"
+                      "size":  136488,
+                      "sha256":  "C0FC4C625CE2C62887A86A5E1D93895836E7C998A3C95169505F8515266160FC"
                   },
                   {
                       "name":  "msquic.dll",
-                      "size":  517032,
-                      "sha256":  "3D6D6E7A6F4729A7A416165BEABDA8A281AFFF082EBB538DF29E8F03E1A4741C"
+                      "size":  536344,
+                      "sha256":  "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
                   },
                   {
                       "name":  "Nanaimo.Adapter.deps.json",
-                      "size":  37911,
-                      "sha256":  "E2B4E0668CE1C9B86FAAF347CCF8FE5ECFAACCEBB859BF52A682511AD2A9C09C"
+                      "size":  30766,
+                      "sha256":  "D9D08EE4E61B5DD15E6423B1073CA3FB42E843D84FCE3F833B827B06B225B6B5"
                   },
                   {
                       "name":  "Nanaimo.Adapter.dll",
-                      "size":  1195520,
-                      "sha256":  "92CF0605B46B4D76059B0F7211BAAB9969EC35D53A23E6AA0B4058C6E223BF4A"
+                      "size":  1233920,
+                      "sha256":  "DC2FA615B235932EB21866F075D11B8111D09C9F8CC8B0E3B4D7CEEE2892B7D5"
                   },
                   {
                       "name":  "Nanaimo.Adapter.exe",
-                      "size":  151040,
-                      "sha256":  "8DA74313ED0D6F81E663376236878BE3597EE51C257E47678F0D1C4650C83971"
+                      "size":  151552,
+                      "sha256":  "C59B4661D1478017B22D41C49769B1D0C57BBA7C1992C956767740FE1B286A13"
                   },
                   {
                       "name":  "Nanaimo.Adapter.pdb",
-                      "size":  184916,
-                      "sha256":  "F0659BF51EF059AE996BFC5FABACE824940C59F7952A243F5C1D07E85D5EBC1F"
+                      "size":  186540,
+                      "sha256":  "71DCD67593E9BD4D7317DA1ECE11363D353352D3A7EEFCA267275518BFB01240"
                   },
                   {
                       "name":  "Nanaimo.Adapter.runtimeconfig.json",
-                      "size":  285,
-                      "sha256":  "044C5CAFF98A01411AA8F0D8D61322710925F8E24516B207AE71F8B6B569EB2E"
+                      "size":  358,
+                      "sha256":  "46C986E4F45508F40C79A4042FE8EAC8A6B6574199A85884ED81C33BB18AF092"
                   },
                   {
                       "name":  "Nanaimo.Gameplay.dll",
-                      "size":  4728832,
-                      "sha256":  "B73A696367B0A18586C624F435891809DBEE853656B8A2511ACFB26CEF462773"
+                      "size":  5095424,
+                      "sha256":  "A3840A7B2492ABC9A305BC7558B8C84E49E1BB8B221A63B4D8311FB4F357DDA2"
                   },
                   {
                       "name":  "Nanaimo.Gameplay.pdb",
-                      "size":  453736,
-                      "sha256":  "701A38CC081B1B842ECED015B81577E4187EEBA43050461B8FD716734A946440"
+                      "size":  503884,
+                      "sha256":  "4C444CD59E2BA374D173F401AB5B6FC02E451C2F463B5230FF46878D8FF95F9F"
                   },
                   {
                       "name":  "nanaimo_gameplay_bridge.exe",
-                      "size":  19713536,
-                      "sha256":  "D9A50F833FA34DA2423713812D273A9B5B49CEBA2D025ADC1A2364D613604D10"
+                      "size":  19720192,
+                      "sha256":  "83F53AA8C998E351023CF0739DBB6B41241A1A08C5B0A08D521FBBC65EEC108F"
                   },
                   {
                       "name":  "netstandard.dll",
-                      "size":  101688,
-                      "sha256":  "63A3AD84DDC04AD3C9A9B6857FBE4E804249B971056E99D30787B840223C8162"
+                      "size":  100648,
+                      "sha256":  "53D854D33C3F0E1BBCCFF4B5C4B89420DAA66FA5F6603F6E5DF20D6BBB7E00F4"
                   },
                   {
                       "name":  "SQLitePCLRaw.batteries_v2.dll",
@@ -382,793 +392,808 @@
                   },
                   {
                       "name":  "System.AppContext.dll",
-                      "size":  15648,
-                      "sha256":  "DC7E6D31F6C7AD4A6EDAB8FF24DC843DEF6CA11FBEA1D4C438926C411AA73957"
+                      "size":  15144,
+                      "sha256":  "C3D2CB89EC473B55FCBF6F0ED601139E46159E0D2834D9D92ED74ED89E2A2879"
                   },
                   {
                       "name":  "System.Buffers.dll",
-                      "size":  15672,
-                      "sha256":  "46B16E64060B7491C5CD0C9CBCA282B42B2D64309F3E46D18C739C534532F5CD"
+                      "size":  15184,
+                      "sha256":  "8CADBC77368593547381F18EAFA12DD58216D7B35A60B487B66CA51A2EE3C406"
                   },
                   {
                       "name":  "System.Collections.Concurrent.dll",
-                      "size":  247096,
-                      "sha256":  "3B73A02A0D05D3CA14D66568C193E74B64D0C7B055248AFBC9FFB89FE46D6472"
+                      "size":  276264,
+                      "sha256":  "ED653CCB5DC40D0BB4EA3429165A0825705F2935A65C584CA67CBA45671884C1"
                   },
                   {
                       "name":  "System.Collections.dll",
-                      "size":  265008,
-                      "sha256":  "99F781186BF13A6E0C3DBB627F27AEA398B37F8D14D4082E9E1B0C872E7720C9"
+                      "size":  259880,
+                      "sha256":  "C6BB79B8FB32504B6327B516E6FF32017A073669AB749D3C86ED49CD5F2F0C45"
                   },
                   {
                       "name":  "System.Collections.Immutable.dll",
-                      "size":  666416,
-                      "sha256":  "33FBBD72707CAD0939890BCEDCB8C8BD4A08C9782DAB2540F367F5B6EFB7530F"
+                      "size":  837456,
+                      "sha256":  "6E41C8BA23968F6A9B910E3C33F66761A588F24084C4E3599214805716D6D259"
                   },
                   {
                       "name":  "System.Collections.NonGeneric.dll",
-                      "size":  101176,
-                      "sha256":  "9D324EB05F5A970A4C00ED3A3B54A8DE8525F7C4C891B9BE48C56AE5E655B0E3"
+                      "size":  104232,
+                      "sha256":  "B40CDF234652B31B443164350F73E25F98C5EDECFD30698789D6DBF9CA456E44"
                   },
                   {
                       "name":  "System.Collections.Specialized.dll",
-                      "size":  95528,
-                      "sha256":  "35486206115AD8787585928A1BDDDFE5C0A0418EA61396432CF67649B4896BAA"
+                      "size":  104272,
+                      "sha256":  "24022887037BFAAD8C89C26642712C920DCC0ABABD3396D80D8B2BE16637673B"
                   },
                   {
                       "name":  "System.ComponentModel.Annotations.dll",
-                      "size":  187176,
-                      "sha256":  "432906E49C8663454E7993CA2F019547BBAADAD50AD8FA9054A15E0081245D45"
+                      "size":  198480,
+                      "sha256":  "97060D253527BDDE94022AC6D22AE4C0474CF67F40BFE8342E9420B7888B3AFF"
                   },
                   {
                       "name":  "System.ComponentModel.DataAnnotations.dll",
-                      "size":  17680,
-                      "sha256":  "E2B4B8FB4F88D85BD1B2769B7F95BAA2045EED21CDEBA1B50FC5CF0A32B3719A"
+                      "size":  16720,
+                      "sha256":  "E5B872CF98BF9F3F565877B21FDEE61B569ECC586E6DC48C9199AE5E0CD100B3"
                   },
                   {
                       "name":  "System.ComponentModel.dll",
-                      "size":  18728,
-                      "sha256":  "0988137DE65ADAAF26FD29AAC531A659324C1353A031583EA1D5DDF4A95D9145"
+                      "size":  30504,
+                      "sha256":  "4D9E2E21ED5C16C100221433D1AAB01409EC199C9F617E48B9FE1617989BBAA6"
                   },
                   {
                       "name":  "System.ComponentModel.EventBasedAsync.dll",
-                      "size":  38712,
-                      "sha256":  "02BBD51CD2DC5A9FA5FFA1CF21C1329657900475FF82595D764E10D1252EAB64"
+                      "size":  46928,
+                      "sha256":  "CE813A7CDE09EBA1BDD7D6661FA39C09057BEDDC78F554C5476C43766D763ED0"
                   },
                   {
                       "name":  "System.ComponentModel.Primitives.dll",
-                      "size":  75560,
-                      "sha256":  "1B00F2D90F6830C6F4DD7BFADE4EDF41AB7A42F716223704EBB0B4B746E3625E"
+                      "size":  79696,
+                      "sha256":  "D981AF410D4ED7939FDEE47A1EE58E3DB472C05F17C2B0D48E4B1EBFB2FEA0E5"
                   },
                   {
                       "name":  "System.ComponentModel.TypeConverter.dll",
-                      "size":  747832,
-                      "sha256":  "128D9AE5E9AB4B9BD50C7AD3BED4C44CBC967F505F986C28D36F3156A1AE002E"
+                      "size":  747304,
+                      "sha256":  "DB04940603C749719E133BB567D142D46AF3A6F2F37597DB398955A3896B84C2"
                   },
                   {
                       "name":  "System.Configuration.dll",
-                      "size":  19760,
-                      "sha256":  "E0525B02A9473754C92107C327DCD762C6952168A1B23E80DDD28289093E66C2"
+                      "size":  19240,
+                      "sha256":  "39ECA0E98D4B206CBFF6243A04494F79EC8B19903D3427B44D64D88097D77F65"
                   },
                   {
                       "name":  "System.Console.dll",
-                      "size":  156976,
-                      "sha256":  "509848BB0F4551253694749FC2A94B99E3D7414FB72110F31DE3356859A1E800"
+                      "size":  173864,
+                      "sha256":  "D38105C5C790FC76AC6E4D99FE9B6C2672E4E250E191BD43593E55AE7D3B2AFE"
                   },
                   {
                       "name":  "System.Core.dll",
-                      "size":  24360,
-                      "sha256":  "0609EB4733E0CC51C567F8173529029C9B34DCC13193D1A0AE5D029C95F33D2A"
+                      "size":  23336,
+                      "sha256":  "F7414ECFD958FDFB2B4BCDD2F7778A7B26968EB453CA2C03FDF53BA4BB21674F"
                   },
                   {
                       "name":  "System.Data.Common.dll",
-                      "size":  2983720,
-                      "sha256":  "54FEF3DBB87B49065ED1B7BC7DCFDAAF9C558550D602C9A80F324572538F08B8"
+                      "size":  2860840,
+                      "sha256":  "089A74A39DCEB113BEA92522B227E24C881A618C5EB1E2ABB166A6E8C12BE0CB"
                   },
                   {
                       "name":  "System.Data.DataSetExtensions.dll",
-                      "size":  16176,
-                      "sha256":  "84655F22E3B41CA3CA22000E17347FA1E155F56F0703687FE9857F182770621F"
+                      "size":  15696,
+                      "sha256":  "D425011A475BB44E6B9ACD4C48E8F3B428312A05CA3A649ABBCD871F7102DECF"
                   },
                   {
                       "name":  "System.Data.dll",
-                      "size":  25888,
-                      "sha256":  "45EBF2DB3CAC72963CA33B9251B535E085074D3198420F353185CEE1480B24C1"
+                      "size":  24912,
+                      "sha256":  "1EFE79C9F164CE5DA6542DE89DC7F10D1FEB1F38216B68F9A6B6A8CA5E3D2AC3"
                   },
                   {
                       "name":  "System.Diagnostics.Contracts.dll",
-                      "size":  16184,
-                      "sha256":  "23A359528AA271D31EEC0C19B73ECCC6878D70E27703A9AF6A2AEBD96282C70E"
+                      "size":  16168,
+                      "sha256":  "A670F39C589BD9D4A994E75ABC2385839649ED91A831A4CA7D9FE4F87834B492"
                   },
                   {
                       "name":  "System.Diagnostics.Debug.dll",
-                      "size":  16144,
-                      "sha256":  "022B80277A5E8ABA76A4634297269E7677F0AA16F2F375C74E71920340DD0872"
+                      "size":  15656,
+                      "sha256":  "E122BD1046864476252765E356C54D2454E72A6E11BF546907DE1468CA0B0CB5"
                   },
                   {
                       "name":  "System.Diagnostics.DiagnosticSource.dll",
-                      "size":  380712,
-                      "sha256":  "4FA86A656E47F751CB47C06F27879FFEEB028922B67B50C3DB518999D51EE455"
+                      "size":  415568,
+                      "sha256":  "25C3BF229337A485CEACB82C00F47F2E98DE68A279EB5A450550526F9CBF0448"
                   },
                   {
                       "name":  "System.Diagnostics.FileVersionInfo.dll",
-                      "size":  35624,
-                      "sha256":  "02B7303D1B3D7B4619856DD9B76AA67742266B0DB9270D44E3B1CC99FF704F2A"
+                      "size":  46888,
+                      "sha256":  "24B0E8ED2EA93B84FF2A26CB1F69F7D6E331F6162EAE4FAE4446A5556B8A8EEE"
                   },
                   {
                       "name":  "System.Diagnostics.Process.dll",
-                      "size":  290608,
-                      "sha256":  "1BCB92989F22B2D8EFEE51538F7F369D7CC61FCF17EA1BDDA158CDE557420853"
+                      "size":  337744,
+                      "sha256":  "7083C7046AC4CBED1068B6AE7A777D421EEAF180E5697283FC1C6AF731C32A3D"
                   },
                   {
                       "name":  "System.Diagnostics.StackTrace.dll",
-                      "size":  36648,
-                      "sha256":  "65AC79B03F09B2BE527AF33DFF56ABBC0376DCBF41F6E6DA53B533FBAFE4D2FE"
+                      "size":  46888,
+                      "sha256":  "7B26B1C48D500576994B3153B88FEFD1E516680AE4B52CDE608B8E869544B37D"
                   },
                   {
                       "name":  "System.Diagnostics.TextWriterTraceListener.dll",
-                      "size":  60728,
-                      "sha256":  "53D8D2D0E0D7F7B4A138AC04BFBF390AED5C49F27F47B3C8ED56BF17D0292A74"
+                      "size":  67368,
+                      "sha256":  "0279BBA2AB8C1E023D043D802B0B3BBBF8483DD082E305391C6229382452B1C2"
                   },
                   {
                       "name":  "System.Diagnostics.Tools.dll",
-                      "size":  16144,
-                      "sha256":  "22DD93980E82191780F4F58CFC0117300D18904D89D1E7982FBA1B00BEA280D6"
+                      "size":  15184,
+                      "sha256":  "CA4CC511A2204AF2A5652C7CF870A6A5EFF109F98ACC72A8E2A0498F72665507"
                   },
                   {
                       "name":  "System.Diagnostics.TraceSource.dll",
-                      "size":  133416,
-                      "sha256":  "A9C94FBCE8F682F2E8391C33B49CFA5B2208C9210CDE95C748887BD7C6E6C2C8"
+                      "size":  145232,
+                      "sha256":  "2B5489BC5A6D65E109DBED6557DC2AF3BA9DFB549EFD18A64F37FD64255CB756"
                   },
                   {
                       "name":  "System.Diagnostics.Tracing.dll",
-                      "size":  16664,
-                      "sha256":  "9996996137063B64EEBB8D8B29D419F0338FB9F754C1882FA0D0874ADA650AE1"
+                      "size":  16168,
+                      "sha256":  "6857ED7CA2C17D38F74639BACC59942599935593F9A0B33B246161C57DB27EB3"
                   },
                   {
                       "name":  "System.dll",
-                      "size":  51000,
-                      "sha256":  "20864E27E43A327B96D26CFC46B7568F3F263C759AD7DAC2395EFFF791727BC3"
+                      "size":  49960,
+                      "sha256":  "173DD55A6D19794FB6EB8C4E4E73510EBF3A7928AFFE43C21E721861A4250E51"
                   },
                   {
                       "name":  "System.Drawing.dll",
-                      "size":  21288,
-                      "sha256":  "517676E10DF572217383BA5D681AFA5F18731857C6B4A313B328DAE5FEECFA1F"
+                      "size":  20304,
+                      "sha256":  "97562444D2DAF928CD78404156665DDE55AA5EC71C6FCAD705284338E4A36EBE"
                   },
                   {
                       "name":  "System.Drawing.Primitives.dll",
-                      "size":  130344,
-                      "sha256":  "A8FC5B44CA6EA84C7B5FFDAB3C19D4F1E5096635BF03E45DA573A93923CD588B"
+                      "size":  132944,
+                      "sha256":  "02BD1F5644DD73789B82C3A52C8F86EF726BAA1D4CCE2A0C64D9DC1C29B9CB02"
                   },
                   {
                       "name":  "System.Dynamic.Runtime.dll",
-                      "size":  16696,
-                      "sha256":  "2B135BA28DECAE516CB998E2D7DCE0990A62C7EB3DC50750938D5435BCEB8437"
+                      "size":  16208,
+                      "sha256":  "F6A93AD11464C19F720D34B92043DCC289885BF959B32549EE3CA24537E8B65A"
                   },
                   {
                       "name":  "System.Formats.Asn1.dll",
-                      "size":  200488,
-                      "sha256":  "93C3D5A00F41581D2690CC62183B0FE289C40DDE7095D2D843420FF639ED23E7"
+                      "size":  243496,
+                      "sha256":  "61F505F140E2C6417640A5AA47A86D148D4F6DC5317A66A7BFA2266A3AC975BF"
+                  },
+                  {
+                      "name":  "System.Formats.Tar.dll",
+                      "size":  276304,
+                      "sha256":  "EE3132A84CF9FD170F3AE0899A996ADC120A899C51DBC5534B22E8870B5AA137"
                   },
                   {
                       "name":  "System.Globalization.Calendars.dll",
-                      "size":  16184,
-                      "sha256":  "C8B0E5E83E8E5D5A4D474914FFE2DF98384943889986A552CDFCEB4425BF0BA3"
+                      "size":  15696,
+                      "sha256":  "E0974066E338D22097F5C77E47D086BD9C5826C256034A31F21B34C4392FBB7B"
                   },
                   {
                       "name":  "System.Globalization.dll",
-                      "size":  16136,
-                      "sha256":  "460BDA265B26298930230F60F14744E0B0FA2327F88F65A592070205022A4B66"
+                      "size":  15656,
+                      "sha256":  "88A4C4517972878AEBD264AC5150A3822D14AB3F5B9577C8372E1724B0CA8D88"
                   },
                   {
                       "name":  "System.Globalization.Extensions.dll",
-                      "size":  15664,
-                      "sha256":  "D873297E01CB12B33E786AA1596BA34DA3FB0CEDBB2FB8B8BE5B9A2B9538C44A"
+                      "size":  15144,
+                      "sha256":  "9D57E781AFD06F3C6D0A54842467B29079BA2932827A76D9047A327490F1F836"
                   },
                   {
                       "name":  "System.IO.Compression.Brotli.dll",
-                      "size":  73008,
-                      "sha256":  "893915183153F8C7317DF017538B28E51F66EF97212D251AF675848A047E5693"
+                      "size":  83752,
+                      "sha256":  "46D228E5EA0E3D25B15E95D6A97A3B80E86DDE2660589462F30853EB5A0C40B5"
                   },
                   {
                       "name":  "System.IO.Compression.dll",
-                      "size":  267064,
-                      "sha256":  "DCA9EBF608DA70689732C00414C931DED803FBEBCFA4AF7ABF2D9C45B2950180"
+                      "size":  263976,
+                      "sha256":  "1F7E0CE87B7859C81D793750EA8FC58DB6D1FA1B81D3CEA1E73C614F66439C3C"
                   },
                   {
                       "name":  "System.IO.Compression.FileSystem.dll",
-                      "size":  16168,
-                      "sha256":  "702AEDBFB4FB2643AFC48209DC27AC00D23675A5BF24163462EA2D3551715884"
+                      "size":  15144,
+                      "sha256":  "75972527F5C874893F0515FBE6F8D1D484354AC421CCF31AF346738AA74CBC07"
                   },
                   {
                       "name":  "System.IO.Compression.Native.dll",
-                      "size":  826120,
-                      "sha256":  "64659EED0C99D119F651307CB6243ABF8F4AC22B9CF9F6B71BA3966100C5A9E8"
+                      "size":  828240,
+                      "sha256":  "4F892A1F3BDF970E662435BB044B5C5E4D8F7241BCE981237F57165AE12CB171"
                   },
                   {
                       "name":  "System.IO.Compression.ZipFile.dll",
-                      "size":  39688,
-                      "sha256":  "83195247A3DE12B4B5A81841D7ECFFFE485CA6FE4879035A2511CA33A568285F"
+                      "size":  55080,
+                      "sha256":  "A8624A7C7359C1EB6767C50513A33EB9F09125089044EF0CAF9D4D225B33A230"
                   },
                   {
                       "name":  "System.IO.dll",
-                      "size":  16168,
-                      "sha256":  "880047994C0D371B9069BB6392D7DAA68F98C87CAC149127525DE2BC41341116"
+                      "size":  15656,
+                      "sha256":  "1EE3349F15C3A20A7394341D8D4EDE2AC3D7DDBE4462F43DAE828F407F84FF1D"
                   },
                   {
                       "name":  "System.IO.FileSystem.AccessControl.dll",
-                      "size":  93960,
-                      "sha256":  "A33778D4E20C390E36067765F0F1A46DB74ED9D31F851EE962F1F9E5F30A958D"
+                      "size":  104232,
+                      "sha256":  "6C384EE8C0613A469F9894209F39F154D2E6E8796F9B9C02E3686A42E15D94A6"
                   },
                   {
                       "name":  "System.IO.FileSystem.dll",
-                      "size":  24360,
-                      "sha256":  "D34138F9E274E01FCA7D474310028CC41CBBA819B7040EA32875AF91F7EC0A3F"
+                      "size":  15656,
+                      "sha256":  "6005E3AC5CBEE19D172CC29E48CA84DB8E62DFF34CFF95E56C3600A0A95CB170"
                   },
                   {
                       "name":  "System.IO.FileSystem.DriveInfo.dll",
-                      "size":  42776,
-                      "sha256":  "09F01B6733554AE77716C5EF6372250F42396E39CFDC2D98D93CC406E234765F"
+                      "size":  55080,
+                      "sha256":  "3EEA221AAA9E6066BFFB63218EE292FE499BBB5DB434A57225AAC1B8531C0B90"
                   },
                   {
                       "name":  "System.IO.FileSystem.Primitives.dll",
-                      "size":  15656,
-                      "sha256":  "F98CEFF5C56952649E8AADC67093D0F09BDC1E6E14B57F2E4481EA04ADFA98E8"
+                      "size":  15184,
+                      "sha256":  "FB2F15CF3356987E0120D265B7B4FBCCC11DCCFBAE08B334A17B4E830EDDC54E"
                   },
                   {
                       "name":  "System.IO.FileSystem.Watcher.dll",
-                      "size":  72480,
-                      "sha256":  "7647DEC63B6083C303AFE3DEB3C8F73114DF13763D14CA885501A79C41E2C411"
+                      "size":  87888,
+                      "sha256":  "21C97F58651EA238A7018ECFA4BB4B3B6B4E682F97163AE14F8D4D145547F3F0"
                   },
                   {
                       "name":  "System.IO.IsolatedStorage.dll",
-                      "size":  83744,
-                      "sha256":  "3CE00424BD0238F8F7D4620F3421F8B518F1A43F4802006AA2B855A2E731F5CD"
+                      "size":  91984,
+                      "sha256":  "AF7C75423C9EFDF88850A7197C57E19D588A326678BBE07AA7F0B5DDB3049F59"
                   },
                   {
                       "name":  "System.IO.MemoryMappedFiles.dll",
-                      "size":  69384,
-                      "sha256":  "DDCA79323EEDFBFCD008559E6455056FC64C11F9A7DA2CB553DBA5E672FD3F7C"
+                      "size":  83752,
+                      "sha256":  "E3136D19090F173D2AB75C392486A1427060BD149D966CFD58F3DF3308546DFD"
                   },
                   {
                       "name":  "System.IO.Pipes.AccessControl.dll",
-                      "size":  16688,
-                      "sha256":  "694BA7DEA1B974D5CC803F38E0A74190D07D03CA9F74AD82A243BD2D5CA317D9"
+                      "size":  16168,
+                      "sha256":  "FB206A579C16F5750CE10026913A7F16AD686FB37AF1FC9BC997F611362B2F2E"
                   },
                   {
                       "name":  "System.IO.Pipes.dll",
-                      "size":  136480,
-                      "sha256":  "B5FA8E1E81016D942542CE05D6D475662337E4B206856D901B97BC894463EFB8"
+                      "size":  165672,
+                      "sha256":  "35030C28374B6FFA6393C2AB8AE80CF712A2F88E92A16DBBDBF6AE03F0E0D452"
                   },
                   {
                       "name":  "System.IO.UnmanagedMemoryStream.dll",
-                      "size":  15640,
-                      "sha256":  "6C8CB98FF55E18B7416FD51416DADF83D82D624525977EDC9C60A54767FAA010"
+                      "size":  15144,
+                      "sha256":  "9442D9391FF037CF388A9E15C171845E5436B093E3C928C60350957555393FD0"
                   },
                   {
                       "name":  "System.Linq.dll",
-                      "size":  537880,
-                      "sha256":  "770DF7C55F731F822811000B901EAE379518299AE68F550A6690AB88D2DFC34F"
+                      "size":  542504,
+                      "sha256":  "2B375E90FC687967BD95A0F47DBCBA44D396923F3C98B7FE5754E34C8E4BEFAA"
                   },
                   {
                       "name":  "System.Linq.Expressions.dll",
-                      "size":  3857672,
-                      "sha256":  "9652D92044B5FBDCC7218042865797746103DFF05758B4CAB22738C7D7D5FECE"
+                      "size":  3675984,
+                      "sha256":  "0F99977BEDDC9272D56A2E16B2581CDE37F2AFD43E77C8209827197C098DEDEB"
                   },
                   {
                       "name":  "System.Linq.Parallel.dll",
-                      "size":  849160,
-                      "sha256":  "D0F31A2AA8E828764D162814D86683E42A431F06ACC7B807088434292A2A3D57"
+                      "size":  804648,
+                      "sha256":  "4BA87321EA950874380628879C3C25332281F7F9A920A090DE930570AE8AF0EA"
                   },
                   {
                       "name":  "System.Linq.Queryable.dll",
-                      "size":  228664,
-                      "sha256":  "71C41E6ECB83E7D03D0B35F9DD2F7DB9D54A6BE1C1CB8278D186D63D5804CE9E"
+                      "size":  173864,
+                      "sha256":  "5E14D4AB3BB2711B0CC4B197F973E9C74955A1E4C77041D5CAD65E759C304232"
                   },
                   {
                       "name":  "System.Memory.dll",
-                      "size":  173832,
-                      "sha256":  "2EE8E3EFC4A7499D903DA9829E88BBA241F12A1C0A35E697F205F1DE76ACA762"
+                      "size":  157480,
+                      "sha256":  "84242CCE5EACC6963A77163986066BD0A1C2EB698B5F26DBDD5E6706E002FBC7"
                   },
                   {
                       "name":  "System.Net.dll",
-                      "size":  18216,
-                      "sha256":  "3BF53C7A78807C6B930C7AEB8A6A924FA90C757C3243752AC8A075F77501DFD9"
+                      "size":  17232,
+                      "sha256":  "C2DDCDFF66BBB2595E5BCACA342D600A81C9A2E618AC9B9B1C6977FC4E1D17FC"
                   },
                   {
                       "name":  "System.Net.Http.dll",
-                      "size":  1807128,
-                      "sha256":  "6E38C3F2C0F23355F271925119FA32D66D6C2CA88F60806526F499F7D83D9BF7"
+                      "size":  1734440,
+                      "sha256":  "5102639C2037D77949340D94761C9A4C5053B940B8AE4BA2FBBE3507B8A5EC43"
                   },
                   {
                       "name":  "System.Net.Http.Json.dll",
-                      "size":  82200,
-                      "sha256":  "6FE45757F3F886B82C61F5B6AED71F900EAD41F8B417E78C10027D3F0924D3DE"
+                      "size":  128808,
+                      "sha256":  "7C4B39865655DD3B695A305527B8D11092C5DCF1B786D747CD45E6C00CCE5249"
                   },
                   {
                       "name":  "System.Net.HttpListener.dll",
-                      "size":  639256,
-                      "sha256":  "CA51004FEA607A6F9583DAC9BFF4C6D1C5018BDD584D33CF28631046F16E683A"
+                      "size":  550696,
+                      "sha256":  "AD612AE83E313EB7FC2AFA59B829533C8E8F36FB76D1D398262A610E85AF1CCC"
                   },
                   {
                       "name":  "System.Net.Mail.dll",
-                      "size":  552200,
-                      "sha256":  "768C57CE5AE6BEE0290E8D3AB3A035391BA321AF7939891809CA65E5AE82EC9E"
+                      "size":  431952,
+                      "sha256":  "8830477BB6B18B181A2495C77038AB8A7C941897C9E46FEB06F61B2013ED1C8E"
                   },
                   {
                       "name":  "System.Net.NameResolution.dll",
-                      "size":  101136,
-                      "sha256":  "F9BDC89737E7D313ED38BA42AEAEF855338A8CF8D21DB672C98CE07150489C22"
+                      "size":  112424,
+                      "sha256":  "E8CC6C2F0D59FB018FDC4A66057E3A56A3AA5ED82FEDE17B2398CDA88DA407CD"
                   },
                   {
                       "name":  "System.Net.NetworkInformation.dll",
-                      "size":  150832,
-                      "sha256":  "89BF3B96E798BB59D5274A82FE64CE047B876ECC64C76D483E696FBB1C7D6475"
+                      "size":  157480,
+                      "sha256":  "DB21F0C5659D925741F7A08B0B50FC297248B0155F375F0FD7F970DD2E4CD3F0"
                   },
                   {
                       "name":  "System.Net.Ping.dll",
-                      "size":  79136,
-                      "sha256":  "91607E6C5A2CF395B4F70292B6D09ACEC0203DCB7417E08C65015D5746163527"
+                      "size":  96040,
+                      "sha256":  "3A9AAB851FFF6116DEE3524177859E051512FADF7E209372E2D2342B51845474"
                   },
                   {
                       "name":  "System.Net.Primitives.dll",
-                      "size":  214288,
-                      "sha256":  "410DDCFB533A40AACB115BCDB9F5D7F529E40F730520B5332F9995DE68A28B1F"
+                      "size":  231248,
+                      "sha256":  "0F929E8581F09FE85275DF7B38549BC51415CD110AADFD89EADE53943174511A"
                   },
                   {
                       "name":  "System.Net.Quic.dll",
-                      "size":  293640,
-                      "sha256":  "BAF828A182B915F49973CFEDC2F7EE7BA532720B0CD77B95E589970CA3FC8193"
+                      "size":  284456,
+                      "sha256":  "58F5E4C6F2BBD5320C9797FBEAD001A99E4D334FA936D5469DF82262AC8069DA"
                   },
                   {
                       "name":  "System.Net.Requests.dll",
-                      "size":  349448,
-                      "sha256":  "3795E84F5A5EB03337F3F301699B65DC7CF34AE88C01C047EB8B9CE1F802C7B9"
+                      "size":  345896,
+                      "sha256":  "60B7C1595CECC53767C3EFCDAE74DDD37350AC51F377CAC8D7E95428B1F231AF"
                   },
                   {
                       "name":  "System.Net.Security.dll",
-                      "size":  685320,
-                      "sha256":  "A55D63FBE73E2495BD10C750E2D13ADA850AEC825A40C1E0394D97194E4BAEF1"
+                      "size":  669520,
+                      "sha256":  "C957641BE9192E7812F209E2120E56A71DA0D99B1A8443CA5F7947F38EA4376D"
                   },
                   {
                       "name":  "System.Net.ServicePoint.dll",
-                      "size":  37136,
-                      "sha256":  "5B03F645BA552CDF8E7810574F2AEE5B4D70C2D88A17BA598BD47D13811823B4"
+                      "size":  46888,
+                      "sha256":  "8969D0EA32B01B7198030AFE6258D85A3021655B4F7E2291CB5521BBA1F7E29F"
                   },
                   {
                       "name":  "System.Net.Sockets.dll",
-                      "size":  506672,
-                      "sha256":  "F8911B4A573C050951660D483DD3F8A45887B74356F98A4444C483F61E8F5276"
+                      "size":  546600,
+                      "sha256":  "49E95C5A59172D80941992016EB35C965D8FB4BC05B745F85E793B6C010BDC6B"
                   },
                   {
                       "name":  "System.Net.WebClient.dll",
-                      "size":  166704,
-                      "sha256":  "F77638812C4A1E1BC3EBFF535CBA532D06416884E03403DA1C25B5D72A2FEB1C"
+                      "size":  169768,
+                      "sha256":  "2C8AD06A15AEE44E700CBFF2BDF1DA0000FCAA4E8BA5524E9DB1B07C3ADD099E"
                   },
                   {
                       "name":  "System.Net.WebHeaderCollection.dll",
-                      "size":  60720,
-                      "sha256":  "60CEEFB00AF005CB2AE6C78932129AF284A57E95CE90968E9DAECCFAD6958DAD"
+                      "size":  67368,
+                      "sha256":  "8DB64DD40A80422673F81EC67EE9DF921795B0579E5BA6CEF09BFFCE7FEF1294"
                   },
                   {
                       "name":  "System.Net.WebProxy.dll",
-                      "size":  32008,
-                      "sha256":  "F7EEE3C6839C1929049AB580EBCDAD0EC0FEBF8FF97AF00E6418473CF229BAC4"
+                      "size":  42792,
+                      "sha256":  "CFD65E84A782DB8180C9BB3BF6EB739F250901E1006D941D66F08D6B6EDB0B0E"
                   },
                   {
                       "name":  "System.Net.WebSockets.Client.dll",
-                      "size":  76552,
-                      "sha256":  "9FD92449741DFD1C2C765E1D9A7EE3EBF2F2785F947D429258C9F5A6AF81ECCD"
+                      "size":  100136,
+                      "sha256":  "41836162542928AD88AC7A0176CBDC753F63DA986D668688F7FB049B2EF0AEE9"
                   },
                   {
                       "name":  "System.Net.WebSockets.dll",
-                      "size":  182024,
-                      "sha256":  "FF5968D98229D5CF94756F1DB750C757B77F863030DA0722853354036A88E7EA"
+                      "size":  190288,
+                      "sha256":  "1250D5F182A8C3655A81B1E11955D904FD147D7F770191DE4004619247178629"
                   },
                   {
                       "name":  "System.Numerics.dll",
-                      "size":  16168,
-                      "sha256":  "D98008F700A7A879D01C7478C68F94A6131E73A2DF8CB54170D44EC2A811ABAD"
+                      "size":  15184,
+                      "sha256":  "ADB2DDA9BBFC24D694B77E1700F2DF0706FF077DE8F40DD09ABABC92459F2E2B"
                   },
                   {
                       "name":  "System.Numerics.Vectors.dll",
-                      "size":  16144,
-                      "sha256":  "28D69EC311D5EEE42EF485001CE697EF4140D3A81C5949C04568EFF1327A90FC"
+                      "size":  15656,
+                      "sha256":  "6E45388834E11D4A8E460F97DA371D6889CDF98D7B65B300079C2F2B69EA3FAF"
                   },
                   {
                       "name":  "System.ObjectModel.dll",
-                      "size":  91400,
-                      "sha256":  "8F0971C99AF21F0AC666DE224F62E0F99B328D7D4150D4DBE3B97142064B9943"
+                      "size":  79656,
+                      "sha256":  "35187A8D7F9DC8896894D1A0A496FBABCD567F2AC0F047632F7178C308FF72F5"
                   },
                   {
                       "name":  "System.Private.CoreLib.dll",
-                      "size":  10637592,
-                      "sha256":  "3CE6F27555E6CE2DC1D314012A5798A1A62B4527813C085548F7D937F83DA74A"
+                      "size":  13174608,
+                      "sha256":  "99B168B84597A4F31FDA8281EFCE7D42A14E2DF0F4694194735E049DBC0F6418"
                   },
                   {
                       "name":  "System.Private.DataContractSerialization.dll",
-                      "size":  2077456,
-                      "sha256":  "ECB3A427E4E730C378920E993AB14B2E41339BBCE73B94F094E2141E87FB484C"
+                      "size":  2082600,
+                      "sha256":  "F3D2ACD4D5ADEABB40991CD1C757D05640B64CDD89F59874CFFE7BBD6ED38B97"
                   },
                   {
                       "name":  "System.Private.Uri.dll",
-                      "size":  252688,
-                      "sha256":  "21BDB07069D76722C7168A8950D10D36211278B9B1C5BB794FB8504ED883B231"
+                      "size":  259920,
+                      "sha256":  "F2A695DCD4073EABA43B4EE26F006C0174BFF42673E17B38914450CA7D2547F5"
                   },
                   {
                       "name":  "System.Private.Xml.dll",
-                      "size":  8506136,
-                      "sha256":  "72CEA6C4B2949448438E6F354967D85358C38381E94BC7208D585BD6CABCB077"
+                      "size":  7997264,
+                      "sha256":  "F7285C6A22E221784F1D81F884283E9DCD02AA7BFD17C428943D29E00170D749"
                   },
                   {
                       "name":  "System.Private.Xml.Linq.dll",
-                      "size":  405264,
-                      "sha256":  "BEFB23F55555ECE88A82447846CFBEE13FB43A17311F809AECD931AE2FF7CC91"
+                      "size":  403240,
+                      "sha256":  "5DE081135173DD027BDC3F6285BEAA31D184CFF8D217D681D405E038D1819721"
                   },
                   {
                       "name":  "System.Reflection.DispatchProxy.dll",
-                      "size":  66328,
-                      "sha256":  "92DDC3CB5C21088CF0F452F725EF30B384A8F04F1C230A5234773353E74742A6"
+                      "size":  75560,
+                      "sha256":  "2F926A9F911D11B98C71E67B7E91F883C58B3B095794A8AC69A5CDBFD37C60C4"
                   },
                   {
                       "name":  "System.Reflection.dll",
-                      "size":  16696,
-                      "sha256":  "F334D11E7FF928D53F855F77F5DD3B91FF68CDB599454ABEA2C4DF5E91F0EFCE"
+                      "size":  16168,
+                      "sha256":  "558837B6BCAF55FDBB3E7D8F565F0C04D9B415823D0ABE382AC31643DB3639DE"
                   },
                   {
                       "name":  "System.Reflection.Emit.dll",
-                      "size":  16176,
-                      "sha256":  "C1C7D6E72C680C26CA385557EE4C40B215E3AC877C16153A7EACE40D6519890B"
+                      "size":  128808,
+                      "sha256":  "51742F48054D452DE444DA58D4AC69B879A23BBC8841B4B08FC337745D50CB07"
                   },
                   {
                       "name":  "System.Reflection.Emit.ILGeneration.dll",
-                      "size":  16144,
-                      "sha256":  "E50C122B0F2B60AEC2DC389AE0FBB1B128BCF11615F2E498EF8966A104018D46"
+                      "size":  15656,
+                      "sha256":  "ED892838C6ED6649AB57A436128845EC195329CDF568C99D9CB8E6F4B92C7A01"
                   },
                   {
                       "name":  "System.Reflection.Emit.Lightweight.dll",
-                      "size":  16184,
-                      "sha256":  "2AC547CFF78DA20CC114E1527FE103E3FC8A5AD06D372DAA7029D1FF26168BA2"
+                      "size":  15656,
+                      "sha256":  "39CF409E3B41B813C9E715EC4F38BC02748499D62E89F71FD8F4DAD6EBBA80BB"
                   },
                   {
                       "name":  "System.Reflection.Extensions.dll",
-                      "size":  15672,
-                      "sha256":  "D23BFEA10697035AF4F99D758B5D202783365EED4264F96D7332A61BC1252CA6"
+                      "size":  15144,
+                      "sha256":  "3ADAAF6F0DCD0208AB0282A774801486444AF53118015AC12E0C6F8623D3F3CE"
                   },
                   {
                       "name":  "System.Reflection.Metadata.dll",
-                      "size":  1130760,
-                      "sha256":  "10DE6107791897F6DE15BA9D519C3EFCF675CE6E7F2402522A033BE3AD39BC72"
+                      "size":  1115944,
+                      "sha256":  "1795022B24DDF1E4DB47F63035B685F2A9F3E4468FB277158BB909D3B6EC00A0"
                   },
                   {
                       "name":  "System.Reflection.Primitives.dll",
-                      "size":  16144,
-                      "sha256":  "58FF8D1A8B349B97278EB0B593026EF2D17F78C2B324FB9F9299ABBD7842D488"
+                      "size":  15656,
+                      "sha256":  "B15B177125F391D1CAEE193167CAFFBEC4AC2586447F822AC655ACE9A6BDFF41"
                   },
                   {
                       "name":  "System.Reflection.TypeExtensions.dll",
-                      "size":  33544,
-                      "sha256":  "AF47B59802243C02D7E678544F6155CE7D35E27BEB3649F96902DE187D39D207"
+                      "size":  42792,
+                      "sha256":  "191C401D245FBBE8D6E0105A53DB610122871168E21AC849BE6FBC86BB786048"
                   },
                   {
                       "name":  "System.Resources.Reader.dll",
-                      "size":  15672,
-                      "sha256":  "85E31CFB44993C4294240E1B7DD13ED601C3F51680447944B0097004D684B915"
+                      "size":  15184,
+                      "sha256":  "34B31E5093FF2564FCCDE4B43C31330BC4CBC6CF24C38CB929D34F1FFB46D0FB"
                   },
                   {
                       "name":  "System.Resources.ResourceManager.dll",
-                      "size":  16136,
-                      "sha256":  "2D4BFB5FD2C3DB55670122F4247ABC7ECEC6EB2E5219F9A4A27506851460A349"
+                      "size":  15656,
+                      "sha256":  "D0DB07A7E954EDBEF7D586907574068EA2764E28ACB7F5A64FD6006EE8889D93"
                   },
                   {
                       "name":  "System.Resources.Writer.dll",
-                      "size":  45344,
-                      "sha256":  "60BF1516D01DBAF29CC70D730FF285118A58BBBE67C10F08FE29583EA9EEEDD4"
+                      "size":  50984,
+                      "sha256":  "A09C234E643B0391367F975241592002270EB9BD5516F0D75B31F82BE6426DD6"
                   },
                   {
                       "name":  "System.Runtime.CompilerServices.Unsafe.dll",
-                      "size":  22800,
-                      "sha256":  "8B25554163A2E55014A3AF5CDCF65028499596D4A02F3DF1BD76020BA41F9A8E"
+                      "size":  15144,
+                      "sha256":  "69EDF8CB4BFE291FF998F2AB0CEA2F3B7F32664C53E9B9171A35F0664FC047CF"
                   },
                   {
                       "name":  "System.Runtime.CompilerServices.VisualC.dll",
-                      "size":  20256,
-                      "sha256":  "28275D5EC7A7F4C4B9CA816EBA2B5A63ACEC42AF8F7568A132C760C59CAB3D8A"
+                      "size":  30544,
+                      "sha256":  "B0216C72F28E06BF4EE3C7561B5C483224847E5F40DF6D939D2AFBE731E2CFD2"
                   },
                   {
                       "name":  "System.Runtime.dll",
-                      "size":  42760,
-                      "sha256":  "3F5AAF220B671A8A14A8511226037421935CB827440CAE6E302A719D378E543E"
+                      "size":  43304,
+                      "sha256":  "E8FB5B78DC75B0650520042936FCA2165A060CB4AFA4B8CCE90524C9C9FC3563"
                   },
                   {
                       "name":  "System.Runtime.Extensions.dll",
-                      "size":  18232,
-                      "sha256":  "C45F3117A87440476114A031C0B7E5FA45C787B071D36600ECCD6867A9AEE57B"
+                      "size":  17704,
+                      "sha256":  "7E7A6460090CF9170B336CA12511EA8D793C281A79CCFF9F96DB88DB74B97FF6"
                   },
                   {
                       "name":  "System.Runtime.Handles.dll",
-                      "size":  15672,
-                      "sha256":  "6B045940C3C30805572D262BACAB99D6B61ABBE074A71F91FF25984BC25E4AD5"
+                      "size":  15144,
+                      "sha256":  "9B193371A3E739F81E601E343C60D6214E0B3966833F4EAEBDCFB49F8217E97F"
                   },
                   {
                       "name":  "System.Runtime.InteropServices.dll",
-                      "size":  52000,
-                      "sha256":  "CAB4E96D3DDF225ACFB610A53EF299FB9E7DEB74AB374E3976D799C77DFA8770"
+                      "size":  96080,
+                      "sha256":  "1930AEA4D91654A4DAF13BF95B2DAFF023D3104A9B3794059EA139E550BCFB5F"
+                  },
+                  {
+                      "name":  "System.Runtime.InteropServices.JavaScript.dll",
+                      "size":  50984,
+                      "sha256":  "7CEFE89E6502602A7E0256960F5F587046016CDB9B822A104E0BF961178DCF2A"
                   },
                   {
                       "name":  "System.Runtime.InteropServices.RuntimeInformation.dll",
-                      "size":  32032,
-                      "sha256":  "5A219D451058D7CC79B5FB07F8AFF99908A77853637D9636B2711BC3516BFFB5"
+                      "size":  15144,
+                      "sha256":  "C7FDCD989C4732AF5D8C5C00A5CE68D48FA6F500DEE37AA3FD716FB260B01338"
                   },
                   {
                       "name":  "System.Runtime.Intrinsics.dll",
-                      "size":  16664,
-                      "sha256":  "ED521AC787392632208EB0461BB2B63ABA7265C5D84BAC9FC0114914B5583CF3"
+                      "size":  16720,
+                      "sha256":  "8679A62575619CAA282D3FB1A1EAD4680417B0384FFED8B73A2C4F7DC102C32B"
                   },
                   {
                       "name":  "System.Runtime.Loader.dll",
-                      "size":  16184,
-                      "sha256":  "9183F86425A1160D243464ECA79C346CD2FEF05170CCDCB353EC004D626701E8"
+                      "size":  15696,
+                      "sha256":  "64AC3644E7FD9279B5410E9C8D31DF01F763B4A362E626E6DD96416A9F6755B3"
                   },
                   {
                       "name":  "System.Runtime.Numerics.dll",
-                      "size":  221968,
-                      "sha256":  "1D55226F4D06B5990D9BEB68ECAA6DA71271CBC5350CB01994EAE5253F8595F8"
+                      "size":  329552,
+                      "sha256":  "D845C2A3D8EDC282D5C32FD8020C2233FBEED3EB02B5064AB8637506049CFB70"
                   },
                   {
                       "name":  "System.Runtime.Serialization.dll",
-                      "size":  17704,
-                      "sha256":  "08D9FA4B727B450C9D2724A83D28353FE1C5F48FFD73A26A3E77058EA09CA90C"
+                      "size":  16680,
+                      "sha256":  "A4A2CD5A396A851E444C5E6AB82C6353A1D83906B65968A15CD8D57540B4F9C3"
                   },
                   {
                       "name":  "System.Runtime.Serialization.Formatters.dll",
-                      "size":  322872,
-                      "sha256":  "F73F2E551F28F1CD7FED8E0D576B15D6E1790D1214933F6056F5CC3761CF614E"
+                      "size":  309032,
+                      "sha256":  "10C352DBA07E5DE49FE362EDD9D8A44CFC60CD0136A48EB1A5104DA30D2333E5"
                   },
                   {
                       "name":  "System.Runtime.Serialization.Json.dll",
-                      "size":  16160,
-                      "sha256":  "455E52B098828CFB60A705211B478A1A65F1DFA71FBD7AD265CD0566ABB8D24A"
+                      "size":  15656,
+                      "sha256":  "70D7013DCD8AA116954F6EFB1643C4DB01927F75E362C5807F795E443D1EAA9A"
                   },
                   {
                       "name":  "System.Runtime.Serialization.Primitives.dll",
-                      "size":  28976,
-                      "sha256":  "887DBBE094028444A716DE644AED163B18B3F944CE723B23601047A2F1CE4243"
+                      "size":  38736,
+                      "sha256":  "65B4FDCA2B36D551FA88C1CB8D7646EF9F29097B96487AB08FCF31F5DC9AFE86"
                   },
                   {
                       "name":  "System.Runtime.Serialization.Xml.dll",
                       "size":  16680,
-                      "sha256":  "448AC2BC540C5E4CC2B8A9D84B55DC345CBFCA98C89806F3E56EA141A35985CD"
+                      "sha256":  "875EF1FE60647F5BB00A756AD9E7BB0C4A579D35ACEAD8386F27F8C7479AE5E0"
                   },
                   {
                       "name":  "System.Security.AccessControl.dll",
-                      "size":  215344,
-                      "sha256":  "7D7986CC5345131A0197DEF19DCE31AD85C9FA9DEEF228A46740872AD497801E"
+                      "size":  231248,
+                      "sha256":  "149888FD2B8F15B37BA115E2BB3C0577C8DB9AED6F91221902AD6C9A61A69A49"
                   },
                   {
                       "name":  "System.Security.Claims.dll",
-                      "size":  94496,
-                      "sha256":  "F7DD8196DBBB1C8FB65A4AAEF8FFD7E78EEC95EEC583F300B43F288543905E73"
+                      "size":  100176,
+                      "sha256":  "45171F0AD174047CBF511E7761D7ABB2D44988E899F690C36FF3C5BCFBCB2467"
                   },
                   {
                       "name":  "System.Security.Cryptography.Algorithms.dll",
-                      "size":  808712,
-                      "sha256":  "03FDA7C0F12533AE0F9CC4F35D2249240E097FBC69481F424EBB62332DE167D5"
+                      "size":  17192,
+                      "sha256":  "E1BDF2D837D0C8C582B1F98992511421C3E5130B42603F868EF0B5C8C2609F92"
                   },
                   {
                       "name":  "System.Security.Cryptography.Cng.dll",
-                      "size":  486664,
-                      "sha256":  "26419E89792B01E05EBC49C144CEA7BBD26C5ACEC3E755965C987C1CDFD87FA5"
+                      "size":  16168,
+                      "sha256":  "7B6DEB57BD6A2F0123527F04BE5CCCA9A8B30F4F09A97E6F32519B651496A7F6"
                   },
                   {
                       "name":  "System.Security.Cryptography.Csp.dll",
-                      "size":  189704,
-                      "sha256":  "1FCD097B14A78E20829827F093BEC0EDB22E390A6041221F6DA8C1CF3EE4DD2D"
+                      "size":  15656,
+                      "sha256":  "8689E9D5EA215C4E92D8229DA7DBC3FABEE8997083876FED1927C4D643AEF3F9"
+                  },
+                  {
+                      "name":  "System.Security.Cryptography.dll",
+                      "size":  2049872,
+                      "sha256":  "1E4C4CE04A46E2A2DA8221BF583EBD4F6B5149D4B32792CACC5C33978D0BB121"
                   },
                   {
                       "name":  "System.Security.Cryptography.Encoding.dll",
-                      "size":  94000,
-                      "sha256":  "17EB5E22783D98F6AFA99944F895CCDEA80ED5543EC38F1CD6AB7E8D2401FBAF"
+                      "size":  15696,
+                      "sha256":  "BAD69FAE75CC6EA5C8CF0A953489B323857A3C8CBA80418F09E98535380A6B8D"
                   },
                   {
                       "name":  "System.Security.Cryptography.OpenSsl.dll",
-                      "size":  32048,
-                      "sha256":  "2EC612FC992145C759BF74E82700C15DAA049394BDEDA72200783C278030E165"
+                      "size":  15144,
+                      "sha256":  "5D580C0CAFC4492DAC0C4FA11AE46DD1309835AB12671B326F0B74428539D4B5"
                   },
                   {
                       "name":  "System.Security.Cryptography.Primitives.dll",
-                      "size":  134920,
-                      "sha256":  "5BE377E524E34BBD766462C3EB879F33E5EE964456BB128B0F7772B387A7EBFA"
+                      "size":  15696,
+                      "sha256":  "A214418A0B70A48772E274CCDA284D3CFC2392ABF4ABA55718C70324FB78A239"
                   },
                   {
                       "name":  "System.Security.Cryptography.X509Certificates.dll",
-                      "size":  569120,
-                      "sha256":  "DBF74EC3AAA3F5A12F8EFA2FC690934697ECC362486CB71E350A369EA28CD6C3"
+                      "size":  16680,
+                      "sha256":  "07643C4B239DD2A9326C0A62491995BE666A47D2C85D0455CA7379A1692FA284"
                   },
                   {
                       "name":  "System.Security.dll",
-                      "size":  18728,
-                      "sha256":  "EA07049F583230BA54FDA2BAB4CC95E19435C048CB02B8227F7ABEAB21270D57"
+                      "size":  18256,
+                      "sha256":  "EDE7D28DE4BFEC4192915FB98B35F8979ED1E4A20A7333A7D2AEA45E733A9495"
                   },
                   {
                       "name":  "System.Security.Principal.dll",
-                      "size":  15664,
-                      "sha256":  "2EEAE79F0A33FCB7B62A37350034D8031D8A5079B3458BE6C38F2DB01255862D"
+                      "size":  15144,
+                      "sha256":  "AEE0A10EDCF634876126B0DE882D01F432DE3EB7CBFCA0565E330EFE336D6DC0"
                   },
                   {
                       "name":  "System.Security.Principal.Windows.dll",
-                      "size":  151856,
-                      "sha256":  "4A895EA1E7437452EBF95803FE92A3748CFF32A361E54D5CB42F0A7DA8D9A0D7"
+                      "size":  186152,
+                      "sha256":  "AACE487981F8C9077620ABF9C9D236CE5EF98241CF4222FBB49C717286F2CD0F"
                   },
                   {
                       "name":  "System.Security.SecureString.dll",
-                      "size":  15672,
-                      "sha256":  "C9DB2400B74692C6056BF8B21F4360CBA546AAD51AD0B387B43153C07C5A4108"
+                      "size":  15184,
+                      "sha256":  "A8C666CCE29278836FEE40D1058EBB55B56631056A26117176FCE6ADB793187F"
                   },
                   {
                       "name":  "System.ServiceModel.Web.dll",
-                      "size":  17680,
-                      "sha256":  "9031F1ECF21A66EE7F896157F9858314921012843B78ED4DECB4930DCEA85941"
+                      "size":  16720,
+                      "sha256":  "059D12D427D2CF95F90F5CA817C30D12D504DB13A031CF5DCE53BAFCEACD3800"
                   },
                   {
                       "name":  "System.ServiceProcess.dll",
-                      "size":  16680,
-                      "sha256":  "12AD2560A3A36B2965232FC78F100EAA77DF553A271543DE96915D5DD0BA8722"
+                      "size":  15656,
+                      "sha256":  "41A80E894C84CC938193A95A0C37FC0D3351D3B090E4FC2FE903CC384D55AF2A"
                   },
                   {
                       "name":  "System.Text.Encoding.CodePages.dll",
-                      "size":  871184,
-                      "sha256":  "645B132F22811A496E8B72293D15CC4FEB2F5C947BBDB2E326E980FEDE71EA15"
+                      "size":  861992,
+                      "sha256":  "A597E456AC579A3814D4C11CD649CB188DF0D4DC27FF9AE59E36664CCA0927A9"
                   },
                   {
                       "name":  "System.Text.Encoding.dll",
-                      "size":  16152,
-                      "sha256":  "BC2B896F867337D8EB89604B46B5991F5A461C608AD057F4262BEA4E37426DB9"
+                      "size":  15656,
+                      "sha256":  "C0DDA0DA1AEADBA8A3BAA8D4704C5E4D9DADC715F72FA11C6A25899A5FA6A35B"
                   },
                   {
                       "name":  "System.Text.Encoding.Extensions.dll",
-                      "size":  16160,
-                      "sha256":  "67CB9174A2CE49E07D6653FB697EF7834847AC76BE651A3DF9A4D249BF55E606"
+                      "size":  15656,
+                      "sha256":  "9AD4679A4005EADC13AF6AE025534F22648DED33AB7C1A796C70C8813EE51977"
                   },
                   {
                       "name":  "System.Text.Encodings.Web.dll",
-                      "size":  131352,
-                      "sha256":  "2510CAB747AC9001DE4232D040A69DFA54C847665B2AE48009393D3E3B248F7A"
+                      "size":  132904,
+                      "sha256":  "94AFAD93DFDD00E132467753615BFB4BC3FA6633701082A9553D6CB4EACCF2AC"
                   },
                   {
                       "name":  "System.Text.Json.dll",
-                      "size":  1486112,
-                      "sha256":  "CB8099974CDF5CC1CE96FF0DF8975AA0D625A56AB0996575B4441FDD155230E0"
+                      "size":  1501008,
+                      "sha256":  "9CF2E2AE44376DBEA191925E571AF703C6D7B53A5C138A0F0F13CD6B8AF2C904"
                   },
                   {
                       "name":  "System.Text.RegularExpressions.dll",
-                      "size":  530184,
-                      "sha256":  "612ED9AB7B619F7E5E4D37568E6EC1847BA286D2EA5B95A246F67C7AF78D3F08"
+                      "size":  1021736,
+                      "sha256":  "8B3AF9E3E0215B46C2DCEF1F11C4CDC7AD477140883BCB5C778D04CC051BB0DC"
                   },
                   {
                       "name":  "System.Threading.Channels.dll",
-                      "size":  125216,
-                      "sha256":  "D4E463DFAFCE72E22BED8F67E1810FBA16226C0487AF4CD3502A01727ABD6461"
+                      "size":  132944,
+                      "sha256":  "AB05F710069580165C588789E0623E84D213C35594E3E12AE762A6C8265740B6"
                   },
                   {
                       "name":  "System.Threading.dll",
-                      "size":  80184,
-                      "sha256":  "DC2AC768BB9B05766B009B6EFAEF4479D5DB5C768EE1D3DE3EDA136E420FF94C"
+                      "size":  83752,
+                      "sha256":  "435C110B598D30F118D0E673068B535B693C5A77FAE17398AD46821CE1261ABA"
                   },
                   {
                       "name":  "System.Threading.Overlapped.dll",
-                      "size":  16136,
-                      "sha256":  "6B38BD1E66589DF814E7102447C7B6AB7A321D1252FBDBD4F2919A90B22444B8"
+                      "size":  15656,
+                      "sha256":  "739BFB326810706F497DF3B66901E5657B9835AD945FDC6728A27BF932CBAFAA"
                   },
                   {
                       "name":  "System.Threading.Tasks.Dataflow.dll",
-                      "size":  505608,
-                      "sha256":  "31FC29A7440FF2AC36E49313635A4259E2506EC98251FEA7C50A628C8F6764C8"
+                      "size":  489256,
+                      "sha256":  "39DEF3E572CF7E4BBF11F6565B0A25DB2540D8041C2950E48029E24C14E06342"
                   },
                   {
                       "name":  "System.Threading.Tasks.dll",
-                      "size":  17184,
-                      "sha256":  "FED7D3F80E8F49250AB7FBE85CBE6440C3A7AEA96CE9573B85ACEFD67CF5F12F"
+                      "size":  16680,
+                      "sha256":  "D965E3057DCA46B1E8D56012E623A4772AB5AB009231450FDB0F4D2F3875C374"
                   },
                   {
                       "name":  "System.Threading.Tasks.Extensions.dll",
-                      "size":  16152,
-                      "sha256":  "7D1CEA57531D25FDECD23AC12127ED90546751B8C97A8E0FC3136B8F9924B3DA"
+                      "size":  15656,
+                      "sha256":  "336E8D8F0E79BFFF0C6C38D4A7677384B7951FF66394664BF4FB866ED0BBA982"
                   },
                   {
                       "name":  "System.Threading.Tasks.Parallel.dll",
-                      "size":  139032,
-                      "sha256":  "C1985E8C182D6E508D0FF28C9CEDAEB4B92D3F2883DCE3A3CE72B4A547EB8A55"
+                      "size":  132904,
+                      "sha256":  "08FFB9101534E1644C203427BD22B3BEECAAB021F4CE40F4B162B898E2FA66F7"
                   },
                   {
                       "name":  "System.Threading.Thread.dll",
-                      "size":  16160,
-                      "sha256":  "21E994A0AE87FAE438D5285F3A836B1292B4A9948F6CF5DFD43F9360D6C31F68"
+                      "size":  15656,
+                      "sha256":  "34ED4D7D03BF9A5A5DF7ADDC37A5B75759956FC0D949E25DF61D878238BC560A"
                   },
                   {
                       "name":  "System.Threading.ThreadPool.dll",
-                      "size":  16152,
-                      "sha256":  "1FFE1ED5A9FF08673F2789E41077A156EACA47539CDFDB8667383E48C31FF751"
+                      "size":  15656,
+                      "sha256":  "5758D73199750AF708EDCA8456EED908B0BFDAACCD7CB2083A6C95DAD4006FDB"
                   },
                   {
                       "name":  "System.Threading.Timer.dll",
-                      "size":  15632,
-                      "sha256":  "87EFD14B44F471C65695E556331DEB302EB455E1FF59AF0F1AFE4FBCBE046541"
+                      "size":  15144,
+                      "sha256":  "39E1B46A16BA5D4A4D7687DCDA0B8838E45198544417D227C7F174C8E15DF56D"
                   },
                   {
                       "name":  "System.Transactions.dll",
-                      "size":  17192,
-                      "sha256":  "470D9304A9AAC3136035D1D90469DADFCC3850085193FFE7986AD78A8A99FF44"
+                      "size":  16168,
+                      "sha256":  "2203532BF5483E00686B4F26610A6B9070E59DA55F5218D4294C2C069C6FDFB9"
                   },
                   {
                       "name":  "System.Transactions.Local.dll",
-                      "size":  351496,
-                      "sha256":  "111853F805A7CD2D95D533BDECAA836E1952AEBA5EA9E4636CA883407E7E27DF"
+                      "size":  661328,
+                      "sha256":  "5428F4BCAE83612694E1BEC71849FFFFE7EF34F62AA46DAF3F01250ADB019BD8"
                   },
                   {
                       "name":  "System.ValueTuple.dll",
-                      "size":  15656,
-                      "sha256":  "A99FD282A3CB560EA0F841BF9336D2A7C852DE734D37D51D86716BC7654D304F"
+                      "size":  15144,
+                      "sha256":  "2079AD867339BD4E2DC4D0E1C9250D9F78E4016DA472C25FEF3C78756244AC5B"
                   },
                   {
                       "name":  "System.Web.dll",
-                      "size":  16184,
-                      "sha256":  "563938CC999B07B6CE0961DC1A4FCDF8FFDA7BE2D7FBD864EDEE305F47807505"
+                      "size":  15144,
+                      "sha256":  "FC90F7D949615646B8D5AF798CFB2BD37FBFE21B1C790B6A2E049BEA36758E2D"
                   },
                   {
                       "name":  "System.Web.HttpUtility.dll",
-                      "size":  53040,
-                      "sha256":  "E6C6A72164A1BE010DEF5FE141ECBB655336F0CE2921BD394F59BCDCE76A78E4"
+                      "size":  59216,
+                      "sha256":  "351125823B848B8CD9E2541B1E0F13ADD351B6DD3C34A6ACB8C243565E5C6251"
                   },
                   {
                       "name":  "System.Windows.dll",
-                      "size":  16688,
-                      "sha256":  "A3CB63A7EAA113F8834CBA45EE03695748F0537286C117E60537E9A97A533556"
+                      "size":  15656,
+                      "sha256":  "113A298C5E1887F9CC2371376E6AEADF631958C1C255EBAC18282DA7829D3C49"
                   },
                   {
                       "name":  "System.Xml.dll",
-                      "size":  24856,
-                      "sha256":  "42D71DA6ECD03596A92884E6B62440AD774939571C33E4435AA2A6DCC49E4F7E"
+                      "size":  23376,
+                      "sha256":  "0D13174940CBD34CCDB350B2F33037CFF214420850CBF5755D9C407BA8A42407"
                   },
                   {
                       "name":  "System.Xml.Linq.dll",
-                      "size":  16688,
-                      "sha256":  "A731A9C18917F573C0EE6655C5BDF7914CD69E8EDBF136E5F71B94D3630A94C8"
+                      "size":  15656,
+                      "sha256":  "64CAB6D274DE20FB8EC0D080B96091E85AF0DDFC9619869169E8C41D5C1B02C0"
                   },
                   {
                       "name":  "System.Xml.ReaderWriter.dll",
-                      "size":  22328,
-                      "sha256":  "A00D0FFFCA78B807CB9F181775CEB803F961B432AEA50DB05C8DBFB2C4EE1FE3"
+                      "size":  21800,
+                      "sha256":  "7CBF62BEA50B44B1350FC241281B8C5BF1373CB9AD03304B10F5B0D4805EDB47"
                   },
                   {
                       "name":  "System.Xml.Serialization.dll",
-                      "size":  16680,
-                      "sha256":  "903F9A27DF5124B9E18852FEF36891E47854362FAC4617805673E09541061F43"
+                      "size":  16168,
+                      "sha256":  "7823BBFDCB819BD585488ADEB6612CAB2357DC2DF5E4A85E0F2A02079C2EC736"
                   },
                   {
                       "name":  "System.Xml.XDocument.dll",
-                      "size":  16184,
-                      "sha256":  "8A3D4B6AAA8F0E7C9747BB4E559A5927FB1BCBB8A1F6BBDEBD4A9665EEB66B50"
+                      "size":  15656,
+                      "sha256":  "E5A4EF2A7F8C927DC5C587EEB4B5BF1A7264A89825C3D7313082447D3446A11B"
                   },
                   {
                       "name":  "System.Xml.XmlDocument.dll",
-                      "size":  16168,
-                      "sha256":  "9C18A732473FB8771D04BFBDB5FF9AFB49374EBB93D48D2D5EA77F9F74830B34"
+                      "size":  15656,
+                      "sha256":  "48781BEA76DDCE3732F316BCC01BB375910B18B4D83DE62B6570835E09DAB363"
                   },
                   {
                       "name":  "System.Xml.XmlSerializer.dll",
-                      "size":  18216,
-                      "sha256":  "A75E26727BF6F95BB8945A4F112CF79E6428105250FA3110D2D61F8DFF19EBF6"
+                      "size":  17744,
+                      "sha256":  "EA1EB8DA8A46BAFE8EE7A8628900E5C4A3FE23CABC7D63D5BE5EB5EDD3FB76FB"
                   },
                   {
                       "name":  "System.Xml.XPath.dll",
-                      "size":  16168,
-                      "sha256":  "6CB6ADEB2B6AA05E19AA8370E4FA421C427CC9BE3D84E7C1E207F020BF997EB8"
+                      "size":  15696,
+                      "sha256":  "CD0B232B8B161A4167B77387885B13E6BF938DFCE4ADDFD68A646FA2E5471FCF"
                   },
                   {
                       "name":  "System.Xml.XPath.XDocument.dll",
-                      "size":  18200,
-                      "sha256":  "E4D3A27AFA224EF7008D365DA924FC28EB7944821A483DCB14EC1F5E0E07ECEF"
+                      "size":  30544,
+                      "sha256":  "01F4F51C85B1533EEF9EF35FCEC4C281565E661A415F7CB10422C3840C5973F7"
                   },
                   {
                       "name":  "ucrtbase.dll",
@@ -1177,8 +1202,8 @@
                   },
                   {
                       "name":  "WindowsBase.dll",
-                      "size":  17160,
-                      "sha256":  "2DA8CCD3D3DF04DCE2A7338C07964D22B55355CD19C89AEC5D2A74297FD5CE45"
+                      "size":  16208,
+                      "sha256":  "D2B82FD6347B45B6BC3FF23C60D215A8431906D25B68BF84A2FF6A0B2C46AE9E"
                   },
                   {
                       "name":  "资源/数据/ava._D1",

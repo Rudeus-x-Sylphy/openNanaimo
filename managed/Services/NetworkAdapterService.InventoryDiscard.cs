@@ -7,6 +7,11 @@ namespace OpenNanaimo.Adapter.Services;
 // Never compact survivors after a deletion or allow a replay to select a neighbor.
 internal sealed class ShoppingCouponIdentityMap
 {
+    // C46A uses DWORD instance identities, but zero is still the client's
+    // empty value. Start at one and retain the monotonic/no-reuse rule.
+    private const int FirstWireIdentity = 1;
+    private const int Capacity = 256;
+
     private readonly Dictionary<uint, (uint Code, long Order)> _items = [];
     private uint[] _ordered = [];
     private readonly HashSet<uint> _used = [];
@@ -20,7 +25,7 @@ internal sealed class ShoppingCouponIdentityMap
         foreach (var group in needed)
             for (int n = _items.Values.Count(x => x.Code == group.Key); n < group.Value; ++n)
             {
-                var free = Enumerable.Range(0, 256).Select(x => (uint)x).Where(x => !_items.ContainsKey(x)).ToArray();
+                var free = Enumerable.Range(FirstWireIdentity, Capacity).Select(x => (uint)x).Where(x => !_items.ContainsKey(x)).ToArray();
                 if (free.Length == 0) throw new InvalidDataException("Shopping-coupon identity capacity exceeded");
                 var identity = free.FirstOrDefault(x => !_used.Contains(x), free[0]);
                 _items.Add(identity, (group.Key, _order++));

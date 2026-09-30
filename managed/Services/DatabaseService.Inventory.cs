@@ -177,6 +177,8 @@ public sealed partial class DatabaseService
         await using var transaction = connection.BeginTransaction(deferred: false);
         long quantity;
         DungeonQuickItemTargetResult? target = null;
+        var coupleRing = restoreFood
+            ? await GetActiveCoupleRingAsync(connection, transaction, characterId, cancellationToken) : 0u;
         await using (var current = connection.CreateCommand())
         {
             current.Transaction = transaction;
@@ -229,8 +231,8 @@ public sealed partial class DatabaseService
                 var maxMp = resources.MaximumMp;
                 var hp = resources.CurrentHp;
                 var mp = resources.CurrentMp;
-                var nextHp = (int)Math.Min(maxHp, (long)hp + item.QuickHpRestore);
-                var nextMp = (int)Math.Min(maxMp, (long)mp + item.QuickMpRestore);
+                var nextHp = (int)Math.Min(maxHp, (long)hp + CoupleBenefitPolicy.ScaleRecovery(item.QuickHpRestore, coupleRing));
+                var nextMp = (int)Math.Min(maxMp, (long)mp + CoupleBenefitPolicy.ScaleRecovery(item.QuickMpRestore, coupleRing));
                 target = new DungeonQuickItemTargetResult(characterId,
                     checked((ushort)(nextHp - hp)), checked((ushort)(nextMp - mp)), nextHp, nextMp);
             }

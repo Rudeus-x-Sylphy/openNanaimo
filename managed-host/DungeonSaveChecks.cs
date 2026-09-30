@@ -155,7 +155,7 @@ internal static class DungeonSaveChecks
             await bridge.ConnectAsync(token);
             Put(restored, NativeDungeonState.PetLevelOffset, 7);
             var imported = await bridge.ExchangeAsync(null, restored, token);
-            Check(imported.Get(5112) == 1 && imported.Bytes.AsSpan(5052, 60).SequenceEqual(restored.Bytes.AsSpan(5052, 60)), "native worker round-trips all dungeon clear masks");
+            Check((imported.Get(5112) & 0xFFFFu) == 1 && imported.Bytes.AsSpan(5052, 60).SequenceEqual(restored.Bytes.AsSpan(5052, 60)), "native worker round-trips all dungeon clear masks");
             // A lower clear after a higher frontier must still be archived.
             imported.Bytes[5052 + 3] = 2;
             imported.Bytes[5052 + 5] = 4;

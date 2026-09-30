@@ -15,10 +15,11 @@ public sealed partial class NetworkAdapterService
     private readonly ConcurrentDictionary<long, FriendBridgeSubscriber> _friendSubscribers = new();
     private readonly ConcurrentDictionary<string, byte> _friendRequestDeliveries = new(StringComparer.Ordinal);
 
-    private sealed class FriendBridgeSubscriber(NetworkStream stream, uint virtualId)
+    private sealed class FriendBridgeSubscriber(NetworkStream stream, uint virtualId, string sessionId)
     {
         private readonly SemaphoreSlim _writeGate = new(1, 1);
         public uint VirtualId { get; } = virtualId;
+        public string SessionId { get; } = sessionId;
 
         public async Task<bool> SendAsync(uint eventCode, byte[] envelope, CancellationToken cancellationToken)
         {
@@ -85,7 +86,7 @@ public sealed partial class NetworkAdapterService
             if (mode == FriendProtocol.BridgeSubscribe)
             {
                 await WriteFriendBridgeResponseAsync(stream, FriendProtocol.BridgeStatusSuccess, [], cancellationToken);
-                var subscriber = new FriendBridgeSubscriber(stream, identity.VirtualId);
+                var subscriber = new FriendBridgeSubscriber(stream, identity.VirtualId, identity.Presence.SessionId);
                 _friendSubscribers.AddOrUpdate(identity.Presence.CharacterId, subscriber, (_, _) => subscriber);
                 _log($"{channel}:{port} {remote} 好友事件订阅已建立 character={identity.CharacterName}");
                 var pending = await _database.GetPendingFriendNotificationsAsync(
@@ -157,7 +158,8 @@ public sealed partial class NetworkAdapterService
         if (!authorization.Success)
             return null;
         var presence = _activeWorldSessions.Values.FirstOrDefault(item =>
-            item.OnlineSinceUtc <= DateTime.UtcNow
+            IsTrackedWorldSession(item.Session)
+            && item.OnlineSinceUtc <= DateTime.UtcNow
             && string.Equals(item.Username, username, StringComparison.OrdinalIgnoreCase)
             && string.Equals(item.CharacterName, characterName, StringComparison.OrdinalIgnoreCase)
             && (string.IsNullOrWhiteSpace(remoteIp)
@@ -174,6 +176,10 @@ public sealed partial class NetworkAdapterService
         CancellationToken cancellationToken)
     {
         if (!FriendProtocol.TryOpenCall(envelope, out _, out var body))
+            return FriendProtocol.BuildFunctionResponse(false);
+        if (!IsTrackedWorldSession(identity.Presence.Session)
+            || !_activeWorldSessions.TryGetValue(identity.Presence.SessionId, out var activePresence)
+            || !ReferenceEquals(activePresence, identity.Presence))
             return FriendProtocol.BuildFunctionResponse(false);
         var ownerId = identity.Presence.CharacterId;
         bool success;
@@ -338,7 +344,15 @@ public sealed partial class NetworkAdapterService
     }
 
     private bool IsCharacterOnline(long characterId)
-        => _activeWorldSessions.Values.Any(item => item.CharacterId == characterId);
+        => _activeWorldSessions.Values.Any(item => item.CharacterId == characterId
+            && IsTrackedWorldSession(item.Session));
+
+    private bool IsTrackedWorldSession(ConnectionSession session)
+        => session.OnlineTracked
+            && session.Character is not null
+            && _activeWorldSessions.TryGetValue(session.SessionId, out var presence)
+            && ReferenceEquals(presence.Session, session)
+            && presence.CharacterId == session.Character.Id;
 
     private static bool IsOwnedVirtualKey(VirtualKey key, uint virtualId)
         => FriendProtocol.IsExpectedGameCode(key.GameCode)
@@ -371,9 +385,14 @@ public sealed partial class NetworkAdapterService
     {
         if (!_friendSubscribers.TryGetValue(requesteeCharacterId, out var subscriber))
             return;
-        var presence = _activeWorldSessions.Values.FirstOrDefault(item => item.CharacterId == requesteeCharacterId);
-        if (presence is null)
+        var presence = _activeWorldSessions.Values.FirstOrDefault(item =>
+            item.CharacterId == requesteeCharacterId && IsTrackedWorldSession(item.Session));
+        if (presence is null || !string.Equals(subscriber.SessionId, presence.SessionId, StringComparison.Ordinal))
+        {
+            _friendSubscribers.TryRemove(
+                new KeyValuePair<long, FriendBridgeSubscriber>(requesteeCharacterId, subscriber));
             return;
+        }
         await SendFriendRequestEventAsync(presence, subscriber, request, cancellationToken);
     }
 

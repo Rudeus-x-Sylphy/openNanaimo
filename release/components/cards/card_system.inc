@@ -3,6 +3,7 @@
 #include "random_pool.inc"
 #include "card_drop_pool_data.inc"
 #include "card_monster_name_pool.inc"
+#include "card_skill_point_pool.inc"
 #define CARD_CODE_MIN 13000001u
 #define CARD_CODE_MAX 13000420u
 /* Segmented inventory; see profile_state.inc for the layout notes. */

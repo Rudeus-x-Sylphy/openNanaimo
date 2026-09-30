@@ -62,9 +62,11 @@ internal static class InventoryQuickbarChecks
         Check(healed.CurrentHp == 22222 && healed.CurrentMp == 4800
             && healed.Epoch == 7 && healed.AttackMode == 2,
             "captured potion delta preserves healed configured HP/MP before checkpoint projection");
+        Check(ReferenceEquals(healed, NetworkAdapterService.MergeNativeDungeonQuickItemResources(healed, request, [response], 77)),
+            "one captured potion result is applied once across publication");
         var paddedRequest = request.ToArray();
         BinaryPrimitives.WriteUInt16LittleEndian(paddedRequest.AsSpan(10), 0xABCD);
-        Check(NetworkAdapterService.MergeNativeDungeonQuickItemResources(injured, paddedRequest, [response], 77) == healed,
+        Check(NetworkAdapterService.MergeNativeDungeonQuickItemResources(injured, paddedRequest, [response.ToArray()], 77) == healed,
             "CF93 consumes only the slot WORD and ignores unused request tail bytes");
         var unchanged = NetworkAdapterService.MergeNativeDungeonQuickItemResources(injured, request, [response], 78);
         Check(unchanged == injured, "remote potion reply cannot heal the local snapshot");

@@ -127,9 +127,9 @@ internal static class InventoryDiscardChecks
             Check(Rows(await Dispatch(0xC469, []), true).All(x => x.Code != decoration.ItemCode), "checkout retires exact coupon wire identity");
 
             var map = new ShoppingCouponIdentityMap();
-            map.Synchronize([41000001,41000001,41000501]); map.Remove(0); map.Synchronize([41000001,41000501]);
-            Check(map.Wire(0)==1 && map.Wire(1)==2 && !map.TryStorage(0,out _,out _), "coupon sparse handles");
-            Check(map.TryStorage(2,out var ordinal,out var last) && ordinal==1 && last==41000501, "checkout translates sparse wire identity to DB ordinal");
+            map.Synchronize([41000001,41000001,41000501]); map.Remove(1); map.Synchronize([41000001,41000501]);
+            Check(map.Wire(0)==2 && map.Wire(1)==3 && !map.TryStorage(1,out _,out _) && !map.TryStorage(0,out _,out _), "coupon sparse handles");
+            Check(map.TryStorage(3,out var ordinal,out var last) && ordinal==1 && last==41000501, "checkout translates sparse wire identity to DB ordinal");
             map.Synchronize(Enumerable.Repeat(41000001u,256).ToArray());
             var removed = map.Wire(0); map.Remove(removed); map.Synchronize(Enumerable.Repeat(41000001u,256).ToArray());
             Check(map.Wire(255)==removed, "full coupon capacity reuses handle only for new last instance");

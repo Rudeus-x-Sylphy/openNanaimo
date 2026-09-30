@@ -108,20 +108,22 @@ internal static class QuestSystemChecks
                 && Quantity(afterRepeatedNemo, 46_000_008u) == Quantity(afterNemo, 46_000_008u),
                 "repeated Nemo completion acknowledges the waiting client without duplicating rewards");
             var certificateInventory = await Dispatch(0xC42F, []);
+            var certificateIdentity = BinaryPrimitives.ReadUInt16LittleEndian(certificateInventory.AsSpan(16, 2));
             Check(ReadOpcode(certificateInventory) == 0xC430
                 && BinaryPrimitives.ReadUInt16LittleEndian(certificateInventory.AsSpan(10, 2)) == 1
-                && BinaryPrimitives.ReadUInt32LittleEndian(certificateInventory.AsSpan(12, 4)) == 46_000_008u,
+                && BinaryPrimitives.ReadUInt32LittleEndian(certificateInventory.AsSpan(12, 4)) == 46_000_008u
+                && certificateIdentity != 0,
                 "Nemo certificate is restored through the ordinary game-item inventory");
             var redeemCertificate = new byte[8];
             BinaryPrimitives.WriteUInt32LittleEndian(redeemCertificate, 46_000_008u);
-            BinaryPrimitives.WriteUInt32LittleEndian(redeemCertificate.AsSpan(4), 0);
+            BinaryPrimitives.WriteUInt32LittleEndian(redeemCertificate.AsSpan(4), certificateIdentity);
             var redeemedFrames = await Dispatch(0xC46D, redeemCertificate);
             var redeemResult = FindFrame(redeemedFrames, 0xC46E);
             var afterRedeem = (await db.GetCharacterAsync(account))!;
             Check(Opcodes(redeemedFrames).SequenceEqual(new ushort[] { 0xC430, 0xC46E })
                 && BinaryPrimitives.ReadUInt32LittleEndian(redeemResult.AsSpan(8, 4)) == 1
                 && BinaryPrimitives.ReadUInt32LittleEndian(redeemResult.AsSpan(12, 4)) == 46_000_008u
-                && BinaryPrimitives.ReadUInt32LittleEndian(redeemResult.AsSpan(16, 4)) == 0
+                && BinaryPrimitives.ReadUInt32LittleEndian(redeemResult.AsSpan(16, 4)) == certificateIdentity
                 && afterRedeem.Hans == afterNemo.Hans + 100
                 && Quantity(afterRedeem, 46_000_008u) == 0,
                 "using the 100-Hans certificate refreshes inventory, reports zero remaining and credits the wallet atomically");

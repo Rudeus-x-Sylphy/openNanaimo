@@ -33,6 +33,7 @@ static int hp_sync_find_profile(unsigned a,unsigned b,unsigned c,unsigned d,unsi
 static void native_cf72_continue_room(void){}
 static int multiplayer_cf99_surrender_room_pending(void){return pending;}
 static void multiplayer_broadcast_cf6d_super_rearm(void){ops[count++]=0xCF6D;pending=0;}
+static void teamplay_continuation_arm_room(unsigned real,unsigned show,unsigned diff,unsigned dungeon,unsigned mode){}
 static void multiplayer_broadcast_reset(unsigned real,unsigned show,unsigned diff,unsigned dungeon){ops[count++]=0xCF8C;assert(diff==2);response_stage=real;response_dungeon=dungeon;}
 static void sleep(unsigned n){}
 static void reset(unsigned mode,int surrendered,int authored){

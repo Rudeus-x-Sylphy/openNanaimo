@@ -6,6 +6,9 @@ namespace OpenNanaimo.Adapter.Services;
 
 public static class SkillCatalog
 {
+    public const int MaximumSkillsPerFamily = 7;
+    public const byte ProjectileSkillFamily = 0;
+    public const byte MeatSkillFamily = 1;
     private const string ResourceName = "OpenNanaimo.Adapter.ClientData.SK._D35";
     private const int HeaderFieldCount = 3;
     private const int RecordFieldCount = 58;

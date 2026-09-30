@@ -16,6 +16,10 @@ static int card_terminal_policy_card_denied_name(const char*name){
 static int card_roll_card_roll_trace(unsigned pct,unsigned *roll){
     if(!roll)return 0;if(pct==0u){*roll=0u;return 0;}if(pct>=100u){*roll=0u;return 1;}*roll=card_rand_bounded(100u);return *roll<pct;
 }
+static int card_roll_basis_points(unsigned basis_points,unsigned *roll){
+    if(!roll)return 0;if(!basis_points){*roll=0u;return 0;}if(basis_points>=10000u){*roll=0u;return 1;}
+    *roll=card_rand_bounded(10000u);return *roll<basis_points;
+}
 /* ArenaServer is handled separately by the managed host. Manual supplements
    additionally require a resolved normal-dungeon profile, never just a name. */
 static int card_manual_normal_dungeon_profile(const struct hp_sync_profile_def*p){
@@ -28,17 +32,16 @@ static void combat_economy_select_ordinary_terminal_reward(const struct hp_sync_
     /* The HP selector is a static target index, not a DCC7 placement UID.
        Resolve the actual killed model's MMO monster code to the album instead. */
     if(eligible)pool=card_monster_name_pool_lookup_scoped(resource,card_manual_normal_dungeon_profile(profile),&pool_grades,&pool_count,&pool_monster);
-    /* HD0 chapters 1..16 use the two ordinary albums, never this legacy SP pool.
-       Keep out-of-domain reward policy unchanged; chapter 8 remains SP-excluded. */
-    {unsigned secret_episode=profile?(unsigned)profile->stage_id:0u;
-     unsigned secret_dungeon=profile?(unsigned)profile->dungeon_id:0u;
-     if(eligible&&!card_manual_normal_dungeon_profile(profile)&&secret_episode!=7u&&card_secret_set_index(secret_episode)>=0&&secret_dungeon<=1u
-        &&card_ordinary_drop_hp_eligible(monster_hp)){
-        if(card_roll_card_roll_trace(CARD_SP_DROP_PERCENT,&roll)){
-            unsigned card=card_drop_create_from(2u,selector,card_sp_pool_cards,card_sp_pool_grades,CARD_SP_POOL_COUNT);
+    /* Each authored normal stage owns one SP card. The card identity itself
+       selects the corresponding skill-family balance when consumed. */
+    {unsigned sp_code=profile?card_skill_point_for_stage(profile->hd_id,profile->stage_id):0u;
+     if(eligible&&sp_code&&card_manual_normal_dungeon_profile(profile)&&card_ordinary_drop_hp_eligible(monster_hp)){
+        const unsigned char sp_grade=1u;
+        if(card_roll_basis_points(CARD_SKILL_POINT_DROP_BASIS_POINTS,&roll)){
+            unsigned card=card_drop_create_from(2u,selector,&sp_code,&sp_grade,1u);
             if(card){*subtype=30u;*code=card;card_won=1;g_card_terminal_policy_card_wins[ci]++;combat_economy_coin_note_card_replacement(monster_hp);}
         }
-        printf("  [CARD_ECONOMY] secret-sp terminal selector=%u episode=%u dungeon=%u monster_hp=%u pct=%u roll=%u won=%d code=%u\n",selector,secret_episode,secret_dungeon,monster_hp,(unsigned)CARD_SP_DROP_PERCENT,roll,card_won,*code);fflush(0);
+        printf("  [CARD_ECONOMY] stage-sp terminal selector=%u episode=%u monster_hp=%u basis_points=%u roll=%u won=%d code=%u\n",selector,profile->stage_id,monster_hp,(unsigned)CARD_SKILL_POINT_DROP_BASIS_POINTS,roll,card_won,*code);fflush(0);
     }}
     if(!card_won&&eligible&&(card_manual_normal_dungeon_profile(profile)||card_secret_set_index(profile?(unsigned)profile->stage_id:0u)<0)&&card_ordinary_drop_hp_eligible(monster_hp)&&(pool||!CARD_DROP_POOL_STRICT)){
         if(card_roll_card_roll_trace(CARD_ORDINARY_DROP_PERCENT,&roll)){unsigned card=card_drop_create_from(2u,selector,pool,pool_grades,pool_count);if(card){*subtype=30u;*code=card;card_won=1;g_card_terminal_policy_card_wins[ci]++;combat_economy_coin_note_card_replacement(monster_hp);}}

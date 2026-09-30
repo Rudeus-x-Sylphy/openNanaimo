@@ -6,19 +6,33 @@ namespace OpenNanaimo.Adapter.Services;
 
 public sealed class NativeDungeonState
 {
-    public const int Size = 5120;
+    public const int LegacySize = 5120;
+    public const int Size = 5124;
+    public static bool IsSupportedSize(int length) => length is LegacySize or Size;
+    public const int CouplePartnerUidOffset = 5120;
     public const int PetLevelOffset = 152;
     public const int PetExperienceOffset = 156;
     public const int AttackModifierOffset = 80;
     public const int DefenseFlatOffset = 84;
     public const int DungeonGradeOffset = 5024;
     public const int DungeonGradeStateLength = 28;
+    // The internal state control word keeps clear-mask validity in its low
+    // half and the independent meat-skill SP balance in its high half.
+    public const int SkillPointsMeatOffset = 5114;
     public const int PetCombatLevelOffset = 5116;
     public byte[] Bytes { get; }
     public NativeDungeonState(byte[] bytes)
     {
-        if (bytes.Length != Size) throw new InvalidDataException("Invalid native state length.");
-        Bytes = bytes;
+        ArgumentNullException.ThrowIfNull(bytes);
+        if (!IsSupportedSize(bytes.Length)) throw new InvalidDataException("Invalid native state length.");
+        // Persisted states and recovery journals predate partner sharing. Keep
+        // every original field, and start with no live partner authorization.
+        if (bytes.Length == LegacySize)
+        {
+            Bytes = new byte[Size];
+            bytes.CopyTo(Bytes, 0);
+        }
+        else Bytes = bytes;
         if (Get(0) != 1 || Get(1952) > 255) throw new InvalidDataException("Native worker rejected state exchange.");
     }
     public uint Get(int offset) => BinaryPrimitives.ReadUInt32LittleEndian(Bytes.AsSpan(offset, 4));
@@ -68,7 +82,7 @@ public sealed class NativeDungeonState
         s.Put(16, c.MaxHp); s.Put(20, c.CurrentHp); s.Put(24, c.MaxMp); s.Put(28, c.CurrentMp);
         BinaryPrimitives.WriteInt64LittleEndian(data.AsSpan(32, 8), c.Hans);
         BinaryPrimitives.WriteInt64LittleEndian(data.AsSpan(40, 8), c.Cash);
-        s.Put(48, c.SkillPoints); s.Put(52, c.SelectedSkill0); s.Put(56, c.SelectedSkill1);
+        s.Put(48, c.SkillPoints); BinaryPrimitives.WriteUInt16LittleEndian(data.AsSpan(SkillPointsMeatOffset, 2), c.SkillPointsMeat); s.Put(52, c.SelectedSkill0); s.Put(56, c.SelectedSkill1);
         // Zero is an explicit unequip, not a request to restore the creation pet.
         var equippedPetItemCode = c.EquippedPetItemCode;
         s.Put(60, c.RevivalUseCount); s.Put(64, c.QuickSlotExpansionExpires); s.Put(68, equippedPetItemCode);

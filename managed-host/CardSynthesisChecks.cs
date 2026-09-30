@@ -137,11 +137,13 @@ internal static class CardSynthesisChecks
             var state = (await database.GetCharacterAsync(accountId, CancellationToken.None))!;
             Check(state.CardSummonCount == 2 && state.CardGoldenKeyCount == 2 && state.CardMysteryKeyCount == 2,
                 "free magic does not consume counted keys");
-            Check(state.SkillPoints == 29, "domain21 converts output 21000019 to 19 skill points");
+            Check(state.SkillPoints == 10 && state.SkillPointsMeat == 0,
+                "domain21 synthesis does not mutate either skill-family SP balance");
             Check(HasItem(state, 14_000_001u) && HasItem(state, 14_000_004u)
                 && HasItem(state, 14_000_006u) && HasItem(state, 17_000_002u)
-                && HasItem(state, 19_000_001u) && HasItem(state, 41_000_501u),
-                "domains 14,17,19,41 persist through CharacterItems");
+                && HasItem(state, 19_000_001u) && HasItem(state, 21_000_019u)
+                && HasItem(state, 41_000_501u),
+                "domains 14,17,19,21,41 persist through CharacterItems");
             var pet = state.Items.Single(item => item.ItemCode == 15_000_009u);
             Check(pet.Quantity == 1 && pet.PetCurrentStage > 0 && pet.PetMaximumStage > 0,
                 "domain15 persists a usable PET state");
@@ -199,6 +201,44 @@ internal static class CardSynthesisChecks
                     accountId, characterId, sessionId, 0, 3, CancellationToken.None) == 3,
                 "card guide update is idempotent after persistence");
 
+            Check(CardCatalog.TryGet(12_000_001u, out var projectileCard)
+                && projectileCard.Page == 1 && projectileCard.SkillPointValue == 1
+                && CardCatalog.TryGet(12_000_010u, out var projectileTen)
+                && projectileTen.Page == 1 && projectileTen.SkillPointValue == 10
+                && CardCatalog.TryGet(12_000_011u, out var meatCard)
+                && meatCard.Page == 2 && meatCard.SkillPointValue == 1
+                && CardCatalog.TryGet(12_000_020u, out var meatTen)
+                && meatTen.Page == 2 && meatTen.SkillPointValue == 10,
+                "SP card catalog keeps projectile and meat families separate");
+            Check(CardCatalog.TryResolveSkillPointUnion(0, 12_000_011u, 12_000_011u, 12_000_011u, out var meatToken)
+                && meatToken == 0xFFF0BDCBu,
+                "SP card union resolves the meat-card token without changing its value");
+            await SetSkillPointStateAsync(database.DatabasePath, characterId, 10, 20);
+            await UpsertCardAsync(database.DatabasePath, characterId, 12_000_001u, 1);
+            await UpsertCardAsync(database.DatabasePath, characterId, 12_000_010u, 1);
+            await UpsertCardAsync(database.DatabasePath, characterId, 12_000_011u, 1);
+            await UpsertCardAsync(database.DatabasePath, characterId, 12_000_020u, 1);
+            var projectileUse = await database.SynthesizeSkillPointCardAsync(
+                accountId, characterId, sessionId, 0xFFF0BDC1u, CancellationToken.None);
+            var projectileTenUse = await database.SynthesizeSkillPointCardAsync(
+                accountId, characterId, sessionId, 0xFFF0BDCAu, CancellationToken.None);
+            var meatUse = await database.SynthesizeSkillPointCardAsync(
+                accountId, characterId, sessionId, meatToken, CancellationToken.None);
+            var meatTenUse = await database.SynthesizeSkillPointCardAsync(
+                accountId, characterId, sessionId, 0xFFF0BDD4u, CancellationToken.None);
+            state = (await database.GetCharacterAsync(accountId, CancellationToken.None))!;
+            remainingCards = await ReadCardQuantitiesAsync(database.DatabasePath, characterId);
+            Check(projectileUse.Success && projectileUse.OutputCode == 12_000_001u
+                && projectileTenUse.Success && projectileTenUse.OutputCode == 12_000_010u
+                && meatUse.Success && meatUse.OutputCode == 12_000_011u
+                && meatTenUse.Success && meatTenUse.OutputCode == 12_000_020u
+                && state.SkillPoints == 21 && state.SkillPointsMeat == 31
+                && !remainingCards.ContainsKey(12_000_001u)
+                && !remainingCards.ContainsKey(12_000_010u)
+                && !remainingCards.ContainsKey(12_000_011u)
+                && !remainingCards.ContainsKey(12_000_020u),
+                "SP card synthesis consumes the card and adds its face value to the matching skill-family slot");
+
             await database.EndWorldSessionAsync(
                 accountId, characterId, sessionId,
                 new CharacterRuntimeState(1500, 100, 1, 0, 320, 240, 1),
@@ -210,7 +250,7 @@ internal static class CardSynthesisChecks
             catch { }
         }
 
-        Console.WriteLine("CARD_SYNTHESIS_CHECKS_PASS recipes=41002 c3ed=PASS c3ea=PASS c3e8=PASS c3f0=PASS transaction=PASS domains=14/15/17/19/21/41 keys=free-normal-gold-mystery guide=idempotent");
+        Console.WriteLine("CARD_SYNTHESIS_CHECKS_PASS recipes=41002 c3ed=PASS c3ea=PASS c3e8=PASS c3f0=PASS transaction=PASS domains=14/15/17/19/21/41 sp-families=projectile/meat keys=free-normal-gold-mystery guide=idempotent");
     }
 
     private static void CheckRecipe(uint token, uint input0, uint input1, uint input2, uint output)
@@ -276,6 +316,20 @@ internal static class CardSynthesisChecks
             await insert.ExecuteNonQueryAsync();
         }
         await transaction.CommitAsync();
+    }
+
+    private static async Task SetSkillPointStateAsync(
+        string databasePath, long characterId, ushort projectile, ushort meat)
+    {
+        await using var connection = Open(databasePath);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Characters SET SkillPoints=$projectile, SkillPointsMeat=$meat, FreeMagicExpansionExpires=$free WHERE Id=$characterId";
+        command.Parameters.AddWithValue("$projectile", projectile);
+        command.Parameters.AddWithValue("$meat", meat);
+        command.Parameters.AddWithValue("$free", 2_099_123_123u);
+        command.Parameters.AddWithValue("$characterId", characterId);
+        await command.ExecuteNonQueryAsync();
     }
 
     private static async Task SetKeyStateAsync(

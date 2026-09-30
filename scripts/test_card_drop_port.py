@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import os,re,subprocess,tempfile,textwrap,unittest
 ROOT=Path(__file__).resolve().parents[1]
 TCC=ROOT/'tools/tcc/tcc.exe'
@@ -18,6 +19,11 @@ class CardDropPortTests(unittest.TestCase):
   self.assertIn('#define CARD_ORDINARY_DROP_PERCENT 30u',team)
   self.assertIn('NormalCardBaseBasisPoints = 560',managed)
   self.assertIn('CARD_DROP_POOL_STRICT 1',(ROOT/'release/teamplay_common.inc').read_text('utf-8'))
+  manual=json.loads((ROOT/'release/components/cards/card_drop_manual_sources.json').read_text('utf-8'))
+  self.assertEqual(len(manual['default_grade_overrides']),44)
+  random_codes=[int(x) for x in re.findall(r'(\d+)u',re.search(r'card_random_pool\[[^\]]+\]\s*=\s*\{(.*?)\};', (ROOT/'release/components/cards/random_pool.inc').read_text('utf-8'), re.S).group(1))]
+  default_grades=[int(x) for x in re.findall(r'(\d+)u',re.search(r'card_drop_pool_default_grades[^=]*=\s*\{(.*?)\};', drop, re.S).group(1))]
+  self.assertEqual({str(code): default_grades[index] for index,code in enumerate(random_codes) if str(code) in manual['default_grade_overrides']}, manual['default_grade_overrides'])
  def test_regeneration_is_deterministic(self):
   if MMO is None or not MMO.is_dir(): self.skipTest('set NANAIMO_CARD_MMO_ROOT to the user-supplied client flying/mmo directory')
   subprocess.run(['python','-B',str(ROOT/'release/components/cards/generate_card_drop_data.py'),'--mmo-root',str(MMO),'--check'],cwd=ROOT,check=True)

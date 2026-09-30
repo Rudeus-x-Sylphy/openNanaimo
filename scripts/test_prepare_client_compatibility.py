@@ -1,4 +1,4 @@
-"""Regression tests for safe, hash-free client compatibility derivation."""
+﻿"""Regression tests for safe, hash-free client compatibility derivation."""
 import importlib.util
 import itertools
 import contextlib
@@ -75,8 +75,11 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0xE0000, 0x10000, 0x128400),
         (0x500000, 0x1000, 0x138400),
         (0x340000, 0x10000, 0x139400),
+        # The apartment room resource guard lives in the client's B4D0xx CRT
+        # helper. Keep a synthetic backing section for the exact-site tests.
+        (0x740000, 0x10000, 0x149400),
     ]
-    data = bytearray(0x149400)
+    data = bytearray(0x159400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -104,6 +107,7 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
     put(compat.LAND_BALANCE_YIELD_VA, compat.LAND_BALANCE_YIELD_OLD)
     put(compat.APARTMENT_RECOMMEND_SUCCESS_VA, compat.APARTMENT_RECOMMEND_SUCCESS_OLD)
     put(compat.APARTMENT_RECOMMEND_DUPLICATE_LINES_VA, compat.APARTMENT_RECOMMEND_DUPLICATE_LINES_OLD)
+    put(compat.APARTMENT_ROOM_RESOURCE_GUARD_VA, compat.APARTMENT_ROOM_RESOURCE_GUARD_OLD)
     put(compat.APARTMENT_EXTERIOR_CALL_VA, compat.APARTMENT_EXTERIOR_CALL_OLD)
     put(compat.APARTMENT_EXTERIOR_CAVE_VA, compat.APARTMENT_EXTERIOR_CAVE_OLD)
     for _, va, old, _ in compat.APARTMENT_EXTERIOR_LAYOUT_SITES:
@@ -294,6 +298,27 @@ def replace_site(data, va, blob):
     offset = compat._va_offset(data, va, len(blob))
     out[offset:offset + len(blob)] = blob
     return bytes(out)
+
+
+class ApartmentRoomResourceGuardTests(unittest.TestCase):
+    def test_invalid_resource_handle_returns_zero_instead_of_invalid_parameter(self):
+        original = synthetic_pe()[0]
+        patched, report = compat.patch_apartment_room_resource_guard(original)
+        offset = compat._va_offset(patched, compat.APARTMENT_ROOM_RESOURCE_GUARD_VA,
+                                   len(compat.APARTMENT_ROOM_RESOURCE_GUARD_NEW))
+        self.assertEqual(patched[offset:offset + len(compat.APARTMENT_ROOM_RESOURCE_GUARD_NEW)],
+                         compat.APARTMENT_ROOM_RESOURCE_GUARD_NEW)
+        self.assertTrue(report['changed'])
+        second, second_report = compat.patch_apartment_room_resource_guard(patched)
+        self.assertEqual(second, patched)
+        self.assertFalse(second_report['changed'])
+
+    def test_unknown_resource_guard_site_is_rejected(self):
+        original = synthetic_pe()[0]
+        damaged = replace_site(original, compat.APARTMENT_ROOM_RESOURCE_GUARD_VA,
+                               b'\x90' * len(compat.APARTMENT_ROOM_RESOURCE_GUARD_OLD))
+        with self.assertRaisesRegex(compat.CompatibilityError, 'apartment room resource reader differs'):
+            compat.patch_apartment_room_resource_guard(damaged)
 
 
 class ApartmentRecommendationClientTests(unittest.TestCase):

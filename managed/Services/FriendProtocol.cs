@@ -188,6 +188,7 @@ internal static class FriendProtocol
             || !objectReader.TryReadUInt32(out var insertCategoryCode)
             || !objectReader.TryReadString(255, out var message)
             || !objectReader.TryReadByte(out var addToNxFriend)
+            || addToNxFriend > 1
             || !objectReader.IsComplete)
             return false;
         request = new FriendRequestCall(

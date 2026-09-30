@@ -107,6 +107,7 @@ public sealed partial class NetworkAdapterService
                         frame, response, out _, out _, out _))
                     continue;
                 session.NativeSettlementCycle = checked(session.NativeSettlementCycle + 1);
+                AdvanceNativeMentorshipRound(session);
                 cycle.BattleStartArmed = true;
                 cycle.BattleStarted = false;
                 ArmNativeDungeonContinuationReload(session, response);

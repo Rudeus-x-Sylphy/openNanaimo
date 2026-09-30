@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Nanaimo.CardExchangeRegression</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../managed/**/*.cs" Exclude="../../managed/obj/**;../../managed/bin/**" LinkBase="Gameplay" />
+    <Content Include="../../adapter_runtime/资源/数据/**/*" Link="资源/数据/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.16" />
+    <EmbeddedResource Include="../../release/components/cards/synthesis_recipe_data.inc" LogicalName="OpenNanaimo.Adapter.CardSynthesisRecipes.inc" />
+  </ItemGroup>
+</Project>

@@ -25,6 +25,15 @@ static void enqueue_d00e_card(unsigned owner,unsigned source,unsigned effect,uns
 static void enqueue_d00e_score(unsigned selector,unsigned control0,unsigned total_score,unsigned applied_damage,unsigned score_kind){struct teamplay_pending_d00e_row r;memset(&r,0,sizeof(r));r.status=PENDING_D00E_STATUS_SCORE;r.selector=selector;r.control0=control0;r.total_score=total_score;r.applied_damage=applied_damage;r.score_kind=score_kind;teamplay_enqueue_room(&r);}
 static void enqueue_d00e(unsigned owner,unsigned source,unsigned effect,unsigned selector,unsigned control0){enqueue_d00e_card(owner,source,effect,selector,control0,0u,0u,0u);}
 static void flush_pending_d00e(SOCKET c){int idx=g_multi_current;if(idx<0||idx>=MULTI_MAX_PLAYERS)return;while(g_teamplay_d00e_head[idx]!=g_teamplay_d00e_tail[idx]){struct teamplay_pending_d00e_row*r=&g_teamplay_d00e[idx][g_teamplay_d00e_head[idx]%TEAMPLAY_D00E_CAP];if(r->status==PENDING_D00E_STATUS_TERMINAL)send_d00e_echo_fields(c,r->owner,r->source,r->effect,r->selector,r->control0,r->subtype,r->drop_code,r->total_score);else send_d00e_score_update(c,r->total_score,r->control0,r->applied_damage,r->score_kind,r->selector);g_teamplay_d00e_head[idx]++;}}
+static void flush_pending_d00e_room_current(void){
+    int src=g_multi_current,target;
+    if(src<0||src>=MULTI_MAX_PLAYERS||!g_multi_conn[src].active)return;
+    for(target=0;target<MULTI_MAX_PLAYERS;target++){
+        if(!g_multi_conn[target].active||!g_multi_transport_alive[target]||!g_multi_conn[target].room_active)continue;
+        if(target==src)flush_pending_d00e(g_multi_conn[target].socket);
+        else{multi_switch_to(target,src);flush_pending_d00e(g_multi_conn[target].socket);multi_switch_back(src,target);}
+    }
+}
 #endif
 
 #if TEAMPLAY_FEATURE_BOSS_FINAL_HANS

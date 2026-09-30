@@ -828,7 +828,7 @@ static void send_c3e8_card_page(SOCKET c,unsigned type,unsigned family,unsigned 
         for(slot=0;slot<8u;slot++)p[0x34+slot]=(char)ZX_SKILL_GRADE_MAX;
         p[0x34+8]=0;p[0x34+9]=0;
         stable_put32(p,0x4C,SKILL_SLOT_DATES_SKILL_SLOT_CURRENT_YYYYMMDDHH);
-        stable_resource_put16(p,0x50,skill_progress_sp());
+        stable_resource_put16(p,0x50,skill_progress_sp_for_page(page));
         c0=g_skill_progress_slots[0];c1=g_skill_progress_slots[1];
         g0=skill_progress_grade(c0);g1=skill_progress_grade(c1);
         p[0x54]=(char)g0;p[0x55]=0;
@@ -875,20 +875,20 @@ static void send_c3e8_card_page(SOCKET c,unsigned type,unsigned family,unsigned 
 #elif TEAMPLAY_FEATURE_SKILL_FULL_EIGHT_SNAPSHOT
     if(type==40u){
         unsigned base2=(page==2u)?8u:0u,idx2=base2+7u,grade2=(unsigned)g_skill_progress_grade[idx2];
-        printf("  S0xC3E8 ACTOR_ATTACHMENT_STAGED card page type=%u family=%u page=%u snapshot-part=1/2 rows=1-7 skill_sp=%u slot0=%u slot1=%u len=140 t=%lds\n",type,family,page,skill_progress_sp(),g_skill_progress_slots[0],g_skill_progress_slots[1],sec());fflush(0);
+        printf("  S0xC3E8 ACTOR_ATTACHMENT_STAGED card page type=%u family=%u page=%u snapshot-part=1/2 rows=1-7 skill_sp=%u slot0=%u slot1=%u len=140 t=%lds\n",type,family,page,skill_progress_sp_for_page(page),g_skill_progress_slots[0],g_skill_progress_slots[1],sec());fflush(0);
         memset(p+0x60,0,0x1Cu);memset(p+0x7C,0,7u);
         if(grade2){stable_put32(p,0x60,52000000u+idx2);p[0x7C]=(char)grade2;}
         sendbuf(c,p,0x8C);printf("  S0xC3E8 ACTOR_ATTACHMENT_STAGED card page type=%u family=%u page=%u snapshot-part=2/2 row=8 code=%u grade=%u len=140 t=%lds\n",type,family,page,52000000u+idx2,grade2,sec());fflush(0);
     }else
 #endif
-    {printf("  S0xC3E8 card page type=%u family=%u page=%u skill_sp=%u slot0=%u slot1=%u x_entitlement=%u/%u learned_snapshot=1 len=140 t=%lds\n",type,family,page,type==40u?skill_progress_sp():0u,type==40u?g_skill_progress_slots[0]:0u,type==40u?g_skill_progress_slots[1]:0u,type==40u?SKILL_SLOT_DATES_SKILL_SLOT_CURRENT_YYYYMMDDHH:0u,type==40u?SKILL_SLOT_DATES_SKILL_SLOT_EXPIRY_YYYYMMDDHH:0u,sec());fflush(0);}
+    {printf("  S0xC3E8 card page type=%u family=%u page=%u skill_sp=%u slot0=%u slot1=%u x_entitlement=%u/%u learned_snapshot=1 len=140 t=%lds\n",type,family,page,type==40u?skill_progress_sp_for_page(page):0u,type==40u?g_skill_progress_slots[0]:0u,type==40u?g_skill_progress_slots[1]:0u,type==40u?SKILL_SLOT_DATES_SKILL_SLOT_CURRENT_YYYYMMDDHH:0u,type==40u?SKILL_SLOT_DATES_SKILL_SLOT_EXPIRY_YYYYMMDDHH:0u,sec());fflush(0);}
 }
 static void send_cf9c_skill_use(SOCKET c,unsigned code,int success){char p[4096];unsigned grade=success?skill_progress_grade(code):0u;mkpkt(p,0xCF9C,0x10,1);stable_resource_put16(p,0x08,1u);p[0x0A]=(char)(success?0u:1u);p[0x0B]=(char)grade;stable_put32(p,0x0C,code);sendbuf(c,p,0x10);printf("  S0xCF9C skill-use code=%u success=%d actor=1 grade=%u damage_trigger=report-only len=16 t=%lds\n",code,success,grade,sec());fflush(0);}
 /* Original-client BATTLE_SCORE_CARRIERS upgrade click emits C3FF/12 with skill code at +8.
  * C400 state-1 handler consumes status WORD +8; on status0 it consumes the
  * refreshed SP WORD +10 and skill code DWORD +12, then updates local skill
  * state. */
-static void send_c400_skill_upgrade(SOCKET c,unsigned code,int success,unsigned new_sp,unsigned new_grade,unsigned cost){char p[4096];mkpkt(p,0xC400,0x10,1);stable_resource_put16(p,0x08,success?0u:1u);stable_resource_put16(p,0x0A,success?new_sp:skill_progress_sp());stable_put32(p,0x0C,code);sendbuf(c,p,0x10);printf("  S0xC400 skill-upgrade code=%u success=%d cost=%u sp=%u grade=%u len=16 t=%lds\n",code,success,cost,success?new_sp:skill_progress_sp(),success?new_grade:skill_progress_grade(code),sec());fflush(0);}
+static void send_c400_skill_upgrade(SOCKET c,unsigned code,int success,unsigned new_sp,unsigned new_grade,unsigned cost){char p[4096];mkpkt(p,0xC400,0x10,1);stable_resource_put16(p,0x08,success?0u:1u);stable_resource_put16(p,0x0A,success?new_sp:skill_progress_sp_for_code(code));stable_put32(p,0x0C,code);sendbuf(c,p,0x10);printf("  S0xC400 skill-upgrade code=%u success=%d cost=%u sp=%u grade=%u len=16 t=%lds\n",code,success,cost,success?new_sp:skill_progress_sp_for_code(code),success?new_grade:skill_progress_grade(code),sec());fflush(0);}
 static void send_c402_skill_slots(SOCKET c,int success){char p[4096];unsigned c0,c1,g0,g1;skill_progress_load();c0=g_skill_progress_slots[0];c1=g_skill_progress_slots[1];g0=skill_progress_grade(c0);g1=skill_progress_grade(c1);mkpkt(p,0xC402,0x14,1);stable_resource_put16(p,0x08,success?0u:1u);p[0x0A]=(char)(success?g0:0u);p[0x0B]=(char)(success?g1:0u);stable_put32(p,0x0C,success?c0:0u);stable_put32(p,0x10,success?c1:0u);sendbuf(c,p,0x14);printf("  S0xC402 skill-slots success=%d slot0=%u/g%u slot1=%u/g%u len=20 t=%lds\n",success,c0,g0,c1,g1,sec());fflush(0);}
 
 /* D034 -> D035 pickup acknowledgement. 1_full D035 =

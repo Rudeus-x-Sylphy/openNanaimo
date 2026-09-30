@@ -236,8 +236,9 @@ public sealed partial class DatabaseService
             read.Transaction = transaction;
             read.CommandText = "SELECT State FROM NativeDungeonProfiles WHERE CharacterId=$id";
             read.Parameters.AddWithValue("$id", characterId);
-            state = await read.ExecuteScalarAsync(token) is byte[] saved && saved.Length == NativeDungeonState.Size
-                ? saved.ToArray()
+            state = await read.ExecuteScalarAsync(token) is byte[] saved
+                && NativeDungeonState.IsSupportedSize(saved.Length)
+                ? new NativeDungeonState(saved).Bytes.ToArray()
                 : new byte[NativeDungeonState.Size];
         }
         BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(0, 4), 1);
@@ -312,7 +313,9 @@ public sealed partial class DatabaseService
             ? historyGrade
             : Math.Max(storedGrade, historyGrade);
 
-        if (state.Length == NativeDungeonState.Size && effectiveGrade != storedGrade)
+        var legacyState = state.Length == NativeDungeonState.LegacySize;
+        if (legacyState) Array.Resize(ref state, NativeDungeonState.Size);
+        if (state.Length == NativeDungeonState.Size && (legacyState || effectiveGrade != storedGrade))
         {
             BinaryPrimitives.WriteUInt32LittleEndian(
                 state.AsSpan(NativeDungeonState.DungeonGradeOffset, 4), effectiveGrade);
@@ -344,7 +347,7 @@ public sealed partial class DatabaseService
         command.CommandText = "SELECT State FROM NativeDungeonProfiles WHERE CharacterId=$id";
         command.Parameters.AddWithValue("$id", characterId);
         if (await command.ExecuteScalarAsync(token) is not byte[] state
-            || state.Length != NativeDungeonState.Size)
+            || !NativeDungeonState.IsSupportedSize(state.Length))
             return await GetHighestPersistedDungeonGradeAsync(connection, null, characterId, token);
         return await ReconcileDungeonGradeStateAsync(
             connection, null, characterId, state, persist: true, token);
@@ -1134,7 +1137,7 @@ public sealed partial class DatabaseService
             for (int i = 0; i < masks.Length; i++) masks[i] |= previousMasks[i];
         }
         masks.CopyTo(state.Bytes, 5052);
-        BinaryPrimitives.WriteUInt32LittleEndian(state.Bytes.AsSpan(5112), 1);
+        BinaryPrimitives.WriteUInt16LittleEndian(state.Bytes.AsSpan(5112, 2), 1);
     }
 
     internal static IReadOnlyList<CharacterQuickSlotRecord> RestoreNativeQuickSlotBindings(
@@ -1238,7 +1241,7 @@ public sealed partial class DatabaseService
 
     private static byte[] NativeClearMasks(NativeDungeonState state)
     {
-        if (state.Get(5112) == 1)
+        if ((state.Get(5112) & 0xFFFF) == 1)
             return state.Bytes.AsSpan(5052, 60).ToArray();
         // Older snapshots retained only the highest cleared tuple, in wire coordinates.
         var masks = new byte[60];

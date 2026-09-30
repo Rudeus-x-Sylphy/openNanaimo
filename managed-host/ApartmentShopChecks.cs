@@ -71,7 +71,7 @@ internal static class ApartmentShopChecks
                 var p = new byte[208];
                 BinaryPrimitives.WriteUInt32LittleEndian(p, mode);
                 p[4] = coupon.HasValue ? (byte)1 : (byte)0;
-                p[5] = coupon ?? 0; p[7] = 1; p[8] = quantity;
+                p[5] = coupon.HasValue ? checked((byte)(coupon.Value + 1)) : (byte)0; p[7] = 1; p[8] = quantity;
                 BinaryPrimitives.WriteUInt32LittleEndian(p.AsSpan(48), code);
                 return p;
             }

@@ -92,6 +92,8 @@ internal static class ApartmentGameplayChecks
                 var own = One(await Send(service, who, 0xC38D, Move(1)), 0xC38E);
                 Check(own.Length == 112 && own[8] == 10 && own[9] == 20, "own apartment permits decoration without land");
                 Check(U64(own, 64) == 1000 && own.AsSpan(32, 4).ToArray().All(x => x == 0), "room balance and absent street address");
+                Check(own[30] == Gbk.GetByteCount(_characters[who].Name),
+                    "single-room entry publishes the bounded owner-name length");
                 Pending(_sessions[who]).Clear();
                 var user = One(await Send(service, who, 0xC38F, Words(320, 240)), 0xC390);
                 var duplicateActors = Pending(_sessions[who]).Cast<object>()
@@ -104,6 +106,42 @@ internal static class ApartmentGameplayChecks
                 "address-less named visitor cannot gain decoration permissions");
             var selfName = One(await Send(service, 0, 0xC38D, Move(2, _characters[0].Name)), 0xC38E);
             Check(selfName[9] == 20, "named self entry retains owner permissions");
+
+            Check(await Send(service, 0, 0xC38D, new byte[19]) is null,
+                "short apartment entry request is rejected before scene mutation");
+            Check(await Send(service, 0, 0xC38F, new byte[3]) is null,
+                "short apartment actor request is rejected before any actor publication");
+            Check(await Send(service, 0, 0xC392, new byte[3]) is null,
+                "short apartment object request is rejected before snapshot construction");
+            var emptySnapshot = One(await Send(service, 0, 0xC392, Dword(0)), 0xC393);
+            Check(emptySnapshot.Length == 1020 && U16(emptySnapshot, 8) == 0
+                && U16(emptySnapshot, 10) == 2000
+                && emptySnapshot.AsSpan(12).ToArray().All(x => x == 0),
+                "single-room empty furniture snapshot is fixed-size and zero-filled");
+            var emptyLayout = One(await Send(service, 0, 0xC423, Words(1000, 0)), 0xC424);
+            Check(emptyLayout.Length == 1044 && U16(emptyLayout, 10) == 0
+                && emptyLayout.AsSpan(20).ToArray().All(x => x == 0),
+                "empty apartment layout keeps both surface descriptors inside the fixed response");
+
+            var malformedFurniture = ShopCatalog.All
+                .Where(item => item.Section == InventorySection.Furniture && item.InteriorType == 2)
+                .Select(item => item.ItemCode)
+                .First();
+            await Sql($"INSERT OR REPLACE INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES({_characters[0].Id},{malformedFurniture},1,'snapshot-boundary');"
+                + $"INSERT OR REPLACE INTO CharacterApartmentItems(CharacterId,SlotIndex,ItemCode,PositionX,PositionY,Layer,Mirror,InteriorType,UpdatedAt) VALUES({_characters[0].Id},0,{malformedFurniture},40000,0,0,0,2,'snapshot-boundary');");
+            var malformedEntry = One(await Send(service, 0, 0xC38D, Move(1)), 0xC38E);
+            Check(malformedEntry.Length == 112 && malformedEntry[8] == 30,
+                "malformed apartment placement returns a fixed entry failure instead of closing the session");
+            var recoveredSnapshot = One(await Send(service, 0, 0xC392, Dword(0)), 0xC393);
+            Check(recoveredSnapshot.Length == 1020 && U16(recoveredSnapshot, 8) == 0
+                && recoveredSnapshot.AsSpan(12).ToArray().All(x => x == 0),
+                "malformed apartment placement falls back to a bounded empty object snapshot");
+            var recoveredLayout = One(await Send(service, 0, 0xC423, Words(1000, 0)), 0xC424);
+            Check(recoveredLayout.Length == 1044 && U16(recoveredLayout, 10) == 0
+                && recoveredLayout.AsSpan(20).ToArray().All(x => x == 0),
+                "malformed apartment placement falls back to a bounded empty layout");
+            await Sql($"DELETE FROM CharacterApartmentItems WHERE CharacterId={_characters[0].Id} AND SlotIndex=0;"
+                + $"DELETE FROM CharacterItems WHERE CharacterId={_characters[0].Id} AND ItemCode={malformedFurniture};");
         }
 
         private async Task CheckPurchaseAsync(NetworkAdapterService service)

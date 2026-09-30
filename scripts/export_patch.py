@@ -82,6 +82,7 @@ def payload_policy(value: str, layer: str) -> None:
     if layer == "runtime":
         good = value in {
             "start_nanaimo_launcher.bat", "gui_launcher/nanaimo_launcher.ps1",
+            "gui_launcher/start_social_client.ps1",
             "gui_launcher/client_connect.ps1", "gui_launcher/inventory_admin_gui.ps1",
             "gui_launcher/inventory_admin_backend.py",
             "gui_launcher/launch_modes/gamestartoption.network.ini",

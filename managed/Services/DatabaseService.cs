@@ -85,7 +85,8 @@ public sealed partial class DatabaseService
         AvatarInventoryExpansionExpires, PetInventoryExpansionExpires,
         GameInventoryExpansionExpires, InteriorInventoryExpansionExpires,
         QuickSlotExpansionExpires, FreeMagicExpansionExpires,
-        AttackModifier, DefenseFlat, InitialAttackMode
+        AttackModifier, DefenseFlat, InitialAttackMode, PureNewProfile,
+        SkillPointsMeat
         """;
 
     private readonly string _databasePath;
@@ -157,6 +158,7 @@ public sealed partial class DatabaseService
                     Face INTEGER NOT NULL DEFAULT 0,
                     Appearance BLOB NOT NULL,
                     TutorialCompleted INTEGER NOT NULL DEFAULT 0,
+                    PureNewProfile INTEGER NOT NULL DEFAULT 0,
                     CardGuideStep INTEGER NOT NULL DEFAULT 0,
                     CardSummonCount INTEGER NOT NULL DEFAULT 0 CHECK (CardSummonCount BETWEEN 0 AND 255),
                     CardMysteryKeyCount INTEGER NOT NULL DEFAULT 0 CHECK (CardMysteryKeyCount BETWEEN 0 AND 255),
@@ -174,6 +176,7 @@ public sealed partial class DatabaseService
                     DefenseFlat INTEGER NOT NULL DEFAULT 0 CHECK (DefenseFlat BETWEEN 0 AND 65535),
                     InitialAttackMode INTEGER NOT NULL DEFAULT 0 CHECK (InitialAttackMode BETWEEN 0 AND 3),
                     SkillPoints INTEGER NOT NULL DEFAULT 0 CHECK (SkillPoints BETWEEN 0 AND 65535),
+                    SkillPointsMeat INTEGER NOT NULL DEFAULT 0 CHECK (SkillPointsMeat BETWEEN 0 AND 65535),
                     SelectedSkill0 INTEGER NOT NULL DEFAULT 0,
                     SelectedSkill1 INTEGER NOT NULL DEFAULT 0,
                     SkillSlotExpansionExpires INTEGER NOT NULL DEFAULT 0 CHECK (SkillSlotExpansionExpires BETWEEN 0 AND 4294967295),
@@ -221,6 +224,11 @@ public sealed partial class DatabaseService
                 );
                 CREATE INDEX IF NOT EXISTS IX_FriendRecommendations_RecommendedAccountId
                     ON FriendRecommendations(RecommendedAccountId);
+                CREATE TABLE IF NOT EXISTS CharacterTownOptions (
+                    CharacterId INTEGER PRIMARY KEY REFERENCES Characters(Id) ON DELETE CASCADE,
+                    TitleDisplayMode INTEGER NOT NULL CHECK (TitleDisplayMode BETWEEN 0 AND 2),
+                    Flags INTEGER NOT NULL CHECK (Flags BETWEEN 0 AND 63)
+                );
                 CREATE TABLE IF NOT EXISTS CharacterItems (
                     CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
                     ItemCode INTEGER NOT NULL,
@@ -557,6 +565,7 @@ public sealed partial class DatabaseService
         }
 
         await EnsureColumnAsync(connection, "Characters", "AttributePoints", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "Characters", "PureNewProfile", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "CardGuideStep", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "CardSummonCount", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "CardMysteryKeyCount", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
@@ -565,6 +574,22 @@ public sealed partial class DatabaseService
         await EnsureColumnAsync(connection, "Characters", "MikeChannelUseCount", "INTEGER NOT NULL DEFAULT 0 CHECK (MikeChannelUseCount BETWEEN 0 AND 99)", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "MikeGlobalUseCount", "INTEGER NOT NULL DEFAULT 0 CHECK (MikeGlobalUseCount BETWEEN 0 AND 99)", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "SkillPoints", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "Characters", "SkillPointsMeat", "INTEGER NOT NULL DEFAULT 0 CHECK (SkillPointsMeat BETWEEN 0 AND 65535)", cancellationToken);
+        await using (var skillFamilyMigration = connection.CreateCommand())
+        {
+            skillFamilyMigration.CommandText = """
+                INSERT OR IGNORE INTO SchemaMigrations(Name, AppliedAt)
+                VALUES('skill-points-per-family-v1', $now)
+                RETURNING Name
+                """;
+            skillFamilyMigration.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            if (await skillFamilyMigration.ExecuteScalarAsync(cancellationToken) is not null)
+            {
+                await using var copyLegacyPoints = connection.CreateCommand();
+                copyLegacyPoints.CommandText = "UPDATE Characters SET SkillPointsMeat = SkillPoints";
+                await copyLegacyPoints.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
         await EnsureColumnAsync(connection, "Characters", "SelectedSkill0", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "SelectedSkill1", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "SkillSlotExpansionExpires", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
@@ -869,6 +894,10 @@ public sealed partial class DatabaseService
 
         await ClampPersistedEffectiveInventoryResourcesAsync(connection, cancellationToken);
         await RepairApartmentInventoryPlacementsAsync(cancellationToken: cancellationToken);
+        await MigrateSkillPointCardsAsync(connection, cancellationToken);
+        await InitializeCardExchangeAsync(cancellationToken);
+        await InitializeMentorshipAsync(cancellationToken);
+        await ExpireMentorshipRequestsAsync(cancellationToken);
     }
 
     public async Task<int> GetWebAdminPortAsync(
@@ -1112,6 +1141,7 @@ public sealed partial class DatabaseService
                 SET Hans = MIN($currencyMaximum, Hans + $hans),
                     Cash = MIN($currencyMaximum, Cash + $cash),
                     SkillPoints = MIN($skillMaximum, SkillPoints + $skillPoints),
+                    SkillPointsMeat = MIN($skillMaximum, SkillPointsMeat + $skillPoints),
                     LastSavedAt = $now
                 WHERE Id = $characterId
                 """;
@@ -2143,11 +2173,13 @@ public sealed partial class DatabaseService
                 SET Hans = Hans + $hans,
                     Cash = Cash + $cash,
                     SkillPoints = SkillPoints + $skillPoints,
+                    SkillPointsMeat = SkillPointsMeat + $skillPoints,
                     LastSavedAt = $now
                 WHERE AccountId = $accountId
                   AND Hans BETWEEN 0 AND $maxHans
                   AND Cash BETWEEN 0 AND $maxCash
                   AND SkillPoints BETWEEN 0 AND $maxSkillPoints
+                  AND SkillPointsMeat BETWEEN 0 AND $maxSkillPoints
                 RETURNING Hans, Cash, SkillPoints
                 """;
             update.Parameters.AddWithValue("$hans", hansAmount);
@@ -2651,814 +2683,6 @@ public sealed partial class DatabaseService
         return (true, string.Empty, newQuantity, newHans, currentCash);
     }
 
-    public async Task<AuctionListQueryResult> QueryAuctionListingsAsync(
-        long accountId,
-        long characterId,
-        string sessionId,
-        bool personal,
-        byte ddakgiType,
-        byte sortType,
-        ushort page,
-        byte pageSize,
-        ushort ddakgiNumber,
-        string? sellerCharacterName,
-        CancellationToken cancellationToken = default)
-    {
-        if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId) || page == 0 || pageSize == 0)
-            return new AuctionListQueryResult(14, 0, []);
-
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using (var session = connection.CreateCommand())
-        {
-            session.CommandText = """
-                SELECT 1
-                FROM Characters AS character
-                INNER JOIN Accounts AS account ON account.Id = character.AccountId
-                WHERE character.Id = $characterId
-                  AND character.AccountId = $accountId
-                  AND character.IsOnline = 1
-                  AND character.ActiveSessionId = $sessionId
-                  AND account.IsOnline = 1
-                  AND account.ActiveSessionId = $sessionId
-                """;
-            session.Parameters.AddWithValue("$characterId", characterId);
-            session.Parameters.AddWithValue("$accountId", accountId);
-            session.Parameters.AddWithValue("$sessionId", sessionId);
-            if (await session.ExecuteScalarAsync(cancellationToken) is null)
-                return new AuctionListQueryResult(14, 0, []);
-        }
-
-        var filters = new List<string> { "listing.Status = 0" };
-        if (personal)
-            filters.Add("listing.SellerCharacterId = $characterId");
-        else
-            filters.Add("listing.RemainingQuantity > 0");
-        if (ddakgiType != 0)
-            filters.Add("(listing.ItemCode / 1000000) = $ddakgiType");
-        if (ddakgiNumber != 0)
-            filters.Add("(listing.ItemCode % 1000000) = $ddakgiNumber");
-        if (!string.IsNullOrEmpty(sellerCharacterName))
-            filters.Add("listing.SellerCharacterName = $sellerCharacterName COLLATE NOCASE");
-        var where = string.Join(" AND ", filters);
-
-        long totalCount;
-        await using (var count = connection.CreateCommand())
-        {
-            count.CommandText = $"SELECT COUNT(*) FROM AuctionListings AS listing WHERE {where}";
-            AddAuctionQueryParameters(count, characterId, ddakgiType, ddakgiNumber, sellerCharacterName);
-            totalCount = Convert.ToInt64(await count.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
-        }
-
-        var totalPages = totalCount == 0 ? 0u : checked((uint)((totalCount + pageSize - 1) / pageSize));
-        if (totalPages != 0 && page > totalPages)
-            return new AuctionListQueryResult(11, totalPages, []);
-
-        var orderBy = sortType switch
-        {
-            10 => "listing.HansPerItem DESC, listing.UniqueNumber ASC",
-            11 => "listing.HansPerItem ASC, listing.UniqueNumber ASC",
-            20 => "(listing.OriginalQuantity - listing.RemainingQuantity) DESC, listing.UniqueNumber ASC",
-            21 => "(listing.OriginalQuantity - listing.RemainingQuantity) ASC, listing.UniqueNumber ASC",
-            _ => "listing.UniqueNumber DESC"
-        };
-        var listings = new List<AuctionListingRecord>(pageSize);
-        await using (var query = connection.CreateCommand())
-        {
-            query.CommandText = $"""
-                SELECT listing.UniqueNumber,
-                       listing.SellerCharacterId,
-                       listing.SellerCharacterName,
-                       listing.ItemCode,
-                       listing.OriginalQuantity,
-                       listing.RemainingQuantity,
-                       listing.HansPerItem
-                FROM AuctionListings AS listing
-                WHERE {where}
-                ORDER BY {orderBy}
-                LIMIT $limit OFFSET $offset
-                """;
-            AddAuctionQueryParameters(query, characterId, ddakgiType, ddakgiNumber, sellerCharacterName);
-            query.Parameters.AddWithValue("$limit", pageSize);
-            query.Parameters.AddWithValue("$offset", checked((long)(page - 1) * pageSize));
-            await using var reader = await query.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                listings.Add(new AuctionListingRecord
-                {
-                    UniqueNumber = checked((uint)reader.GetInt64(0)),
-                    SellerCharacterId = reader.GetInt64(1),
-                    SellerCharacterName = reader.GetString(2),
-                    ItemCode = checked((uint)reader.GetInt64(3)),
-                    OriginalQuantity = checked((byte)reader.GetInt64(4)),
-                    RemainingQuantity = checked((byte)reader.GetInt64(5)),
-                    HansPerItem = checked((uint)reader.GetInt64(6))
-                });
-            }
-        }
-
-        return new AuctionListQueryResult(1, totalPages, listings);
-    }
-
-    public async Task<AuctionRegistrationResult> RegisterAuctionListingAsync(
-        long accountId,
-        long characterId,
-        string sessionId,
-        byte requestType,
-        uint itemCode,
-        ushort itemCount,
-        uint hansPerItem,
-        CancellationToken cancellationToken = default)
-    {
-        if (requestType != 0)
-            return new AuctionRegistrationResult(15, 0, 0);
-        if (!CardCatalog.TryGet(itemCode, out _))
-            return new AuctionRegistrationResult(12, 0, 0);
-        if (accountId <= 0
-            || characterId <= 0
-            || string.IsNullOrEmpty(sessionId)
-            || itemCount is 0 or > byte.MaxValue
-            || hansPerItem == 0
-            || (ulong)itemCount * hansPerItem > uint.MaxValue)
-            return new AuctionRegistrationResult(16, 0, 0);
-
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction(deferred: false);
-        long currentQuantity;
-        long activeListings;
-        string sellerName;
-        await using (var current = connection.CreateCommand())
-        {
-            current.Transaction = transaction;
-            current.CommandText = """
-                SELECT card.Quantity,
-                       character.Name,
-                       (SELECT COUNT(*) FROM AuctionListings AS listing
-                        WHERE listing.SellerCharacterId = character.Id AND listing.Status = 0)
-                FROM Characters AS character
-                INNER JOIN Accounts AS account ON account.Id = character.AccountId
-                INNER JOIN CharacterCards AS card
-                    ON card.CharacterId = character.Id AND card.CardCode = $itemCode
-                WHERE character.Id = $characterId
-                  AND character.AccountId = $accountId
-                  AND character.IsOnline = 1
-                  AND character.ActiveSessionId = $sessionId
-                  AND account.IsOnline = 1
-                  AND account.ActiveSessionId = $sessionId
-                """;
-            current.Parameters.AddWithValue("$itemCode", itemCode);
-            current.Parameters.AddWithValue("$characterId", characterId);
-            current.Parameters.AddWithValue("$accountId", accountId);
-            current.Parameters.AddWithValue("$sessionId", sessionId);
-            await using var reader = await current.ExecuteReaderAsync(cancellationToken);
-            if (!await reader.ReadAsync(cancellationToken))
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionRegistrationResult(16, 0, 0);
-            }
-            currentQuantity = reader.GetInt64(0);
-            sellerName = reader.GetString(1);
-            activeListings = reader.GetInt64(2);
-        }
-
-        if (activeListings >= 3)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionRegistrationResult(11, 0, checked((byte)currentQuantity));
-        }
-        if (currentQuantity < itemCount)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionRegistrationResult(16, 0, checked((byte)currentQuantity));
-        }
-
-        var now = DateTime.UtcNow.ToString("O");
-        var remainingInventory = currentQuantity - itemCount;
-        await using (var card = connection.CreateCommand())
-        {
-            card.Transaction = transaction;
-            card.CommandText = remainingInventory == 0
-                ? "DELETE FROM CharacterCards WHERE CharacterId = $characterId AND CardCode = $itemCode AND Quantity = $currentQuantity"
-                : "UPDATE CharacterCards SET Quantity = $remaining, UpdatedAt = $now WHERE CharacterId = $characterId AND CardCode = $itemCode AND Quantity = $currentQuantity";
-            card.Parameters.AddWithValue("$remaining", remainingInventory);
-            card.Parameters.AddWithValue("$now", now);
-            card.Parameters.AddWithValue("$characterId", characterId);
-            card.Parameters.AddWithValue("$itemCode", itemCode);
-            card.Parameters.AddWithValue("$currentQuantity", currentQuantity);
-            if (await card.ExecuteNonQueryAsync(cancellationToken) != 1)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionRegistrationResult(16, 0, checked((byte)currentQuantity));
-            }
-        }
-
-        long uniqueNumber;
-        await using (var listing = connection.CreateCommand())
-        {
-            listing.Transaction = transaction;
-            listing.CommandText = """
-                INSERT INTO AuctionListings(
-                    SellerAccountId, SellerCharacterId, SellerCharacterName, ItemCode,
-                    OriginalQuantity, RemainingQuantity, HansPerItem, PendingHans, Status,
-                    CreatedAt, UpdatedAt)
-                VALUES(
-                    $accountId, $characterId, $sellerName, $itemCode,
-                    $quantity, $quantity, $hansPerItem, 0, 0,
-                    $now, $now)
-                RETURNING UniqueNumber
-                """;
-            listing.Parameters.AddWithValue("$accountId", accountId);
-            listing.Parameters.AddWithValue("$characterId", characterId);
-            listing.Parameters.AddWithValue("$sellerName", sellerName);
-            listing.Parameters.AddWithValue("$itemCode", itemCode);
-            listing.Parameters.AddWithValue("$quantity", itemCount);
-            listing.Parameters.AddWithValue("$hansPerItem", hansPerItem);
-            listing.Parameters.AddWithValue("$now", now);
-            uniqueNumber = Convert.ToInt64(await listing.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
-        }
-
-        if (uniqueNumber is <= 0 or > uint.MaxValue)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionRegistrationResult(16, 0, checked((byte)currentQuantity));
-        }
-        await transaction.CommitAsync(cancellationToken);
-        return new AuctionRegistrationResult(1, checked((uint)uniqueNumber), checked((byte)remainingInventory));
-    }
-
-    public async Task<AuctionPurchaseResult> PurchaseAuctionListingAsync(
-        long accountId,
-        long characterId,
-        string sessionId,
-        ulong uniqueNumber,
-        uint totalHans,
-        uint itemCount,
-        uint itemCode,
-        CancellationToken cancellationToken = default)
-    {
-        if (accountId <= 0
-            || characterId <= 0
-            || string.IsNullOrEmpty(sessionId)
-            || uniqueNumber is 0 or > uint.MaxValue
-            || itemCount is 0 or > byte.MaxValue)
-            return new AuctionPurchaseResult(13, 0, 0);
-        if (!CardCatalog.TryGet(itemCode, out _))
-            return new AuctionPurchaseResult(12, 0, 0);
-
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction(deferred: false);
-        long buyerHans;
-        long buyerCardQuantity;
-        await using (var buyer = connection.CreateCommand())
-        {
-            buyer.Transaction = transaction;
-            buyer.CommandText = """
-                SELECT character.Hans, COALESCE(card.Quantity, 0)
-                FROM Characters AS character
-                INNER JOIN Accounts AS account ON account.Id = character.AccountId
-                LEFT JOIN CharacterCards AS card
-                    ON card.CharacterId = character.Id AND card.CardCode = $itemCode
-                WHERE character.Id = $characterId
-                  AND character.AccountId = $accountId
-                  AND character.IsOnline = 1
-                  AND character.ActiveSessionId = $sessionId
-                  AND account.IsOnline = 1
-                  AND account.ActiveSessionId = $sessionId
-                """;
-            buyer.Parameters.AddWithValue("$itemCode", itemCode);
-            buyer.Parameters.AddWithValue("$characterId", characterId);
-            buyer.Parameters.AddWithValue("$accountId", accountId);
-            buyer.Parameters.AddWithValue("$sessionId", sessionId);
-            await using var reader = await buyer.ExecuteReaderAsync(cancellationToken);
-            if (!await reader.ReadAsync(cancellationToken))
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionPurchaseResult(13, 0, 0);
-            }
-            buyerHans = reader.GetInt64(0);
-            buyerCardQuantity = reader.GetInt64(1);
-        }
-
-        long sellerCharacterId;
-        long listingItemCode;
-        long remainingQuantity;
-        long hansPerItem;
-        long pendingHans;
-        await using (var listing = connection.CreateCommand())
-        {
-            listing.Transaction = transaction;
-            listing.CommandText = """
-                SELECT SellerCharacterId, ItemCode, RemainingQuantity, HansPerItem, PendingHans
-                FROM AuctionListings
-                WHERE UniqueNumber = $uniqueNumber AND Status = 0
-                """;
-            listing.Parameters.AddWithValue("$uniqueNumber", checked((long)uniqueNumber));
-            await using var reader = await listing.ExecuteReaderAsync(cancellationToken);
-            if (!await reader.ReadAsync(cancellationToken))
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionPurchaseResult(13, checked((byte)buyerCardQuantity), buyerHans);
-            }
-            sellerCharacterId = reader.GetInt64(0);
-            listingItemCode = reader.GetInt64(1);
-            remainingQuantity = reader.GetInt64(2);
-            hansPerItem = reader.GetInt64(3);
-            pendingHans = reader.GetInt64(4);
-        }
-
-        if (sellerCharacterId == characterId)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionPurchaseResult(16, checked((byte)buyerCardQuantity), buyerHans);
-        }
-        if (listingItemCode != itemCode)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionPurchaseResult(12, checked((byte)buyerCardQuantity), buyerHans);
-        }
-        if (remainingQuantity < itemCount || (ulong)hansPerItem * itemCount != totalHans)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionPurchaseResult(14, checked((byte)buyerCardQuantity), buyerHans);
-        }
-        if (buyerHans < totalHans)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionPurchaseResult(10, checked((byte)buyerCardQuantity), buyerHans);
-        }
-        if (buyerCardQuantity + itemCount > byte.MaxValue)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionPurchaseResult(11, checked((byte)buyerCardQuantity), buyerHans);
-        }
-        if (pendingHans + totalHans > uint.MaxValue)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionPurchaseResult(15, checked((byte)buyerCardQuantity), buyerHans);
-        }
-
-        var newRemaining = remainingQuantity - itemCount;
-        var newPendingHans = pendingHans + totalHans;
-        var newBuyerHans = buyerHans - totalHans;
-        var newCardQuantity = buyerCardQuantity + itemCount;
-        var now = DateTime.UtcNow.ToString("O");
-        await using (var updateListing = connection.CreateCommand())
-        {
-            updateListing.Transaction = transaction;
-            updateListing.CommandText = """
-                UPDATE AuctionListings
-                SET RemainingQuantity = $newRemaining,
-                    PendingHans = $newPendingHans,
-                    UpdatedAt = $now
-                WHERE UniqueNumber = $uniqueNumber
-                  AND Status = 0
-                  AND RemainingQuantity = $oldRemaining
-                  AND PendingHans = $oldPendingHans
-                """;
-            updateListing.Parameters.AddWithValue("$newRemaining", newRemaining);
-            updateListing.Parameters.AddWithValue("$newPendingHans", newPendingHans);
-            updateListing.Parameters.AddWithValue("$now", now);
-            updateListing.Parameters.AddWithValue("$uniqueNumber", checked((long)uniqueNumber));
-            updateListing.Parameters.AddWithValue("$oldRemaining", remainingQuantity);
-            updateListing.Parameters.AddWithValue("$oldPendingHans", pendingHans);
-            if (await updateListing.ExecuteNonQueryAsync(cancellationToken) != 1)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionPurchaseResult(14, checked((byte)buyerCardQuantity), buyerHans);
-            }
-        }
-        await using (var updateBuyer = connection.CreateCommand())
-        {
-            updateBuyer.Transaction = transaction;
-            updateBuyer.CommandText = """
-                UPDATE Characters
-                SET Hans = $newHans, LastSavedAt = $now
-                WHERE Id = $characterId
-                  AND AccountId = $accountId
-                  AND Hans = $oldHans
-                  AND IsOnline = 1
-                  AND ActiveSessionId = $sessionId
-                """;
-            updateBuyer.Parameters.AddWithValue("$newHans", newBuyerHans);
-            updateBuyer.Parameters.AddWithValue("$now", now);
-            updateBuyer.Parameters.AddWithValue("$characterId", characterId);
-            updateBuyer.Parameters.AddWithValue("$accountId", accountId);
-            updateBuyer.Parameters.AddWithValue("$oldHans", buyerHans);
-            updateBuyer.Parameters.AddWithValue("$sessionId", sessionId);
-            if (await updateBuyer.ExecuteNonQueryAsync(cancellationToken) != 1)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionPurchaseResult(14, checked((byte)buyerCardQuantity), buyerHans);
-            }
-        }
-        await using (var updateCard = connection.CreateCommand())
-        {
-            updateCard.Transaction = transaction;
-            updateCard.CommandText = """
-                INSERT INTO CharacterCards(CharacterId, CardCode, Quantity, UpdatedAt)
-                VALUES($characterId, $itemCode, $quantity, $now)
-                ON CONFLICT(CharacterId, CardCode) DO UPDATE SET
-                    Quantity = $quantity,
-                    UpdatedAt = $now
-                """;
-            updateCard.Parameters.AddWithValue("$characterId", characterId);
-            updateCard.Parameters.AddWithValue("$itemCode", itemCode);
-            updateCard.Parameters.AddWithValue("$quantity", newCardQuantity);
-            updateCard.Parameters.AddWithValue("$now", now);
-            await updateCard.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-        return new AuctionPurchaseResult(1, checked((byte)newCardQuantity), newBuyerHans);
-    }
-
-    public async Task<AuctionRetrievalResult> RetrieveAuctionListingAsync(
-        long accountId,
-        long characterId,
-        string sessionId,
-        uint requestType,
-        ulong uniqueNumber,
-        CancellationToken cancellationToken = default)
-    {
-        if (requestType == 2)
-            return new AuctionRetrievalResult(14, 0, 0, 0);
-        if (requestType != 1)
-            return new AuctionRetrievalResult(12, 0, 0, 0);
-        if (accountId <= 0
-            || characterId <= 0
-            || string.IsNullOrEmpty(sessionId)
-            || uniqueNumber is 0 or > uint.MaxValue)
-            return new AuctionRetrievalResult(13, 0, 0, 0);
-
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction(deferred: false);
-        long hans;
-        long itemCode;
-        long currentCardQuantity;
-        long remainingQuantity;
-        long pendingHans;
-        await using (var current = connection.CreateCommand())
-        {
-            current.Transaction = transaction;
-            current.CommandText = """
-                SELECT character.Hans,
-                       listing.ItemCode,
-                       COALESCE(card.Quantity, 0),
-                       listing.RemainingQuantity,
-                       listing.PendingHans
-                FROM Characters AS character
-                INNER JOIN Accounts AS account ON account.Id = character.AccountId
-                INNER JOIN AuctionListings AS listing
-                    ON listing.SellerCharacterId = character.Id
-                   AND listing.UniqueNumber = $uniqueNumber
-                   AND listing.Status = 0
-                LEFT JOIN CharacterCards AS card
-                    ON card.CharacterId = character.Id AND card.CardCode = listing.ItemCode
-                WHERE character.Id = $characterId
-                  AND character.AccountId = $accountId
-                  AND character.IsOnline = 1
-                  AND character.ActiveSessionId = $sessionId
-                  AND account.IsOnline = 1
-                  AND account.ActiveSessionId = $sessionId
-                """;
-            current.Parameters.AddWithValue("$uniqueNumber", checked((long)uniqueNumber));
-            current.Parameters.AddWithValue("$characterId", characterId);
-            current.Parameters.AddWithValue("$accountId", accountId);
-            current.Parameters.AddWithValue("$sessionId", sessionId);
-            await using var reader = await current.ExecuteReaderAsync(cancellationToken);
-            if (!await reader.ReadAsync(cancellationToken))
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionRetrievalResult(13, 0, 0, 0);
-            }
-            hans = reader.GetInt64(0);
-            itemCode = reader.GetInt64(1);
-            currentCardQuantity = reader.GetInt64(2);
-            remainingQuantity = reader.GetInt64(3);
-            pendingHans = reader.GetInt64(4);
-        }
-
-        if (!CardCatalog.TryGet(checked((uint)itemCode), out _))
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionRetrievalResult(12, 0, checked((byte)currentCardQuantity), hans);
-        }
-        if (currentCardQuantity + remainingQuantity > byte.MaxValue)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionRetrievalResult(11, 0, checked((byte)currentCardQuantity), hans);
-        }
-        if (hans + pendingHans > uint.MaxValue)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionRetrievalResult(10, 0, checked((byte)currentCardQuantity), hans);
-        }
-
-        var newHans = hans + pendingHans;
-        var newCardQuantity = currentCardQuantity + remainingQuantity;
-        var now = DateTime.UtcNow.ToString("O");
-        await using (var close = connection.CreateCommand())
-        {
-            close.Transaction = transaction;
-            close.CommandText = """
-                UPDATE AuctionListings
-                SET RemainingQuantity = 0,
-                    PendingHans = 0,
-                    Status = 1,
-                    UpdatedAt = $now
-                WHERE UniqueNumber = $uniqueNumber
-                  AND SellerCharacterId = $characterId
-                  AND Status = 0
-                  AND RemainingQuantity = $remaining
-                  AND PendingHans = $pendingHans
-                """;
-            close.Parameters.AddWithValue("$now", now);
-            close.Parameters.AddWithValue("$uniqueNumber", checked((long)uniqueNumber));
-            close.Parameters.AddWithValue("$characterId", characterId);
-            close.Parameters.AddWithValue("$remaining", remainingQuantity);
-            close.Parameters.AddWithValue("$pendingHans", pendingHans);
-            if (await close.ExecuteNonQueryAsync(cancellationToken) != 1)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionRetrievalResult(13, 0, checked((byte)currentCardQuantity), hans);
-            }
-        }
-        if (remainingQuantity > 0)
-        {
-            await using var card = connection.CreateCommand();
-            card.Transaction = transaction;
-            card.CommandText = """
-                INSERT INTO CharacterCards(CharacterId, CardCode, Quantity, UpdatedAt)
-                VALUES($characterId, $itemCode, $quantity, $now)
-                ON CONFLICT(CharacterId, CardCode) DO UPDATE SET
-                    Quantity = $quantity,
-                    UpdatedAt = $now
-                """;
-            card.Parameters.AddWithValue("$characterId", characterId);
-            card.Parameters.AddWithValue("$itemCode", itemCode);
-            card.Parameters.AddWithValue("$quantity", newCardQuantity);
-            card.Parameters.AddWithValue("$now", now);
-            await card.ExecuteNonQueryAsync(cancellationToken);
-        }
-        await using (var wallet = connection.CreateCommand())
-        {
-            wallet.Transaction = transaction;
-            wallet.CommandText = """
-                UPDATE Characters
-                SET Hans = $newHans, LastSavedAt = $now
-                WHERE Id = $characterId
-                  AND AccountId = $accountId
-                  AND Hans = $oldHans
-                  AND IsOnline = 1
-                  AND ActiveSessionId = $sessionId
-                """;
-            wallet.Parameters.AddWithValue("$newHans", newHans);
-            wallet.Parameters.AddWithValue("$now", now);
-            wallet.Parameters.AddWithValue("$characterId", characterId);
-            wallet.Parameters.AddWithValue("$accountId", accountId);
-            wallet.Parameters.AddWithValue("$oldHans", hans);
-            wallet.Parameters.AddWithValue("$sessionId", sessionId);
-            if (await wallet.ExecuteNonQueryAsync(cancellationToken) != 1)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionRetrievalResult(13, 0, checked((byte)currentCardQuantity), hans);
-            }
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-        return new AuctionRetrievalResult(
-            1,
-            checked((byte)remainingQuantity),
-            checked((byte)newCardQuantity),
-            newHans);
-    }
-
-    public async Task<IReadOnlyList<AuctionListingAdminRecord>> GetAuctionListingsForAdminAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var records = new List<AuctionListingAdminRecord>();
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT listing.UniqueNumber,
-                   listing.SellerAccountId,
-                   account.Username,
-                   listing.SellerCharacterId,
-                   listing.SellerCharacterName,
-                   listing.ItemCode,
-                   listing.OriginalQuantity,
-                   listing.RemainingQuantity,
-                   listing.HansPerItem,
-                   listing.PendingHans,
-                   listing.Status,
-                   listing.CreatedAt,
-                   listing.UpdatedAt
-            FROM AuctionListings AS listing
-            INNER JOIN Accounts AS account ON account.Id = listing.SellerAccountId
-            ORDER BY listing.Status ASC, listing.UpdatedAt DESC, listing.UniqueNumber DESC
-            """;
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            var itemCode = checked((uint)reader.GetInt64(5));
-            records.Add(new AuctionListingAdminRecord
-            {
-                UniqueNumber = checked((uint)reader.GetInt64(0)),
-                SellerAccountId = reader.GetInt64(1),
-                SellerUsername = reader.GetString(2),
-                SellerCharacterId = reader.GetInt64(3),
-                SellerCharacterName = reader.GetString(4),
-                ItemCode = itemCode,
-                ItemName = CardCatalog.TryGet(itemCode, out var card) ? card.Name : "未知卡片",
-                OriginalQuantity = checked((byte)reader.GetInt64(6)),
-                RemainingQuantity = checked((byte)reader.GetInt64(7)),
-                HansPerItem = checked((uint)reader.GetInt64(8)),
-                PendingHans = checked((uint)reader.GetInt64(9)),
-                Status = checked((byte)reader.GetInt64(10)),
-                CreatedAtUtc = ParseDate(reader.GetString(11)),
-                UpdatedAtUtc = ParseDate(reader.GetString(12))
-            });
-        }
-        return records;
-    }
-
-    public async Task<AuctionAdminOperationResult> CancelAuctionListingFromAdminAsync(
-        uint uniqueNumber,
-        CancellationToken cancellationToken = default)
-    {
-        if (uniqueNumber == 0)
-            return new AuctionAdminOperationResult(false, "挂单编号无效。");
-
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction(deferred: false);
-        long sellerAccountId;
-        long sellerCharacterId;
-        long itemCode;
-        long remainingQuantity;
-        long pendingHans;
-        long currentCardQuantity;
-        long currentHans;
-        bool characterOnline;
-        bool accountOnline;
-        await using (var current = connection.CreateCommand())
-        {
-            current.Transaction = transaction;
-            current.CommandText = """
-                SELECT listing.SellerAccountId,
-                       listing.SellerCharacterId,
-                       listing.ItemCode,
-                       listing.RemainingQuantity,
-                       listing.PendingHans,
-                       COALESCE(card.Quantity, 0),
-                       character.Hans,
-                       character.IsOnline,
-                       account.IsOnline
-                FROM AuctionListings AS listing
-                INNER JOIN Characters AS character ON character.Id = listing.SellerCharacterId
-                INNER JOIN Accounts AS account ON account.Id = listing.SellerAccountId
-                LEFT JOIN CharacterCards AS card
-                    ON card.CharacterId = listing.SellerCharacterId
-                   AND card.CardCode = listing.ItemCode
-                WHERE listing.UniqueNumber = $uniqueNumber
-                  AND listing.Status = 0
-                  AND character.AccountId = listing.SellerAccountId
-                """;
-            current.Parameters.AddWithValue("$uniqueNumber", uniqueNumber);
-            await using var reader = await current.ExecuteReaderAsync(cancellationToken);
-            if (!await reader.ReadAsync(cancellationToken))
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionAdminOperationResult(false, "挂单不存在或已经结束。");
-            }
-            sellerAccountId = reader.GetInt64(0);
-            sellerCharacterId = reader.GetInt64(1);
-            itemCode = reader.GetInt64(2);
-            remainingQuantity = reader.GetInt64(3);
-            pendingHans = reader.GetInt64(4);
-            currentCardQuantity = reader.GetInt64(5);
-            currentHans = reader.GetInt64(6);
-            characterOnline = reader.GetBoolean(7);
-            accountOnline = reader.GetBoolean(8);
-        }
-
-        if (characterOnline || accountOnline)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionAdminOperationResult(false, "卖家当前在线，请先让该账号退出游戏，避免客户端卡片册与数据库状态不同步。");
-        }
-        if (!CardCatalog.TryGet(checked((uint)itemCode), out _))
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionAdminOperationResult(false, "挂单引用的卡片不在官方卡片目录中，未进行返还。");
-        }
-        if (currentCardQuantity + remainingQuantity > byte.MaxValue)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionAdminOperationResult(false, "返还后卡片数量将超过客户端上限 255，请先处理该角色已有卡片。");
-        }
-        if (currentHans + pendingHans > uint.MaxValue)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new AuctionAdminOperationResult(false, "结算后 Hans 将超过客户端上限，未执行撤单。");
-        }
-
-        var newCardQuantity = currentCardQuantity + remainingQuantity;
-        var newHans = currentHans + pendingHans;
-        var now = DateTime.UtcNow.ToString("O");
-        await using (var close = connection.CreateCommand())
-        {
-            close.Transaction = transaction;
-            close.CommandText = """
-                UPDATE AuctionListings
-                SET RemainingQuantity = 0,
-                    PendingHans = 0,
-                    Status = 1,
-                    UpdatedAt = $now
-                WHERE UniqueNumber = $uniqueNumber
-                  AND Status = 0
-                  AND RemainingQuantity = $remainingQuantity
-                  AND PendingHans = $pendingHans
-                """;
-            close.Parameters.AddWithValue("$now", now);
-            close.Parameters.AddWithValue("$uniqueNumber", uniqueNumber);
-            close.Parameters.AddWithValue("$remainingQuantity", remainingQuantity);
-            close.Parameters.AddWithValue("$pendingHans", pendingHans);
-            if (await close.ExecuteNonQueryAsync(cancellationToken) != 1)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionAdminOperationResult(false, "挂单状态已经变化，请刷新后重试。");
-            }
-        }
-
-        if (remainingQuantity > 0)
-        {
-            await using var card = connection.CreateCommand();
-            card.Transaction = transaction;
-            card.CommandText = """
-                INSERT INTO CharacterCards(CharacterId, CardCode, Quantity, UpdatedAt)
-                VALUES($characterId, $itemCode, $quantity, $now)
-                ON CONFLICT(CharacterId, CardCode) DO UPDATE SET
-                    Quantity = $quantity,
-                    UpdatedAt = $now
-                """;
-            card.Parameters.AddWithValue("$characterId", sellerCharacterId);
-            card.Parameters.AddWithValue("$itemCode", itemCode);
-            card.Parameters.AddWithValue("$quantity", newCardQuantity);
-            card.Parameters.AddWithValue("$now", now);
-            await card.ExecuteNonQueryAsync(cancellationToken);
-        }
-
-        await using (var wallet = connection.CreateCommand())
-        {
-            wallet.Transaction = transaction;
-            wallet.CommandText = """
-                UPDATE Characters
-                SET Hans = $newHans, LastSavedAt = $now
-                WHERE Id = $characterId
-                  AND AccountId = $accountId
-                  AND Hans = $currentHans
-                  AND IsOnline = 0
-                """;
-            wallet.Parameters.AddWithValue("$newHans", newHans);
-            wallet.Parameters.AddWithValue("$now", now);
-            wallet.Parameters.AddWithValue("$characterId", sellerCharacterId);
-            wallet.Parameters.AddWithValue("$accountId", sellerAccountId);
-            wallet.Parameters.AddWithValue("$currentHans", currentHans);
-            if (await wallet.ExecuteNonQueryAsync(cancellationToken) != 1)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return new AuctionAdminOperationResult(false, "卖家状态或余额已经变化，撤单已回滚。");
-            }
-        }
-
-        await transaction.CommitAsync(cancellationToken);
-        return new AuctionAdminOperationResult(true, string.Empty);
-    }
-
-    public async Task<int> ClearCompletedAuctionListingsFromAdminAsync(
-        CancellationToken cancellationToken = default)
-    {
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM AuctionListings WHERE Status = 1";
-        return await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    private static void AddAuctionQueryParameters(
-        SqliteCommand command,
-        long characterId,
-        byte ddakgiType,
-        ushort ddakgiNumber,
-        string? sellerCharacterName)
-    {
-        command.Parameters.AddWithValue("$characterId", characterId);
-        if (ddakgiType != 0)
-            command.Parameters.AddWithValue("$ddakgiType", ddakgiType);
-        if (ddakgiNumber != 0)
-            command.Parameters.AddWithValue("$ddakgiNumber", ddakgiNumber);
-        if (!string.IsNullOrEmpty(sellerCharacterName))
-            command.Parameters.AddWithValue("$sellerCharacterName", sellerCharacterName);
-    }
-
     public async Task<(bool Success, string Error, uint ItemCode, ushort RewardQuantity, string KeyKind, byte KeyUseCount)> SynthesizeCardItemAsync(
         long accountId,
         long characterId,
@@ -3478,6 +2702,8 @@ public sealed partial class DatabaseService
             && (!ShopCatalog.TryGet(15, recipe.Output, out petReward)
                 || petReward.Section != InventorySection.Pet))
             return (false, "The synthesized PET is not present in the embedded client catalog.", recipe.Output, 0, "none", 0);
+        // Domain 21 is the GI flying-item/effect family, not a skill-point
+        // balance. SP cards (domain 12) use the dedicated family-aware path.
         if (rewardDomain is not (14u or 15u or 17u or 19u or 21u or 41u))
             return (false, "The synthesis reward domain is unsupported.", recipe.Output, 0, "none", 0);
 
@@ -3493,7 +2719,6 @@ public sealed partial class DatabaseService
         long goldenKeys;
         long mysteryKeys;
         uint freeMagicExpiration;
-        long skillPoints;
         int petVariant;
         await using (var authorization = connection.CreateCommand())
         {
@@ -3503,7 +2728,6 @@ public sealed partial class DatabaseService
                        character.CardGoldenKeyCount,
                        character.CardMysteryKeyCount,
                        character.FreeMagicExpansionExpires,
-                       character.SkillPoints,
                        character.PetVariant
                 FROM Characters AS character
                 INNER JOIN Accounts AS account ON account.Id = character.AccountId
@@ -3528,8 +2752,7 @@ public sealed partial class DatabaseService
             goldenKeys = reader.GetInt64(1);
             mysteryKeys = reader.GetInt64(2);
             freeMagicExpiration = checked((uint)reader.GetInt64(3));
-            skillPoints = reader.GetInt64(4);
-            petVariant = reader.GetInt32(5);
+            petVariant = reader.GetInt32(4);
         }
 
         var ownedMaterials = new Dictionary<uint, long>(materials.Count);
@@ -3557,7 +2780,6 @@ public sealed partial class DatabaseService
 
         long currentRewardQuantity = 0;
         ushort rewardQuantity;
-        var skillReward = 0u;
         if (rewardDomain == 15u)
         {
             await using var pets = connection.CreateCommand();
@@ -3584,17 +2806,6 @@ public sealed partial class DatabaseService
                 return (false, duplicate ? "The synthesized PET is already owned." : "The PET inventory is full.", recipe.Output, 0, "none", 0);
             }
             rewardQuantity = 1;
-        }
-        else if (rewardDomain == 21u)
-        {
-            skillReward = recipe.Output - 21_000_000u;
-            if (skillReward == 0) skillReward = 1;
-            if (skillReward > ushort.MaxValue || skillPoints + skillReward > ushort.MaxValue)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return (false, "The skill-point reward would exceed the character cap.", recipe.Output, 0, "none", 0);
-            }
-            rewardQuantity = checked((ushort)(skillPoints + skillReward));
         }
         else
         {
@@ -3684,7 +2895,6 @@ public sealed partial class DatabaseService
             updateCharacter.Transaction = transaction;
             var assignments = new List<string>();
             if (keyColumn is not null) assignments.Add($"{keyColumn} = {keyColumn} - 1");
-            if (skillReward != 0) assignments.Add("SkillPoints = SkillPoints + $skillReward");
             assignments.Add("LastSavedAt = $now");
             updateCharacter.CommandText = $"""
                 UPDATE Characters
@@ -3694,7 +2904,6 @@ public sealed partial class DatabaseService
                   AND IsOnline = 1
                   AND ActiveSessionId = $sessionId
                 """;
-            if (skillReward != 0) updateCharacter.Parameters.AddWithValue("$skillReward", skillReward);
             updateCharacter.Parameters.AddWithValue("$now", now);
             updateCharacter.Parameters.AddWithValue("$characterId", characterId);
             updateCharacter.Parameters.AddWithValue("$accountId", accountId);
@@ -3727,7 +2936,7 @@ public sealed partial class DatabaseService
                 return (false, "The synthesized PET could not be persisted.", recipe.Output, 0, "none", 0);
             }
         }
-        else if (rewardDomain != 21u)
+        else
         {
             await using var grantItem = connection.CreateCommand();
             grantItem.Transaction = transaction;
@@ -5988,14 +5197,24 @@ public sealed partial class DatabaseService
                 quantity = Convert.ToInt32(storedQuantity, CultureInfo.InvariantCulture);
             }
 
-            var targetStates = new List<(DungeonQuickItemTarget Target, int Hp, int Mp, int MaxHp, int MaxMp)>(targets.Count);
+            var targetStates = new List<(DungeonQuickItemTarget Target, int Hp, int Mp, int MaxHp, int MaxMp, uint Ring)>(targets.Count);
             foreach (var target in targets)
             {
+                var coupleRing = await GetActiveCoupleRingAsync(connection, transaction, target.CharacterId, cancellationToken);
+                // Read selected-pet/equipment bonuses under the same item-use
+                // transaction. Base MaxHp/MaxMp must not clamp away bonus HP/MP
+                // or be overwritten by their effective projection.
+                var maxima = await GetEffectiveInventoryResourceMaximaAsync(
+                    connection, transaction, target.CharacterId, cancellationToken);
+                if (maxima is null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return DungeonQuickItemConsumeResult.Failed;
+                }
                 await using var state = connection.CreateCommand();
                 state.Transaction = transaction;
                 state.CommandText = """
-                    SELECT character.CurrentHp, character.CurrentMp,
-                           character.MaxHp, character.MaxMp
+                    SELECT character.CurrentHp, character.CurrentMp
                     FROM Characters AS character
                     INNER JOIN Accounts AS account ON account.Id = character.AccountId
                     WHERE character.Id = $characterId
@@ -6020,16 +5239,16 @@ public sealed partial class DatabaseService
                     target,
                     reader.GetInt32(0),
                     reader.GetInt32(1),
-                    reader.GetInt32(2),
-                    reader.GetInt32(3)));
+                    maxima.Value.Hp,
+                    maxima.Value.Mp, coupleRing));
             }
 
             var targetResults = targetStates.Select(state =>
             {
                 var currentHp = Math.Clamp(state.Hp, 0, Math.Max(0, state.MaxHp));
                 var currentMp = Math.Clamp(state.Mp, 0, Math.Max(0, state.MaxMp));
-                var nextHp = Math.Min(state.MaxHp, currentHp + hpRestore);
-                var nextMp = Math.Min(state.MaxMp, currentMp + mpRestore);
+                var nextHp = Math.Min(state.MaxHp, currentHp + CoupleBenefitPolicy.ScaleRecovery(hpRestore, state.Ring));
+                var nextMp = Math.Min(state.MaxMp, currentMp + CoupleBenefitPolicy.ScaleRecovery(mpRestore, state.Ring));
                 return new DungeonQuickItemTargetResult(
                     state.Target.CharacterId,
                     checked((ushort)Math.Clamp(nextHp - currentHp, 0, ushort.MaxValue)),
@@ -7416,6 +6635,7 @@ public sealed partial class DatabaseService
         character.CashInboxItems = await GetCharacterCashInboxItemsAsync(connection, character.Id, cancellationToken);
         character.QuickSlots = await GetCharacterQuickSlotsAsync(connection, character.Id, cancellationToken);
         character.DungeonGrade = await LoadDungeonGradeAsync(connection, character.Id, cancellationToken);
+        await LoadTownOptionsAsync(connection, character, cancellationToken);
         return character;
     }
 
@@ -7434,6 +6654,7 @@ public sealed partial class DatabaseService
         character.CashInboxItems = await GetCharacterCashInboxItemsAsync(connection, character.Id, cancellationToken);
         character.QuickSlots = await GetCharacterQuickSlotsAsync(connection, character.Id, cancellationToken);
         character.DungeonGrade = await LoadDungeonGradeAsync(connection, character.Id, cancellationToken);
+        await LoadTownOptionsAsync(connection, character, cancellationToken);
         return character;
     }
 
@@ -7557,6 +6778,7 @@ public sealed partial class DatabaseService
                    c.AvatarInventoryExpansionExpires, c.PetInventoryExpansionExpires,
                    c.GameInventoryExpansionExpires, c.InteriorInventoryExpansionExpires,
                    c.QuickSlotExpansionExpires, c.FreeMagicExpansionExpires,
+                   c.AttackModifier, c.DefenseFlat, c.InitialAttackMode, c.PureNewProfile,
                    a.Username
             FROM Characters c
             INNER JOIN Accounts a ON a.Id = c.AccountId
@@ -7566,11 +6788,20 @@ public sealed partial class DatabaseService
         while (await reader.ReadAsync(cancellationToken))
         {
             var character = ReadCharacter(reader);
-            character.Username = reader.GetString(55);
+            character.Username = reader.GetString(59);
             result.Add(character);
         }
         return result;
     }
+
+    public Task<(bool Success, string Error, long CharacterId)> CreateCharacterAsync(
+        long accountId,
+        string name,
+        int gender,
+        int face,
+        ReadOnlyMemory<byte> appearance,
+        CancellationToken cancellationToken = default)
+        => CreateCharacterAsync(accountId, name, gender, face, appearance, false, cancellationToken);
 
     public async Task<(bool Success, string Error, long CharacterId)> CreateCharacterAsync(
         long accountId,
@@ -7578,15 +6809,24 @@ public sealed partial class DatabaseService
         int gender,
         int face,
         ReadOnlyMemory<byte> appearance,
+        bool pureNewProfile,
         CancellationToken cancellationToken = default)
     {
         name = name.Trim();
         if (name.Length is < 1 or > 16 || name.Any(char.IsControl))
             return (false, "角色名长度需要在 1-16 个字符之间，且不能包含控制字符。", 0);
+        if (gender is < 0 or > 1)
+            return (false, "角色性别无效。", 0);
         var bytes = appearance.ToArray();
         if (bytes.Length != 36 || bytes.All(value => value == 0))
         {
             bytes = (gender == 1 ? DefaultMaleAppearance : DefaultFemaleAppearance).ToArray();
+            face = BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(0, 4));
+        }
+        else
+        {
+            var requestedPet = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(28, 4));
+            bytes = NormalizeAppearanceForGender(bytes, gender, requestedPet);
             face = BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(0, 4));
         }
 
@@ -7614,7 +6854,7 @@ public sealed partial class DatabaseService
             }
 
             var initialGrant = new InitialGrantSettings();
-            if (!initialGrantClaimed)
+            if (!initialGrantClaimed && !pureNewProfile)
             {
                 await using var grantSettings = connection.CreateCommand();
                 grantSettings.Transaction = transaction;
@@ -7637,7 +6877,7 @@ public sealed partial class DatabaseService
                 }
             }
 
-            var gmGrant = isGm && !gmGrantClaimed
+            var gmGrant = isGm && !gmGrantClaimed && !pureNewProfile
                 ? await ReadGmGrantSettingsAsync(connection, transaction, cancellationToken)
                 : new GmGrantSettings();
 
@@ -7654,34 +6894,36 @@ public sealed partial class DatabaseService
             command.Transaction = transaction;
             command.CommandText = """
                 INSERT INTO Characters(
-                    AccountId, Name, Gender, Face, Appearance, TutorialCompleted,
+                    AccountId, Name, Gender, Face, Appearance, TutorialCompleted, PureNewProfile,
                     PetVariant, PetLevel, PetExperience,
                     Level, Experience, AttributePoints, Strength, Vitality, Agility, Intelligence, Luck,
                     MaxHp, MaxMp, CurrentHp, CurrentMp,
                     SpawnMapId, SpawnX, SpawnY, CurrentMapId, CurrentTownPage, PositionX, PositionY,
-                    Hans, Cash, SkillPoints, IsOnline, LastSavedAt, CreatedAt)
+                    Hans, Cash, SkillPoints, SkillPointsMeat, IsOnline, LastSavedAt, CreatedAt)
                 VALUES (
-                    $accountId, $name, $gender, $face, $appearance, 0,
+                    $accountId, $name, $gender, $face, $appearance, 0, $pureNewProfile,
                     0, 1, 0,
                     1, 0, 0, 5, 5, 5, 5, 5,
                     $maxHp, $maxMp, $maxHp, $maxMp,
                     $spawnMap, $spawnX, $spawnY, $tutorialMap, 0, $spawnX, $spawnY,
-                    $hans, $cash, $skillPoints, 0, $now, $now)
+                    $hans, $cash, $skillPoints, $skillPointsMeat, 0, $now, $now)
                 """;
             command.Parameters.AddWithValue("$accountId", accountId);
             command.Parameters.AddWithValue("$name", name);
             command.Parameters.AddWithValue("$gender", gender);
             command.Parameters.AddWithValue("$face", face);
             command.Parameters.Add("$appearance", SqliteType.Blob).Value = bytes;
+            command.Parameters.AddWithValue("$pureNewProfile", pureNewProfile ? 1 : 0);
             command.Parameters.AddWithValue("$maxHp", maxHp);
             command.Parameters.AddWithValue("$maxMp", maxMp);
             command.Parameters.AddWithValue("$spawnMap", DefaultSpawnMapId);
             command.Parameters.AddWithValue("$tutorialMap", TutorialMapId);
             command.Parameters.AddWithValue("$spawnX", DefaultSpawnX);
             command.Parameters.AddWithValue("$spawnY", DefaultSpawnY);
-            command.Parameters.AddWithValue("$hans", initialGrant.Hans);
-            command.Parameters.AddWithValue("$cash", initialGrant.Cash);
-            command.Parameters.AddWithValue("$skillPoints", initialGrant.SkillPoints);
+            command.Parameters.AddWithValue("$hans", pureNewProfile ? 0 : initialGrant.Hans);
+            command.Parameters.AddWithValue("$cash", pureNewProfile ? 0 : initialGrant.Cash);
+            command.Parameters.AddWithValue("$skillPoints", pureNewProfile ? 0 : initialGrant.SkillPoints);
+            command.Parameters.AddWithValue("$skillPointsMeat", pureNewProfile ? 0 : initialGrant.SkillPoints);
             command.Parameters.AddWithValue("$now", now);
             await command.ExecuteNonQueryAsync(cancellationToken);
 
@@ -8257,7 +7499,7 @@ public sealed partial class DatabaseService
         {
             character.Transaction = transaction;
             character.CommandText = """
-                SELECT character.Level, character.SkillPoints
+                SELECT character.Level, character.SkillPoints, character.SkillPointsMeat
                 FROM Characters AS character
                 INNER JOIN Accounts AS account ON account.Id = character.AccountId
                 WHERE character.Id = $characterId
@@ -8277,7 +7519,8 @@ public sealed partial class DatabaseService
                 return (false, "技能升级会话已经失效。", 0, 0);
             }
             characterLevel = reader.GetInt32(0);
-            currentSkillPoints = checked((ushort)reader.GetInt32(1));
+            currentSkillPoints = checked((ushort)reader.GetInt32(
+                skill.SkillFamily == SkillCatalog.MeatSkillFamily ? 2 : 1));
         }
 
         var learned = new Dictionary<uint, byte>();
@@ -8309,7 +7552,10 @@ public sealed partial class DatabaseService
             || currentGrade >= 5
             || !parentLearned
             || conflictingBranch
-            || (currentGrade == 0 && learned.Count >= 7)
+            || (currentGrade == 0 && learned.Keys.Count(existingCode =>
+                SkillCatalog.TryGet(existingCode, out var existingSkill)
+                && existingSkill.SkillFamily == skill.SkillFamily)
+                >= SkillCatalog.MaximumSkillsPerFamily)
             || cost > currentSkillPoints)
         {
             await transaction.RollbackAsync(cancellationToken);
@@ -8322,7 +7568,15 @@ public sealed partial class DatabaseService
         await using (var debit = connection.CreateCommand())
         {
             debit.Transaction = transaction;
-            debit.CommandText = """
+            debit.CommandText = skill.SkillFamily == SkillCatalog.MeatSkillFamily ? """
+                UPDATE Characters
+                SET SkillPointsMeat = $remainingSkillPoints, LastSavedAt = $now
+                WHERE Id = $characterId
+                  AND AccountId = $accountId
+                  AND SkillPointsMeat = $currentSkillPoints
+                  AND IsOnline = 1
+                  AND ActiveSessionId = $sessionId
+                """ : """
                 UPDATE Characters
                 SET SkillPoints = $remainingSkillPoints, LastSavedAt = $now
                 WHERE Id = $characterId
@@ -9459,26 +8713,8 @@ public sealed partial class DatabaseService
 
         // "带过 N 名学生" is read from the mentor ledger on this same transaction: a read on a
         // second connection would have to wait behind the write lock taken by this one.
-        var mentorStudents = 0;
-        using (var query = connection.CreateCommand())
-        {
-            query.Transaction = transaction;
-            query.CommandText = """
-                SELECT COUNT(DISTINCT CASE WHEN RequestOpcode = $studentRequest
-                                           THEN RequesterCharacterId ELSE TargetCharacterId END)
-                FROM MentorInteractions
-                WHERE Status = $accepted
-                  AND ((RequestOpcode = $studentRequest AND TargetCharacterId = $characterId)
-                    OR (RequestOpcode = $teacherRequest AND RequesterCharacterId = $characterId))
-                """;
-            query.Parameters.AddWithValue("$studentRequest", MentorProtocol.StudentRequestOpcode);
-            query.Parameters.AddWithValue("$teacherRequest", MentorProtocol.TeacherRequestOpcode);
-            query.Parameters.AddWithValue("$accepted", MentorProtocol.Accepted);
-            query.Parameters.AddWithValue("$characterId", characterId);
-            mentorStudents = Convert.ToInt32(
-                await query.ExecuteScalarAsync(cancellationToken),
-                CultureInfo.InvariantCulture);
-        }
+        var mentorStudents = checked((int)await CountMentorshipStudentsAsync(
+            connection, transaction, characterId, cancellationToken));
 
         bool ObjectiveMet(QuestObjectiveDefinition objective, uint storedProgress)
         {
@@ -11319,7 +10555,8 @@ public sealed partial class DatabaseService
             string sessionId,
             long targetCharacterId,
             uint ringItemCode,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            string? targetSessionId = null)
     {
         if (accountId <= 0
             || requesterCharacterId <= 0
@@ -11351,11 +10588,17 @@ public sealed partial class DatabaseService
                   AND character.ActiveSessionId = $sessionId
                   AND account.IsOnline = 1
                   AND account.ActiveSessionId = $sessionId
-                  AND EXISTS (SELECT 1 FROM Characters WHERE Id = $targetCharacterId)
+                  AND EXISTS (SELECT 1 FROM Characters AS target
+                      INNER JOIN Accounts AS targetAccount ON targetAccount.Id = target.AccountId
+                      WHERE target.Id = $targetCharacterId
+                        AND target.IsOnline = 1 AND targetAccount.IsOnline = 1
+                        AND target.ActiveSessionId = targetAccount.ActiveSessionId
+                        AND ($targetSessionId IS NULL OR target.ActiveSessionId = $targetSessionId))
                 """;
             current.Parameters.AddWithValue("$itemCode", ringItemCode);
             current.Parameters.AddWithValue("$characterId", requesterCharacterId);
             current.Parameters.AddWithValue("$targetCharacterId", targetCharacterId);
+            current.Parameters.AddWithValue("$targetSessionId", (object?)targetSessionId ?? DBNull.Value);
             current.Parameters.AddWithValue("$accountId", accountId);
             current.Parameters.AddWithValue("$sessionId", sessionId);
             quantity = Convert.ToInt64(await current.ExecuteScalarAsync(cancellationToken) ?? 0L);
@@ -11589,41 +10832,18 @@ public sealed partial class DatabaseService
             EstablishedAt = ParseDate(reader.GetString(6))
         };
 
-    public async Task<long> RecordMentorInteractionAsync(
-        ushort requestOpcode,
-        long requesterCharacterId,
-        long targetCharacterId,
-        uint lessonCode,
-        byte targetUid,
-        CancellationToken cancellationToken = default)
-    {
-        if (requestOpcode is not (0xC583 or 0xC585))
-            throw new ArgumentOutOfRangeException(nameof(requestOpcode));
-
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            INSERT INTO MentorInteractions (
-                RequestOpcode, RequesterCharacterId, TargetCharacterId,
-                LessonCode, TargetUid, Status, CreatedAt, UpdatedAt)
-            VALUES ($opcode, $requester, $target, $lessonCode, $targetUid, 0, $now, $now);
-            SELECT last_insert_rowid();
-            """;
-        command.Parameters.AddWithValue("$opcode", requestOpcode);
-        command.Parameters.AddWithValue("$requester", requesterCharacterId);
-        command.Parameters.AddWithValue("$target", targetCharacterId);
-        command.Parameters.AddWithValue("$lessonCode", (long)lessonCode);
-        command.Parameters.AddWithValue("$targetUid", targetUid);
-        command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
-        return (long)(await command.ExecuteScalarAsync(cancellationToken)
-            ?? throw new InvalidOperationException("Mentor interaction insert returned no identity."));
-    }
+    public Task<long> RecordMentorInteractionAsync(
+        ushort requestOpcode, long requesterCharacterId, long targetCharacterId,
+        uint lessonCode, byte targetUid, CancellationToken cancellationToken = default)
+        => Task.FromException<long>(new NotSupportedException("Mentorship operations require a current owned request."));
 
     public async Task CompleteMentorInteractionAsync(
         long interactionId,
         ushort status,
         CancellationToken cancellationToken = default)
     {
+        if (status == MentorProtocol.Accepted)
+            throw new NotSupportedException("Mentorship confirmation requires a current owned request.");
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
@@ -12310,7 +11530,9 @@ public sealed partial class DatabaseService
             FreeMagicExpansionExpires = checked((uint)reader.GetInt64(54)),
             AttackModifier = checked((uint)reader.GetInt64(55)),
             DefenseFlat = checked((ushort)reader.GetInt32(56)),
-            InitialAttackMode = checked((byte)reader.GetInt32(57))
+            InitialAttackMode = checked((byte)reader.GetInt32(57)),
+            PureNewProfile = reader.GetInt64(58) != 0,
+            SkillPointsMeat = checked((ushort)reader.GetInt32(59))
         };
     }
 

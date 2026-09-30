@@ -7,6 +7,13 @@ namespace OpenNanaimo.Adapter.Services;
 // compact projection; the two representations must not be confused.
 internal sealed class InventoryIdentityMap
 {
+    // The native game-item page treats wire identity 0 as the empty/default
+    // value. Real C430 sessions allocate the first visible instance from 1
+    // and keep that identity stable after compact DB ordinals change.
+    private const int FirstWireIdentity = 1;
+    private const int Capacity = 84;
+    private const int LastWireIdentity = FirstWireIdentity + Capacity - 1;
+
     private readonly Dictionary<byte, (uint Code, long Order)> _items = [];
     private readonly HashSet<byte> _used = [];
     private byte[] _ordered = [];
@@ -24,7 +31,7 @@ internal sealed class InventoryIdentityMap
             var missing = group.Value - _items.Values.Count(row => row.Code == group.Key);
             while (missing-- > 0)
             {
-                var available = Enumerable.Range(0, 84).Select(value => (byte)value)
+                var available = Enumerable.Range(FirstWireIdentity, Capacity).Select(value => (byte)value)
                     .Where(identity => !_items.ContainsKey(identity)).ToArray();
                 if (available.Length == 0)
                     throw new InvalidDataException("C430 inventory capacity exceeded");
@@ -43,7 +50,8 @@ internal sealed class InventoryIdentityMap
     {
         index = 0;
         code = 0;
-        if (wire > 83 || !_items.TryGetValue((byte)wire, out var row))
+        if (wire < FirstWireIdentity || wire > LastWireIdentity
+            || !_items.TryGetValue((byte)wire, out var row))
             return false;
         var ordinal = Array.IndexOf(_ordered, (byte)wire);
         if (ordinal < 0)
@@ -56,7 +64,7 @@ internal sealed class InventoryIdentityMap
     internal byte Wire(int ordinal) => _ordered[ordinal];
     internal void Remove(uint wire)
     {
-        if (wire <= 83)
+        if (wire >= FirstWireIdentity && wire <= LastWireIdentity)
             _items.Remove((byte)wire);
     }
 }
@@ -77,7 +85,7 @@ public sealed partial class NetworkAdapterService
         if(session.Character is null) return;
         if(opcode == 0xC46A && frame.Length >= 12)
         {
-            RewriteShoppingCouponIdentities(frame, session);
+            RewriteCoupleTokenInventoryIdentities(frame, session);
             return;
         }
         if(opcode is not (0xC430 or 0xC379)) return;

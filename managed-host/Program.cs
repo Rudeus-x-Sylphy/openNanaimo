@@ -219,6 +219,13 @@ string Option(string name, string fallback)
 string data = Path.GetFullPath(Option("--data", "adapter-data"));
 string native = Path.GetFullPath(Option("--native", "nanaimo_gameplay_bridge.exe"));
 string profile = Path.GetFullPath(Option("--profile", "profile.ini"));
+string bindAddressText = Option("--bind-address", "127.0.0.1");
+if (!System.Net.IPAddress.TryParse(bindAddressText, out var bindAddress)
+    || bindAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork
+    || bindAddress.Equals(System.Net.IPAddress.Any)
+    || bindAddress.Equals(System.Net.IPAddress.Broadcast))
+    throw new ArgumentException($"--bind-address must be a specific IPv4 address: {bindAddressText}");
+bindAddressText = bindAddress.ToString();
 bool unlockAllDungeons = ReadProfileBoolean(profile, "unlock_all_dungeons", defaultValue: true);
 int loginPort = int.Parse(Option("--login-port", "11005"));
 int worldPort = int.Parse(Option("--world-port", "12050"));
@@ -290,11 +297,11 @@ try
     await using var rooms = new NativeDungeonPool(native, Path.Combine(data, "native-rooms"));
     await using var host = new NetworkAdapterService(database, message => Console.WriteLine($"{DateTime.Now:O} {message}"), data)
     { NativeDungeonEnabled = true, UnlockAllDungeons = unlockAllDungeons, NativeJournalDirectory = journal, NativeRooms = rooms };
-    await host.StartAsync(new AdapterOptions { GameAdapterPort = loginPort, WorldAdapterPort = worldPort },
-        new[] { new AdapterEndpoint { Id = 1, Port = worldPort } }, stop.Token);
-    var profiles = host.RunLocalProfileListenerAsync(profilePort, stop.Token, Path.GetDirectoryName(profile)!);
+    await host.StartAsync(new AdapterOptions { BindAddress = bindAddressText, GameAdapterPort = loginPort, WorldAdapterPort = worldPort },
+        new[] { new AdapterEndpoint { Id = 1, Host = bindAddressText, Port = worldPort } }, stop.Token);
+    var profiles = host.RunLocalProfileListenerAsync(bindAddress, profilePort, stop.Token, Path.GetDirectoryName(profile)!);
     var gmControl = GmRuntimeControl.RunAsync(data, host, rooms, Console.WriteLine, stop.Token);
-    Console.WriteLine($"READY login={loginPort} world={worldPort} profiles={profilePort} native=52050 data={data}");
+    Console.WriteLine($"READY bind={bindAddressText} login={loginPort} world={worldPort} profiles={profilePort} native=52050 data={data}");
     if (args.Contains("--self-test"))
     {
         await MigrationChecks.RunAsync(database, profile, loginPort, worldPort, profilePort, rooms);

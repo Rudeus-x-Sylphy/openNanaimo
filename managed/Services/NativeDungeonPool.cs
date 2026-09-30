@@ -10,17 +10,19 @@ public sealed class NativeDungeonPool(string executable, string dataDirectory) :
     private sealed class Room
     {
         public required int Port { get; init; }
+        public Guid Generation { get; } = Guid.NewGuid();
         public int Users { get; set; }
         public Process? Process { get; init; }
         public Task? Output { get; init; }
         public Task? Error { get; init; }
     }
-    public sealed class Lease(NativeDungeonPool owner, string key, int port) : IAsyncDisposable
+    public sealed class Lease(NativeDungeonPool owner, string key, int port, Guid generation = default) : IAsyncDisposable
     {
         public int Port { get; } = port;
+        public Guid Generation { get; } = generation;
         private bool _released;
         public async ValueTask DisposeAsync()
-        { if (!_released) { _released = true; await owner.ReleaseAsync(key); } }
+        { if (!_released) { _released = true; await owner.ReleaseAsync(key, Generation); } }
     }
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly NativeProcessJob _job = new();
@@ -54,7 +56,7 @@ public sealed class NativeDungeonPool(string executable, string dataDirectory) :
             if (room.Users >= 6) throw new InvalidOperationException("Native dungeon party is full.");
             if (room.Process?.HasExited == true) throw new IOException("Native dungeon room exited.");
             room.Users++;
-            return new Lease(this, key, room.Port);
+            return new Lease(this, key, room.Port, room.Generation);
         }
         finally { _gate.Release(); }
     }
@@ -131,12 +133,12 @@ public sealed class NativeDungeonPool(string executable, string dataDirectory) :
         await using var log = new StreamWriter(path) { AutoFlush = true };
         while (await reader.ReadLineAsync() is { } line) await log.WriteLineAsync(line);
     }
-    private async Task ReleaseAsync(string key)
+    private async Task ReleaseAsync(string key, Guid generation)
     {
         await _gate.WaitAsync();
         try
         {
-            if (!_rooms.TryGetValue(key, out var room) || --room.Users > 0) return;
+            if (!_rooms.TryGetValue(key, out var room) || room.Generation != generation || --room.Users > 0) return;
             _rooms.Remove(key); await StopRoomAsync(room);
             if (room.Port == 52050)
             {

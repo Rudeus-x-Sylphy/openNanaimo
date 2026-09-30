@@ -1,8 +1,9 @@
-﻿param(
+param(
     [string]$OutputRoot = (Join-Path (Split-Path $PSScriptRoot -Parent) 'adapter_runtime'),
     [string]$TccPath,
     [string]$DotnetPath,
     [string]$ResourceDataRoot,
+    [string]$TargetFramework,
     [switch]$SelfTest
 )
 $ErrorActionPreference = 'Stop'
@@ -16,21 +17,34 @@ $tcc = $tccCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Obje
 if (-not $tcc) { throw 'TinyCC not found. Supply -TccPath or install tools\tcc\tcc.exe.' }
 $dotnetCandidates = @(
     $DotnetPath,
+    (Join-Path $root '.dotnet\dotnet.exe'),
     (Get-Command dotnet -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue)
 ) | Where-Object { $_ }
 $dotnet = $dotnetCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $dotnet) { throw 'A .NET 8 SDK is required to build the full adapter.' }
 $sdk = (& $dotnet --version).Trim()
 if ([int]$sdk.Split('.')[0] -lt 8) { throw "A .NET 8 SDK is required; detected $sdk." }
+if (-not $TargetFramework) {
+    $refPacks = Join-Path (Split-Path $dotnet -Parent) 'packs\Microsoft.NETCore.App.Ref'
+    $TargetFramework = if (Test-Path (Join-Path $refPacks '6.*')) { 'net6.0' } else { 'net8.0' }
+}
+if ($TargetFramework -notin @('net6.0','net8.0')) { throw "TargetFramework must be net6.0 or net8.0; got $TargetFramework." }
 [IO.Directory]::CreateDirectory($output) | Out-Null
 $bridge = Join-Path $output 'nanaimo_gameplay_bridge.exe'
 & $tcc -I $root -I (Join-Path $root 'adapter') -I (Join-Path $root 'release') (Join-Path $root 'adapter\nanaimo_gameplay_bridge.c') -o $bridge
 if ($LASTEXITCODE) { throw 'Native gameplay bridge build failed.' }
-& $dotnet publish (Join-Path $root 'managed-host\Nanaimo.Adapter.csproj') -c Release -f net6.0 -r win-x64 --self-contained true -o $output --nologo
+& $dotnet publish (Join-Path $root 'managed-host\Nanaimo.Adapter.csproj') -c Release -f $TargetFramework -r win-x64 --self-contained true -o $output --nologo
 if ($LASTEXITCODE) { throw 'Full adapter build failed.' }
-$resourceSource = if ($ResourceDataRoot) { [IO.Path]::GetFullPath($ResourceDataRoot) } else { Join-Path $root 'managed\资源\数据' }
-if (-not (Test-Path -LiteralPath $resourceSource)) { throw "Adapter data missing. Supply -ResourceDataRoot with the prepared 资源\数据 directory: $resourceSource" }
-$resourceTarget = Join-Path $output '资源\数据'
+$resourceRoot = Join-Path $root 'adapter_runtime'
+$resourceContainerName = [string][char]0x8D44 + [char]0x6E90
+$resourceDataName = [string][char]0x6570 + [char]0x636E
+$resourceSource = if ($ResourceDataRoot) { [IO.Path]::GetFullPath($ResourceDataRoot) } else {
+    $resourceContainer = Get-ChildItem -LiteralPath $resourceRoot -Directory | Where-Object Name -eq $resourceContainerName | Select-Object -First 1
+    if (-not $resourceContainer) { throw "Adapter resource container missing under $resourceRoot." }
+    Join-Path $resourceContainer.FullName $resourceDataName
+}
+if (-not (Test-Path -LiteralPath $resourceSource)) { throw "Adapter data missing. Supply -ResourceDataRoot with the prepared resource directory: $resourceSource" }
+$resourceTarget = Join-Path $output (Join-Path $resourceContainerName $resourceDataName)
 [IO.Directory]::CreateDirectory($resourceTarget) | Out-Null
 if(-not [IO.Path]::GetFullPath($resourceSource).TrimEnd('\').Equals([IO.Path]::GetFullPath($resourceTarget).TrimEnd('\'),[StringComparison]::OrdinalIgnoreCase)){Copy-Item -Path (Join-Path $resourceSource '*') -Destination $resourceTarget -Force}
 $adapter = Join-Path $output 'Nanaimo.Adapter.exe'
@@ -46,7 +60,7 @@ $manifest = [ordered]@{
     version = 1
     role = 'full Nanaimo adapter'
     built_at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-    framework = 'net6.0/win-x64/self-contained'
+    framework = "$TargetFramework/win-x64/self-contained"
     sdk = $sdk
     files = $files
 }

@@ -171,7 +171,7 @@ class ApartmentExteriorPatchTests(unittest.TestCase):
 
         def checks(data):
             rows = compat._verify_client_bytes(data, False, False, False, apartment_exterior=True)
-            self.assertEqual(len(rows), 9 + len(compat.exterior_panel.patch_sites()))
+            self.assertEqual(len(rows), 10 + len(compat.exterior_panel.patch_sites()))
             rows = [row for row in rows if row['name'].startswith('apartment_exterior_')]
             self.assertEqual(len({row['name'] for row in rows}), 2)
             self.assertTrue(all(row['name'].startswith('apartment_exterior_') for row in rows))
@@ -213,15 +213,15 @@ class ApartmentExteriorCliTests(unittest.TestCase):
             dry = self.report(self.run_cli(root, output, '--apartment-exterior', '--dry-run', '--apply'))
             self.assertEqual(dry['planned_files'], ['game.exe'])
             self.assertEqual([row['operation'] for row in dry['operations']],
-                             ['patch_apartment_exterior', 'patch_apartment_exterior_layout', 'patch_apartment_decoration', 'patch_apartment_exterior_panel', 'derive_client_executable_compatibility'])
+                             ['patch_apartment_room_resource_guard', 'patch_apartment_exterior', 'patch_apartment_exterior_layout', 'patch_apartment_decoration', 'patch_apartment_exterior_panel', 'derive_client_executable_compatibility'])
             self.assertFalse(output.exists())
             self.assertEqual(game.read_bytes(), original)
             overlay = self.report(self.run_cli(root, output, '--apartment-exterior'))
             self.assertEqual(overlay['planned_files'], ['game.exe'])
             self.assertEqual(game.read_bytes(), original)
-            self.assertEqual((output / 'game.exe').read_bytes(), compat.patch_apartment_exterior_panel(compat.patch_apartment_decoration(compat.patch_apartment_exterior_layout(expected_patch(original))[0])[0])[0])
+            self.assertEqual((output / 'game.exe').read_bytes(), compat.patch_apartment_exterior_panel(compat.patch_apartment_decoration(compat.patch_apartment_exterior_layout(compat.patch_apartment_room_resource_guard(expected_patch(original))[0])[0])[0])[0])
             self.report(self.run_cli(root, output, '--apartment-exterior', '--apply', '--overwrite'))
-            self.assertEqual(game.read_bytes(), compat.patch_apartment_exterior_panel(compat.patch_apartment_decoration(compat.patch_apartment_exterior_layout(expected_patch(original))[0])[0])[0])
+            self.assertEqual(game.read_bytes(), compat.patch_apartment_exterior_panel(compat.patch_apartment_decoration(compat.patch_apartment_exterior_layout(compat.patch_apartment_room_resource_guard(expected_patch(original))[0])[0])[0])[0])
             self.assertIn(original, [p.read_bytes() for p in (output / 'backups').rglob('game.exe')])
             again = self.report(self.run_cli(root, output, '--apartment-exterior', '--apply', '--overwrite'))
             self.assertEqual(again['operations'][0]['status'], 'already_patched')

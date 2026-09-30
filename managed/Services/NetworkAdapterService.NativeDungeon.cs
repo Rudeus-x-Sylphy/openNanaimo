@@ -9,15 +9,20 @@ namespace OpenNanaimo.Adapter.Services;
 
 public sealed partial class NetworkAdapterService
 {
-    private readonly ConcurrentQueue<(long AccountId, bool PureNewPlayer, DateTime Expires)> _localLaunches = new();
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<(long AccountId, bool PureNewPlayer, DateTime Expires)>> _localLaunches = new(StringComparer.OrdinalIgnoreCase);
     public bool NativeDungeonEnabled { get; set; }
     public bool UnlockAllDungeons { get; set; } = true;
     public NativeDungeonPool? NativeRooms { get; set; }
     public string NativeJournalDirectory { get; set; } = "native-journal";
 
-    public async Task RunLocalProfileListenerAsync(int port, CancellationToken token, string? profileRoot = null)
+    public Task RunLocalProfileListenerAsync(int port, CancellationToken token, string? profileRoot = null)
+        => RunLocalProfileListenerAsync(IPAddress.Loopback, port, token, profileRoot);
+
+    public async Task RunLocalProfileListenerAsync(IPAddress bindAddress, int port, CancellationToken token, string? profileRoot = null)
     {
-        var listener = new TcpListener(IPAddress.Loopback, port); listener.Start();
+        if (bindAddress.AddressFamily != AddressFamily.InterNetwork || bindAddress.Equals(IPAddress.Any))
+            throw new ArgumentException("Launcher profile listener requires a specific IPv4 address.", nameof(bindAddress));
+        var listener = new TcpListener(bindAddress, port); listener.Start();
         try
         {
             while (!token.IsCancellationRequested)
@@ -27,6 +32,8 @@ public sealed partial class NetworkAdapterService
                 timeout.CancelAfter(TimeSpan.FromSeconds(5));
                 try
                 {
+                    var sourceAddress = ((IPEndPoint?)client.Client.RemoteEndPoint)?.Address;
+                    var sourceKey = sourceAddress?.MapToIPv4().ToString() ?? throw new InvalidDataException("Missing launcher source address.");
                     var stream = client.GetStream(); var length = new byte[4];
                     await stream.ReadExactlyAsync(length, timeout.Token);
                     int size = BinaryPrimitives.ReadInt32LittleEndian(length);
@@ -39,17 +46,24 @@ public sealed partial class NetworkAdapterService
                         using var request = System.Text.Json.JsonDocument.Parse(data);
                         var root = request.RootElement;
                         var username = root.GetProperty("LocalAccount").GetString() ?? "";
-                        pureNewPlayer = root.TryGetProperty("PureNewPlayer", out var pure)
+                        var requestedPureNewPlayer = root.TryGetProperty("PureNewPlayer", out var pure)
                             && pure.ValueKind == System.Text.Json.JsonValueKind.True;
-                        accountId = pureNewPlayer
-                            ? await _database.OpenPureNewLocalAccountAsync(username, timeout.Token)
-                            : await _database.OpenLocalAccountAsync(username, timeout.Token);
+                        var usePureNewRegistration = ResolveLauncherPureNewProfile(sourceAddress, requestedPureNewPlayer);
+                        accountId = usePureNewRegistration
+                            ? await _database.OpenPureNewLocalAccountAsync(username, sourceKey, timeout.Token)
+                            : await _database.OpenLocalAccountAsync(username, sourceKey, timeout.Token);
                     }
                     else
                         accountId = (await _database.ImportLocalProfileAsync(Encoding.ASCII.GetString(data), profileRoot, timeout.Token)).AccountId;
-                    _localLaunches.Enqueue((accountId, pureNewPlayer, DateTime.UtcNow.AddMinutes(2)));
+                    var currentCharacter = await _database.GetCharacterAsync(accountId, timeout.Token);
+                    // The effective mode comes from persisted account state. A
+                    // characterless account gets clean creation, while an
+                    // existing ordinary account is never converted or reset.
+                    pureNewPlayer = currentCharacter is null || currentCharacter.PureNewProfile;
+                    var queue = _localLaunches.GetOrAdd(sourceKey, static _ => new());
+                    queue.Enqueue((accountId, pureNewPlayer, DateTime.UtcNow.AddMinutes(2)));
                     await stream.WriteAsync("OK\n"u8.ToArray(), timeout.Token);
-                    _log($"Local launcher account ready: account={accountId} mode={(pureNewPlayer ? "pure-new-player" : "profile/default")}");
+                    _log($"Launcher account ready: source={sourceKey} account={accountId} mode={(pureNewPlayer ? "pure-new-player" : "profile/default")}");
                 }
                 catch (Exception ex) when (!token.IsCancellationRequested)
                 {
@@ -62,17 +76,23 @@ public sealed partial class NetworkAdapterService
         finally { listener.Stop(); }
     }
 
+    internal static bool ResolveLauncherPureNewProfile(IPAddress? sourceAddress, bool requestedPureNewPlayer)
+        => requestedPureNewPlayer;
+
     private async Task<bool> TryLocalLauncherLoginAsync(ConnectionSession session, string? remoteIp, CancellationToken token)
     {
-        if (!IPAddress.TryParse(remoteIp, out var address) || !IPAddress.IsLoopback(address)) return false;
-        while (_localLaunches.TryDequeue(out var pending))
+        if (!IPAddress.TryParse(remoteIp, out var address)) return false;
+        var sourceKey = address.MapToIPv4().ToString();
+        if (!_localLaunches.TryGetValue(sourceKey, out var queue)) return false;
+        while (queue.TryDequeue(out var pending))
         {
             if (pending.Expires <= DateTime.UtcNow) continue;
             var access = await _database.GetAccountAccessByIdAsync(pending.AccountId, token);
             if (access is null || access.Value.IsBanned) continue;
             session.AccountId = pending.AccountId; session.Username = access.Value.Username;
-            session.PureNewPlayer = pending.PureNewPlayer;
             session.Character = await _database.GetCharacterAsync(pending.AccountId, token);
+            session.PureNewPlayer = session.Character is null
+                ? pending.PureNewPlayer : session.Character.PureNewProfile;
             session.RemoteIp = remoteIp; CacheLoginTicket(session);
             return true;
         }
@@ -81,9 +101,9 @@ public sealed partial class NetworkAdapterService
     private async Task<bool> RouteNativeDungeonAsync(byte[] frame, ushort opcode, string channel,
         ConnectionSession session, CancellationToken token)
     {
-        if (opcode is >= 0xF100 and <= 0xF103) return true;
+        if (opcode is >= 0xF100 and <= 0xF103 or 0xF106) return true;
         if (!NativeDungeonEnabled || channel != "WorldAdapter") return false;
-        if (opcode == 0xCF09 && frame.Length == 64 && session.OnlineTracked && session.Character is not null)
+        if (opcode == 0xCF09 && frame.Length is 64 or 132 && session.OnlineTracked && session.Character is not null)
         {
             SuspendNonCombatHealthRecovery(session);
             var boundary = ResolveNativeDungeonEntryBoundary(
@@ -100,6 +120,8 @@ public sealed partial class NetworkAdapterService
             session.NonCombatResourceSnapshot = null;
             session.NativeDungeonDeathLatched = false;
             session.NativeDungeonSelectionValid = false;
+            session.NativeCoupleStartRequested = false;
+            session.NativeCoupleIdentityPublished = false;
             session.HasReportedDungeonPosition = false;
             await RefreshSessionCharacterAsync(session, token);
             var character = session.Character!;
@@ -117,6 +139,7 @@ public sealed partial class NetworkAdapterService
             session.NativeBattleAttackMode = session.NativeBattleResources.AttackMode;
             session.PendingBattleResourceSnapshot = null;
             await _database.RestoreNativeDungeonProgressAsync(character.Id, state, token);
+            CoupleBenefitPolicy.WriteNativeRing(state, await GetCoupleRingAsync(session, token));
             if (NativeRooms is not null)
                 session.NativeLease = await NativeRooms.AcquireAsync(session.PartyId > 0 ? $"party:{session.PartyId}" : session.SessionId, token);
             var bridge = new NativeDungeonClient(
@@ -151,6 +174,8 @@ public sealed partial class NetworkAdapterService
             session.NativeDungeonDungeon = nativeDungeon;
             session.NativeDungeonStage = nativeStage;
             session.NativeDungeonLogicalDifficulty = nativeLogicalDifficulty;
+            session.NativeCoupleStartRequested = false;
+            session.NativeCoupleIdentityPublished = false;
             ResetNativeDungeonContinuationRoom(session);
             _log($"NativeDungeon selected ready-room tuple: character={session.Character?.Id ?? 0} selectors={nativeHdIndex}/{nativeEpisode}/{nativeDungeon}/{nativeStage}/{nativeLogicalDifficulty}");
         }
@@ -159,6 +184,19 @@ public sealed partial class NetworkAdapterService
             session.LastReportedPositionX = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(18, 2));
             session.LastReportedPositionY = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(20, 2));
             session.HasReportedDungeonPosition = true;
+        }
+        if (opcode == 0xCF77 && frame.Length == 16
+            && TryParseDungeonQuickSelection(frame.AsSpan(8), out var quickMode,
+                out var quickHd, out var quickEpisode, out var quickDungeon, out var quickDifficulty)
+            && quickMode is not 20 && quickDifficulty <= 2
+            && !session.NativeDungeonSelectionValid)
+        {
+            session.NativeDungeonSelectionValid = true;
+            session.NativeDungeonHdIndex = quickHd;
+            session.NativeDungeonEpisode = quickEpisode;
+            session.NativeDungeonDungeon = quickDungeon;
+            session.NativeDungeonStage = 0;
+            session.NativeDungeonLogicalDifficulty = DecodeDungeonLogicalDifficulty(quickDungeon, 0, quickDifficulty);
         }
         // CF83 mode is the proven selector: mode1 is the service-egg/CF95
         // path; mode0 is the Hans/F104 path and its second WORD is the price.
@@ -185,9 +223,17 @@ public sealed partial class NetworkAdapterService
             await HandleNativeDungeonStageRecordsAsync(frame, session, token);
             return true;
         }
+        if (opcode == 0xC587 && frame.Length != 8)
+            return true;
+        if (session.NativeDungeonDeathLatched && opcode is 0xCF93 or 0xCF9B or 0xD034)
+            return true;
+        if (opcode == 0xCF93 && !IsNativeDungeonRecoveryActive(session))
+            return true;
         bool dungeonOpcode = opcode is >= 0xCF00 and <= 0xD03F or 0xC587 or 0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640;
         if (dungeonOpcode)
         {
+            if (IsNativePartyContinuationTeardown(session, opcode))
+                return true;
             if (ShouldConsumeNativeDungeonContinuationLeave(
                     session.NativeDungeonNextTransitionAuthorized,
                     session.NativeDungeonTownTransitionAuthorized,
@@ -236,10 +282,12 @@ public sealed partial class NetworkAdapterService
             }
             else if (opcode == 0xCF8B)
             {
+
                 // A reset is not a free-standing worker command: consume
                 // malformed, repeated and pre-settlement requests here.
                 if (!PrepareNativeDungeonRevivalTransition(session, frame))
                 {
+                    ReleaseNativePartyContinuationReservation(session);
                     _log("NativeDungeon reset ignored outside an armed settlement action");
                     return true;
                 }
@@ -264,6 +312,7 @@ public sealed partial class NetworkAdapterService
             }
             else if (opcode == 0xCF7F)
             {
+                session.NativeCoupleStartRequested = true;
                 if (TryBeginNativeDungeonRevivalBattle(session, frame))
                     ArmNativeDungeonCombatResources(session);
                 session.NativeDungeonNextTransitionAuthorized = false;
@@ -272,9 +321,16 @@ public sealed partial class NetworkAdapterService
 
             if (opcode is 0xCF87 or 0xCF8B or 0xD034 or 0xCF93 or 0xCF95 or 0xCF83 or 0xCF9B or 0xCF1D)
             {
-                await CommitNativeCheckpointAsync(
-                    session, frame, token,
-                    persistSettlementRank: ShouldPersistNativeDungeonSettlement(opcode, session.NativeDungeonDeathLatched));
+                try
+                {
+                    await CommitNativeCheckpointAsync(
+                        session, frame, token,
+                        persistSettlementRank: ShouldPersistNativeDungeonSettlement(opcode, session.NativeDungeonDeathLatched));
+                }
+                finally
+                {
+                    if (opcode == 0xCF8B) ReleaseNativePartyContinuationReservation(session);
+                }
                 if (opcode == 0xCF87)
                     session.NativeDungeonSettlementAwaitingAction = true;
             }
@@ -590,8 +646,12 @@ public sealed partial class NetworkAdapterService
         Span<ushort> members = stackalloc ushort[3];
         for (var index = 0; index < count; index++)
         {
-            var uid = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(12 + index * 0x34, 2));
-            if (uid == 0 || members[..index].Contains(uid)) return false;
+            var offset = 12 + index * 0x34;
+            var uid = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(offset, 2));
+            if (uid == 0 || members[..index].Contains(uid)
+                || frame[offset + 0x0B] > DungeonRewardPolicy.ClearRatingS
+                || BinaryPrimitives.ReadUInt32LittleEndian(frame.Slice(offset + 0x1C, 4)) > int.MaxValue)
+                return false;
             members[index] = uid;
         }
         for (var index = 0; index < count; index++)
@@ -889,8 +949,17 @@ public sealed partial class NetworkAdapterService
         bool persistSettlementRank = false)
     {
         if (session.NativeDungeon is null || session.NativeCheckpoint is null || session.Character is null) return;
-        var exchange = await CommitNativeCheckpointCapturedAsync(
-            session, frame, token, persistSettlementRank);
+        NativeDungeonExchangeResult exchange;
+        try
+        {
+            exchange = await CommitNativeCheckpointCapturedAsync(
+                session, frame, token, persistSettlementRank);
+        }
+        catch
+        {
+            ClearNativePartyContinuation(session);
+            throw;
+        }
         foreach (var response in exchange.Frames)
             await HandleNativeWorkerFrameAsync(session, response, session.NativeBattleEpoch, token);
     }
@@ -907,10 +976,23 @@ public sealed partial class NetworkAdapterService
         // the selection tuple; the result belongs to the completed stage.
         var pendingRanking = GetPendingNativeDungeonRanking(session);
         var progressionBefore = session.Character;
-        var exchange = await session.NativeDungeon.ExchangeCapturedAsync(frame, null, token);
+        await RefreshCoupleBenefitsAsync(session, token);
         var requestOpcode = frame is { Length: >= 8 }
             ? BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2))
             : (ushort)0;
+        var continuationPeers = requestOpcode == 0xCF8B ? ArmNativePartyContinuation(session, frame) : [];
+        NativeDungeonExchangeResult exchange;
+        try
+        {
+            exchange = await session.NativeDungeon.ExchangeCapturedAsync(frame, null, token);
+        }
+        catch
+        {
+            CancelNativePartyContinuation(session, continuationPeers);
+            throw;
+        }
+        foreach (var response in exchange.Frames)
+            await ApplyNativeCoupleExperienceAsync(session, response, token);
         exchange = new NativeDungeonExchangeResult(
             exchange.State,
             FilterNativeDungeonCheckpointFrames(requestOpcode, exchange.Frames));
@@ -942,12 +1024,15 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonStage = nextStage;
                 session.NativeDungeonLogicalDifficulty = nextLogicalDifficulty;
                 acceptedDungeonTransition = true;
+                session.NativeCoupleStartRequested = false;
+                session.NativeCoupleIdentityPublished = false;
                 _log($"NativeDungeon effective tuple advanced: old={previousTuple} new={session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{nextDungeon}/{nextStage}/{nextLogicalDifficulty} via=CF8B/CF8C");
                 break;
             }
         }
-        if (!acceptedDungeonTransition && deathRetryTransition)
+        if (!acceptedDungeonTransition && requestOpcode == 0xCF8B)
         {
+            CancelNativePartyContinuation(session, continuationPeers);
             session.NativeDungeonNextTransitionAuthorized = false;
             session.NativeDungeonSettlementAwaitingAction = true;
             _log($"NativeDungeon death settlement retry rejected: character={session.Character.Id}; result action remains available");
@@ -964,13 +1049,14 @@ public sealed partial class NetworkAdapterService
             session.NativeBattleAttackMode = session.NativeBattleResources?.AttackMode;
             _log($"NativeDungeon death settlement retry accepted: character={session.Character.Id} tuple={session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{session.NativeDungeonDungeon}/{session.NativeDungeonStage}/{session.NativeDungeonLogicalDifficulty}");
         }
+        using var resourceCommit = await LockNativeDungeonResourcesAsync(session, token);
         var next = exchange.State;
         session.NativeBattleResources = MergeNativeDungeonRevivalResources(
             session.NativeBattleResources, session.NativeCheckpoint, next,
             requestOpcode, session.NativeDungeonDeathLatched);
         session.NativeBattleResources = MergeNativeDungeonQuickItemResources(
             session.NativeBattleResources, frame, exchange.Frames,
-            GetSceneEntityId(session.Character));
+            checked((ushort)session.NativeCheckpoint.Get(4)));
         session.NativeBattleResources?.ApplyTo(next);
         NativeDungeonSettlementRecord? settlement = pendingRanking;
         if (requestOpcode == 0xCF87 && session.NativeDungeonSelectionValid
@@ -981,9 +1067,6 @@ public sealed partial class NetworkAdapterService
             {
                 if (!TryReadNativeDungeonSettlementFrame(
                         response, memberUid, out var rating, out var score, out var experienceAward))
-                    continue;
-                if (rating > 0 && !session.NativeDungeonDeathLatched
-                    && !TryReadNativeDungeonStageRecordScore(response, out _))
                     continue;
                 if (session.NativeDungeonDeathLatched) { rating = 0; experienceAward = 0; }
                 settlement = new NativeDungeonSettlementRecord(
@@ -1019,11 +1102,14 @@ public sealed partial class NetworkAdapterService
         session.NativeCheckpoint = next;
         File.Delete(journal);
         await RefreshSessionCharacterAsync(session, token);
+        resourceCommit.Dispose(); // Publication and quest work do not hold the resource commit gate.
         if (settlement is { Rating: > 0 } completed && persistSettlementRank && !session.NativeDungeonDeathLatched)
         {
             session.QuestClearEpisode = completed.Episode;
             session.QuestClearDifficulty = completed.LogicalDifficulty;
             session.QuestClearDungeonBit = completed.Dungeon + completed.Stage == 3 ? 3 : completed.Dungeon;
+            await RecordMentorshipClearAsync(session, GetNativeMentorshipSettlementKey(session),
+                session.QuestClearEpisode, session.QuestClearDungeonBit, true, token);
             var questProgress = await EvaluateSessionQuestsAsync(
                 session, token, cleared: true, checked((uint)Math.Max(0, completed.Score)),
                 GetEquippedPetItemCode(session.Character), bossDefeated: true);
@@ -1040,6 +1126,31 @@ public sealed partial class NetworkAdapterService
         return exchange;
     }
 
+    private void RememberNativeDungeonPersonalSettlement(ConnectionSession session, byte[] response)
+    {
+        // A valid personal award remains authoritative when the team result
+        // cannot enter the leaderboard. Keep deferred and captured results on
+        // the same receipt rather than letting ranking eligibility hide EXP.
+        if (!session.NativeDungeonSettlementAwaitingAction || session.NativeDungeonDeathLatched
+            || !session.NativeDungeonSelectionValid || !session.OnlineTracked
+            || session.Character is null || session.NativeCheckpoint is null
+            || !TryReadNativeDungeonSettlementFrame(response,
+                checked((ushort)session.NativeCheckpoint.Get(4)), out var rating, out var score,
+                out var experienceAward) || rating == 0)
+            return;
+        var memo = _nativeDungeonRankings.GetOrCreateValue(session);
+        lock (memo)
+        {
+            BindNativeDungeonRankingMemo(session, memo);
+            if (memo.Committed is not null || memo.Pending is not null) return;
+            memo.Pending = new NativeDungeonSettlementRecord(
+                session.NativeDungeonHdIndex, session.NativeDungeonEpisode, session.NativeDungeonDungeon,
+                session.NativeDungeonStage, session.NativeDungeonLogicalDifficulty, rating, score,
+                StageRecordScore: null, CharacterExperienceAward: experienceAward,
+                SettlementId: NativeDungeonSettlementId(session));
+        }
+    }
+
     private async Task HandleNativeWorkerFrameAsync(
         ConnectionSession session,
         byte[] response,
@@ -1053,7 +1164,11 @@ public sealed partial class NetworkAdapterService
             _log($"NativeDungeon stale worker frame suppressed: frameEpoch={battleEpoch} activeEpoch={session.NativeBattleEpoch}");
             return;
         }
+        await ObserveNativeDungeonQuickItemResourcesAsync(session, response, battleEpoch, token);
         var responseOpcode = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6, 2));
+        if (responseOpcode == 0xC588)
+            return;
+        ObserveNativePartyContinuation(session, response);
         if (session.NativeDungeonNextTransitionAuthorized
             && responseOpcode == 0xCF71 && response.Length == 0xB8
             && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(4, 2)) == response.Length)
@@ -1078,6 +1193,7 @@ public sealed partial class NetworkAdapterService
             return;
         }
         ObserveNativeDungeonCombatStart(session, response);
+        await PatchNativeCoupleFrameAsync(session, response, token);
         await PatchNativeReadyRoomRankFrameAsync(session, response, token);
         if (session.NativeBattleResources is { } actorResources
             && session.Character is { } actorCharacter
@@ -1150,10 +1266,12 @@ public sealed partial class NetworkAdapterService
         {
             if (!session.NativeDungeonSettlementAwaitingAction || session.NativeCheckpoint is null
                 || !TryReadNativeDungeonSettlementFrame(response, checked((ushort)session.NativeCheckpoint.Get(4)),
-                    out var settlementRating, out _, out _)
-                || (settlementRating > 0 && !session.NativeDungeonDeathLatched
-                    && !TryReadNativeDungeonStageRecordScore(response, out _))) return;
+                    out _, out _, out _)) return;
+            // A teammate's low rating must not hide this member's result.
+            // Leaderboard eligibility is independent of result publication.
+            await ApplyNativeCoupleExperienceAsync(session, response, token);
             RememberNativeDungeonRanking(session, response);
+            RememberNativeDungeonPersonalSettlement(session, response);
             await CommitNativeDungeonDeferredSettlementAsync(session, response, token);
             NormalizeNativeDungeonPublishedSettlement(session, response);
         }
@@ -1434,6 +1552,7 @@ public sealed partial class NetworkAdapterService
     {
         if (session.NativeDungeon is null)
         {
+            ClearNativePartyContinuation(session);
             if (boundary == BattleResourceBoundary.TownReturn && session.Character is { } townCharacter)
                 session.NonCombatResourceSnapshot = ResolveInventoryVitals(townCharacter,
                     session.NativeBattleResources ?? session.NonCombatResourceSnapshot);
@@ -1462,6 +1581,7 @@ public sealed partial class NetworkAdapterService
         }
         finally
         {
+            ClearNativePartyContinuation(session);
             if (!BattleResourceSnapshotPolicy.CarriesAcross(boundary)) { session.PendingBattleResourceSnapshot = null; session.NativeBattleResources = null; session.NativeBattleAttackMode = null; }
             session.NativeForwarding = false;
             ResetNativeDungeonContinuationRoom(session);

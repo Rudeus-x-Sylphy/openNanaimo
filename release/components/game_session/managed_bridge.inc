@@ -1,9 +1,10 @@
 #ifndef NANAIMO_MANAGED_BRIDGE_INC
 #define NANAIMO_MANAGED_BRIDGE_INC
 /* Loopback worker protocol, v1. Offsets are payload-relative and little endian.
-   F100 imports a 5120-byte state; F101 snapshots; F102 replies.
+   F100 imports a 5124-byte state; F101 snapshots; F102 replies.
    Combat packets and dungeon state machines remain in gs_runtime.inc. */
-#define MANAGED_STATE_SIZE 5120u
+#define MANAGED_STATE_SIZE 5124u
+#define MANAGED_COUPLE_PARTNER_OFFSET 5120u
 #define MANAGED_PET_LEVEL_OFFSET 152u
 #define MANAGED_PET_EXPERIENCE_OFFSET 156u
 #define MANAGED_PET_COMBAT_LEVEL_OFFSET 5116u
@@ -35,7 +36,7 @@ static int managed_bridge_import(const unsigned char*p){
     struct progression_dungeon_grade_state grade;
     if(managed_get(p,0)!=1u||n>255u||nl<1u||nl>14u||managed_get(p,4)<1u||managed_get(p,4)>65535u)return 0;
     if(managed_get(p,8)!=progression_progression_level_for_exp(managed_get(p,12)))return 0;
-    if(!managed_bridge_resources_valid(p))return 0;
+    if(!managed_bridge_resources_valid(p)||managed_get(p,MANAGED_COUPLE_PARTNER_OFFSET)>65535u)return 0;
     same_progression_actor=g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS
         &&g_multi_conn[g_multi_current].uid==managed_get(p,4)&&g_stable_name_len==nl;
     for(i=0;same_progression_actor&&i<nl;i++)if(g_stable_name[i]!=p[96+i])same_progression_actor=0u;
@@ -45,6 +46,9 @@ static int managed_bridge_import(const unsigned char*p){
     g_stable_level=managed_get(p,8);g_stable_gender=managed_get(p,92);
     g_profile_hp_max=managed_get(p,16);g_profile_hp_current=managed_get(p,20);
     g_profile_mp_max=managed_get(p,24);g_profile_mp_current=managed_get(p,28);
+    if(g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS){unsigned ring=managed_get(p,3996);g_managed_couple_ring[g_multi_current]=(ring>=43000001u&&ring<=43000003u)?ring:0u;g_managed_couple_partner[g_multi_current]=managed_get(p,MANAGED_COUPLE_PARTNER_OFFSET);g_managed_couple_partner_order[g_multi_current]=0u;
+        for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].uid==g_managed_couple_partner[g_multi_current])g_managed_couple_partner_order[g_multi_current]=g_multi_conn[i].join_order;
+        if(!same_progression_actor||!g_multi_conn[g_multi_current].room_active){g_couple_resource_sync_order[g_multi_current]=0u;}}
     g_profile_coin_hans=(stable_u64)managed_get(p,32)|((stable_u64)managed_get(p,36)<<32);
     g_profile_nana_cash=(stable_u64)managed_get(p,40)|((stable_u64)managed_get(p,44)<<32);
     g_stable_pet=managed_get(p,68);g_stable_pet_age_a=managed_get(p,72);g_stable_pet_age_b=managed_get(p,76);
@@ -61,7 +65,7 @@ static int managed_bridge_import(const unsigned char*p){
     }
     g_profile_quickbar_current=managed_get(p,136);
     if(g_multi_current>=0)g_multi_conn[g_multi_current].uid=managed_get(p,4);
-    g_skill_progress_loaded=0;skill_progress_load();g_skill_progress_sp=managed_get(p,48);
+    g_skill_progress_loaded=0;skill_progress_load();g_skill_progress_sp=managed_get(p,48);g_skill_progress_sp_meat=managed_get(p,5112)>>16;
     g_skill_progress_slots[0]=managed_get(p,52);g_skill_progress_slots[1]=managed_get(p,56);
     for(i=0;i<16u;i++)g_skill_progress_grade[i]=(unsigned char)managed_get(p,160+i*4);
     g_card_loaded=0;card_db_load();for(i=0;i<CARD_COUNT;i++)g_card_counts[i]=managed_get(p,272+i*4);
@@ -83,7 +87,7 @@ static int managed_bridge_import(const unsigned char*p){
         /* Active-room refreshes preserve this battle's settlement receipt. */
         if(!same_progression_actor||!g_multi_conn[g_multi_current].room_active)g_progression_settlement_epoch_valid[g_multi_current]=0u;
         memset(g_managed_clear_masks[g_multi_current],0,60);
-        if(managed_get(p,5112)==1u)memcpy(g_managed_clear_masks[g_multi_current],p+5052,60);
+        if((managed_get(p,5112)&0xFFFFu)==1u)memcpy(g_managed_clear_masks[g_multi_current],p+5052,60);
     }
     return skill_progress_save()&&card_db_save()&&card_synth_items_save()&&quickbar_save()&&quickbar_handles_save()&&quickbar_entitlement_save()&&game_session_revival_save()&&progression_progression_save_name(g_stable_name,g_stable_name_len,&st);
 }
@@ -103,6 +107,8 @@ static void managed_bridge_snapshot(SOCKET c,unsigned status){
     managed_put(p,88,g_stable_name_len);managed_put(p,92,g_stable_gender);memcpy(p+96,g_stable_name,g_stable_name_len);
     managed_put(p,MANAGED_PET_LEVEL_OFFSET,g_managed_pet_level);managed_put(p,MANAGED_PET_EXPERIENCE_OFFSET,g_managed_pet_experience);
     managed_put(p,MANAGED_PET_COMBAT_LEVEL_OFFSET,g_managed_pet_combat_level);
+    managed_put(p,MANAGED_COUPLE_PARTNER_OFFSET,(g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS)?g_managed_couple_partner[g_multi_current]:0u);
+    managed_put(p,3996,(g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS)?g_managed_couple_ring[g_multi_current]:0u);
     /* A snapshot is a complete next F100 seed: dropping gems here would make
        an otherwise legal current>base state lose its effective cap on reentry. */
     pet_crafting_pet_state_load();
@@ -120,11 +126,23 @@ static void managed_bridge_snapshot(SOCKET c,unsigned status){
     managed_put(p,5032,grade.frontier.hd);managed_put(p,5036,grade.frontier.episode);
     managed_put(p,5040,grade.frontier.dungeon);managed_put(p,5044,grade.frontier.difficulty);managed_put(p,5048,grade.frontier.stage_index);
     if(g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS)memcpy(p+5052,g_managed_clear_masks[g_multi_current],60);
-    managed_put(p,5112,1u);
+    managed_put(p,5112,1u|((g_skill_progress_sp_meat&0xFFFFu)<<16));
     sendbuf(c,packet,MANAGED_STATE_SIZE+8);
+}
+/* F106 updates only live couple metadata. In particular it cannot import an
+   old inventory, resource value, maximum, progression or revival balance. */
+static int managed_bridge_couple_metadata(const unsigned char*p){
+    int src=g_multi_current,i;unsigned uid=managed_get(p,0),ring=managed_get(p,4),partner=managed_get(p,8),order=0u;
+    if(src<0||src>=MULTI_MAX_PLAYERS||!g_multi_conn[src].active||uid!=g_multi_conn[src].uid||partner>65535u)return 0;
+    if(ring&&(ring<43000001u||ring>43000003u))return 0;
+    if(!ring||partner==uid)partner=0u;
+    for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].uid==partner)order=g_multi_conn[i].join_order;
+    g_managed_couple_ring[src]=ring;g_managed_couple_partner[src]=partner;g_managed_couple_partner_order[src]=order;
+    return 1;
 }
 static int managed_bridge_handle(SOCKET c,int type,int len,const unsigned char*f){
     if(type==0xF100){managed_bridge_snapshot(c,len==MANAGED_STATE_SIZE+8?managed_bridge_import(f+8):0u);return 1;}
+    if(type==0xF106){if(len==20)managed_bridge_couple_metadata(f+8);return 1;}
     if(type==0xF101){managed_bridge_snapshot(c,len==8?1u:0u);return 1;}
     return 0;
 }

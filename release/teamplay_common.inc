@@ -283,6 +283,7 @@ static void teamplay_send_initial_roster_states_current(void){}
 #include "components/combat_attribution/monster_hp_resource_policy.inc"
 #include "components/flight_items/protocol_overrides.inc"
 #include "components/multiplayer/room_policy.inc"
+#include "components/multiplayer/party_continuation_runtime.inc"
 #include "components/combat_economy/combat_economy_policy.inc"
 #include "components/multiplayer_combat/player_combat_stats.inc"
 #include "components/stage_damage/damage_runtime.inc"

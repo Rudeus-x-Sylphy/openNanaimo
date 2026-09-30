@@ -14,6 +14,7 @@ public sealed class NativeDungeonClient : IAsyncDisposable
     private Task? _reader;
     private TaskCompletionSource<NativeDungeonState>? _pending;
     private List<byte[]>? _capturedFrames;
+    private IOException? _readFailure;
     public NativeDungeonClient(Func<byte[], Task> receive, int port = 52050) { _receive = receive; _port = port; }
     public async Task ConnectAsync(CancellationToken token)
     {
@@ -47,16 +48,42 @@ public sealed class NativeDungeonClient : IAsyncDisposable
         await _gate.WaitAsync(token);
         try
         {
+            ThrowIfUnavailable();
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token, _stop.Token);
             timeout.CancelAfter(TimeSpan.FromSeconds(10));
             var pending = new TaskCompletionSource<NativeDungeonState>(TaskCreationOptions.RunContinuationsAsynchronously);
             _pending = pending;
             _capturedFrames = captureFrames ? [] : null;
-            var stream = _client.GetStream();
-            if (request is not null) await stream.WriteAsync(request, timeout.Token);
-            await stream.WriteAsync(Frame(import is null ? (ushort)0xF101 : (ushort)0xF100, import?.Bytes ?? []), timeout.Token);
-            var state = await pending.Task.WaitAsync(timeout.Token);
-            return new NativeDungeonExchangeResult(state, _capturedFrames?.ToArray() ?? []);
+            try
+            {
+                var stream = _client.GetStream();
+                if (request is not null) await stream.WriteAsync(request, timeout.Token);
+                await stream.WriteAsync(Frame(import is null ? (ushort)0xF101 : (ushort)0xF100, import?.Bytes ?? []), timeout.Token);
+                var state = await pending.Task.WaitAsync(timeout.Token);
+                return new NativeDungeonExchangeResult(state, _capturedFrames?.ToArray() ?? []);
+            }
+            catch (Exception) when (Volatile.Read(ref _readFailure) is not null)
+            {
+                ThrowIfUnavailable();
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                // Exchanges have no transaction identifier. Retire the transport
+                // after an abandoned reply so it cannot satisfy a later request.
+                FailTransport(new IOException($"Native worker state exchange abandoned on port {_port}.",
+                    token.IsCancellationRequested ? new OperationCanceledException(token)
+                        : new TimeoutException("Native worker state exchange exceeded ten seconds.")));
+                if (token.IsCancellationRequested) throw;
+                ThrowIfUnavailable();
+                throw;
+            }
+            catch (Exception ex) when (ex is IOException or SocketException)
+            {
+                FailTransport(new IOException($"Native worker state exchange failed on port {_port}: {ex.Message}", ex));
+                ThrowIfUnavailable();
+                throw;
+            }
         }
         finally
         {
@@ -68,11 +95,26 @@ public sealed class NativeDungeonClient : IAsyncDisposable
     public async Task SendAsync(byte[] frame, CancellationToken token)
     {
         await _gate.WaitAsync(token);
-        try { await _client.GetStream().WriteAsync(frame, token); }
+        try { ThrowIfUnavailable(); await _client.GetStream().WriteAsync(frame, token); }
         finally { _gate.Release(); }
+    }
+    private void ThrowIfUnavailable()
+    {
+        if (Volatile.Read(ref _readFailure) is { } failure)
+            throw new IOException(failure.Message, failure);
+        if (_stop.IsCancellationRequested)
+            throw new ObjectDisposedException(nameof(NativeDungeonClient));
+    }
+    private void FailTransport(IOException failure)
+    {
+        Interlocked.CompareExchange(ref _readFailure, failure, null);
+        _pending?.TrySetException(Volatile.Read(ref _readFailure)!);
+        _client.Close();
+        _stop.Cancel();
     }
     private async Task ReadLoopAsync(CancellationToken token)
     {
+        ushort lastOpcode = 0;
         try
         {
             var stream = _client.GetStream();
@@ -83,6 +125,7 @@ public sealed class NativeDungeonClient : IAsyncDisposable
                 if (length < 8 || length > 8192) throw new InvalidDataException("Invalid native worker frame.");
                 var frame = new byte[length]; header.CopyTo(frame, 0); await stream.ReadExactlyAsync(frame.AsMemory(8), token);
                 var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6));
+                lastOpcode = opcode;
                 if (opcode == 0xF102)
                     _pending?.TrySetResult(new NativeDungeonState(frame[8..]));
                 else if (_capturedFrames is { } captured)
@@ -93,8 +136,9 @@ public sealed class NativeDungeonClient : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _pending?.TrySetException(ex);
-            await _stop.CancelAsync();
+            if (!token.IsCancellationRequested)
+                FailTransport(new IOException(
+                    $"Native worker receive failed on port {_port}; last opcode=0x{lastOpcode:X4}: {ex.Message}", ex));
         }
     }
     public async ValueTask DisposeAsync()

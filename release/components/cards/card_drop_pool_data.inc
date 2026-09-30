@@ -67,10 +67,10 @@ static const unsigned char card_drop_pool_default_grades[285] = {
     4u,1u,1u,2u,2u,3u,2u,1u,2u,4u,4u,1u,2u,2u,1u,4u,2u,1u,2u,4u,2u,3u,1u,1u,
     2u,1u,3u,2u,4u,2u,1u,2u,4u,2u,1u,4u,1u,2u,1u,3u,2u,2u,2u,4u,3u,2u,2u,1u,
     4u,1u,2u,1u,4u,4u,1u,1u,2u,2u,1u,4u,4u,1u,2u,4u,2u,3u,4u,2u,1u,2u,2u,1u,
-    2u,1u,1u,5u,5u,5u,5u,5u,5u,5u,5u,5u,5u,1u,1u,2u,2u,1u,2u,2u,2u,2u,1u,1u,
-    2u,2u,2u,2u,1u,2u,1u,1u,2u,2u,1u,2u,2u,2u,2u,1u,2u,1u,3u,2u,2u,2u,1u,1u,
-    1u,2u,2u,1u,2u,2u,2u,2u,1u,1u,2u,1u,2u,2u,2u,2u,1u,1u,2u,2u,2u,2u,1u,2u,
-    1u,1u,1u,2u,2u,1u,2u,1u,1u,2u,2u,1u,2u,1u,1u,1u,2u,1u,2u,2u,1u,
+    2u,1u,1u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,
+    2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,
+    2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,
+    2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,2u,
 };
 
 static const struct card_drop_pool_monster card_drop_pool_monsters[CARD_DROP_POOL_MONSTER_COUNT] = {

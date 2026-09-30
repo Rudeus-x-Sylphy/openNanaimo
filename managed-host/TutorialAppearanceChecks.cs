@@ -137,9 +137,11 @@ internal static class TutorialAppearanceChecks
         var character = (CharacterRecord)Get(session, "Character")!;
         byte[] before = character.Appearance.ToArray();
         byte[] payload = LoginPayload(session);
+        byte[] expected = DatabaseService.NormalizeAppearanceForGender(before, gender, 0);
+        expected.AsSpan(24, 8).Clear();
         Check(payload.Length == 60 && payload[5] == character.DungeonGrade && payload[6] == 0
-            && payload.AsSpan(24, 36).SequenceEqual(DatabaseService.CreateDefaultAppearance(gender)),
-            "271A main-guide uses gender-correct starter appearance, no custom slots or pet");
+            && payload.AsSpan(24, 36).SequenceEqual(expected),
+            "271A main-guide uses the persisted avatar, withholding only tutorial-unsafe effect/pet slots");
         Check(character.Appearance.SequenceEqual(before), "login projection does not mutate session character");
     }
 

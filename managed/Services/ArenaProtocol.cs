@@ -70,9 +70,11 @@ internal readonly record struct ArenaGameEventRequest(
         // before it emits event 20/30. Bytes +4..+11 in those requests are
         // constructor padding and must never be interpreted as damage.
         20 or 30 => 30,
-        // The retail 40/50 constructors place this value at request +8,
-        // while their object selector and UID remain at +4 and +6.
-        40 or 50 => ValueAt8,
+        // Arena player-target events do not carry a numeric damage field.
+        // Their remaining words are object metadata; using them as damage
+        // makes the first hit consume an unrelated large value. Keep the
+        // arena policy bounded and stable for every player-target hit.
+        40 or 50 => 10,
         _ => 0
     };
 }
@@ -88,7 +90,7 @@ internal static class ArenaProtocol
     public const ushort DefaultArenaMap = 0;
     public const int PvpResultRecordLength = 56;
     public const int GameEventRequestLength = 20;
-    public const int GameEventResponseLength = 28;
+    public const int GameEventResponseLength = 36;
 
     private static readonly Encoding Gbk = CreateGbkEncoding();
 
@@ -364,6 +366,9 @@ internal static class ArenaProtocol
             BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(24, 2), request.ObjectUid);
         }
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(26, 2), request.TargetDamage);
+        // D010 consumers read the fixed tail conditionally. Keep the complete
+        // initialized response length even when no optional fields are used.
+        payload.AsSpan(28).Clear();
         return payload;
     }
 

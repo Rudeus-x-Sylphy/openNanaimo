@@ -72,3 +72,6 @@ __pycache__/
 *.pcap
 *.pcapng
 *.dmp
+
+# Local adapter profile database and native state
+/adapter-data/

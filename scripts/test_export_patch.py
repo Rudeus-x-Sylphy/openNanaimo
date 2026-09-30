@@ -122,6 +122,14 @@ class ExportPatchTests(unittest.TestCase):
         with self.assertRaises(patch.ExportError):
             patch.payload_policy("adapter/nanaimo_adapter.exe", "source")
 
+    def test_social_launcher_is_a_runtime_script_with_private_copies_excluded(self):
+        patch.payload_policy("gui_launcher/start_social_client.ps1", "runtime")
+        with self.assertRaises(patch.ExportError):
+            patch.payload_policy("gui_launcher/start_social_client.ps1", "source")
+        for layer in patch.LAYERS:
+            with self.subTest(layer=layer), self.assertRaises(patch.ExportError):
+                patch.payload_policy("Game.openNanaimo-social-001.exe", layer)
+
     def test_traversal_and_windows_aliases(self):
         bad = ("../a", "/a", "a/../b", "a//b", "a/./b", "a\\b", "X:" + "/a", "a:b",
                "a/CON.txt", "a/LPT1", "a/trailing.", "a/space ", "a/*.py", "a/?.py", "//host/share")

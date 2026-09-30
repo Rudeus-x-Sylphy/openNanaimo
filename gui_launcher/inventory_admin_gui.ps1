@@ -5,9 +5,20 @@ function Invoke-InventoryAdminPython([string[]]$Arguments) {
     $root=Split-Path $PSScriptRoot -Parent
     $bundled=Join-Path $root 'tools\python\python.exe'
     $py=if(Test-Path -LiteralPath $bundled){$bundled}else{(Get-Command python -ErrorAction Stop).Source}
-    $output=& $py -B @Arguments 2>&1
-    if($LASTEXITCODE-ne0){throw (($output|Out-String).Trim())}
-    return ($output|Out-String).Trim()
+    # Windows PowerShell 5.1 turns redirected stderr into NativeCommandError.
+    # Capture the entire child result before applying the caller's Stop policy.
+    $savedPreference=$ErrorActionPreference
+    try{
+        $ErrorActionPreference='Continue'
+        $output=@(& $py -B @Arguments 2>&1)
+        $exitCode=$LASTEXITCODE
+    }finally{$ErrorActionPreference=$savedPreference}
+    $text=($output|ForEach-Object{$_.ToString()})-join"`r`n"
+    if($exitCode-ne0){throw "Inventory backend failed (exit=$exitCode):`r`n$text"}
+    return $text.Trim()
+}
+function Remove-InventoryAdminKnownCards($Cards,$KnownCards){
+    foreach($row in @($Cards)){if($KnownCards.ContainsKey([uint32]$row.code)){[void]$Cards.Remove($row)}}
 }
 function New-InventoryAdminGrid($parent,[int]$x,[int]$y,[int]$w,[int]$h){
     $g=New-Object Windows.Forms.DataGridView;$g.Location=New-Object Drawing.Point($x,$y);$g.Size=New-Object Drawing.Size($w,$h);$g.ReadOnly=$true;$g.AllowUserToAddRows=$false;$g.AllowUserToDeleteRows=$false;$g.MultiSelect=$false;$g.SelectionMode='FullRowSelect';$g.AutoSizeColumnsMode='DisplayedCells';$g.RowHeadersVisible=$false;$parent.Controls.Add($g);return $g
@@ -18,16 +29,65 @@ function Set-InventoryAdminFilter($view,[string]$q,[string[]]$columns){$q=Escape
 function Get-InventoryAdminCode($grid){if(-not$grid.CurrentRow){return 0};try{return [uint32]$grid.CurrentRow.Cells['ID'].Value}catch{return 0}}
 function Write-InventoryAdminTempJson($value){$p=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo-inventory-'+[guid]::NewGuid().ToString('N')+'.json');[IO.File]::WriteAllText($p,($value|ConvertTo-Json -Depth 8 -Compress),(New-Object Text.UTF8Encoding($false)));return $p}
 
+function Get-InventoryAdminProfiles($Root,$Backend,$DefaultNameHex){$arguments=@($Backend,'profiles','--root',$Root);if($DefaultNameHex){$arguments+=@('--name-hex',$DefaultNameHex)};$profiles=Invoke-InventoryAdminPython $arguments|ConvertFrom-Json;foreach($profile in $profiles){$profile}}
+function Read-InventoryAdminSnapshot($Root,$Backend,$Profile){$tmp=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo-snapshot-'+[guid]::NewGuid().ToString('N')+'.json');$args=@($Backend,'snapshot','--root',$Root,'--name-hex',[string]$Profile.name_hex,'--output',$tmp);if($null-ne$Profile.character_id-and[string]$Profile.character_id){$args+=@('--character-id',[string]$Profile.character_id)};try{[void](Invoke-InventoryAdminPython $args);return (Get-Content -LiteralPath $tmp -Raw -Encoding UTF8|ConvertFrom-Json)}finally{Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue}}
+
+function Import-InventoryAdminSnapshot($Context,$Snap,$Profile){foreach($list in @($Context.Clothing,$Context.Pets,$Context.GameItems,$Context.Furniture,$Context.Cards)){$list.Clear()};foreach($x in $Snap.clothing){[void]$Context.Clothing.Add([uint32]$x)};foreach($x in $Snap.pets){[void]$Context.Pets.Add([pscustomobject]@{code=[uint32]$x.code;upgrade_material=[uint32]$x.upgrade_material;gems=@([uint32]$x.gems[0],[uint32]$x.gems[1],[uint32]$x.gems[2])})};foreach($x in $Snap.game_items){[void]$Context.GameItems.Add([pscustomobject]@{code=[uint32]$x.code;count=[uint32]$x.count;carrier=[string]$x.carrier})};foreach($x in $Snap.furniture){[void]$Context.Furniture.Add([pscustomobject]@{code=[uint32]$x.code;index=[uint16]$x.index;placed=[bool]$x.placed;type=[byte]$x.type;x=[int16]$x.x;y=[int16]$x.y;z=[byte]$x.z;mirror=[byte]$x.mirror})};foreach($x in $Snap.cards){[void]$Context.Cards.Add([pscustomobject]@{code=[uint32]$x.code;count=[uint32]$x.count})};$Context.NameHex=[string]$Snap.name_hex;if(-not$Context.NameHex){$Context.NameHex=[string]$Profile.name_hex};$Context.CharacterId=if($null-ne$Snap.character_id){[long]$Snap.character_id}elseif($null-ne$Profile.character_id-and[string]$Profile.character_id){[long]$Profile.character_id}else{$null};$Context.SelectedProfile=$Profile;$Context.AccountSuffix=[string]$Snap.account_suffix;$Context.Shop=$Snap.shop;$Context.Profile=if($Snap.profile){$Snap.profile}else{[pscustomobject]@{character_name=[string]$Profile.character_name;gender=$Profile.gender;level=$Profile.level;hp_max=$(if($null-ne$Profile.hp_max){$Profile.hp_max}else{1500});mp_max=$(if($null-ne$Profile.mp_max){$Profile.mp_max}else{100});coin=[uint64]$Snap.shop.coin;nana_point=[uint64]$Snap.shop.nana;attack=$(if($null-ne$Profile.attack){$Profile.attack}else{0});defense=$(if($null-ne$Profile.defense){$Profile.defense}else{0})}}}
+function Set-InventoryAdminProfile($Context,$Profile){if($null-eq$Profile){return};if($Context.SelectedProfile-and[string]$Context.NameHex-ieq[string]$Profile.name_hex-and[string]$Context.CharacterId-eq[string]$Profile.character_id){return};Import-InventoryAdminSnapshot $Context (Read-InventoryAdminSnapshot $Context.Root $Context.Backend $Profile) $Profile;if($Context.RefreshAll){&$Context.RefreshAll};$Context.ProfileSelectorSync=$true;try{foreach($selector in $Context.ProfileSelectors){for($i=0;$i-lt$selector.Items.Count;$i++){if([string]$selector.Items[$i].name_hex-eq$Context.NameHex-and[string]$selector.Items[$i].character_id-eq[string]$Context.CharacterId){$selector.SelectedIndex=$i;break}}}}finally{$Context.ProfileSelectorSync=$false};if($Context.ProfileChanged){&$Context.ProfileChanged $Context}}
+function Add-InventoryAdminProfileSelector($Parent,$Context){$label=New-Object Windows.Forms.Label;$label.Text='用户档案';$label.Location='910,0';$label.Size='165,14';$label.ForeColor=[Drawing.Color]::DarkGreen;$Parent.Controls.Add($label);$combo=New-Object Windows.Forms.ComboBox;$combo.Location='910,16';$combo.Size='165,28';$combo.DropDownStyle='DropDownList';$combo.DropDownWidth=360;$combo.DisplayMember='display';foreach($profile in $Context.Profiles){[void]$combo.Items.Add($profile)};$Parent.Controls.Add($combo);[void]$Context.ProfileSelectors.Add($combo);$combo.add_SelectedIndexChanged(({if(-not$Context.ProfileSelectorSync-and$combo.SelectedIndex-ge0){Set-InventoryAdminProfile $Context $combo.SelectedItem}}).GetNewClosure());for($i=0;$i-lt$combo.Items.Count;$i++){if([string]$combo.Items[$i].name_hex-eq$Context.NameHex-and[string]$combo.Items[$i].character_id-eq[string]$Context.CharacterId){$combo.SelectedIndex=$i;break}}}
+function ConvertTo-InventoryAdminNameHex([string]$Name){
+    $Name=$Name.Trim();$encoding=[Text.Encoding]::GetEncoding(936,(New-Object Text.EncoderExceptionFallback),(New-Object Text.DecoderExceptionFallback));$bytes=$encoding.GetBytes($Name)
+    if($bytes.Length-lt1-or$bytes.Length-gt14-or(@($Name.ToCharArray()|Where-Object{[char]::IsControl($_)}).Count-gt0)){throw '用户名/角色显示名必须是1到14个GBK字节且不能包含控制字符。'}
+    return (($bytes|ForEach-Object{$_.ToString('X2')})-join '')
+}
+function Find-InventoryAdminProfile($Context,[string]$Identity){
+    $needle=$Identity.Trim();if(-not$needle){return $null};$hex='';try{$hex=ConvertTo-InventoryAdminNameHex $needle}catch{}
+    # Account identity wins over a different character with the same display name.
+    $account=@($Context.Profiles|Where-Object{[string]$_.username -ieq $needle})
+    if($account.Count){return $account[0]}
+    return @($Context.Profiles|Where-Object{
+        ([string]$_.character_name -ieq $needle) -or ([string]$_.display -ieq $needle) -or ($hex -and [string]$_.name_hex -ieq $hex)
+    })[0]
+}
+function Add-InventoryAdminProfileToSelectors($Context,$Profile){
+    $Context.Profiles=@($Context.Profiles+$Profile);$Context.ProfileSelectorSync=$true
+    try{foreach($selector in $Context.ProfileSelectors){$exists=$false;foreach($item in $selector.Items){if([string]$item.name_hex-ieq[string]$Profile.name_hex-and[string]$item.character_id-eq[string]$Profile.character_id){$exists=$true;break}};if(-not$exists){[void]$selector.Items.Add($Profile)}}}finally{$Context.ProfileSelectorSync=$false}
+}
+function Ensure-InventoryAdminProfile($Context,[string]$Identity){
+    $needle=$Identity.Trim();if(-not$needle){throw '用户名/角色显示名不能为空。'}
+    $existing=Find-InventoryAdminProfile $Context $needle
+    if($existing-and$null-ne$existing.account_id-and$null-eq$existing.character_id){throw 'Selected account has no character yet.'}
+    if($existing){
+        Set-InventoryAdminProfile $Context $existing
+        if($null-eq$Context.CharacterId){
+            $path=Join-Path $Context.Root ('inventory_admin_profiles/'+$Context.NameHex+'.json')
+            if(-not(Test-Path -LiteralPath $path)){
+                [void](Save-InventoryAdminState $Context $Context.NameHex $Context.Shop $Context.Profile -Clone)
+            }
+        }
+        return $Context.SelectedProfile
+    }
+    $targetHex=ConvertTo-InventoryAdminNameHex $needle
+    if(-not$Context.SelectedProfile){throw '没有可复制的当前用户档案。'}
+    $shop=$Context.Shop;if(-not$shop){$shop=[pscustomobject]@{coin=0;nana=0;equipped=@(0,0,0,0,0);effect=0;selected_pet=0}}
+    $profile=$Context.Profile;if(-not$profile){$profile=[pscustomobject]@{hp_max=1500;mp_max=100;coin=[uint64]$shop.coin;nana_point=[uint64]$shop.nana;attack=0;defense=0}}
+    [void](Save-InventoryAdminState $Context $targetHex $shop $profile -Clone)
+    $new=[pscustomobject]@{account_id=$null;username=$needle;account_online=$false;character_id=$null;character_name=$needle;character_online=$false;gender=$profile.gender;level=$profile.level;hp_max=$profile.hp_max;mp_max=$profile.mp_max;attack=$profile.attack;defense=$profile.defense;coin=$shop.coin;nana=$shop.nana;name_hex=$targetHex;display=$needle;source='sidecar'}
+    Add-InventoryAdminProfileToSelectors $Context $new
+    Set-InventoryAdminProfile $Context $new
+    return $Context.SelectedProfile
+}
+
 function Initialize-InventoryAdmin($Tabs,[string]$Root,[string]$NameHex){
     $backend=Join-Path $Root 'gui_launcher\inventory_admin_backend.py';if(-not(Test-Path -LiteralPath $backend)){throw '物品管理后端不存在。'}
     $dataDir=Join-Path $Root 'gui_launcher\data';$needed='inventory_clothing.json','inventory_pets.json','inventory_pet_gems.json','inventory_game_items.json','inventory_furniture.json','inventory_cards.json';foreach($n in $needed){if(-not(Test-Path -LiteralPath (Join-Path $dataDir $n))){throw "物品目录缺失: $n"}}
-    $tmp=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo-snapshot-'+[guid]::NewGuid().ToString('N')+'.json')
-    try{[void](Invoke-InventoryAdminPython @($backend,'snapshot','--root',$Root,'--name-hex',$NameHex,'--output',$tmp));$snap=Get-Content -LiteralPath $tmp -Raw -Encoding UTF8|ConvertFrom-Json}finally{Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue}
+    $profiles=@(Get-InventoryAdminProfiles $Root $backend $NameHex);if(-not$profiles.Count){throw '没有可管理的用户档案。'}
+    $initial=@($profiles|Where-Object{[string]$_.name_hex-eq$NameHex})[0];if(-not$initial){$initial=$profiles[0]}
+    $snap=Read-InventoryAdminSnapshot $Root $backend $initial
     $catalog=@{clothing=Get-Content -LiteralPath (Join-Path $dataDir 'inventory_clothing.json') -Raw -Encoding UTF8|ConvertFrom-Json;pets=Get-Content -LiteralPath (Join-Path $dataDir 'inventory_pets.json') -Raw -Encoding UTF8|ConvertFrom-Json;gems=Get-Content -LiteralPath (Join-Path $dataDir 'inventory_pet_gems.json') -Raw -Encoding UTF8|ConvertFrom-Json;game=Get-Content -LiteralPath (Join-Path $dataDir 'inventory_game_items.json') -Raw -Encoding UTF8|ConvertFrom-Json;furniture=Get-Content -LiteralPath (Join-Path $dataDir 'inventory_furniture.json') -Raw -Encoding UTF8|ConvertFrom-Json;cards=Get-Content -LiteralPath (Join-Path $dataDir 'inventory_cards.json') -Raw -Encoding UTF8|ConvertFrom-Json}
-    $ctx=[pscustomobject]@{Root=$Root;Backend=$backend;AccountSuffix=[string]$snap.account_suffix;Catalog=$catalog;Clothing=New-Object Collections.ArrayList;Pets=New-Object Collections.ArrayList;GameItems=New-Object Collections.ArrayList;Furniture=New-Object Collections.ArrayList;Cards=New-Object Collections.ArrayList;CardAddAllButton=$null;CardRemoveAllButton=$null;Shop=$snap.shop;RefreshAll=$null}
-    foreach($x in $snap.clothing){[void]$ctx.Clothing.Add([uint32]$x)};foreach($x in $snap.pets){[void]$ctx.Pets.Add([pscustomobject]@{code=[uint32]$x.code;upgrade_material=[uint32]$x.upgrade_material;gems=@([uint32]$x.gems[0],[uint32]$x.gems[1],[uint32]$x.gems[2])})};foreach($x in $snap.game_items){[void]$ctx.GameItems.Add([pscustomobject]@{code=[uint32]$x.code;count=[uint32]$x.count;carrier=[string]$x.carrier})};foreach($x in $snap.furniture){[void]$ctx.Furniture.Add([pscustomobject]@{code=[uint32]$x.code;index=[uint16]$x.index;placed=[bool]$x.placed;type=[byte]$x.type;x=[int16]$x.x;y=[int16]$x.y;z=[byte]$x.z;mirror=[byte]$x.mirror})};foreach($x in $snap.cards){[void]$ctx.Cards.Add([pscustomobject]@{code=[uint32]$x.code;count=[uint32]$x.count})}
+    $ctx=[pscustomobject]@{Root=$Root;Backend=$backend;AccountSuffix='';NameHex='';CharacterId=$null;SelectedProfile=$null;Profiles=@($profiles);ProfileSelectors=New-Object Collections.ArrayList;ProfileSelectorSync=$false;ProfileChanged=$null;Profile=$null;Catalog=$catalog;Clothing=New-Object Collections.ArrayList;Pets=New-Object Collections.ArrayList;GameItems=New-Object Collections.ArrayList;Furniture=New-Object Collections.ArrayList;Cards=New-Object Collections.ArrayList;CardAddAllButton=$null;CardRemoveAllButton=$null;Shop=$null;RefreshAll=$null}
+    Import-InventoryAdminSnapshot $ctx $snap $initial
     $byCloth=@{};foreach($x in $catalog.clothing){$byCloth[[uint32]$x.id]=$x};$byPet=@{};foreach($x in $catalog.pets){$byPet[[uint32]$x.id]=$x};$byGem=@{};foreach($x in $catalog.gems){$byGem[[uint32]$x.id]=$x};$byGame=@{};foreach($x in $catalog.game){$byGame[[uint32]$x.id]=$x};$byFurniture=@{};foreach($x in $catalog.furniture){$byFurniture[[uint32]$x.id]=$x};$byCard=@{};foreach($x in $catalog.cards){$byCard[[uint32]$x.id]=$x}
-
     # Clothing box
     $tab=New-Object Windows.Forms.TabPage;$tab.Text='衣物箱管理';$Tabs.TabPages.Add($tab);$ownedSearch=New-Object Windows.Forms.TextBox;$ownedSearch.Location='15,15';$ownedSearch.Size='350,26';$tab.Controls.Add($ownedSearch);$allSearch=New-Object Windows.Forms.TextBox;$allSearch.Location='555,15';$allSearch.Size='350,26';$tab.Controls.Add($allSearch)
     $ownedGrid=New-InventoryAdminGrid $tab 15 50 430 650;$allGrid=New-InventoryAdminGrid $tab 555 50 525 650
@@ -39,11 +99,13 @@ function Initialize-InventoryAdmin($Tabs,[string]$Root,[string]$NameHex){
 
     # Pet box + gems/attributes
     $petTab=New-Object Windows.Forms.TabPage;$petTab.Text='宠物箱管理';$Tabs.TabPages.Add($petTab)
-    $ph1=New-Object Windows.Forms.Label;$ph1.Text='① 已有宠物：先选中要查看或编辑的宠物';$ph1.Location='10,6';$ph1.Size='340,22';$ph1.Font=New-Object Drawing.Font('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold);$petTab.Controls.Add($ph1)
-    $ph2=New-Object Windows.Forms.Label;$ph2.Text='② 全量宠物：筛选后加入左侧宠物箱';$ph2.Location='375,6';$ph2.Size='340,22';$ph2.Font=New-Object Drawing.Font('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold);$petTab.Controls.Add($ph2)
-    $ph3=New-Object Windows.Forms.Label;$ph3.Text='③ 全量宝石：选中后装入左侧宠物';$ph3.Location='740,6';$ph3.Size='340,22';$ph3.Font=New-Object Drawing.Font('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold);$petTab.Controls.Add($ph3)
-    $ps1=New-Object Windows.Forms.TextBox;$ps1.Location='10,30';$ps1.Size='280,25';$petTab.Controls.Add($ps1);$ps2=New-Object Windows.Forms.TextBox;$ps2.Location='375,30';$ps2.Size='280,25';$petTab.Controls.Add($ps2);$gs=New-Object Windows.Forms.TextBox;$gs.Location='740,30';$gs.Size='280,25';$petTab.Controls.Add($gs)
-    $pg1=New-InventoryAdminGrid $petTab 10 62 340 463;$pg2=New-InventoryAdminGrid $petTab 375 62 340 463;$gg=New-InventoryAdminGrid $petTab 740 62 340 463
+    # Reserve the top row for the shared profile selector; keep the grid bottom aligned with the other admin controls.
+    $petContentTop=51;$petSearchTop=75;$petGridTop=107;$petGridHeight=418
+    $ph1=New-Object Windows.Forms.Label;$ph1.Text='① 已有宠物：先选中要查看或编辑的宠物';$ph1.Location=New-Object Drawing.Point(10,$petContentTop);$ph1.Size='340,22';$ph1.Font=New-Object Drawing.Font('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold);$petTab.Controls.Add($ph1)
+    $ph2=New-Object Windows.Forms.Label;$ph2.Text='② 全量宠物：筛选后加入左侧宠物箱';$ph2.Location=New-Object Drawing.Point(375,$petContentTop);$ph2.Size='340,22';$ph2.Font=New-Object Drawing.Font('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold);$petTab.Controls.Add($ph2)
+    $ph3=New-Object Windows.Forms.Label;$ph3.Text='③ 全量宝石：选中后装入左侧宠物';$ph3.Location=New-Object Drawing.Point(740,$petContentTop);$ph3.Size='340,22';$ph3.Font=New-Object Drawing.Font('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold);$petTab.Controls.Add($ph3)
+    $ps1=New-Object Windows.Forms.TextBox;$ps1.Location=New-Object Drawing.Point(10,$petSearchTop);$ps1.Size='280,25';$petTab.Controls.Add($ps1);$ps2=New-Object Windows.Forms.TextBox;$ps2.Location=New-Object Drawing.Point(375,$petSearchTop);$ps2.Size='280,25';$petTab.Controls.Add($ps2);$gs=New-Object Windows.Forms.TextBox;$gs.Location=New-Object Drawing.Point(740,$petSearchTop);$gs.Size='280,25';$petTab.Controls.Add($gs)
+    $pg1=New-InventoryAdminGrid $petTab 10 $petGridTop 340 $petGridHeight;$pg2=New-InventoryAdminGrid $petTab 375 $petGridTop 340 $petGridHeight;$gg=New-InventoryAdminGrid $petTab 740 $petGridTop 340 $petGridHeight
     $pt1=New-InventoryAdminTable @('名称','ID','基础攻击','有效攻击','HP加成','MP加成','槽位','宝石1','宝石2','宝石3');$pv1=New-Object Data.DataView;$pv1.Table=$pt1;$pg1.DataSource=$pv1;$pt2=New-InventoryAdminTable @('名称','ID','基础攻击','槽位','等级需求');foreach($x in $catalog.pets){[void]$pt2.Rows.Add($x.name,[string]$x.id,[string]$x.base_attack,[string]$x.slot_count,[string]$x.level_requirement)};$pv2=New-Object Data.DataView;$pv2.Table=$pt2;$pg2.DataSource=$pv2;$gt=New-InventoryAdminTable @('名称','ID','效果','攻击','攻击%','HP','MP');foreach($x in $catalog.gems){[void]$gt.Rows.Add($x.name,[string]$x.id,$x.effect,[string]$x.attack_flat,[string]$x.attack_percent,[string]$x.hp,[string]$x.mp)};$gv=New-Object Data.DataView;$gv.Table=$gt;$gg.DataSource=$gv
     $petDetail=New-Object Windows.Forms.Label;$petDetail.Location='15,615';$petDetail.Size='1040,45';$petDetail.Font=New-Object Drawing.Font('Microsoft YaHei UI',10);$petTab.Controls.Add($petDetail)
     $refreshPets={ $selected=Get-InventoryAdminCode $pg1;$pt1.Rows.Clear();foreach($r in $ctx.Pets){$p=$byPet[[uint32]$r.code];if(-not$p){continue};$flat=0;$pct=0;$hp=0;$mp=0;$names=@();foreach($g in $r.gems){$d=$byGem[[uint32]$g];if($d){$flat+=[int]$d.attack_flat;$pct+=[int]$d.attack_percent;$hp+=[int]$d.hp;$mp+=[int]$d.mp;$names+=$d.name}else{$names+='-'}};$base=[int]$p.base_attack;$eff=$base+$flat+[math]::Floor($base*$pct/100);[void]$pt1.Rows.Add($p.name,[string]$p.id,[string]$base,[string]$eff,[string]$hp,[string]$mp,[string]$p.slot_count,$names[0],$names[1],$names[2])};if($selected){foreach($row in $pg1.Rows){if([uint32]$row.Cells['ID'].Value-eq$selected){$row.Selected=$true;$pg1.CurrentCell=$row.Cells[0];break}}} }.GetNewClosure();&$refreshPets
@@ -74,17 +136,19 @@ function Initialize-InventoryAdmin($Tabs,[string]$Root,[string]$NameHex){
     # Cards
     $cTab=New-Object Windows.Forms.TabPage;$cTab.Text='卡片管理';$Tabs.TabPages.Add($cTab);$cos=New-Object Windows.Forms.TextBox;$cos.Location='15,15';$cos.Size='350,26';$cTab.Controls.Add($cos);$cas=New-Object Windows.Forms.TextBox;$cas.Location='555,15';$cas.Size='350,26';$cTab.Controls.Add($cas);$cog=New-InventoryAdminGrid $cTab 15 50 430 650;$cag=New-InventoryAdminGrid $cTab 555 50 525 650
     $cot=New-InventoryAdminTable @('名称','ID','数量');$cov=New-Object Data.DataView;$cov.Table=$cot;$cog.DataSource=$cov;$cat=New-InventoryAdminTable @('名称','ID','说明','效果','产物');foreach($x in $catalog.cards){[void]$cat.Rows.Add($x.name,[string]$x.id,$x.description,$x.effect,$x.result)};$cav=New-Object Data.DataView;$cav.Table=$cat;$cag.DataSource=$cav
-    $refreshCards={ $cot.Rows.Clear();foreach($r in $ctx.Cards){$x=$byCard[[uint32]$r.code];[void]$cot.Rows.Add($(if($x){$x.name}else{"CARD-$($r.code)"}),[string]$r.code,[string]$r.count)} }.GetNewClosure();&$refreshCards
-    $cqty=New-Object Windows.Forms.NumericUpDown;$cqty.Minimum=1;$cqty.Maximum=255;$cqty.Value=1;$cqty.Location='465,235';$cqty.Size='75,28';$cTab.Controls.Add($cqty);$ca=New-Object Windows.Forms.Button;$ca.Text='← 增加';$ca.Location='460,275';$ca.Size='80,34';$cTab.Controls.Add($ca);$caa=New-Object Windows.Forms.Button;$caa.Text='全部添加';$caa.Location='450,375';$caa.Size='95,34';$cTab.Controls.Add($caa);$ctx.CardAddAllButton=$caa;$car=New-Object Windows.Forms.Button;$car.Text='全部移除';$car.Location='450,425';$car.Size='95,34';$car.BackColor=[Drawing.Color]::MistyRose;$cTab.Controls.Add($car);$ctx.CardRemoveAllButton=$car;$cd=New-Object Windows.Forms.Button;$cd.Text='减少/删除 →';$cd.Location='450,325';$cd.Size='95,34';$cTab.Controls.Add($cd);$cos.add_TextChanged(({Set-InventoryAdminFilter $cov $cos.Text @('名称','ID')}).GetNewClosure());$cas.add_TextChanged(({Set-InventoryAdminFilter $cav $cas.Text @('名称','ID','说明','效果','产物')}).GetNewClosure())
-    $ca.add_Click(({ $c=Get-InventoryAdminCode $cag;if(-not$c){return};$r=@($ctx.Cards|Where-Object{$_.code-eq$c})[0];if($r){$r.count=[math]::Min(255,[int]$r.count+[int]$cqty.Value)}else{[void]$ctx.Cards.Add([pscustomobject]@{code=$c;count=[uint32]$cqty.Value})};&$refreshCards}).GetNewClosure());$caa.add_Click(({ $existing=@{};foreach($r in $ctx.Cards){$existing[[uint32]$r.code]=$r};foreach($x in $catalog.cards){$c=[uint32]$x.id;$r=$existing[$c];if($r){$r.count=[math]::Min(255,[int]$r.count+[int]$cqty.Value)}else{$r=[pscustomobject]@{code=$c;count=[uint32]$cqty.Value};[void]$ctx.Cards.Add($r);$existing[$c]=$r}};&$refreshCards}).GetNewClosure());$car.add_Click(({$ctx.Cards.Clear();&$refreshCards}).GetNewClosure());$cd.add_Click(({ $c=Get-InventoryAdminCode $cog;if(-not$c){return};$r=@($ctx.Cards|Where-Object{$_.code-eq$c})[0];if($r){$r.count=[int]$r.count-[int]$cqty.Value;if($r.count-le0){[void]$ctx.Cards.Remove($r)};&$refreshCards}}).GetNewClosure())
+    $refreshCards={ $cot.Rows.Clear();foreach($r in $ctx.Cards){$x=$byCard[[uint32]$r.code];[void]$cot.Rows.Add($(if($x){$x.name}else{"未收录卡片（只读保留）-$($r.code)"}),[string]$r.code,[string]$r.count)} }.GetNewClosure();&$refreshCards
+    $cqty=New-Object Windows.Forms.NumericUpDown;$cqty.Minimum=1;$cqty.Maximum=255;$cqty.Value=1;$cqty.Location='465,235';$cqty.Size='75,28';$cTab.Controls.Add($cqty);$ca=New-Object Windows.Forms.Button;$ca.Text='← 增加';$ca.Location='460,275';$ca.Size='80,34';$cTab.Controls.Add($ca);$caa=New-Object Windows.Forms.Button;$caa.Text='全部添加';$caa.Location='450,375';$caa.Size='95,34';$cTab.Controls.Add($caa);$ctx.CardAddAllButton=$caa;$car=New-Object Windows.Forms.Button;$car.Text='移除已知卡';$car.Location='450,425';$car.Size='95,34';$car.BackColor=[Drawing.Color]::MistyRose;$cTab.Controls.Add($car);$ctx.CardRemoveAllButton=$car;$cd=New-Object Windows.Forms.Button;$cd.Text='减少/删除 →';$cd.Location='450,325';$cd.Size='95,34';$cTab.Controls.Add($cd);$cos.add_TextChanged(({Set-InventoryAdminFilter $cov $cos.Text @('名称','ID')}).GetNewClosure());$cas.add_TextChanged(({Set-InventoryAdminFilter $cav $cas.Text @('名称','ID','说明','效果','产物')}).GetNewClosure())
+    $ca.add_Click(({ $c=Get-InventoryAdminCode $cag;if(-not$c){return};$r=@($ctx.Cards|Where-Object{$_.code-eq$c})[0];if($r){$r.count=[math]::Min(255,[int]$r.count+[int]$cqty.Value)}else{[void]$ctx.Cards.Add([pscustomobject]@{code=$c;count=[uint32]$cqty.Value})};&$refreshCards}).GetNewClosure());$caa.add_Click(({ $existing=@{};foreach($r in $ctx.Cards){$existing[[uint32]$r.code]=$r};foreach($x in $catalog.cards){$c=[uint32]$x.id;$r=$existing[$c];if($r){$r.count=[math]::Min(255,[int]$r.count+[int]$cqty.Value)}else{$r=[pscustomobject]@{code=$c;count=[uint32]$cqty.Value};[void]$ctx.Cards.Add($r);$existing[$c]=$r}};&$refreshCards}).GetNewClosure());$car.add_Click(({Remove-InventoryAdminKnownCards $ctx.Cards $byCard;&$refreshCards}).GetNewClosure());$cd.add_Click(({ $c=Get-InventoryAdminCode $cog;if(-not$c){return};if(-not$byCard.ContainsKey([uint32]$c)){[Windows.Forms.MessageBox]::Show('该卡片未收录在编辑目录中，按原存档只读保留。','只读卡片')|Out-Null;return};$r=@($ctx.Cards|Where-Object{$_.code-eq$c})[0];if($r){$r.count=[int]$r.count-[int]$cqty.Value;if($r.count-le0){[void]$ctx.Cards.Remove($r)};&$refreshCards}}).GetNewClosure())
     $ctx.RefreshAll={&$refreshClothing;&$refreshPets;&$refreshGame;&$refreshFurniture;&$refreshCards}.GetNewClosure()
+    foreach($adminTab in @($tab,$petTab,$gameTab,$fTab,$cTab)){Add-InventoryAdminProfileSelector $adminTab $ctx}
     return $ctx
 }
 
-function Save-InventoryAdminState($Context,[string]$NameHex,$Shop){
-    $state=[ordered]@{version=1;shop=$Shop;clothing=@($Context.Clothing);pets=@($Context.Pets|ForEach-Object{[ordered]@{code=[uint32]$_.code;upgrade_material=[uint32]$_.upgrade_material;gems=@([uint32]$_.gems[0],[uint32]$_.gems[1],[uint32]$_.gems[2])}});game_items=@($Context.GameItems|ForEach-Object{[ordered]@{code=[uint32]$_.code;count=[uint32]$_.count;carrier=[string]$_.carrier}});furniture=@($Context.Furniture);cards=@($Context.Cards|ForEach-Object{[ordered]@{code=[uint32]$_.code;count=[uint32]$_.count}})}
+function Save-InventoryAdminState($Context,[string]$NameHex,$Shop,$Profile=$null,[switch]$AsSidecar,[switch]$Clone){
+    if(-not$NameHex){$NameHex=$Context.NameHex};if(-not$Profile){$Profile=$Context.Profile}
+    $state=[ordered]@{version=2;profile=$Profile;shop=$Shop;clothing=@($Context.Clothing);pets=@($Context.Pets|ForEach-Object{[ordered]@{code=[uint32]$_.code;upgrade_material=[uint32]$_.upgrade_material;gems=@([uint32]$_.gems[0],[uint32]$_.gems[1],[uint32]$_.gems[2])}});game_items=@($Context.GameItems|ForEach-Object{[ordered]@{code=[uint32]$_.code;count=[uint32]$_.count;carrier=[string]$_.carrier}});furniture=@($Context.Furniture);cards=@($Context.Cards|ForEach-Object{[ordered]@{code=[uint32]$_.code;count=[uint32]$_.count}})}
     $tmp=Write-InventoryAdminTempJson $state
-    try{$out=Invoke-InventoryAdminPython @($Context.Backend,'apply','--root',$Context.Root,'--name-hex',$NameHex,'--input',$tmp);return ($out|ConvertFrom-Json)}finally{Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue}
+    try{$command=if($Clone){'clone'}else{'apply'};$args=@($Context.Backend,$command,'--root',$Context.Root,'--name-hex',$NameHex,'--input',$tmp);if($Clone){$args+=@('--source-name-hex',$Context.NameHex);if($null-ne$Context.CharacterId){$args+=@('--source-character-id',[string]$Context.CharacterId)}};if(-not$Clone-and-not$AsSidecar-and$null-ne$Context.CharacterId){$args+=@('--character-id',[string]$Context.CharacterId)};$out=Invoke-InventoryAdminPython $args;return ($out|ConvertFrom-Json)}finally{Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue}
 }
 
 function Test-InventoryAdminInstallation([string]$Root){
