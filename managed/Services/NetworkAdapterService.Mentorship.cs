@@ -57,6 +57,7 @@ public sealed partial class NetworkAdapterService
                 != MentorshipResultCode.Success) return null;
             if (enabled) _mentorAdvertisingCharacters[actor.CharacterId] = 0;
             else _mentorAdvertisingCharacters.TryRemove(actor.CharacterId, out _);
+            await RefreshSessionCharacterAsync(session, token);
             MentorStateChanged?.Invoke();
             return BuildNativeFrame(frame, enabled ? MentorProtocol.AdvertiseResponseOpcode
                 : MentorProtocol.StopAdvertisingResponseOpcode, MentorProtocol.BuildAdvertisementResult(0), session);
@@ -335,6 +336,7 @@ public sealed partial class NetworkAdapterService
         if (verb is "advertise" or "stop")
         {
             var code = await _database.SetMentorshipAdvertisingAsync(actor, verb == "advertise", MentorshipRules, token);
+            if (code == MentorshipResultCode.Success) await RefreshSessionCharacterAsync(session, token);
             MentorStateChanged?.Invoke();
             return BuildMentorshipReply(frame, session, [$"\u5e7f\u544a\u64cd\u4f5c {code}"]);
         }

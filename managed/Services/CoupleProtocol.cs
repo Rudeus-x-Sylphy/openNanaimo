@@ -47,7 +47,7 @@ internal static class CoupleProtocol
             || !TryReadPeerName(payload, out var name)) return false;
         var item = ReadItemCode(payload);
         var slot = ReadInventorySlot(opcode, payload);
-        if (slot >= 84 || (opcode == RingRequestOpcode
+        if (slot is < InventoryIdentityMap.FirstWireIdentity or >= InventoryIdentityMap.FirstWireIdentity + InventoryIdentityMap.Capacity || (opcode == RingRequestOpcode
                 ? !CoupleBenefitPolicy.IsRingItemCode(item)
                 : !CoupleBenefitPolicy.IsSeparationItemCode(item))) return false;
         request = new Request(name, item, slot);
@@ -62,7 +62,7 @@ internal static class CoupleProtocol
         var status = ReadStatus(opcode, payload);
         var item = ReadItemCode(payload);
         var slot = ReadInventorySlot(opcode, payload);
-        if (!IsOfficialResponseStatus(status) || slot >= 84
+        if (!IsOfficialResponseStatus(status) || slot is < InventoryIdentityMap.FirstWireIdentity or >= InventoryIdentityMap.FirstWireIdentity + InventoryIdentityMap.Capacity
             || (opcode == RingResponseOpcode
                 ? !CoupleBenefitPolicy.IsRingItemCode(item)
                 : !CoupleBenefitPolicy.IsSeparationItemCode(item))) return false;

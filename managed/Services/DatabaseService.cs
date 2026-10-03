@@ -2715,6 +2715,7 @@ public sealed partial class DatabaseService
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction();
+        var inventoryBefore = await GetGameInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken);
         long normalKeys;
         long goldenKeys;
         long mysteryKeys;
@@ -2957,6 +2958,8 @@ public sealed partial class DatabaseService
             }
         }
 
+        if (!await ReindexGameQuickSlotsAfterGrantAsync(connection, transaction, characterId, inventoryBefore, cancellationToken))
+            return (false, "The inventory is full.", recipe.Output, 0, "none", 0);
         await transaction.CommitAsync(cancellationToken);
         return (true, string.Empty, recipe.Output, rewardQuantity, keyKind, keyUseCount);
     }
@@ -9171,6 +9174,7 @@ public sealed partial class DatabaseService
             }
         }
 
+        var rewardInventoryBefore = await GetGameInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken);
         foreach (var reward in itemRewards)
         {
             using var insertItem = connection.CreateCommand();
@@ -9192,6 +9196,9 @@ public sealed partial class DatabaseService
                 return new QuestTaskMutationResult(true, false, null, false, 0);
             }
         }
+
+        if (!await ReindexGameQuickSlotsAfterGrantAsync(connection, transaction, characterId, rewardInventoryBefore, cancellationToken))
+            return new QuestTaskMutationResult(true, false, null, false, 0);
 
         foreach (var reward in cardRewards)
         {
@@ -9413,7 +9420,8 @@ public sealed partial class DatabaseService
         bool completed = true,
         bool superBoss = false,
         byte clearRating = 0,
-        int? stageRecordScore = null)
+        int? stageRecordScore = null,
+        string? activitySettlementKey = null)
     {
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrWhiteSpace(sessionId)
             || hdIndex > 1
@@ -9464,6 +9472,33 @@ public sealed partial class DatabaseService
             oldMaxMp = reader.GetInt32(6);
             petVariant = reader.GetInt32(7);
             equippedPetItemCode = checked((uint)reader.GetInt64(8));
+        }
+
+        if (activitySettlementKey is not null)
+        {
+            if (string.IsNullOrWhiteSpace(activitySettlementKey) || activitySettlementKey.Length > 128)
+                return null;
+            await using var receipt = connection.CreateCommand();
+            receipt.Transaction = transaction;
+            receipt.CommandText = """
+                CREATE TABLE IF NOT EXISTS ActivityRewardReceipts (
+                    CharacterId INTEGER NOT NULL, SettlementKey TEXT NOT NULL,
+                    CharacterExperience INTEGER NOT NULL, PetExperience INTEGER NOT NULL, Hans INTEGER NOT NULL,
+                    PRIMARY KEY(CharacterId, SettlementKey));
+                INSERT OR IGNORE INTO ActivityRewardReceipts
+                    (CharacterId, SettlementKey, CharacterExperience, PetExperience, Hans)
+                VALUES($id, $key, $experience, $pet, $hans);
+                """;
+            receipt.Parameters.AddWithValue("$id", characterId);
+            receipt.Parameters.AddWithValue("$key", activitySettlementKey);
+            receipt.Parameters.AddWithValue("$experience", experienceReward);
+            receipt.Parameters.AddWithValue("$pet", petExperienceReward);
+            receipt.Parameters.AddWithValue("$hans", hansReward);
+            if (await receipt.ExecuteNonQueryAsync(cancellationToken) == 0)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return await GetCharacterByIdAsync(characterId, cancellationToken);
+            }
         }
 
         var experience = oldExperience > long.MaxValue - experienceReward

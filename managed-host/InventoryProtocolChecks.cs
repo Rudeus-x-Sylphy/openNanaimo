@@ -24,19 +24,48 @@ internal static class InventoryProtocolChecks
             "C430 contains food, both microphones and keys, not shopping coupons");
         Check(ReadCodes(coupons).SequenceEqual(new uint[] {41000001,41000501}),
             "C46A contains only NaNa-show and decoration shopping coupons");
+        Check(game[0] == 0 && BinaryPrimitives.ReadUInt16LittleEndian(coupons) == 0
+            && NetworkAdapterService.BuildPetInventoryPayload(character)[0] == 0
+            && NetworkAdapterService.BuildBoxInfoPayload(character)[1] == 0,
+            "quiet inventory snapshots keep acquisition notices clear");
+        var notices = new InventoryAcquisitionTracker();
+        notices.Seed(0xC430, [14000001u, 14000001u]);
+        Check(!notices.Observe(0xC430, [14000001u, 14000001u]), "login inventory is a baseline");
+        Check(notices.Observe(0xC430, [14000001u, 14000001u, 14000002u]), "genuine item grant sets its notice");
+        Check(!notices.Observe(0xC430, [14000001u, 14000001u, 14000002u]), "repeat refresh consumes no new acquisition edge");
+        Check(!notices.Observe(0xC430, [14000001u]), "consumption is a quiet inventory change");
+        Check(notices.Observe(0xC430, [14000001u, 14000001u]), "reacquisition of the same code sets a fresh notice");
+        Check(!notices.Observe(0xC46A, []), "empty coupons remain quiet");
+        notices.Track(0xC430, [14000001u]);
+        notices.Track(0xC430, [14000001u, 14000001u]);
+        Check(notices.Observe(0xC430, [14000001u, 14000001u]),
+            "consume then grant before reopening retains the genuine acquisition edge");
+        notices.Track(0xC430, [14000001u, 14000001u, 14000002u]);
+        notices.Track(0xC430, [14000001u, 14000001u]);
+        Check(!notices.Observe(0xC430, [14000001u, 14000001u]),
+            "consuming the pending acquisition clears its notice before reopening");
+        notices.Seed(0xC430, [14000001u, 14000001u]);
+        Check(!notices.Observe(0xC430, [14000001u, 14000001u]), "reentry starts a fresh quiet baseline");
+        foreach (var catalogPet in ShopCatalog.All.Where(item => item.Category == 15))
+        {
+            var normalized = PetProgression.NormalizeState(new PetState(catalogPet.ItemCode, 3, 3, 0, 0, 0, 0, 0, 100));
+            Check(normalized.MaximumStage <= catalogPet.PetUpgradeStage
+                && normalized.CurrentStage <= normalized.MaximumStage,
+                $"PET {catalogPet.ItemCode} stage stays inside its resource maximum");
+        }
         var identities=new InventoryIdentityMap();
         identities.Synchronize(new uint[]{14000003,14000003,14000003,14000013,14000013,14000013});
         identities.Remove(2); identities.Remove(4);
         identities.Synchronize(new uint[]{14000003,14000003,14000013,14000013});
-        Check(Enumerable.Range(0,4).Select(identities.Wire).SequenceEqual(new byte[]{0,1,3,5}),
+        Check(Enumerable.Range(0,4).Select(identities.Wire).SequenceEqual(new byte[]{1,3,5,6}),
             "deleting exact instances leaves sparse survivor wire identities unchanged");
-        Check(!identities.TryStorage(2,out _,out _) && identities.TryStorage(5,out var ordinal,out var survivor)
+        Check(!identities.TryStorage(2,out _,out _) && identities.TryStorage(6,out var ordinal,out var survivor)
             && ordinal==3 && survivor==14000013,"removed handle cannot alias a compacted survivor");
         var fullMap=new InventoryIdentityMap();
         fullMap.Synchronize(Enumerable.Repeat(14000001u,84).ToArray());
-        fullMap.Remove(0);
+        fullMap.Remove(1);
         fullMap.Synchronize(Enumerable.Repeat(14000001u,84).ToArray());
-        Check(fullMap.Wire(0)==1 && fullMap.Wire(83)==0,
+        Check(fullMap.Wire(0)==2 && fullMap.Wire(83)==1,
             "reused lower wire handle appends after same-code survivors instead of changing their storage ordinal");
         var petCharacter=new CharacterRecord { PetInventoryExpansionExpires=2099123123,
             Items=ShopCatalog.All.Where(x=>x.Category==15).Take(30).Select(x=>new CharacterItemRecord
@@ -49,9 +78,9 @@ internal static class InventoryProtocolChecks
             "PET expansion does not overwrite the 29th owned pet expiration");
         var interior=NetworkAdapterService.BuildInteriorInventoryPayload(10,
             new CharacterRecord { InteriorInventoryExpansionExpires=2099123123 });
-        Check(interior.Length==1020 && interior[1]==1 && interior[2]==6
+        Check(interior.Length==1020 && interior[1]==0 && interior[2]==6
             && BinaryPrimitives.ReadUInt32LittleEndian(interior.AsSpan(1016))==2099123123,
-            "C40A separates completion and expansion mode and writes the interior expiry tail");
+            "C40A separates acquisition notice and expansion mode and writes the interior expiry tail");
         var bare=new CharacterRecord { Id=5001, Gender=1, PetVariant=1, Appearance=new byte[36] };
         var appearance=NetworkAdapterService.BuildUserDataChangePayload(bare);
         Check(BinaryPrimitives.ReadUInt16LittleEndian(appearance)==WireIdentityAllocator.GetSceneEntityId(bare.Id)
@@ -142,12 +171,33 @@ internal static class InventoryProtocolChecks
                 return await (Task<byte[]?>)dispatch.Invoke(service,
                     [frame,opcode,"WorldAdapter","127.0.0.1:30000","127.0.0.1",session,CancellationToken.None])!;
             }
+            var finalize = typeof(NetworkAdapterService).GetMethod("FinalizeNativeFramesForSend", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var necessity = NativeDungeonClient.Frame(0xC355, new byte[256]);
+            finalize.Invoke(service, [necessity, session]);
+            foreach (ushort opcode in new ushort[] { 0xC430, 0xC46A, 0xC379 })
+            {
+                var quiet = NativeDungeonClient.Frame(opcode, new byte[316]);
+                quiet[opcode == 0xC379 ? 9 : 8] = 1;
+                finalize.Invoke(service, [quiet, session]);
+                Check(quiet[opcode == 0xC379 ? 9 : 8] == 0,
+                    "final writer clears inherited inventory notice without acquisition " + opcode);
+            }
             var list = await Dispatch(0xC469, []);
             Check(list is not null && ReadCodes(list[8..]).SequenceEqual(new uint[] {41000001}), "coupon dispatch routes the correct family");
             // The following checks exercise the current request and response layouts.
             var use = new byte[8];
             BinaryPrimitives.WriteUInt32LittleEndian(use,42000001);
-            BinaryPrimitives.WriteUInt32LittleEndian(use.AsSpan(4),2);
+            var initialGame = (await Dispatch(0xC42F, []))!;
+            ushort Identity(byte[] inventory, uint code, bool last = false)
+            {
+                var rows = Enumerable.Range(0, BinaryPrimitives.ReadUInt16LittleEndian(inventory.AsSpan(10)))
+                    .Where(index => BinaryPrimitives.ReadUInt32LittleEndian(inventory.AsSpan(12 + index * 8)) == code);
+                var index = last ? rows.Last() : rows.First();
+                return BinaryPrimitives.ReadUInt16LittleEndian(inventory.AsSpan(16 + index * 8));
+            }
+            var firstFoodIdentity = Identity(initialGame, 14000001);
+            var secondFoodIdentity = Identity(initialGame, 14000001, true);
+            BinaryPrimitives.WriteUInt32LittleEndian(use.AsSpan(4),Identity(initialGame,42000001));
             var mikeFrames = InventoryDiscardChecks.SplitFrames((await Dispatch(0xC46D,use))!);
             var mike = mikeFrames[0];
             Check(mikeFrames.Count == 2 && BinaryPrimitives.ReadUInt32LittleEndian(mike.AsSpan(8))==1
@@ -168,12 +218,12 @@ internal static class InventoryProtocolChecks
                 "revival bundle activation immediately removes the egg row and credits persistent uses");
             var food=new byte[8];
             BinaryPrimitives.WriteUInt32LittleEndian(food,14000001);
-            BinaryPrimitives.WriteUInt16LittleEndian(food.AsSpan(4),1);
+            BinaryPrimitives.WriteUInt16LittleEndian(food.AsSpan(4),secondFoodIdentity);
             BinaryPrimitives.WriteUInt16LittleEndian(food.AsSpan(6),0x2D7D);
             var eaten=await Dispatch(0xC43D,food);
             Check(eaten is {Length:32} && BinaryPrimitives.ReadUInt16LittleEndian(eaten.AsSpan(6))==0xC43E
                 && BinaryPrimitives.ReadUInt32LittleEndian(eaten.AsSpan(8))==200
-                && BinaryPrimitives.ReadUInt16LittleEndian(eaten.AsSpan(16))==1
+                && BinaryPrimitives.ReadUInt16LittleEndian(eaten.AsSpan(16))==secondFoodIdentity
                 && BinaryPrimitives.ReadUInt16LittleEndian(eaten.AsSpan(26))==0xC43F,
                 "town food request accepts a nonzero tail and emits C43E then C43F");
             var afterFood=(await database.GetCharacterAsync(accountId))!;
@@ -187,9 +237,9 @@ internal static class InventoryProtocolChecks
             Check(replay is {Length:20} && BinaryPrimitives.ReadUInt32LittleEndian(replay.AsSpan(8))==0,
                 "consumed food identity replay cannot consume a same-code survivor");
             var remaining=await Dispatch(0xC42F,[]);
-            Check(remaining is not null && BinaryPrimitives.ReadUInt16LittleEndian(remaining.AsSpan(16))==0,
+            Check(remaining is not null && BinaryPrimitives.ReadUInt16LittleEndian(remaining.AsSpan(16))==firstFoodIdentity,
                 "request-driven C430 retains the first bottle identity after eating the second");
-            BinaryPrimitives.WriteUInt16LittleEndian(food.AsSpan(4),0);
+            BinaryPrimitives.WriteUInt16LittleEndian(food.AsSpan(4),firstFoodIdentity);
             var dropped=await Dispatch(0xC433,food);
             Check(dropped is {Length:20} && BinaryPrimitives.ReadUInt32LittleEndian(dropped.AsSpan(8))==200,
                 "game-item discard succeeds independently of food completion");
@@ -283,6 +333,35 @@ internal static class InventoryProtocolChecks
                 Check(duplicate[8]==1,"new transport request with a consumed expansion identity is refused");
             }
 
+            await using (var spSeed = connection.CreateCommand())
+            {
+                spSeed.CommandText = """
+                    UPDATE Characters SET SkillPoints=10,FreeMagicExpansionExpires=2099123123 WHERE Id=$id;
+                    INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt) VALUES($id,12000001,2,'seed');
+                    """;
+                spSeed.Parameters.AddWithValue("$id", characterId);
+                await spSeed.ExecuteNonQueryAsync();
+            }
+            Set(session, "Character", (await database.GetCharacterAsync(accountId))!);
+            var spRequest = new byte[20];
+            BinaryPrimitives.WriteUInt16LittleEndian(spRequest, 30);
+            BinaryPrimitives.WriteUInt32LittleEndian(spRequest.AsSpan(4), 0xFFF0BDC1u);
+            var spControl = control;
+            var spFirst = (await Dispatch(0xC3ED, spRequest))!;
+            var spRetry = (await Dispatch(0xC3ED, spRequest, spControl))!;
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(spFirst.AsSpan(8)) == 600
+                && BinaryPrimitives.ReadUInt16LittleEndian(spFirst.AsSpan(12)) == 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(spRetry.AsSpan(8)) == 600
+                && BinaryPrimitives.ReadUInt16LittleEndian(spRetry.AsSpan(12)) == 0
+                && (await database.GetCharacterAsync(accountId))!.SkillPoints == 11,
+                "SP completion uses dedicated success; replay preserves one card debit and one visible credit");
+            var spSecond = (await Dispatch(0xC3ED, spRequest))!;
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(spSecond.AsSpan(8)) == 600
+                && BinaryPrimitives.ReadUInt16LittleEndian(spSecond.AsSpan(12)) == 1
+                && (await database.GetCharacterAsync(accountId))!.SkillPoints == 12
+                && (await database.GetCharacterCardsAsync(characterId)).All(card => card.CardCode != 12000001),
+                "each new valid SP synthesis deterministically credits its face value and consumes one card");
+
             var worn=new byte[36];
             BinaryPrimitives.WriteUInt32LittleEndian(worn.AsSpan(20),10150103);
             BinaryPrimitives.WriteUInt32LittleEndian(worn.AsSpan(24),10160017);
@@ -306,7 +385,7 @@ internal static class InventoryProtocolChecks
                 if(opcode==0xC47F)changedAppearance=committed.AsSpan(cursor,length).ToArray();
                 cursor+=length;
             }
-            Check(opcodes.SequenceEqual(new ushort[]{0xC47E,0xC47F,0xC379,0xC3CC,0xC44C})
+            Check(opcodes.SequenceEqual(new ushort[]{0xC47E,0xC47F,0xC379,0xC3CC,0xC44C,0xC430})
                 && changedAppearance is not null
                 && BinaryPrimitives.ReadUInt32LittleEndian(changedAppearance.AsSpan(36))==0
                 && BinaryPrimitives.ReadUInt32LittleEndian(changedAppearance.AsSpan(40))==0,

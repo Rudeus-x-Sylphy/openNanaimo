@@ -254,6 +254,16 @@ public sealed partial class DatabaseService
         var qualification = await ReadMentorshipQualificationAsync(connection, transaction, actor, policy, token);
         if (!qualification.SessionOwned) return MentorshipResultCode.Unauthorized;
         if (enabled && !qualification.CanAdvertise) return MentorshipResultCode.Ineligible;
+        var advertising = await MentorshipScalarAsync(connection, transaction,
+            "SELECT COUNT(*) FROM CharacterMentorAdvertisements WHERE CharacterId = $id AND IsAdvertising = 1",
+            token, ("$id", actor.CharacterId)) != 0;
+        if (enabled && !advertising)
+        {
+            using var debit = MentorshipCommand(connection, transaction,
+                "UPDATE Characters SET Hans = Hans - 100 WHERE Id = $id AND Hans >= 100",
+                ("$id", actor.CharacterId));
+            if (await debit.ExecuteNonQueryAsync(token) != 1) return MentorshipResultCode.Ineligible;
+        }
         using var command = MentorshipCommand(connection, transaction, """
             INSERT INTO CharacterMentorAdvertisements(CharacterId, IsAdvertising, UpdatedAt)
             VALUES($id, $enabled, $now) ON CONFLICT(CharacterId) DO UPDATE SET

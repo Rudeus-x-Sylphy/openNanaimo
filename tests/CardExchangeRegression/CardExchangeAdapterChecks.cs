@@ -1,4 +1,4 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
 using System.Collections;
 using OpenNanaimo.Adapter.Models;
 using OpenNanaimo.Adapter.Services;
@@ -13,7 +13,9 @@ internal static partial class Program
         var seller = await f.CreateAdapterSessionAsync(f.Seller);
         var buyer = await f.CreateAdapterSessionAsync(f.Buyer);
         var request = Registration(2, 7);
+        var uiClock = System.Diagnostics.Stopwatch.StartNew();
         var reg = await DispatchAsync(service, seller, 0xC5B4, request, 11);
+        Check(uiClock.ElapsedMilliseconds >= 40, "registration yields for the client mutation dialog state");
         Check(reg is not null && reg.Length == 56 && Opcode(reg) == 0xC5B5 && Code(reg) == 1,
             "adapter registration uses expected result layout");
         var number = BinaryPrimitives.ReadUInt32LittleEndian(reg!.AsSpan(16));
@@ -48,12 +50,19 @@ internal static partial class Program
         search.AsSpan(8, 16).Fill(65);
         Check(Code((await DispatchAsync(service, buyer, 0xC5B0, search, 15))!) == 14,
             "adapter malformed seller browse gives defined refusal");
+        var ownQuery = new byte[24]; ownQuery[0] = 1;
+        await DispatchAsync(service, seller, 0xC5B0, ownQuery, 25);
         var retrieve = new byte[16]; BinaryPrimitives.WriteUInt32LittleEndian(retrieve, 1);
         BinaryPrimitives.WriteUInt64LittleEndian(retrieve.AsSpan(8), number);
+        uiClock.Restart();
         var canceled = await DispatchAsync(service, seller, 0xC5B6, retrieve, 16);
-        Check(canceled is not null && canceled.Length == 44 && Opcode(canceled) == 0xC5B7 && Code(canceled) == 1
+        Check(uiClock.ElapsedMilliseconds >= 40, "retrieval yields for the client selected-row state");
+        Check(canceled is not null && canceled.Length == 348 && Opcode(canceled) == 0xC5B7 && Code(canceled) == 1
             && Get<CharacterRecord>(seller, "Character").Cash == 107,
             "adapter retrieval refreshes committed NaNa point proceeds");
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(canceled!.AsSpan(50)) == 0xC5B1
+            && BinaryPrimitives.ReadUInt64LittleEndian(canceled.AsSpan(60)) != number,
+            "retrieval publishes a fresh owned-list snapshot after acknowledgement and balances");
         Check(Get<IList>(seller, "PendingBroadcasts").Count == 0 && Get<IList>(buyer, "PendingBroadcasts").Count == 0,
             "exchange responses do not broadcast to other sessions");
         foreach (var (opcode, length) in new (ushort, int)[] { (0xC5B0, 24), (0xC5B2, 24), (0xC5B4, 12), (0xC5B6, 16) })

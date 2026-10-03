@@ -146,8 +146,8 @@ internal static class QuestSystemChecks
             var firstLength = BinaryPrimitives.ReadUInt16LittleEndian(completionFrames.AsSpan(4));
             Check(ReadOpcode(completionFrames) == 0xC59A && firstLength == 36
                 && completionFrames.Length > firstLength
-                && ReadOpcode(completionFrames.AsSpan(firstLength)) == 0xC59C,
-                "successful hand-in returns C59A and the advanced C59C list");
+                && Opcodes(completionFrames).SequenceEqual(new ushort[] { 0xC59A, 0xC430, 0xC379, 0xC59C }),
+                "successful hand-in refreshes inventory and quick slots before the advanced task list");
             Check(BinaryPrimitives.ReadUInt16LittleEndian(completionFrames.AsSpan(16, 2)) == 1,
                 "medal-granting mainline hand-in publishes C59A completion kind one even without a level gain");
             var storyState = await db.GetStoryGuideStateAsync(account, characterId, sessionId);

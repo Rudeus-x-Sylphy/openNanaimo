@@ -91,9 +91,9 @@ struct boss_hp_sync_result {
     unsigned completion_shell_retired,completion_shell_child,completion_shell_residual,completion_shell_retire_mask[8];
     unsigned recording_damage,completion_shell_projection_started,completion_shell_projected_damage;
     /* D012 DWORD+0x28 feeds both the visible boss bar and the native
-       mode-completion gate. It carries the current mode ledger normally, but a
-       pure parallel-component mode publishes the focused component ledger and
-       keeps zero reserved for all-components-dead. The aggregate stays in
+       mode-completion gate. The current mode ledger sums every live component
+       and reaches zero when that mode completes. Future modes remain separate
+       until their own activation. The full aggregate stays in
        hp/cumulative_damage for scoring and settlement. mode_recording_published
        keeps a genuine zero distinct from an untouched result. */
     unsigned mode_recording_hp,mode_recording_published;
@@ -270,25 +270,14 @@ static unsigned boss_hp_sync_profile_mode_hp(const struct boss_hp_sync_context*c
 }
 static unsigned boss_hp_sync_profile_total_hp(const struct boss_hp_sync_context*c){unsigned mode,total=0u;if(!c)return 0u;for(mode=0u;mode<c->mode_count;mode++)total+=boss_hp_sync_profile_mode_hp(c,mode);return total;}
 static unsigned boss_hp_sync_profile_future_hp(const struct boss_hp_sync_context*c){unsigned mode,total=0u;if(!c)return 0u;for(mode=c->mode_index+1u;mode<c->mode_count;mode++)total+=boss_hp_sync_profile_mode_hp(c,mode);return total;}
-/* The aggregate mode ledger owns settlement/all-components-dead, but a pure
-   same-child parallel Boss exposes one local component bar at a time.  Publishing
-   the aggregate through D012 makes a hit on one copy consume another copy's
-   visual range.  Keep that presentation on the resolved component; when it dies,
-   move to the first still-live authored component without publishing zero early. */
+/* The current mode ledger is the authoritative Boss display and completion
+   value. Every authored component contributes its remaining HP; future modes
+   are kept separately for scoring and settlement. */
 static unsigned boss_hp_sync_visual_recording_hp(const struct boss_hp_sync_context*c,const struct boss_hp_sync_result*r){
-#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
-    unsigned child=0u,n=0u,i;if(c&&r&&boss_hp_sync_parallel_component_mode(c,&child,&n)){
-        if(r->component_slot<c->component_count&&c->component_hp[r->component_slot]>0u)return c->component_hp[r->component_slot];
-        for(i=0u;i<n;i++)if(c->component_hp[i]>0u)return c->component_hp[i];
-        return 0u;
-    }
-#endif
-    return c?c->hp:0u;
+    (void)r;return c?c->hp:0u;
 }
-/* Publishes the wire recording split. r->hp/cumulative_damage retain the
-   aggregate used by scoring and settlement. D012 +0x28 carries either the
-   current authored mode ledger or, for a pure parallel-component mode, the
-   focused component ledger selected above. */
+/* D012 +0x28 publishes the current mode. Multi-mode scoring keeps the full
+   remaining total without advancing the client's zero-HP mode boundary. */
 static void boss_hp_sync_project_multimode_recording(const struct boss_hp_sync_context*c,struct boss_hp_sync_result*r){unsigned total,remaining;if(!c||!r)return;r->mode_recording_hp=boss_hp_sync_visual_recording_hp(c,r);r->mode_recording_published=1u;if(!c->authored_multimode)return;total=boss_hp_sync_profile_total_hp(c);remaining=c->hp+boss_hp_sync_profile_future_hp(c);if(remaining>total)remaining=total;r->hp=remaining;r->cumulative_damage=total-remaining;}
 static void boss_hp_sync_init(struct boss_hp_sync_context*c){memset(c,0,sizeof(*c));c->phase=BOSS_HP_SYNC_PHASE_IDLE;c->hp=BOSS_HP_SYNC_MAX_HP;c->mode_max_hp=BOSS_HP_SYNC_MAX_HP;c->mode_count=1u;c->profile_kind=BOSS_HP_SYNC_PROFILE_GENERIC;}
 static void boss_hp_sync_select_stage(struct boss_hp_sync_context*c,unsigned stage){

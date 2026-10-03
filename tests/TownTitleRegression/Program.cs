@@ -215,10 +215,10 @@ internal static class Program
                 "a persistent key matching another character's scene identity cannot redirect selection");
             Check(WireIdentityAllocator.GetSceneEntityId(subjectSceneId) != subjectSceneId,
                 "the colliding persistent key receives its own distinct scene identity");
-            Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, subject),
+            Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, subject, false),
                 "a visible subject queues its state to the viewer");
             var queued = Get<IList>(viewer, "PendingBroadcasts");
-            Check(queued.Count == 2, "one subject snapshot queues one construction and one attachment");
+            Check(queued.Count == 3, "one subject snapshot queues construction, attachment and stationary position");
             Check(Get<ushort>(queued[0]!, "Opcode") == 0xC36A && Get<ushort>(queued[1]!, "Opcode") == 0xC47F,
                 "queued town state preserves its initialization ordering");
             Check(ReferenceEquals(Get<object>(queued[0]!, "Target"), viewerPresence)
@@ -231,30 +231,53 @@ internal static class Program
                 "queued attachment uses the subject's scene identity");
             var preserved = payload.ToArray();
             subjectCharacter.DungeonGrade = 39;
-            Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, subject)
+            Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, subject, false)
                 && Get<byte[]>(queued[0]!, "Payload").SequenceEqual(preserved),
                 "a refreshed subject title preserves an earlier queued snapshot");
-            Check(((BinaryPrimitives.ReadUInt32LittleEndian(Get<byte[]>(queued[2]!, "Payload").AsSpan(52)) >> 6) & 127) == 39,
+            Check(((BinaryPrimitives.ReadUInt32LittleEndian(Get<byte[]>(queued[4]!, "Payload").AsSpan(52)) >> 6) & 127) == 39,
                 "the next subject snapshot carries the latest title");
-            Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", subject, subjectPresence, viewer),
+            Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", subject, subjectPresence, viewer, false),
                 "the reverse direction queues the viewer as the other visible subject");
             var reverseQueued = Get<IList>(subject, "PendingBroadcasts");
             var reversePayload = Get<byte[]>(reverseQueued[0]!, "Payload");
             var reverseControl = BinaryPrimitives.ReadUInt32LittleEndian(reversePayload.AsSpan(52));
-            Check(reverseQueued.Count == 2 && ((reverseControl >> 6) & 127) == 1 && ((reverseControl >> 13) & 127) == 7,
+            Check(reverseQueued.Count == 3 && ((reverseControl >> 6) & 127) == 1 && ((reverseControl >> 13) & 127) == 7,
                 "both directions display each subject's own title and character level");
             Check(ReferenceEquals(Get<object>(reverseQueued[0]!, "Target"), subjectPresence)
                 && reverseControl >> 20 == WireIdentityAllocator.GetSceneEntityId(Get<CharacterRecord>(viewer, "Character").Id),
                 "reverse-direction state targets its actual observer");
             foreach (var hidden in new[] { viewer, otherPage, otherChannel, offline, inactive })
-                Check(!InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, hidden) && queued.Count == 4,
+                Check(!InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, hidden, false) && queued.Count == 7,
                     "hidden or local subjects leave the viewer's queue unchanged");
             var unregistered = NewSession(NewCharacter(90006, "Unregistered", 15, 5));
-            Check(!InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, unregistered) && queued.Count == 4,
+            Check(!InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, unregistered, false) && queued.Count == 7,
                 "an unregistered subject leaves the viewer's queue unchanged");
             var staleRecipient = CreatePresence(viewer);
-            Check(!InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, staleRecipient, subject) && queued.Count == 4,
+            Check(!InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, staleRecipient, subject, false) && queued.Count == 7,
                 "a superseded recipient leaves the viewer's queue unchanged");
+            queued.Clear();
+            var movement = new byte[16];
+            BinaryPrimitives.WriteUInt16LittleEndian(movement.AsSpan(8), 712);
+            BinaryPrimitives.WriteUInt16LittleEndian(movement.AsSpan(10), 144);
+            BinaryPrimitives.WriteUInt16LittleEndian(movement.AsSpan(14), subjectSceneId);
+            Set(subject, "LastTownMovement", movement);
+            Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, subject, false), "snapshot includes current movement");
+            Check(queued.Count == 4 && Get<ushort>(queued[3]!, "Opcode") == 0xCB21,
+                "current position follows construction and attachment");
+            movement[8] = 0;
+            Check(Get<byte[]>(queued[3]!, "Payload")[8] != 0, "queued position is an independent snapshot");
+            queued.Clear();
+            for (var attempt = 0; attempt < 3; attempt++)
+                InvokeInstance<object?>(service, "QueueTownAttachmentRefreshes", viewer);
+            Check(queued.Count == 6 && Enumerable.Range(0, 3).All(i => Get<ushort>(queued[2*i+1]!, "Opcode") == 0xC47F),
+                "three observer activities restore stationary peer attachments");
+            InvokeInstance<object?>(service, "QueueTownAttachmentRefreshes", viewer);
+            Check(queued.Count == 6, "attachment completion has a bounded lifecycle");
+            InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, subject, false);
+            queued.Clear(); Set(subject, "TownPage", (byte)34);
+            InvokeInstance<object?>(service, "QueueTownAttachmentRefreshes", viewer);
+            Check(queued.Count == 0, "leaving the page retires pending attachment work");
+
         }
         finally
         {

@@ -19,7 +19,7 @@
   "runtime_contract": {
     "root": "adapter_runtime",
     "manifest": "adapter_runtime/adapter_manifest.json",
-    "file_count": 263,
+    "file_count": 218,
     "files": {
       "adapter_runtime/Microsoft.CSharp.dll": {
         "size": 1005392,
@@ -50,32 +50,32 @@
         "sha256": "A8CC5503BBBA36472D1DD3A8EEBC3A8B26F0B2882E770851AAB486690B23EAD9"
       },
       "adapter_runtime/Nanaimo.Adapter.deps.json": {
-        "size": 30766,
-        "sha256": "D9D08EE4E61B5DD15E6423B1073CA3FB42E843D84FCE3F833B827B06B225B6B5"
+        "size": 31649,
+        "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
       },
       "adapter_runtime/Nanaimo.Adapter.dll": {
-        "size": 1233920,
-        "sha256": "DC2FA615B235932EB21866F075D11B8111D09C9F8CC8B0E3B4D7CEEE2892B7D5"
+        "size": 1248256,
+        "sha256": "5E810B463CEBA86B018D2A13F153299305F621C0CE92846D17493928CBCE8F42"
       },
       "adapter_runtime/Nanaimo.Adapter.exe": {
         "size": 151552,
-        "sha256": "C59B4661D1478017B22D41C49769B1D0C57BBA7C1992C956767740FE1B286A13"
+        "sha256": "A8DC1ADEA82450B116E59287A81FD7EDF078014018CFB0C3600013D3602D15B0"
       },
       "adapter_runtime/Nanaimo.Adapter.pdb": {
-        "size": 186540,
-        "sha256": "71DCD67593E9BD4D7317DA1ECE11363D353352D3A7EEFCA267275518BFB01240"
+        "size": 188312,
+        "sha256": "4957E53853424C6349311761F3615AD7FEA8F5085F7F9E45B3A8C8EE8C91BA4D"
       },
       "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
-        "size": 358,
-        "sha256": "46C986E4F45508F40C79A4042FE8EAC8A6B6574199A85884ED81C33BB18AF092"
+        "size": 372,
+        "sha256": "D7A0BECA53834E0A387B9E5083BD1DADF5BEE565B48595A9D4CB457D15726C78"
       },
       "adapter_runtime/Nanaimo.Gameplay.dll": {
-        "size": 5095424,
-        "sha256": "A3840A7B2492ABC9A305BC7558B8C84E49E1BB8B221A63B4D8311FB4F357DDA2"
+        "size": 5125120,
+        "sha256": "E73CB71D1B9E2B89AB2618F148A43E2D0E735E76F31B7898F249A59840755603"
       },
       "adapter_runtime/Nanaimo.Gameplay.pdb": {
-        "size": 503884,
-        "sha256": "4C444CD59E2BA374D173F401AB5B6FC02E451C2F463B5230FF46878D8FF95F9F"
+        "size": 510128,
+        "sha256": "4A5878B7D7BFCC3B48E35503FE6EF75836F3E223B3616A3CBC85DFCB0BDD646A"
       },
       "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
         "size": 5120,
@@ -738,176 +738,8 @@
         "sha256": "D2B82FD6347B45B6BC3FF23C60D215A8431906D25B68BF84A2FF6A0B2C46AE9E"
       },
       "adapter_runtime/adapter_manifest.json": {
-        "size": 63740,
-        "sha256": "957D1AF3FAE27316672DE167812D64A50FDC22D1FCDE2AC1D34BBFC30D781FDE"
-      },
-      "adapter_runtime/api-ms-win-core-console-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "F0F7CB2A9FFCCB43400DB88D6BF99F2FCC3161DE1AC96C48501D4D522C48C2CA"
-      },
-      "adapter_runtime/api-ms-win-core-console-l1-2-0.dll": {
-        "size": 20960,
-        "sha256": "4E978EE035B72032D0B7693E09EED6E112DCED6965780BC3E6B8E024EA2366AB"
-      },
-      "adapter_runtime/api-ms-win-core-datetime-l1-1-0.dll": {
-        "size": 20952,
-        "sha256": "55E5F10D0DD9C85FF1C6DC7798E46B3A4422FB7EBC583BB00D06A7DF2494397B"
-      },
-      "adapter_runtime/api-ms-win-core-debug-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "092B72832C47F9C4EDCDE61F1A111C20EB73452984E0A6109482DE74EB03C34D"
-      },
-      "adapter_runtime/api-ms-win-core-errorhandling-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "13BC8B3F90DA149030897B8F9F08D71E5D1561E3AE604472A82F58DAB2B103F9"
-      },
-      "adapter_runtime/api-ms-win-core-fibers-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "BB2D740333AFAEA2A73A163F95FA102D018CCD68DEF28B6815A2BE0696AB57DB"
-      },
-      "adapter_runtime/api-ms-win-core-file-l1-1-0.dll": {
-        "size": 25048,
-        "sha256": "F353B6C2DF7AADB457263A02BCE59C44BBAB55F98AE6509674CFBC3751F761B9"
-      },
-      "adapter_runtime/api-ms-win-core-file-l1-2-0.dll": {
-        "size": 20960,
-        "sha256": "03BD3217EAE0EF68521B39556E7491292DB540F615DA873DD8DA538693B81862"
-      },
-      "adapter_runtime/api-ms-win-core-file-l2-1-0.dll": {
-        "size": 20960,
-        "sha256": "F957A4C261506484B53534A9BE8931C02EC1A349B3F431A858F8215CECFEC3F7"
-      },
-      "adapter_runtime/api-ms-win-core-handle-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "625667EA50B2BD0BAE1D6EB3C7E732E9E3A0DEA21B2F9EAC3A94C71C5E57F537"
-      },
-      "adapter_runtime/api-ms-win-core-heap-l1-1-0.dll": {
-        "size": 20960,
-        "sha256": "E36B72EAFFFFFB09B3F3A615678A72D561B9469A09F3B4891ABA9D809DA937A5"
-      },
-      "adapter_runtime/api-ms-win-core-interlocked-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "FBB9032835D0D564F2F53BBC4192F8A732131B8A89F52F5EF3FF0DAA2F71465F"
-      },
-      "adapter_runtime/api-ms-win-core-libraryloader-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "E9A3D7F8A08AB5BC94ACB1EC1BFFDA90469FEC3B7EECDF7CF5408F3E3682D527"
-      },
-      "adapter_runtime/api-ms-win-core-localization-l1-2-0.dll": {
-        "size": 20960,
-        "sha256": "E9539FCE90AD8BE582B25AB2D5645772C2A5FB195E602ECDBF12B980656E436A"
-      },
-      "adapter_runtime/api-ms-win-core-memory-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "EF77B3E4FDFF944F92908B6FEB9256A902588F0CF1C19EB9BF063BB6542ABFFF"
-      },
-      "adapter_runtime/api-ms-win-core-namedpipe-l1-1-0.dll": {
-        "size": 20960,
-        "sha256": "0BFEDB0D28E41E70BF9E4DA11E83F3A94C2191B5CD5DD45D9E9D439673B830CE"
-      },
-      "adapter_runtime/api-ms-win-core-processenvironment-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "25AF1BC31C4A3FB9F1036C9AA51CB0AE8899C499B3EEF4CF7281515C1EA27B47"
-      },
-      "adapter_runtime/api-ms-win-core-processthreads-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "0D22CE9D987EFD6886A8DE66A6A678C287D29B15963B4373F73D79DDE42C9827"
-      },
-      "adapter_runtime/api-ms-win-core-processthreads-l1-1-1.dll": {
-        "size": 20944,
-        "sha256": "A8E2FC077D9A7D2FAA85E1E6833047C90B22C6086487B98FC0E6A86B7BF8BF09"
-      },
-      "adapter_runtime/api-ms-win-core-profile-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "5E6AD9502C8411F29BC072EFD08C4FCD09BC3367814269DEDA74A78536FB8375"
-      },
-      "adapter_runtime/api-ms-win-core-rtlsupport-l1-1-0.dll": {
-        "size": 20960,
-        "sha256": "40EB38D84DFD13C8A58211B8273C4B4965148742F08EB6FE8B0830392C37ABC1"
-      },
-      "adapter_runtime/api-ms-win-core-string-l1-1-0.dll": {
-        "size": 20960,
-        "sha256": "285A481D7BA9859CC28BEDEDD8F05A90BD648A34D66B8C797118920B40E15E4E"
-      },
-      "adapter_runtime/api-ms-win-core-synch-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "E050E1BFBB75A278412380C912266225C3DEE15031468DAE2F6B77FF0617AA91"
-      },
-      "adapter_runtime/api-ms-win-core-synch-l1-2-0.dll": {
-        "size": 20944,
-        "sha256": "9DFD114E4182662A669A3B9054DD2A24D96DD66ED96A8B2AC05601928B2084D5"
-      },
-      "adapter_runtime/api-ms-win-core-sysinfo-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "45D4F1E398E4CC73FD1AAAD80219D2A9D3205A228167C819EB6787D7B01FC186"
-      },
-      "adapter_runtime/api-ms-win-core-timezone-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "1627B921934053F1F7D2A19948AEE06FAC5DB8EE8D4182E6F071718D0681F235"
-      },
-      "adapter_runtime/api-ms-win-core-util-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "2631CADCE7F97B9A9E6DF4E88F00F5A43EF73B070EE024ED71F0B447A387FF2F"
-      },
-      "adapter_runtime/api-ms-win-crt-conio-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "966DDBF59E1D6C2A80B8ABBF4A30D37475DE097BF13FB72BA78684D65975CD97"
-      },
-      "adapter_runtime/api-ms-win-crt-convert-l1-1-0.dll": {
-        "size": 25056,
-        "sha256": "14694879F9C3C52FBD7DDE96BF5D67B9768B067C80D5567BE55B37262E9DBD54"
-      },
-      "adapter_runtime/api-ms-win-crt-environment-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "00F84C438AAB40500A2F2DF22C7A4EC147A50509C8D0CDAC6A83E4269E387478"
-      },
-      "adapter_runtime/api-ms-win-crt-filesystem-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "30BCF934CBCC9ED72FF364B6E352A70A9E2AFA46ECEADEA5C47183CB46CFD16E"
-      },
-      "adapter_runtime/api-ms-win-crt-heap-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "6C0E0D22B65329F4948FCF36C8048A54CCCCBF6C05B330B2C1A686F3E686EED0"
-      },
-      "adapter_runtime/api-ms-win-crt-locale-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "C048A3D7AB951DCE1D6D3F5F497B50353F640A1787C6C65677A13C55C8E99983"
-      },
-      "adapter_runtime/api-ms-win-crt-math-l1-1-0.dll": {
-        "size": 29144,
-        "sha256": "F7C5D7394643C95FE14C07773A8A206E74A28DB125F9B3976F9E1C8C599F2AF1"
-      },
-      "adapter_runtime/api-ms-win-crt-multibyte-l1-1-0.dll": {
-        "size": 29136,
-        "sha256": "A38E6786DC8EC6D2717343DBE00BB2FDDA008D87935BBD9371AE94E7E004270B"
-      },
-      "adapter_runtime/api-ms-win-crt-private-l1-1-0.dll": {
-        "size": 74192,
-        "sha256": "BE7901AA1FACEA8E1FD74A62BDE54CC3BD8E898B52E76FABB70342B160989B80"
-      },
-      "adapter_runtime/api-ms-win-crt-process-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "4166A32551989F960DAC7C0E296FFB28092F45F6539E7C450FA04BF17612BE73"
-      },
-      "adapter_runtime/api-ms-win-crt-runtime-l1-1-0.dll": {
-        "size": 25040,
-        "sha256": "315DED39D9E157CEC05D83711C09858C23602857C9D8C88BEEF121C24C43BE84"
-      },
-      "adapter_runtime/api-ms-win-crt-stdio-l1-1-0.dll": {
-        "size": 25040,
-        "sha256": "3B59A50457F6B6EAA6D35E42722D4562E88BCD716BAE113BE1271EAD0FEB7AF3"
-      },
-      "adapter_runtime/api-ms-win-crt-string-l1-1-0.dll": {
-        "size": 25040,
-        "sha256": "44DDAB31C182235AC5405D31C1CBA048316CC230698E392A732AC941EC683BAD"
-      },
-      "adapter_runtime/api-ms-win-crt-time-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "A409E25A9D3C252CC0A5AF9DF85D3733E946087B06CD1FB2CF1BF640EB0D49BA"
-      },
-      "adapter_runtime/api-ms-win-crt-utility-l1-1-0.dll": {
-        "size": 20944,
-        "sha256": "CFB2EE4E426BB00B76163C1A66CF8CFEF8D7450CBF9BBCE3BC9EB2053F51E0E5"
+        "size": 52604,
+        "sha256": "4FFC6234E4B54C0A3AD2E8FDFD983582ACA7A1A900625C0A7C1850139DD1AB2B"
       },
       "adapter_runtime/clretwrc.dll": {
         "size": 310568,
@@ -929,10 +761,6 @@
         "size": 71512,
         "sha256": "BEBA75FFCD188A0CE594C304C737CAF16681E1AF19BDD7BB47B3F0EB8636C320"
       },
-      "adapter_runtime/dbgshim.dll": {
-        "size": 140584,
-        "sha256": "6914253E5D223ED6F67D4776E99C97F6F8316843D88E1191E41CC7D5ED15C185"
-      },
       "adapter_runtime/e_sqlite3.dll": {
         "size": 1691648,
         "sha256": "DCCBABB2BC7E7D4302C44D9CE41B70721A7D0914FA4D289E2F340D39766AD102"
@@ -948,10 +776,6 @@
       "adapter_runtime/mscordaccore.dll": {
         "size": 1348960,
         "sha256": "A277F63F5722E1ED59A791FC5D30C53ED263ABEF4ADF12D0BF494897D796C3E0"
-      },
-      "adapter_runtime/mscordaccore_amd64_amd64_6.0.3624.51421.dll": {
-        "size": 1320488,
-        "sha256": "97468531D7009E36C338B47FB19E0C6BF210F013610F413C852A4CC27E84B514"
       },
       "adapter_runtime/mscordaccore_amd64_amd64_8.0.3126.42015.dll": {
         "size": 1348960,
@@ -974,16 +798,12 @@
         "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
       },
       "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-        "size": 19720192,
-        "sha256": "83F53AA8C998E351023CF0739DBB6B41241A1A08C5B0A08D521FBBC65EEC108F"
+        "size": 19721728,
+        "sha256": "1C648091FAD49E332C63774A06CACEC52D8A9D7EA073D1DA4333FA9E29E532B0"
       },
       "adapter_runtime/netstandard.dll": {
         "size": 100648,
         "sha256": "53D854D33C3F0E1BBCCFF4B5C4B89420DAA66FA5F6603F6E5DF20D6BBB7E00F4"
-      },
-      "adapter_runtime/ucrtbase.dll": {
-        "size": 1122768,
-        "sha256": "C04DAEBA7E7C4B711D33993AB4C51A2E087F98F4211AEA0DCB3A216656BA0AB7"
       },
       "adapter_runtime/资源/数据/CI._D28": {
         "size": 1232,
@@ -1055,7 +875,7 @@
       },
       "adapter_runtime/资源/数据/dungeon_combat_catalog.bin": {
         "size": 11465036,
-        "sha256": "04045554315C71D4289C09471D884AB1C91C93A24033FD50A798590CD3905660"
+        "sha256": "3A598FA2BC44FDF9703574F6E050AEC717F8420835B4C3A94824719171E88ECE"
       },
       "adapter_runtime/资源/数据/gi._D6": {
         "size": 413760,
@@ -1095,8 +915,8 @@
       "sha256": "5930276C765992A27CA85E7FBB07F78CFF56FB427CCBEEA36F31287F90955117"
     },
     "gui_launcher/nanaimo_launcher.ps1": {
-      "size": 146652,
-      "sha256": "7FA76DF9865ADAAE2C33F315B64DCD89738610ECE41BB2EE2E1B06EF59328C26"
+      "size": 146656,
+      "sha256": "13B549D9C27679C1D94CDC92E8EFD2CB3A357696BD85A47BA4E66AEE05B8CFC7"
     },
     "gui_launcher/resource_patches/superboss_projectile_alias.json": {
       "size": 1361,
@@ -1123,8 +943,8 @@
       "sha256": "B9BB22ABEE2717CBF002BF07203536859E44DCED3DE3B906DBB134187BB3D48A"
     },
     "scripts/prepare_client_compatibility.py": {
-      "size": 65791,
-      "sha256": "42432823EF0B5F6CE0F3173B19471AE89EC78B041685AFAB88E0AFB94021866E"
+      "size": 66603,
+      "sha256": "D60EC5A5B0F31D6538D04B7B834CAB79A05649B9C5D6205F1D38EAC1E5C142DA"
     },
     "scripts/verify_client_baseline.py": {
       "size": 3062,
@@ -1163,32 +983,32 @@
       "sha256": "A8CC5503BBBA36472D1DD3A8EEBC3A8B26F0B2882E770851AAB486690B23EAD9"
     },
     "adapter_runtime/Nanaimo.Adapter.deps.json": {
-      "size": 30766,
-      "sha256": "D9D08EE4E61B5DD15E6423B1073CA3FB42E843D84FCE3F833B827B06B225B6B5"
+      "size": 31649,
+      "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
     },
     "adapter_runtime/Nanaimo.Adapter.dll": {
-      "size": 1233920,
-      "sha256": "DC2FA615B235932EB21866F075D11B8111D09C9F8CC8B0E3B4D7CEEE2892B7D5"
+      "size": 1248256,
+      "sha256": "5E810B463CEBA86B018D2A13F153299305F621C0CE92846D17493928CBCE8F42"
     },
     "adapter_runtime/Nanaimo.Adapter.exe": {
       "size": 151552,
-      "sha256": "C59B4661D1478017B22D41C49769B1D0C57BBA7C1992C956767740FE1B286A13"
+      "sha256": "A8DC1ADEA82450B116E59287A81FD7EDF078014018CFB0C3600013D3602D15B0"
     },
     "adapter_runtime/Nanaimo.Adapter.pdb": {
-      "size": 186540,
-      "sha256": "71DCD67593E9BD4D7317DA1ECE11363D353352D3A7EEFCA267275518BFB01240"
+      "size": 188312,
+      "sha256": "4957E53853424C6349311761F3615AD7FEA8F5085F7F9E45B3A8C8EE8C91BA4D"
     },
     "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
-      "size": 358,
-      "sha256": "46C986E4F45508F40C79A4042FE8EAC8A6B6574199A85884ED81C33BB18AF092"
+      "size": 372,
+      "sha256": "D7A0BECA53834E0A387B9E5083BD1DADF5BEE565B48595A9D4CB457D15726C78"
     },
     "adapter_runtime/Nanaimo.Gameplay.dll": {
-      "size": 5095424,
-      "sha256": "A3840A7B2492ABC9A305BC7558B8C84E49E1BB8B221A63B4D8311FB4F357DDA2"
+      "size": 5125120,
+      "sha256": "E73CB71D1B9E2B89AB2618F148A43E2D0E735E76F31B7898F249A59840755603"
     },
     "adapter_runtime/Nanaimo.Gameplay.pdb": {
-      "size": 503884,
-      "sha256": "4C444CD59E2BA374D173F401AB5B6FC02E451C2F463B5230FF46878D8FF95F9F"
+      "size": 510128,
+      "sha256": "4A5878B7D7BFCC3B48E35503FE6EF75836F3E223B3616A3CBC85DFCB0BDD646A"
     },
     "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
       "size": 5120,
@@ -1851,176 +1671,8 @@
       "sha256": "D2B82FD6347B45B6BC3FF23C60D215A8431906D25B68BF84A2FF6A0B2C46AE9E"
     },
     "adapter_runtime/adapter_manifest.json": {
-      "size": 63740,
-      "sha256": "957D1AF3FAE27316672DE167812D64A50FDC22D1FCDE2AC1D34BBFC30D781FDE"
-    },
-    "adapter_runtime/api-ms-win-core-console-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "F0F7CB2A9FFCCB43400DB88D6BF99F2FCC3161DE1AC96C48501D4D522C48C2CA"
-    },
-    "adapter_runtime/api-ms-win-core-console-l1-2-0.dll": {
-      "size": 20960,
-      "sha256": "4E978EE035B72032D0B7693E09EED6E112DCED6965780BC3E6B8E024EA2366AB"
-    },
-    "adapter_runtime/api-ms-win-core-datetime-l1-1-0.dll": {
-      "size": 20952,
-      "sha256": "55E5F10D0DD9C85FF1C6DC7798E46B3A4422FB7EBC583BB00D06A7DF2494397B"
-    },
-    "adapter_runtime/api-ms-win-core-debug-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "092B72832C47F9C4EDCDE61F1A111C20EB73452984E0A6109482DE74EB03C34D"
-    },
-    "adapter_runtime/api-ms-win-core-errorhandling-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "13BC8B3F90DA149030897B8F9F08D71E5D1561E3AE604472A82F58DAB2B103F9"
-    },
-    "adapter_runtime/api-ms-win-core-fibers-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "BB2D740333AFAEA2A73A163F95FA102D018CCD68DEF28B6815A2BE0696AB57DB"
-    },
-    "adapter_runtime/api-ms-win-core-file-l1-1-0.dll": {
-      "size": 25048,
-      "sha256": "F353B6C2DF7AADB457263A02BCE59C44BBAB55F98AE6509674CFBC3751F761B9"
-    },
-    "adapter_runtime/api-ms-win-core-file-l1-2-0.dll": {
-      "size": 20960,
-      "sha256": "03BD3217EAE0EF68521B39556E7491292DB540F615DA873DD8DA538693B81862"
-    },
-    "adapter_runtime/api-ms-win-core-file-l2-1-0.dll": {
-      "size": 20960,
-      "sha256": "F957A4C261506484B53534A9BE8931C02EC1A349B3F431A858F8215CECFEC3F7"
-    },
-    "adapter_runtime/api-ms-win-core-handle-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "625667EA50B2BD0BAE1D6EB3C7E732E9E3A0DEA21B2F9EAC3A94C71C5E57F537"
-    },
-    "adapter_runtime/api-ms-win-core-heap-l1-1-0.dll": {
-      "size": 20960,
-      "sha256": "E36B72EAFFFFFB09B3F3A615678A72D561B9469A09F3B4891ABA9D809DA937A5"
-    },
-    "adapter_runtime/api-ms-win-core-interlocked-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "FBB9032835D0D564F2F53BBC4192F8A732131B8A89F52F5EF3FF0DAA2F71465F"
-    },
-    "adapter_runtime/api-ms-win-core-libraryloader-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "E9A3D7F8A08AB5BC94ACB1EC1BFFDA90469FEC3B7EECDF7CF5408F3E3682D527"
-    },
-    "adapter_runtime/api-ms-win-core-localization-l1-2-0.dll": {
-      "size": 20960,
-      "sha256": "E9539FCE90AD8BE582B25AB2D5645772C2A5FB195E602ECDBF12B980656E436A"
-    },
-    "adapter_runtime/api-ms-win-core-memory-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "EF77B3E4FDFF944F92908B6FEB9256A902588F0CF1C19EB9BF063BB6542ABFFF"
-    },
-    "adapter_runtime/api-ms-win-core-namedpipe-l1-1-0.dll": {
-      "size": 20960,
-      "sha256": "0BFEDB0D28E41E70BF9E4DA11E83F3A94C2191B5CD5DD45D9E9D439673B830CE"
-    },
-    "adapter_runtime/api-ms-win-core-processenvironment-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "25AF1BC31C4A3FB9F1036C9AA51CB0AE8899C499B3EEF4CF7281515C1EA27B47"
-    },
-    "adapter_runtime/api-ms-win-core-processthreads-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "0D22CE9D987EFD6886A8DE66A6A678C287D29B15963B4373F73D79DDE42C9827"
-    },
-    "adapter_runtime/api-ms-win-core-processthreads-l1-1-1.dll": {
-      "size": 20944,
-      "sha256": "A8E2FC077D9A7D2FAA85E1E6833047C90B22C6086487B98FC0E6A86B7BF8BF09"
-    },
-    "adapter_runtime/api-ms-win-core-profile-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "5E6AD9502C8411F29BC072EFD08C4FCD09BC3367814269DEDA74A78536FB8375"
-    },
-    "adapter_runtime/api-ms-win-core-rtlsupport-l1-1-0.dll": {
-      "size": 20960,
-      "sha256": "40EB38D84DFD13C8A58211B8273C4B4965148742F08EB6FE8B0830392C37ABC1"
-    },
-    "adapter_runtime/api-ms-win-core-string-l1-1-0.dll": {
-      "size": 20960,
-      "sha256": "285A481D7BA9859CC28BEDEDD8F05A90BD648A34D66B8C797118920B40E15E4E"
-    },
-    "adapter_runtime/api-ms-win-core-synch-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "E050E1BFBB75A278412380C912266225C3DEE15031468DAE2F6B77FF0617AA91"
-    },
-    "adapter_runtime/api-ms-win-core-synch-l1-2-0.dll": {
-      "size": 20944,
-      "sha256": "9DFD114E4182662A669A3B9054DD2A24D96DD66ED96A8B2AC05601928B2084D5"
-    },
-    "adapter_runtime/api-ms-win-core-sysinfo-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "45D4F1E398E4CC73FD1AAAD80219D2A9D3205A228167C819EB6787D7B01FC186"
-    },
-    "adapter_runtime/api-ms-win-core-timezone-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "1627B921934053F1F7D2A19948AEE06FAC5DB8EE8D4182E6F071718D0681F235"
-    },
-    "adapter_runtime/api-ms-win-core-util-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "2631CADCE7F97B9A9E6DF4E88F00F5A43EF73B070EE024ED71F0B447A387FF2F"
-    },
-    "adapter_runtime/api-ms-win-crt-conio-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "966DDBF59E1D6C2A80B8ABBF4A30D37475DE097BF13FB72BA78684D65975CD97"
-    },
-    "adapter_runtime/api-ms-win-crt-convert-l1-1-0.dll": {
-      "size": 25056,
-      "sha256": "14694879F9C3C52FBD7DDE96BF5D67B9768B067C80D5567BE55B37262E9DBD54"
-    },
-    "adapter_runtime/api-ms-win-crt-environment-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "00F84C438AAB40500A2F2DF22C7A4EC147A50509C8D0CDAC6A83E4269E387478"
-    },
-    "adapter_runtime/api-ms-win-crt-filesystem-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "30BCF934CBCC9ED72FF364B6E352A70A9E2AFA46ECEADEA5C47183CB46CFD16E"
-    },
-    "adapter_runtime/api-ms-win-crt-heap-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "6C0E0D22B65329F4948FCF36C8048A54CCCCBF6C05B330B2C1A686F3E686EED0"
-    },
-    "adapter_runtime/api-ms-win-crt-locale-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "C048A3D7AB951DCE1D6D3F5F497B50353F640A1787C6C65677A13C55C8E99983"
-    },
-    "adapter_runtime/api-ms-win-crt-math-l1-1-0.dll": {
-      "size": 29144,
-      "sha256": "F7C5D7394643C95FE14C07773A8A206E74A28DB125F9B3976F9E1C8C599F2AF1"
-    },
-    "adapter_runtime/api-ms-win-crt-multibyte-l1-1-0.dll": {
-      "size": 29136,
-      "sha256": "A38E6786DC8EC6D2717343DBE00BB2FDDA008D87935BBD9371AE94E7E004270B"
-    },
-    "adapter_runtime/api-ms-win-crt-private-l1-1-0.dll": {
-      "size": 74192,
-      "sha256": "BE7901AA1FACEA8E1FD74A62BDE54CC3BD8E898B52E76FABB70342B160989B80"
-    },
-    "adapter_runtime/api-ms-win-crt-process-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "4166A32551989F960DAC7C0E296FFB28092F45F6539E7C450FA04BF17612BE73"
-    },
-    "adapter_runtime/api-ms-win-crt-runtime-l1-1-0.dll": {
-      "size": 25040,
-      "sha256": "315DED39D9E157CEC05D83711C09858C23602857C9D8C88BEEF121C24C43BE84"
-    },
-    "adapter_runtime/api-ms-win-crt-stdio-l1-1-0.dll": {
-      "size": 25040,
-      "sha256": "3B59A50457F6B6EAA6D35E42722D4562E88BCD716BAE113BE1271EAD0FEB7AF3"
-    },
-    "adapter_runtime/api-ms-win-crt-string-l1-1-0.dll": {
-      "size": 25040,
-      "sha256": "44DDAB31C182235AC5405D31C1CBA048316CC230698E392A732AC941EC683BAD"
-    },
-    "adapter_runtime/api-ms-win-crt-time-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "A409E25A9D3C252CC0A5AF9DF85D3733E946087B06CD1FB2CF1BF640EB0D49BA"
-    },
-    "adapter_runtime/api-ms-win-crt-utility-l1-1-0.dll": {
-      "size": 20944,
-      "sha256": "CFB2EE4E426BB00B76163C1A66CF8CFEF8D7450CBF9BBCE3BC9EB2053F51E0E5"
+      "size": 52604,
+      "sha256": "4FFC6234E4B54C0A3AD2E8FDFD983582ACA7A1A900625C0A7C1850139DD1AB2B"
     },
     "adapter_runtime/clretwrc.dll": {
       "size": 310568,
@@ -2042,10 +1694,6 @@
       "size": 71512,
       "sha256": "BEBA75FFCD188A0CE594C304C737CAF16681E1AF19BDD7BB47B3F0EB8636C320"
     },
-    "adapter_runtime/dbgshim.dll": {
-      "size": 140584,
-      "sha256": "6914253E5D223ED6F67D4776E99C97F6F8316843D88E1191E41CC7D5ED15C185"
-    },
     "adapter_runtime/e_sqlite3.dll": {
       "size": 1691648,
       "sha256": "DCCBABB2BC7E7D4302C44D9CE41B70721A7D0914FA4D289E2F340D39766AD102"
@@ -2061,10 +1709,6 @@
     "adapter_runtime/mscordaccore.dll": {
       "size": 1348960,
       "sha256": "A277F63F5722E1ED59A791FC5D30C53ED263ABEF4ADF12D0BF494897D796C3E0"
-    },
-    "adapter_runtime/mscordaccore_amd64_amd64_6.0.3624.51421.dll": {
-      "size": 1320488,
-      "sha256": "97468531D7009E36C338B47FB19E0C6BF210F013610F413C852A4CC27E84B514"
     },
     "adapter_runtime/mscordaccore_amd64_amd64_8.0.3126.42015.dll": {
       "size": 1348960,
@@ -2087,16 +1731,12 @@
       "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
     },
     "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-      "size": 19720192,
-      "sha256": "83F53AA8C998E351023CF0739DBB6B41241A1A08C5B0A08D521FBBC65EEC108F"
+      "size": 19721728,
+      "sha256": "1C648091FAD49E332C63774A06CACEC52D8A9D7EA073D1DA4333FA9E29E532B0"
     },
     "adapter_runtime/netstandard.dll": {
       "size": 100648,
       "sha256": "53D854D33C3F0E1BBCCFF4B5C4B89420DAA66FA5F6603F6E5DF20D6BBB7E00F4"
-    },
-    "adapter_runtime/ucrtbase.dll": {
-      "size": 1122768,
-      "sha256": "C04DAEBA7E7C4B711D33993AB4C51A2E087F98F4211AEA0DCB3A216656BA0AB7"
     },
     "adapter_runtime/资源/数据/CI._D28": {
       "size": 1232,
@@ -2168,7 +1808,7 @@
     },
     "adapter_runtime/资源/数据/dungeon_combat_catalog.bin": {
       "size": 11465036,
-      "sha256": "04045554315C71D4289C09471D884AB1C91C93A24033FD50A798590CD3905660"
+      "sha256": "3A598FA2BC44FDF9703574F6E050AEC717F8420835B4C3A94824719171E88ECE"
     },
     "adapter_runtime/资源/数据/gi._D6": {
       "size": 413760,
@@ -2187,7 +1827,7 @@
       "sha256": "3EFC299B3F30920A0D154D8D3978975995400394D5997521F5E80E48E550638E"
     }
   },
-  "source_closure_count": 290,
+  "source_closure_count": 293,
   "public_export_policy": {
     "mode": "explicit-reviewed-allowlist-only",
     "exclude_private_profiles_states_logs_backups": true,

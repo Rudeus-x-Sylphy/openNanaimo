@@ -70,17 +70,15 @@ internal readonly record struct ArenaGameEventRequest(
         // before it emits event 20/30. Bytes +4..+11 in those requests are
         // constructor padding and must never be interpreted as damage.
         20 or 30 => 30,
-        // Arena player-target events do not carry a numeric damage field.
-        // Their remaining words are object metadata; using them as damage
-        // makes the first hit consume an unrelated large value. Keep the
-        // arena policy bounded and stable for every player-target hit.
-        40 or 50 => 10,
         _ => 0
     };
 }
 
 internal static class ArenaProtocol
 {
+    public static ushort CalculatePvpDamage(int attack, int defense)
+        => (ushort)Math.Clamp((long)attack - Math.Max(0, defense) / 2L, 10L, ushort.MaxValue);
+
     public const int CreateRequestLength = 44;
     public const int QuickEnterRequestLength = 8;
     public const int QuickEnterResponseLength = 44;

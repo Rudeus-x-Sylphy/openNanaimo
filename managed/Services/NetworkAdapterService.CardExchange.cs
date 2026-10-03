@@ -1,4 +1,4 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using OpenNanaimo.Adapter.Models;
 
@@ -8,6 +8,7 @@ public sealed partial class NetworkAdapterService
 {
     private sealed class CardExchangeSessionState
     {
+        public CardExchangeQuery? VisibleQuery { get; set; }
         public SemaphoreSlim Gate { get; } = new(1, 1);
         public Dictionary<ushort, (ushort Opcode, string RequestId)> Intents { get; } = [];
     }
@@ -56,6 +57,7 @@ public sealed partial class NetworkAdapterService
                 var response = BuildNativeFrame(frame, 0xC5B1,
                     CardExchangeProtocol.BuildList(query, session.AccountId, session.Character.Id), session);
                 if (query.ResultCode != 1) return response;
+                state.VisibleQuery = parsed;
                 await RefreshInventoryCharacterAsync(session, token);
                 return CombineNativeFrames(response, BuildNativeFrame(frame, 0xC37B,
                     await BuildApartmentBalancesAsync(session.Character!, token), session));
@@ -86,12 +88,24 @@ public sealed partial class NetworkAdapterService
                 await RefreshInventoryCharacterAsync(session, token);
                 if (!result.Replayed) AccountStateChanged?.Invoke();
             }
-            if (opcode == 0xC5B2) await Task.Delay(AuctionUiResponseDelay, token);
+            // The client installs its selected-row state after sending each mutation.
+            // Yield before all acknowledgements so its existing success handler can update the row.
+            await Task.Delay(AuctionUiResponseDelay, token);
             var acknowledgement = BuildNativeFrame(frame, (ushort)(opcode + 1), opcode == 0xC5B4
                 ? CardExchangeProtocol.BuildRegistration(result) : CardExchangeProtocol.BuildResult(result), session);
             if (!result.Success) return acknowledgement;
-            return CombineNativeFrames(acknowledgement, BuildNativeFrame(frame, 0xC37B,
-                await BuildApartmentBalancesAsync(session.Character!, token), session));
+            var balances = BuildNativeFrame(frame, 0xC37B,
+                await BuildApartmentBalancesAsync(session.Character!, token), session);
+            if (opcode == 0xC5B6 && state.VisibleQuery is { RequestType: 1 } visible)
+            {
+                var refreshed = await _database.QueryCardExchangeListingsAsync(
+                    session.AccountId, session.Character!.Id, session.SessionId, visible, token);
+                if (refreshed.ResultCode == 1)
+                    return CombineNativeFrames(acknowledgement, balances,
+                        BuildNativeFrame(frame, 0xC5B1,
+                            CardExchangeProtocol.BuildList(refreshed, session.AccountId, session.Character.Id), session));
+            }
+            return CombineNativeFrames(acknowledgement, balances);
         }
         finally { state.Gate.Release(); }
     }

@@ -201,6 +201,11 @@ internal static class Program
                 response[0x2E] = Math.Min(round, (byte)2); response[0x28] = (byte)(round == 3 ? 1 : 0);
                 var before = (long)Get(member, "NativeSettlementCycle")!;
                 Check(Call<Array>(service, "ArmNativePartyContinuation", owner, request).Length == 1, "room continuation arms member");
+                var preclear = NativeDungeonClient.Frame(0xCF6D, new byte[36]); Put16(preclear, 8, 10);
+                Drain(member);
+                await Call<Task>(service, "HandleNativeWorkerFrameAsync", member, preclear, 1L, Token);
+                Check(Drain(member).Count(f => U16(f, 6) == 0xCF6D) == 1, "authorized continuation clears the member controller before reset");
+                Check((bool)Get(member, "NativeDungeonSettlementAwaitingAction")!, "preclear preserves settlement ownership until reset");
                 var invalidReset = response.ToArray(); invalidReset[0x28] = 2;
                 Call<object?>(service, "ObserveNativePartyContinuation", member, invalidReset);
                 Check((long)Get(member, "NativeSettlementCycle")! == before, "invalid continuation preserves member cycle");

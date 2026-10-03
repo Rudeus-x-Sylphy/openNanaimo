@@ -29,6 +29,7 @@ public sealed partial class NetworkAdapterService
         var room = _nativeContinuationRooms.GetOrCreateValue(session);
         room.AwaitingBattleStart = false;
         room.Reload = new(session.NativeBattleEpoch, reset[0x28], reset[0x29]);
+        session.NativeContinuationRosterRequested = false;
     }
 
     private bool IsNativeDungeonContinuationProfileRequest(ConnectionSession session, ReadOnlySpan<byte> frame)
@@ -69,6 +70,8 @@ public sealed partial class NetworkAdapterService
                         cycle.Transition = null;
                         session.NativeBattleResources = session.NativeBattleResources?.ForEpoch(epoch);
                         session.NativeDungeonDeathLatched = false;
+                        session.NativeCoupleStartRequested = true;
+                        session.NativeCoupleIdentityPublished = session.NativeCoupleIdentityRetained;
                         ResetNativeDungeonContinuationRoom(session);
                         _log($"NativeDungeon continuation combat resources rearmed: character={session.Character!.Id} epoch={epoch} stage={request[8]} show={request[10]} via=CF8B/CF8C->CFEB/CFEC");
                     }

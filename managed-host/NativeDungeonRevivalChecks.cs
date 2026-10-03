@@ -129,6 +129,8 @@ internal static class NativeDungeonRevivalChecks
             var reloaded = f.Drain();
             Check(!f.Resources.SettlementFrozen && f.Resources.CurrentHp == 2000,
                 "mode=" + mode + " request-bound CFEB/CFEC thaws without CF7F/CF80 and preserves HP");
+            Check((bool)Get(f.Session, "NativeCoupleStartRequested")! && (bool)Get(f.Session, "NativeCoupleIdentityPublished")!,
+                "continued battle retains the established item-sharing authorization");
             Check(reloaded.Count == 1 && U16(reloaded[0], 6) == 0xCFEC,
                 "pre-profile old D010 remains suppressed and no extra response is injected");
             await f.Deliver(f.LocalHp(1812));

@@ -117,6 +117,7 @@ static void teamplay_authority_init_once(void){
 static void teamplay_score_begin(unsigned battle_epoch){
     teamplay_authority_init_once();
     g_teamplay_authority.battle_epoch=battle_epoch;
+    card_system_reset_epoch(battle_epoch);
 #if TEAMPLAY_FEATURE_SCORE_OUTBOX
     g_teamplay_authority.score_by_slot[0]=g_teamplay_authority.score_by_slot[1]=g_teamplay_authority.score_by_slot[2]=0u;
 #endif
@@ -303,6 +304,24 @@ static void teamplay_start_member_cf7f(void){
 static void send_cf88_playable(SOCKET c,unsigned total_score);
 static void send_cf88_playable_noexp(SOCKET c,unsigned total_score);
 static void send_cf88_pve_settlement(SOCKET c,unsigned total_score);
+static void teamplay_room_leave_current(void){
+    int src=g_multi_current,target;unsigned uid,owner;char p[4096];
+    if(src<0||src>=MULTI_MAX_PLAYERS||!g_multi_conn[src].room_active)return;
+    uid=g_multi_conn[src].uid;multiplayer_mark_room(0);owner=multiplayer_owner_uid();
+#if TEAMPLAY_FEATURE_LATE_ROSTER_PUSH
+    g_teamplay_roster_seen_mask[src]=0u;
+    for(target=0;target<MULTI_MAX_PLAYERS;target++)g_teamplay_roster_seen_mask[target]&=~(1u<<(unsigned)src);
+#endif
+    for(target=0;target<MULTI_MAX_PLAYERS;target++){
+        if(target==src||!g_multi_conn[target].active||!g_multi_transport_alive[target]||!g_multi_conn[target].room_active)continue;
+        multi_switch_to(target,src);mkpkt(p,0xCF74,12,1);
+        stable_resource_put16(p,8,uid);stable_resource_put16(p,10,owner);
+        sendbuf(g_multi_conn[target].socket,p,12);multi_switch_back(src,target);
+    }
+#if TEAMPLAY_FEATURE_PARALLEL_LOADING
+    teamplay_start_mark_all_released();
+#endif
+}
 static int teamplay_room_member_count(void){int i,n=0;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active)n++;return n;}
 static void teamplay_send_cf88_room(SOCKET c,unsigned total_score,int variant){
     /* Each member enters settlement independently and commits its own result. */
@@ -325,7 +344,7 @@ static int teamplay_relay_allowed_for_packet(unsigned type,int len){if(type==0x0
 #endif
 
 #define TEAMPLAY_DROP_CAP 128
-struct teamplay_drop_event {unsigned active,ordinal,battle_epoch,drop_code,claimed_by,item_type;};
+struct teamplay_drop_event {unsigned active,ordinal,battle_epoch,drop_code,claimed_by,item_type,scene_uid;};
 static struct teamplay_drop_event g_teamplay_drops[TEAMPLAY_DROP_CAP];static unsigned g_teamplay_drop_next=0u;
 static void teamplay_note_drop(unsigned drop_code){
 #if TEAMPLAY_FEATURE_DROP_CLAIM
@@ -343,7 +362,7 @@ static unsigned teamplay_pickup_uid(void){
 }
 static int teamplay_drop_claim(unsigned category,unsigned scene_uid,unsigned item_type,unsigned collector_uid){
 #if TEAMPLAY_FEATURE_DROP_CLAIM
-    unsigned i;struct teamplay_drop_event*d;if(category!=40u)return 1;for(i=0;i<TEAMPLAY_DROP_CAP;i++){d=&g_teamplay_drops[i];if(d->active&&!d->claimed_by&&d->battle_epoch==multiplayer_shared_boss_context()->battle_epoch){d->claimed_by=collector_uid;d->item_type=item_type;printf("  [MULTI_DROP] claim ordinal=%u battle=%u collector=%u scene=%u item=%u code=%u\n",d->ordinal,d->battle_epoch,collector_uid,scene_uid,item_type,d->drop_code);fflush(0);return 1;}}return 0;
+    unsigned i;struct teamplay_drop_event*d;if(category!=40u)return 1;for(i=0;i<TEAMPLAY_DROP_CAP;i++){d=&g_teamplay_drops[i];if(d->active&&d->claimed_by&&d->battle_epoch==multiplayer_shared_boss_context()->battle_epoch&&d->scene_uid==scene_uid)return 0;}for(i=0;i<TEAMPLAY_DROP_CAP;i++){d=&g_teamplay_drops[i];if(d->active&&!d->claimed_by&&d->battle_epoch==multiplayer_shared_boss_context()->battle_epoch){d->claimed_by=collector_uid;d->item_type=item_type;d->scene_uid=scene_uid;printf("  [MULTI_DROP] claim ordinal=%u battle=%u collector=%u scene=%u item=%u code=%u\n",d->ordinal,d->battle_epoch,collector_uid,scene_uid,item_type,d->drop_code);fflush(0);return 1;}}return 0;
 #else
     (void)category;(void)scene_uid;(void)item_type;(void)collector_uid;return 1;
 #endif

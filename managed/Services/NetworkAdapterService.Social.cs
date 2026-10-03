@@ -120,7 +120,10 @@ public sealed partial class NetworkAdapterService
             && presence.Session.NativeDungeonLogicalDifficulty == session.NativeDungeonLogicalDifficulty);
     }
 
-    private async Task RefreshCoupleBenefitsAsync(ConnectionSession session, CancellationToken token)
+    private Task RefreshCoupleBenefitsAsync(ConnectionSession session, CancellationToken token)
+        => RefreshCoupleBenefitsCoreAsync(session, token, false);
+
+    private async Task RefreshCoupleBenefitsCoreAsync(ConnectionSession session, CancellationToken token, bool force)
     {
         if (session.NativeDungeon is null || session.NativeCheckpoint is null)
             return;
@@ -132,7 +135,7 @@ public sealed partial class NetworkAdapterService
             && partner is not null && IsNativeDungeonRecoveryActive(partner.Session)
             && partner.Session.NativeCheckpoint is { } partnerState
                 ? checked((ushort)partnerState.Get(4)) : (ushort)0;
-        if (session.NativeCheckpoint.Get(CoupleBenefitPolicy.NativeRingOffset) == ring
+        if (!force && session.NativeCheckpoint.Get(CoupleBenefitPolicy.NativeRingOffset) == ring
             && session.NativeCheckpoint.Get(NativeDungeonState.CouplePartnerUidOffset) == partnerUid)
             return;
         await RefreshNativeCoupleMetadataAsync(session, ring, partnerUid, token);
@@ -150,6 +153,7 @@ public sealed partial class NetworkAdapterService
         var relation = await _database.GetActiveCoupleRelationAsync(session.Character.Id, token);
         var scaled = CoupleBenefitPolicy.ScaleExperience(amount, relation?.RingItemCode ?? 0,
             relation is not null && FindNativeDungeonPartner(session, relation) is not null);
+        scaled = await ScaleMentorshipExperienceAsync(session, scaled, token);
         var count = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8));
         for (var index = 0; index < count; index++)
         {

@@ -41,4 +41,40 @@ public sealed partial class NetworkAdapterService
                 _nativeMentorshipRounds.Remove(key);
         }
     }
+
+    private async Task<uint> ScaleMentorshipExperienceAsync(ConnectionSession session, uint amount, CancellationToken token)
+    {
+        if (amount == 0 || session.Character is null || session.NativeDungeonDeathLatched) return amount;
+        var relations = await _database.GetMentorshipRelationsAsync(CreateMentorshipActor(session), false, token);
+        foreach (var relation in relations)
+        {
+            var peerId = relation.TeacherCharacterId == session.Character.Id
+                ? relation.StudentCharacterId : relation.TeacherCharacterId;
+            var peer = _activeWorldSessions.Values.FirstOrDefault(item => item.CharacterId == peerId
+                && TryGetMentorshipPresence(item.SessionId, out _))?.Session;
+            if (peer is null || peer.Character is null || peer.NativeDungeonDeathLatched) continue;
+            bool together;
+            if (session.NativeDungeon is not null && session.NativeLease is { } lease)
+                together = peer.NativeDungeon is not null && peer.NativeLease?.Port == lease.Port
+                    && peer.NativeLease?.Generation == lease.Generation
+                    && session.NativeDungeonSelectionValid && peer.NativeDungeonSelectionValid
+                    && session.NativeDungeonHdIndex == peer.NativeDungeonHdIndex
+                    && session.NativeDungeonEpisode == peer.NativeDungeonEpisode
+                    && session.NativeDungeonDungeon == peer.NativeDungeonDungeon
+                    && session.NativeDungeonStage == peer.NativeDungeonStage
+                    && session.NativeDungeonLogicalDifficulty == peer.NativeDungeonLogicalDifficulty;
+            else
+            {
+                lock (_dungeonRoomGate)
+                    together = _dungeonRooms.TryGetValue(session.DungeonRoomId, out var room)
+                        && room.Members.ContainsKey(session.SessionId) && room.Members.ContainsKey(peer.SessionId)
+                        && room.Battle.ParticipantCharacterIds.Contains(session.Character.Id)
+                        && room.Battle.ParticipantCharacterIds.Contains(peerId)
+                        && !room.Battle.DeadCharacters.Contains(session.Character.Id)
+                        && !room.Battle.DeadCharacters.Contains(peerId);
+            }
+            if (together) return (uint)Math.Min(uint.MaxValue, (ulong)amount * 150 / 100);
+        }
+        return amount;
+    }
 }

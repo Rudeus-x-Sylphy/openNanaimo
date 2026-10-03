@@ -383,6 +383,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte ResponseTransportTagIndex { get; set; }
         public bool ResponseTransportTagInitialized { get; set; }
         public InventoryIdentityMap GameInventoryIdentities { get; } = new();
+        public InventoryAcquisitionTracker InventoryAcquisitions { get; } = new();
         public InventoryIdentityMap PetMaterialIdentities { get; } = new();
         public ShoppingCouponIdentityMap ShoppingCouponIdentities { get; } = new();
         public ushort? LastSkillSlotExpansionRequestControl { get; set; }
@@ -400,7 +401,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte TownId { get; set; }
         public byte TownPage { get; set; }
         public bool TownSceneActive { get; set; }
+        public bool NativeContinuationRosterRequested { get; set; }
+        public bool NativeCoupleIdentityRetained { get; set; }
         public bool TownPetSceneCompletionPending { get; set; }
+        public HashSet<ushort> TownKnownActors { get; } = [];
+        public byte[]? LastTownMovement { get; set; }
+        public Dictionary<string, (ConnectionSession Actor, int Remaining)> TownAttachmentRefreshes { get; } = new();
         public bool TownMapMarkerInitialized { get; set; }
         public long ApartmentOwnerCharacterId { get; set; }
         public HealthRecoverySchedule HealthRecovery { get; } = new();
@@ -770,6 +776,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public HashSet<string> EndingSessionIds { get; } = new(StringComparer.Ordinal);
         public HashSet<string> ResultSessionIds { get; } = new(StringComparer.Ordinal);
         public HashSet<string> ResetSessionIds { get; } = new(StringComparer.Ordinal);
+        public Dictionary<(string Victim, string Attacker, ushort Kind, ushort Object), long> PvpHitTicks { get; } = [];
         public Dictionary<string, ushort> CurrentHpBySession { get; } = new(StringComparer.Ordinal);
         public Dictionary<string, int> ScoreBySession { get; } = new(StringComparer.Ordinal);
         public HashSet<uint> ClearedEntityRuntimeUids { get; } = [];
@@ -1936,6 +1943,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         if (string.Equals(channel, "WorldAdapter", StringComparison.Ordinal) && IsTrackedWorldSession(session))
             ObserveCardExchangeRequest(frame, opcode, session);
+        if (IsEntertainmentSession(channel, session) && session.OnlineTracked)
+            ObserveEntertainmentDeadline(session);
         if (MentorProtocol.IsSupportedMentorshipOpcode(opcode))
             return await HandleMentorshipFrameAsync(frame, opcode, payload, session, token);
         if (opcode == 0xCB25 && TryReadMentorshipPrivateCommand(payload, out var privateMentorshipCommand, out var privateMentorshipPeer))
@@ -2707,6 +2716,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     session));
                 inventoryFrames.Add(BuildNativeFrame(frame, 0xC3CC, BuildAvatarInventoryPayload(session.Character), session));
                 inventoryFrames.Add(BuildNativeFrame(frame, 0xC44C, BuildPetInventoryPayload(session.Character), session));
+                inventoryFrames.Add(BuildNativeFrame(frame, 0xC430, BuildGameInventoryPayload(session.Character), session));
                 return CombineNativeFrames(inventoryFrames.ToArray());
             }
 
@@ -2882,8 +2892,16 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return completionFrame;
                 var remainingTasks = await _database.GetCharacterTasksAsync(
                     session.AccountId, session.Character.Id, session.SessionId, token);
-                return CombineNativeFrames(completionFrame,
-                    BuildNativeFrame(frame, 0xC59C, BuildTaskListPayload(remainingTasks), session));
+                var completionFrames = new List<byte[]> { completionFrame };
+                if (completion.InventoryChanged)
+                {
+                    completionFrames.Add(BuildNativeFrame(frame, 0xC430, BuildGameInventoryPayload(session.Character), session));
+                    completionFrames.Add(BuildNativeFrame(frame, 0xC379,
+                        BuildBoxInfoPayloadWithSkills(session.Character,
+                            await _database.GetCharacterSkillsAsync(session.Character.Id, token)), session));
+                }
+                completionFrames.Add(BuildNativeFrame(frame, 0xC59C, BuildTaskListPayload(remainingTasks), session));
+                return CombineNativeFrames(completionFrames.ToArray());
             }
 
             case 0xC59B: // REQ_TASK_LIST
@@ -3230,9 +3248,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 }
                 if (ShopCatalog.TryGet(tokenItemCode, out var coupleCancelItem)
                     && coupleCancelItem.Category == 43
-                    && tokenItemCode == 43_100_002)
+                    && CoupleBenefitPolicy.IsSeparationItemCode(tokenItemCode))
                 {
-                    return await PrepareForcedSeparationAsync(
+                    return await PrepareSeparationAsync(
                         frame, tokenItemCode, tokenSelector, session, token);
                 }
 
@@ -4212,7 +4230,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 if (unionType == SkillPointCardUnionType
                     || CardCatalog.TryGetSkillPointToken(recipeToken, out _))
                 {
-                    var spResponse = new byte[16];
+                    var spResponse = BuildSkillPointSynthesisResultPayload(false, 0);
                     if (unionType != SkillPointCardUnionType
                         || !CardCatalog.TryResolveSkillPointUnion(
                             recipeToken,
@@ -4231,7 +4249,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         && session.LastSkillPointUnionToken == recipeToken
                         && session.LastSkillPointUnionResult is { } cachedResult
                         && DateTime.UtcNow - session.LastSkillPointUnionUtc <= TimeSpan.FromSeconds(5))
-                        return BuildNativeFrame(frame, 0xC3EE, cachedResult, session);
+                        return BuildNativeFrame(frame, 0xC3EE,
+                            BuildSkillPointSynthesisResultPayload(
+                                BinaryPrimitives.ReadUInt32LittleEndian(cachedResult) == 600, 0), session);
 
                     var sp = await _database.SynthesizeSkillPointCardAsync(
                         session.AccountId,
@@ -4241,11 +4261,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         token);
                     if (sp.Success)
                     {
-                        BinaryPrimitives.WriteUInt32LittleEndian(spResponse.AsSpan(0, 4), CardUnionSuccessResult);
-                        // C3EE +0x0C is the native result-panel echo. The card
-                        // has already been consumed and its face value credited
-                        // to the family-specific SP balance in the DB transaction.
-                        BinaryPrimitives.WriteUInt32LittleEndian(spResponse.AsSpan(4, 4), sp.OutputCode);
+                        // SP completion applies a point delta and its dedicated success animation.
+                        // The transaction owns both the card debit and family-specific credit.
+                        CardCatalog.TryGet(sp.OutputCode, out var creditedCard);
+                        spResponse = BuildSkillPointSynthesisResultPayload(true, creditedCard.SkillPointValue);
                         await RefreshSessionCharacterAsync(session, token);
                     }
 
@@ -4956,8 +4975,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 LeaveVillageShopScene(session, "town page enter");
                 LeaveTownScene(session, "town page change");
                 session.TownPage = (byte)effectiveRoomIndex;
-                // Selector4 omits C36C: defer its scene/PET attachment until the
-                // first valid CB21 after this client-driven C367/C368 boundary.
+                // Selector4 completes from its own entry boundary. Queued peer
+                // publications follow C368, including an idle position state.
                 session.TownPetSceneCompletionPending = session.TownId == 4;
                 session.Character.CurrentMapId = session.TownId;
                 session.Character.CurrentTownPage = effectiveRoomIndex;
@@ -4973,6 +4992,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     : entryPosition.Repaired
                         ? $"{channel}:{remote} C367 village-entry sentinel normalized: town={session.TownId} room={effectiveRoomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({entryPosition.WireX},{entryPosition.WireY}); FFFF/FFFF and legacy 03FF/03FF are not persisted"
                         : $"{channel}:{remote} C367 accepted village-entry position: room={effectiveRoomIndex} position=({entryPosition.WireX},{entryPosition.WireY})");
+                await CompleteTownPetSceneOnActivityAsync(session, token);
                 return BuildNativeFrame(
                     frame,
                     0xC368,
@@ -5163,8 +5183,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 if (peerCharacter is null)
                     return null;
                 _log($"{channel}:{remote} 城镇用户查询 value={requestedEntityId}：返回 entity={peer.CharacterId} name={peerCharacter.Name}");
-                return BuildTownPeerInfoResponse(frame, session, peerCharacter,
+                ArmTownAttachmentRefresh(session, peer.Session);
+                var peerInfo = BuildTownPeerInfoResponse(frame, session, peerCharacter,
                     peer.Session.LastReportedPositionX, peer.Session.LastReportedPositionY);
+                if (RegisterTownPeer(session, peerCharacter))
+                    peerInfo = CombineNativeFrames(BuildNativeFrame(frame, 0xC36B,
+                        BuildTownLeavePayload(peerCharacter), session), peerInfo);
+                return CombineNativeFrames(peerInfo,
+                    BuildNativeFrame(frame, 0xCB21, BuildTownCurrentPosition(peer.Session), session));
             }
 
             case 0xC36C: // one-way town-page completion event, no payload
@@ -5548,6 +5574,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 _log($"{channel}:{remote} 创建地宫房间成功：room={createdRoom.Id} owner={session.Character.Id} members=1");
                 return BuildCreateGameResponse(frame, session);
 
+            case 0xCF79:
+                return IsEntertainmentSession(channel, session) ? UpdateEntertainmentRoomSettings(frame, payload, session) : null;
+
             case 0xCF75: // REQ_ENTER_GAMEROOM -> ANS_ENTER_GAMEROOM
             {
                 if (!session.OnlineTracked || session.Character is null || payload.Length != 12)
@@ -5557,7 +5586,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 {
                     if (IsEntertainmentSession(channel, session))
                     {
-                        if (!session.AuxiliaryGameSession
+                        var enterMode = BinaryPrimitives.ReadUInt16LittleEndian(payload);
+                        if (enterMode == 10)
+                        {
+                            requestedRoomId = FindPublicEntertainmentRoom(session);
+                            payload.AsSpan(4, 8).Clear();
+                        }
+                        if (enterMode is not (10 or 20) || !session.AuxiliaryGameSession
                             || !TryDecodeFixedGbkString(payload.AsSpan(4, 8), true, out var entertainmentPassword)
                             || !TryJoinEntertainmentRoom(
                                 session,
@@ -7866,6 +7901,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             case 0xCF95: // handled before native-dungeon routing
                 return await HandleDungeonRevivalRetryAsync(frame, channel, remote, session, payload, token);
 
+            case 0xD014:
+                return IsSkyArenaSession(channel, session) ? HandleArenaPvpEvent(frame, payload, session) : null;
+
             case 0xD00F: // SEND_MULTICASTING_GAMEEVENT -> RECV_MULTICASTING_GAMEEVENT
             {
                 if (!session.OnlineTracked || session.Character is null)
@@ -8299,7 +8337,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         || payload.Length != 0
                         || !IsStartedEntertainmentRoomMember(session))
                         return null;
-                    return BuildNativeFrame(frame, 0xCF82, [], session);
+                    var entertainmentRoom = GetEntertainmentRoom(session)!;
+                    lock (_entertainmentRoomGate) entertainmentRoom.PicnicLivesBySession[session.SessionId] = 3;
+                    var continued = EntertainmentProtocol.BuildPicnicPlayerState(GetSceneEntityId(session.Character), 3);
+                    QueueEntertainmentBroadcast(session, 0xCF82, continued, false, "entertainment continue");
+                    return CombineNativeFrames(BuildNativeFrame(frame, 0xCF82, continued, session),
+                        BuildNativeFrame(frame, 0xCFE6, EntertainmentProtocol.BuildGameData(), session));
                 }
 
                 if (!string.Equals(channel, "WorldAdapter", StringComparison.Ordinal)
@@ -8483,7 +8526,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     || session.Character is null
                     || payload.Length != 0)
                     return null;
-                var entertainmentEndPayload = BuildEntertainmentEndGamePayload(session);
+                var entertainmentEndPayload = await BuildEntertainmentEndGamePayloadAsync(session, token);
                 return entertainmentEndPayload is null
                     ? null
                     : BuildNativeFrame(frame, 0xCF86, entertainmentEndPayload, session);
@@ -9211,6 +9254,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         "entertainment invitation"));
                     return null;
                 }
+                if (session.AuxiliaryGameSession) return null;
                 if (inviterEntityUid != expectedInviterEntityUid || targetEntityUid == expectedInviterEntityUid)
                 {
                     _log($"{channel}:{remote} party invitation identity rejected: character={session.Character.Id} inviter={inviterEntityUid} expected={expectedInviterEntityUid} target={targetEntityUid}");
@@ -9258,11 +9302,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             out var entertainmentInviter, out var entertainmentPayload)
                         || entertainmentInviter is null)
                         return null;
-                    entertainmentInviter.PendingSessionBroadcasts.Add(new PendingSessionBroadcast(
+                    session.PendingSessionBroadcasts.Add(new PendingSessionBroadcast(
                         entertainmentInviter, 0xC4E2, entertainmentPayload.ToArray(),
                         "entertainment invitation result"));
                     return BuildNativeFrame(frame, 0xC4E2, entertainmentPayload, session);
                 }
+                if (session.AuxiliaryGameSession) return null;
                 if (agreementCode is not (PartyAgreementRefused
                     or PartyAgreementAccepted
                     or PartyAgreementUnavailable)
@@ -9661,12 +9706,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     session.LastReportedPositionY = movementPositionY;
                     session.Character.PositionX = movementPositionX;
                     session.Character.PositionY = movementPositionY;
+                    if (session.TownSceneActive) session.LastTownMovement = movementPayload.ToArray();
                 }
                 await CompleteTownPetSceneOnActivityAsync(session, token);
                 // FFFF/FFFF is an observed CB21 activity sentinel. Relay the
                 // frame unchanged for the page-scoped client state machine, but
                 // never let it replace the last legal persistent town position.
                 QueueSceneBroadcast(session, 0xCB21, movementPayload, "scene movement/state");
+                QueueTownAttachmentRefreshes(session);
                 return null;
 
             case 0xCB22: // bidirectional MEDIATE_USER_EMOTION
@@ -10976,6 +11023,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     {
         // Invalidate even an unfinished page: it may never have sent C36C.
         session.TownPetSceneCompletionPending = false;
+        session.LastTownMovement = null;
+        lock (session.TownAttachmentRefreshes) session.TownAttachmentRefreshes.Clear();
+        lock (session.TownKnownActors) session.TownKnownActors.Clear();
         if (!session.TownSceneActive || session.Character is null)
         {
             session.TownMapMarkerInitialized = false;
@@ -13700,6 +13750,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             // checksum and is idempotent with the primary C354 builder.
             NormalizeC355VillageAccessFrame(frame, UnlockAllDungeons && !IsPureNewProfile(session));
             NormalizeInventoryVitalsForSend(frame, session);
+            RewriteInventoryAcquisitionNotice(frame, session);
 
             var checksum = ComputeNativeChecksum(frame);
             var transportXorKey = session.ResponseTransportXorKey;
@@ -15213,7 +15264,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         lock (_arenaRoomGate)
         {
             if (!_arenaRooms.TryGetValue(requester.ArenaRoomId, out var room)
-                || !room.Started
+                || !room.Started || room.EndingSessionIds.Count != 0 || room.PvpResultPayload.Length != 0
+                || room.EliminationWinnerSessionId is not null
                 || !room.Members.ContainsKey(requester.SessionId)
                 || requester.Character is null)
                 return false;
@@ -15222,18 +15274,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             var maximumHp = (ushort)Math.Clamp(requester.Character.MaxHp, 1, ushort.MaxValue);
             if (!room.CurrentHpBySession.TryGetValue(requester.SessionId, out hpBefore))
                 hpBefore = maximumHp;
+            if (hpBefore == 0) return false;
             hpAfter = (ushort)Math.Max(0, hpBefore - request.PlayerDamage);
             room.CurrentHpBySession[requester.SessionId] = hpAfter;
-
-            var target = FindArenaCombatTargetLocked(room, requester);
-            if (target is not null && request.TargetDamage > 0
-                && room.CurrentHpBySession.TryGetValue(target.SessionId, out var targetHp))
-            {
-                var targetAfter = (ushort)Math.Max(0, targetHp - request.TargetDamage);
-                room.CurrentHpBySession[target.SessionId] = targetAfter;
-                if (targetAfter == 0)
-                    room.EliminationWinnerSessionId = requester.SessionId;
-            }
 
             scoreBefore = room.ScoreBySession.GetValueOrDefault(requester.SessionId);
             scoreAfter = scoreBefore;
@@ -15341,7 +15384,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 bool won;
                 if (room.EliminationWinnerSessionId is { } eliminationWinner)
                 {
-                    won = string.Equals(member.SessionId, eliminationWinner, StringComparison.Ordinal);
+                    won = string.Equals(member.SessionId, eliminationWinner, StringComparison.Ordinal)
+                        || (teamMode && room.Members.TryGetValue(eliminationWinner, out var winningMember)
+                            && member.ArenaTeamCode == winningMember.ArenaTeamCode);
                 }
                 else if (teamMode)
                 {
@@ -15501,6 +15546,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             room.EndValuesBySession.Clear();
             room.PvpResultPayload = [];
             room.EliminationWinnerSessionId = null;
+            room.PvpHitTicks.Clear();
             room.CurrentHpBySession.Clear();
             room.ScoreBySession.Clear();
             room.ClearedEntityRuntimeUids.Clear();
@@ -15548,29 +15594,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             protocolNextLevel,
             1,
             []);
-    }
-
-    private static ConnectionSession? FindArenaCombatTargetLocked(
-        ArenaRoom room,
-        ConnectionSession attacker)
-    {
-        var candidates = room.Members.Values
-            .Where(member => member.SessionId != attacker.SessionId
-                && member.Character is not null
-                && room.CurrentHpBySession.GetValueOrDefault(member.SessionId) > 0)
-            .ToArray();
-        if (candidates.Length == 0)
-            return null;
-
-        if (attacker.ArenaTeamCode is 1 or 2)
-        {
-            var opponent = candidates.FirstOrDefault(member =>
-                member.ArenaTeamCode is 1 or 2
-                && member.ArenaTeamCode != attacker.ArenaTeamCode);
-            if (opponent is not null)
-                return opponent;
-        }
-        return candidates.OrderBy(member => member.ArenaSlotIndex).First();
     }
 
     private bool IsArenaEntityInRoom(ConnectionSession requester, uint uid)
@@ -17009,6 +17032,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
+    internal static byte[] BuildSkillPointSynthesisResultPayload(bool success, ushort points)
+    {
+        var payload = new byte[16];
+        BinaryPrimitives.WriteUInt32LittleEndian(payload, success ? 600u : 100u);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(4), success ? points : (ushort)0);
+        return payload;
+    }
+
     internal static byte[] BuildCardSynthesisFinishPayload()
     {
         var payload = new byte[4];
@@ -17093,7 +17124,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     private static byte[] BuildEmptyInventoryPayload()
         // status, mode, uint16 count
-        => [1, 0, 0, 0];
+        => [0, 0, 0, 0];
 
     internal static byte[] BuildGameInventoryPayload(CharacterRecord? character)
     {
@@ -17106,7 +17137,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // Its optional equipped-item tail begins at frame+684; mode zero does
         // not consume the tail, but the fixed payload preserves the structure.
         var payload = new byte[680];
-        payload[0] = 1;
+        payload[0] = 0;
         payload[1] = expansionExpiration != 0 ? (byte)6 : (byte)0;
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), (ushort)itemCodes.Length);
         for (var index = 0; index < itemCodes.Length; index++)
@@ -17189,7 +17220,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var payload = new byte[expansionExpiration != 0
             ? 680
             : 4 + items.Count * AvatarInventoryRecordLength];
-        payload[0] = 1; // status
+        payload[0] = 0; // acquisition notice; session publication supplies the edge
         payload[1] = expansionExpiration != 0 ? (byte)4 : (byte)0; // mode
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), (ushort)items.Count);
         for (var index = 0; index < items.Count; index++)
@@ -17254,7 +17285,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     internal static byte[] BuildInteriorInventoryPayload(byte requestMode, CharacterRecord? character)
     {
-        // Ordinary inventory 8005F0: full+9 is completion; full+10==6
+        // Ordinary inventory 8005F0: full+9 is the acquisition notice; full+10==6
         // enables expansion using full+1024. Other page modes are separate tuples.
         var itemCodes = requestMode == 30 || character is null
             ? []
@@ -17264,7 +17295,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             ? 1020
             : 4 + itemCodes.Length * InteriorInventoryRecordLength];
         payload[0] = requestMode;
-        payload[1] = 1;
+        payload[1] = 0;
         payload[2] = expansionExpiration != 0 ? (byte)6 : (byte)0;
         payload[3] = checked((byte)itemCodes.Length);
         for (var index = 0; index < itemCodes.Length; index++)
@@ -17343,7 +17374,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // Current C44C contract: mode4 enables expansion; frame+2028
         // is its expiry. Selection compares header+11 with each record handle.
         var payload = new byte[hasPet || expansionExpiration != 0 ? 2024 : 4];
-        payload[0] = 1; // status
+        payload[0] = 0; // acquisition notice; session publication supplies the edge
         payload[1] = expansionExpiration != 0 ? (byte)4 : (byte)0;
         payload[2] = checked((byte)(petItems.Length + materials.Length));
         payload[3] = equippedPetItemCode == 0 ? byte.MaxValue : checked((byte)Array.IndexOf(petItems, equippedPetItemCode));
@@ -17693,7 +17724,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         if (character is null)
             return payload;
 
-        payload[1] = 1; // frame+9: box data loaded
+        payload[1] = 0; // frame+9: cash-inbox acquisition notice
         WriteEquippedAvatarIdentityRecords(payload, character);
 
         BuildStoredAppearance(character).CopyTo(payload, 124);
@@ -18974,17 +19005,18 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640
         or 0xCB21 or 0xCB22 or 0xCB23
         or 0xCF09 or 0xCF0B or 0xCF0D or 0xCF0F or 0xCF11 or 0xCF13 or 0xCF17 or 0xCF19 or 0xCF1D
-        or 0xCF6C or 0xCF6E or 0xCF70 or 0xCF73 or 0xCF75 or 0xCF77
+        or 0xCF6C or 0xCF6E or 0xCF70 or 0xCF73 or 0xCF75 or 0xCF77 or 0xCF79
         or 0xCF7B or 0xCF7D or 0xCF7F or 0xCF81 or 0xCF83 or 0xCF85 or 0xCF89 or 0xCF8B or 0xCF8D
         or 0xCF93 or 0xCF97 or 0xCF99
         or 0xCFD1 or 0xCFD3 or 0xCFD5 or 0xCFD7 or 0xCFD9 or 0xCFE5 or 0xCFEB
-        or 0xD00D or 0xD00F or 0xD034 or 0xD036;
+        or 0xD00D or 0xD00F or 0xD014 or 0xD034 or 0xD036
+        or 0xC4E0 or 0xC4E1;
 
     private static string? GetRequiredInboundChannel(ushort opcode) => opcode switch
     {
         0x2713 or 0x2717 or 0x2719 or 0x271B or 0x2725 or 0x2730 or 0x2732 => "GameAdapter",
         0xCF0B or 0xCF0D or 0xCF11 or 0xCF13 or 0xCF17 or 0xCF19
-            or 0xCF85 or 0xCF89 or 0xCF97 or 0xCFE5 or 0xD036 => "ArenaAdapter",
+            or 0xCF79 or 0xCF85 or 0xCF89 or 0xCF97 or 0xCFE5 or 0xD014 or 0xD036 => "ArenaAdapter",
         0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640 or 0xC351 or 0xC353 or 0xC354 or 0xC358 or 0xC365 or 0xC367 or 0xC369 or 0xC36C or 0xC376 or 0xC387 or 0xC388 or 0xC578 or 0xC57D or 0xC57F or 0xC581 or 0xC583 or 0xC584 or 0xC585 or 0xC586 or 0xC587 or 0xCB21 or 0xCB22 or 0xCB23 or 0xCF09 or 0xCF0F or 0xCF15 or 0xCF1D or 0xCF6C or 0xCF6E or 0xCF70 or 0xCF73 or 0xCF75 or 0xCF77 or 0xCF7B or 0xCF7D or 0xCF7F or 0xCF87 or 0xCF8B or 0xCF8D or 0xCF93 or 0xCF95 or 0xCF99 or 0xCF9B or 0xD00D or 0xD00F or 0xD011 or 0xD034
             or 0xCFD1 or 0xCFD3 or 0xCFD5 or 0xCFD9 or 0xCFEB
             or 0xC378 or 0xC37A or 0xC3CB or 0xC3CD or 0xC3CF or 0xC3D1 or 0xC3D4 or 0xC3D6 or 0xC3D8 or 0xC3E7 or 0xC3E9 or 0xC3ED or 0xC3EF or 0xC3F3 or 0xC3FB or 0xC3FF or 0xC401 or 0xC431 or 0xC433 or 0xC469 or 0xC46B or 0xC46D or 0xC46F or 0xC47A or 0xC480 or 0xC491

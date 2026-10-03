@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 290,
+  "count": 293,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 19688960,
-      "sha256": "F15BE1E92CDD385D6CD70FC8FE3DEAE10DD329FB7638BFB22306DD4CFFD5B496"
+      "size": 19690496,
+      "sha256": "3E3F8005E3EF1A461AB5E6932B7BEC9987B0EE20D5967A62CCFD9699C2AC1C56"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 19688960,
-      "sha256": "FF15CF178E8094D6A88A0E449E4213EAF4787F78001D3E3A6C575354C56B3E86"
+      "size": 19690496,
+      "sha256": "2F29E2823D7444966D02DDA0B7A11D73907BF1DC61EFE1FC9D3C413BED05939C"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 19720192,
-      "sha256": "83F53AA8C998E351023CF0739DBB6B41241A1A08C5B0A08D521FBBC65EEC108F"
+      "size": 19721728,
+      "sha256": "1C648091FAD49E332C63774A06CACEC52D8A9D7EA073D1DA4333FA9E29E532B0"
     }
   },
   "files": [
@@ -108,8 +108,8 @@
     },
     {
       "path": "managed-host/CardSynthesisChecks.cs",
-      "size": 22636,
-      "sha256": "5D83E8FAA92B7C6D6E6CA8476875CFF919DAAC554140B39A484B39248C2B3795"
+      "size": 24759,
+      "sha256": "752C66F4D13F3633ACA71F3CC461BE2BFB8DC0CCB152AB763F4A026D2F1A3BE0"
     },
     {
       "path": "managed-host/ChannelReentryChecks.cs",
@@ -178,13 +178,13 @@
     },
     {
       "path": "managed-host/InventoryProtocolChecks.cs",
-      "size": 24299,
-      "sha256": "B652889730DA6463D4C36EE39D345218524A880A32009CA87196556707FD265B"
+      "size": 30096,
+      "sha256": "8B14EDF142EA9AB28865267813C258EC37DF894136FEDA57E163852CD740A768"
     },
     {
       "path": "managed-host/InventoryQuickbarChecks.cs",
-      "size": 19953,
-      "sha256": "58F861A5CF76E4CF317CFF7812070239723C1E9B8381EB173D29970FE451CC91"
+      "size": 22253,
+      "sha256": "77B7123F6C4F5662D55D9B32EBEFED233B3415F9147C0AF6576EA675D5326B0D"
     },
     {
       "path": "managed-host/InventoryVitalsChecks.cs",
@@ -213,8 +213,8 @@
     },
     {
       "path": "managed-host/NativeDungeonRevivalChecks.cs",
-      "size": 28039,
-      "sha256": "2D5BE31CDE451CF5195CAF51CB9BE82E1384C5A251DD6678BC8EB9DC065C22F3"
+      "size": 28256,
+      "sha256": "1A85E5BE019D4A649A5C24A2668747D845C6C25DF711DE90A59B7CD488D20076"
     },
     {
       "path": "managed-host/NativeDungeonRevivalWorkerChecks.cs",
@@ -233,8 +233,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 14075,
-      "sha256": "FA637E81402720A175DE63C3FE6EEBF246A450C2FF14FFD03099462A370E0A2A"
+      "size": 14133,
+      "sha256": "4FF523A34D821EAB5701A60D10B427B242E2696C80C6DCB93A5C2C1894B6CF01"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -243,8 +243,8 @@
     },
     {
       "path": "managed-host/QuestSystemChecks.cs",
-      "size": 20324,
-      "sha256": "E1E7001C207882FC122FF3CD664F4DF0E8D2442347A2AA3F2F09F1461C8278EC"
+      "size": 20380,
+      "sha256": "C0367A7E10CEFABB2B6A945C8A0CDB456818DE4868C6A3C14BB25F1F75527FE0"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -268,8 +268,8 @@
     },
     {
       "path": "managed-host/TownPetSceneLifecycleChecks.cs",
-      "size": 12415,
-      "sha256": "58169AE1A3E139EA51162B9CA45F9D467DE85DDD87046EDAD97E3135E1DBFFC3"
+      "size": 12620,
+      "sha256": "7EC873E69261A51CAF320E2BE4F33480F9A2869751D9FD1997C828339CA84A70"
     },
     {
       "path": "managed-host/TutorialAppearanceChecks.cs",
@@ -453,8 +453,8 @@
     },
     {
       "path": "managed/Services/ArenaProtocol.cs",
-      "size": 15810,
-      "sha256": "25210F6156497B1BDE8C34F7881E625ECB0A43F1FF206B87CCA4C6358330224D"
+      "size": 15655,
+      "sha256": "A02AC190F52BBD7F1EECC221E9E130CE5E99C262711940EF9D90168940B3DA15"
     },
     {
       "path": "managed/Services/AvatarEquipmentCatalog.cs",
@@ -498,8 +498,8 @@
     },
     {
       "path": "managed/Services/CoupleProtocol.cs",
-      "size": 8716,
-      "sha256": "C3BB1E09D7F0F97932DFCE3DD1774961B2ABA26E59521B5C57D282A599EDB217"
+      "size": 8946,
+      "sha256": "C8DEEA9D2E2F50C54AC7FA7E954ED19CBC55583A34FF514651EEBC1D29A7E426"
     },
     {
       "path": "managed/Services/DatabaseService.ApartmentHousing.cs",
@@ -553,8 +553,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.Inventory.cs",
-      "size": 25904,
-      "sha256": "9AE3150586B500EE252122D41A99EA3085954C0D32251403E2FDDAEE045514FE"
+      "size": 27978,
+      "sha256": "214DBF6ED9B3D8896D19AE4E51812C810C9D83E3E809335F06FA813CA995E8E0"
     },
     {
       "path": "managed/Services/DatabaseService.InventoryCoupons.cs",
@@ -573,8 +573,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.Mentorship.cs",
-      "size": 47467,
-      "sha256": "BD778A23CF164ADD24A1788AD2EFE3B349655E7FF7BB52A990E24075AB74D4E2"
+      "size": 48078,
+      "sha256": "DC54103F25E0C53D74F5620469D52464059AADBB0186F4F8A89C28A149A04A7E"
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
@@ -618,8 +618,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 585243,
-      "sha256": "2913F495038656ECDB7B1638B00238CD90556CA7E8910A67A6F25B05546E80F2"
+      "size": 587495,
+      "sha256": "C33917156E49F4567224F07FD70224943E48F9F1B2A0AA0E37E7C43C70ED4AE5"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -683,8 +683,8 @@
     },
     {
       "path": "managed/Services/MentorProtocol.cs",
-      "size": 13493,
-      "sha256": "EDD0BDF1194D463912ACDEC750C8222928047C5E86029E80E2F456BF1D9E81BE"
+      "size": 13495,
+      "sha256": "A20C6BED7581A68414E4510E49DF8F961FBDCEF3899EB32309D1B930C5E3D8B2"
     },
     {
       "path": "managed/Services/NativeDungeonClient.cs",
@@ -732,14 +732,19 @@
       "sha256": "B8A45874AB53BAA1144DE8CFEF2B603E7EC66AA79047EB97133B0FFAC8F69A88"
     },
     {
+      "path": "managed/Services/NetworkAdapterService.ArenaCombat.cs",
+      "size": 4361,
+      "sha256": "8EED21570638BACEB59288BCBF5F1787DF41D120C0A79C40147DC5C7C200646F"
+    },
+    {
       "path": "managed/Services/NetworkAdapterService.AvatarInventoryIdentity.cs",
       "size": 2258,
       "sha256": "A5855C6FADDF1B65FF0AA51C1917FC094CAE3965D0833A5E37A107F38995E05B"
     },
     {
       "path": "managed/Services/NetworkAdapterService.CardExchange.cs",
-      "size": 5338,
-      "sha256": "3EE84A88DA6D16A5463A64DF4A0A9C35BF837827D16F84491A65C6283E42EA76"
+      "size": 6235,
+      "sha256": "C573392470133BCD4745DE3F621CEC780B051822FDC2C0DC4E587B4F114FF699"
     },
     {
       "path": "managed/Services/NetworkAdapterService.CardSale.cs",
@@ -754,7 +759,7 @@
     {
       "path": "managed/Services/NetworkAdapterService.CoupleInventory.cs",
       "size": 3159,
-      "sha256": "28D9F8F7F75731BB8DE8B560701C8F311FF59DE8843095204C86C39EEC78DF1D"
+      "sha256": "0792454990C72726F61E2DAF64ECD045EDD97D59E8172AFBEC3BDE8DDE8B90D6"
     },
     {
       "path": "managed/Services/NetworkAdapterService.CoupleNative.cs",
@@ -763,13 +768,13 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.CoupleRequests.cs",
-      "size": 16219,
-      "sha256": "6CA574ED6D556C7F435DE2615BADEFE59CCC1BBE4277F14B9AAEC80D27009E9B"
+      "size": 16041,
+      "sha256": "E6C0E4DE062ABB4DBF9A589EDAD7714495DF05F85725EA43D8EA941108405DA6"
     },
     {
       "path": "managed/Services/NetworkAdapterService.DungeonContinuation.cs",
-      "size": 5257,
-      "sha256": "4D8A30BF1D8CA57921D2FBCF53B5BD31219DB82B89FB3A6DBCAE41B87946C8F6"
+      "size": 5485,
+      "sha256": "3E97F2ABC51C3268C2D281073139908DA02B9E6459F86C9A6EDB13066AC0618E"
     },
     {
       "path": "managed/Services/NetworkAdapterService.DungeonRanking.cs",
@@ -778,8 +783,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.Entertainment.cs",
-      "size": 37900,
-      "sha256": "DEFF8E98DC814F9CB8EE73232CE1EF4D06048DC542E03042938037BD00587428"
+      "size": 45241,
+      "sha256": "595626374795A1D32A2316381C72A34A783236D4F27823E4B1490AFE86FE8BA9"
     },
     {
       "path": "managed/Services/NetworkAdapterService.Friends.cs",
@@ -798,8 +803,13 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.InventoryIdentity.cs",
-      "size": 5784,
-      "sha256": "B7BD3F5A7CEA1F6F0CF187CD2F62637E67E7AC9B02CA3CC1BCAB6ACCB1697D5C"
+      "size": 5786,
+      "sha256": "12CCAB6734CEDED1FD6B0E31C406BE5D4F0336A84FDC79E0A89EF2CCB9877A7F"
+    },
+    {
+      "path": "managed/Services/NetworkAdapterService.InventoryNotifications.cs",
+      "size": 3641,
+      "sha256": "97AE6555903C352296C5AB3806A488A0E5E855BFC19C37B0E01DAE3D7D1C7817"
     },
     {
       "path": "managed/Services/NetworkAdapterService.InventoryVitals.cs",
@@ -808,23 +818,23 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.ManagedCouples.cs",
-      "size": 8401,
-      "sha256": "F4681BF85EAF25C81904B562795DC8B4641F214C21E0BA7ABFE2FE1913A7F654"
+      "size": 8455,
+      "sha256": "60DF9402CED1A7D4D97A0419016A77D3BB94432B6D8630D03D80C0C2645051BF"
     },
     {
       "path": "managed/Services/NetworkAdapterService.Mentorship.cs",
-      "size": 26067,
-      "sha256": "EF9A795D550B7B3C0D8A552DDB167350343A1E2597DE9A5BE2385BDF2DB4AE40"
+      "size": 26237,
+      "sha256": "515E679D473303A22F1118297B5B25CE7D4F0D6C188BA0505C6FE4A495754A0B"
     },
     {
       "path": "managed/Services/NetworkAdapterService.MentorshipSettlement.cs",
-      "size": 2012,
-      "sha256": "43000D16E788041C985A8E72262E8727365FD5DC9D852F0908F6DB30978C7CBE"
+      "size": 4410,
+      "sha256": "55BD32C658BDB3CA2A9E8139FAB72D5C4BF72F708A32568E3E4C186A5315D531"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 84212,
-      "sha256": "54DF42F33C1B62022C68EAF41FC38B0EB398D99F756D4D1BD178659C66C7C851"
+      "size": 87784,
+      "sha256": "0D98EDBE1A15ED7A635D480600A68FBE49793B57A1FA06E13A671485B420EB89"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
@@ -843,8 +853,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativePartyContinuation.cs",
-      "size": 11891,
-      "sha256": "6962379F5440019BDA4EEDF4D291E68335E7103A1BCF312353D1E08F7AB0B5D0"
+      "size": 12567,
+      "sha256": "6B5660BFEF046CB3E7912F40914E761A0BA6BACBE41C74D8965ABB9E6141F1A2"
     },
     {
       "path": "managed/Services/NetworkAdapterService.PetMaterials.cs",
@@ -858,23 +868,23 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.Social.cs",
-      "size": 9243,
-      "sha256": "629B8347A778F13B6B5CD0E8684A9628AB40845457BA3C9699C54E751C450258"
+      "size": 9511,
+      "sha256": "62FC337800E296F29097B09CAE4C7CA5BEC290831E1B97FD6F267C955138609D"
     },
     {
       "path": "managed/Services/NetworkAdapterService.TownPetLifecycle.cs",
-      "size": 2591,
-      "sha256": "08FF1FFD47D1F673BB22239FE1267CCCA88E91713DAED10A61701B175402C2D1"
+      "size": 2415,
+      "sha256": "88B7E88D46A03E16264F75BB4F4F3C8D5CF0418E986358B505CF18485A04F8C7"
     },
     {
       "path": "managed/Services/NetworkAdapterService.TownTitles.cs",
-      "size": 3351,
-      "sha256": "7115C77AE700EF2E9A468EC46A03B7EFBC8D7B462F21579810F8BAD772B3F7F1"
+      "size": 6402,
+      "sha256": "2CE1C4B89549E55CE52BC7CAB5B6BF3B1405236576A8E3CCD9BD366938F5B92C"
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 953274,
-      "sha256": "CC2613134063F3FD3A395F312564337426B53724D24C62C1BB375F2F8CE609A4"
+      "size": 956661,
+      "sha256": "CBA4D723E6CABE7D76A5329A373E2C67C0182970F7F9D719D7B1A70D4043217D"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -883,8 +893,8 @@
     },
     {
       "path": "managed/Services/PetProgression.cs",
-      "size": 10478,
-      "sha256": "6BE1A087B294A2895E148FEE154EF50104495F21E5A9ECC0A4F852E983DF9346"
+      "size": 10559,
+      "sha256": "0125AC110E5B086C9CD9F378C7E6F397E09EA72DB1B26166F46E0E3CA51B58A2"
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
@@ -1018,8 +1028,8 @@
     },
     {
       "path": "release/components/cards/card_system.inc",
-      "size": 8310,
-      "sha256": "D3D68D37180B8D0E22B3B62C2B1C905C53223250946E9A9B93535A6330CF5F1E"
+      "size": 8386,
+      "sha256": "E5CABB7D3BCB431DEC779496566765661B2A529CF6D2F7D07D5F0461E598FE30"
     },
     {
       "path": "release/components/cards/gameitem_effect_data.inc",
@@ -1033,8 +1043,8 @@
     },
     {
       "path": "release/components/cards/profile_state.inc",
-      "size": 9470,
-      "sha256": "D98655E461E96F4C937841938C309868E3E18144C777F9BA9F2AA6F2AE418B28"
+      "size": 9546,
+      "sha256": "B5F19ABAFA9781F1F0060D2347666BF611D5A45D29601D08894A815BA8AE1CE4"
     },
     {
       "path": "release/components/cards/random_pool.inc",
@@ -1178,8 +1188,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 143172,
-      "sha256": "35D50B108F5C05458B9AEBEE5F708CFAAB058AE1F3FA1DDAA013A8193A599C0F"
+      "size": 143918,
+      "sha256": "6D3B26B5CF18F8F274E57528333B831EAA5E2CD62DD86396ED95691635883B0C"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
@@ -1243,13 +1253,13 @@
     },
     {
       "path": "release/components/multiplayer/room_policy.inc",
-      "size": 22395,
-      "sha256": "40106AF09068138928E12E5506661C660A8FF012D1C080D025B0922877B5D24A"
+      "size": 23621,
+      "sha256": "8EF2F2C77CF864E847CD32948E10EDC8DE6D7606152A1E16FD7DC874C9591B06"
     },
     {
       "path": "release/components/multiplayer/start_runtime.inc",
-      "size": 3191,
-      "sha256": "3C87F4D66A518CBBAD33463D3EDCBE7282EE99EDBC4F826138C25819E9AE4744"
+      "size": 3366,
+      "sha256": "4146F7EF420E8E4072D3000CB4928F3AC8BCF432976B8C535B1779C185EFEEE4"
     },
     {
       "path": "release/components/multiplayer/teamplay_runtime.inc",
@@ -1268,8 +1278,8 @@
     },
     {
       "path": "release/components/multiplayer_combat/start_runtime.inc",
-      "size": 3191,
-      "sha256": "3C87F4D66A518CBBAD33463D3EDCBE7282EE99EDBC4F826138C25819E9AE4744"
+      "size": 3366,
+      "sha256": "4146F7EF420E8E4072D3000CB4928F3AC8BCF432976B8C535B1779C185EFEEE4"
     },
     {
       "path": "release/components/multiplayer_combat/teamplay_runtime.inc",
@@ -1338,13 +1348,13 @@
     },
     {
       "path": "release/components/protocol_extensions/protocol_overrides.inc",
-      "size": 21467,
-      "sha256": "5B39C02891996D462BBD33AB55E23B1BC8BCEEE50CFD7BD021F1F4575DFBF6AB"
+      "size": 21744,
+      "sha256": "AC44BCBABE38AEB51844924042E9EC69A649FE4BBAA941062BB8AA89A24997B8"
     },
     {
       "path": "release/components/quickbar/quickbar_runtime.inc",
-      "size": 26111,
-      "sha256": "C5892C0DE49E8C852CCCB030B305587FF2A98F77DE90F55F6C78FE073E2B7EBA"
+      "size": 26164,
+      "sha256": "680EEC28BC2EBF68C90A7D8DB06229FA66F9D5E75193678DB3DCA8F47846C6FE"
     },
     {
       "path": "release/components/settlement/battle_score_runtime.inc",
@@ -1370,6 +1380,11 @@
       "path": "release/components/skills/attack_policy.inc",
       "size": 821,
       "sha256": "4295FC7414948304A4EED8FB10DAE5016F6B6916F24489C7DCE1861419898046"
+    },
+    {
+      "path": "release/components/skills/mana_policy.inc",
+      "size": 893,
+      "sha256": "6F2366AE1D398EC7ADE76F330D190C70151587B7F028781B3831DF598AF2D29F"
     },
     {
       "path": "release/components/skills/profile_state.inc",
@@ -1458,13 +1473,13 @@
     },
     {
       "path": "release/components/winter_boss/boss_hp_sync_runtime.inc",
-      "size": 58176,
-      "sha256": "0ACA77B2F7BDC8DB5502DC16808907E1B7CAA960DF437A99A678EEEF2BC1853A"
+      "size": 57476,
+      "sha256": "0971BF06F753971A33FE3FC471DE5F21365B09D18BF54CAFA062BF50EA6889B3"
     },
     {
       "path": "release/teamplay_common.inc",
-      "size": 14841,
-      "sha256": "A047A2B79F7F72766B5567FE36015EF035CE2EFBB727981B50C48C17B428E172"
+      "size": 14886,
+      "sha256": "CBFFCC568A2AEE29FEE2700C4402E92EF5EAB985EFDC3B744EE959D814893E98"
     },
     {
       "path": "scripts/build_complete_adapter.ps1",

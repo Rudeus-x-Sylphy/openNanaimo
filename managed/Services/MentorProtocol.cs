@@ -273,7 +273,7 @@ internal static class MentorProtocol
         {
             // Lightweight host checks do not carry client catalogs. The production
             // tuple is fixed by the validated quest/resource definitions.
-            return new(2, 1, 1, TimeSpan.FromMinutes(2), 1, [75000138],
+            return new(2, 1, 1, TimeSpan.FromMinutes(2), 20, [75000138],
                 [new(75000138, 0, 0)], new(17000015, 1, 71000012));
         }
     }
@@ -292,7 +292,7 @@ internal static class MentorProtocol
         if (reward.Amount is 0 or > ushort.MaxValue || !ShopCatalog.TryGet(reward.RewardCode, out var item)
             || item.Section != InventorySection.Pet)
             throw new InvalidDataException("Mentorship graduation item definition is incompatible.");
-        return new(2, 1, 1, TimeSpan.FromMinutes(2), 1, [objective.ObjectiveId],
+        return new(2, 1, 1, TimeSpan.FromMinutes(2), 20, [objective.ObjectiveId],
             [new(objective.ObjectiveId, episode, dungeonBit)],
             new(reward.RewardCode, checked((ushort)reward.Amount), rewardQuest.QuestId));
     }

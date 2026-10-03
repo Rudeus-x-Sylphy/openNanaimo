@@ -24,7 +24,7 @@ public sealed partial class NetworkAdapterService
         public required int ChannelId { get; init; }
         public required byte GameType { get; init; }
         public required string OwnerSessionId { get; set; }
-        public required EntertainmentCreateRequest CreateRequest { get; init; }
+        public required EntertainmentCreateRequest CreateRequest { get; set; }
         public Dictionary<string, ConnectionSession> Members { get; } = new(StringComparer.Ordinal);
         public HashSet<string> WaitingRoomInitializedSessions { get; } = new(StringComparer.Ordinal);
         public HashSet<string> WaitingRoomAnnouncements { get; } = new(StringComparer.Ordinal);
@@ -37,6 +37,15 @@ public sealed partial class NetworkAdapterService
         public ushort Selection1 { get; set; }
         public List<byte[]> GameDataPages { get; } = [];
         public bool Started { get; set; }
+        public bool EndNotificationSent { get; set; }
+        public Dictionary<string, byte> CompletedCells { get; } = new(StringComparer.Ordinal);
+        public Guid RoundId { get; set; }
+        public DateTime StartedUtc { get; set; }
+        public SemaphoreSlim SettlementGate { get; } = new(1, 1);
+        public byte[] EndGamePayload { get; set; } = [];
+        public HashSet<string> ResultRecipients { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, uint>? FinalScores { get; set; }
+        public Dictionary<string, CharacterRecord> SettledCharacters { get; } = new(StringComparer.Ordinal);
 
         public string Title => CreateRequest.Title;
         public string Password => CreateRequest.Password;
@@ -177,13 +186,18 @@ public sealed partial class NetworkAdapterService
         lock (_entertainmentRoomGate)
         {
             PruneEntertainmentInvitationsLocked();
-            if (!_entertainmentInvitationsByInvitee.Remove(invitee.SessionId, out var invitation)
+            if (!_entertainmentInvitationsByInvitee.TryGetValue(invitee.SessionId, out var invitation)
                 || invitation.Inviter.Character is not { } inviterCharacter
                 || GetSceneEntityId(inviterCharacter) != inviterEntityUid
                 || !invitation.Inviter.OnlineTracked || !invitee.OnlineTracked
                 || !_entertainmentRooms.TryGetValue(invitation.RoomId, out var room)
-                || room.OwnerSessionId != invitation.Inviter.SessionId || room.Started)
+                || room.OwnerSessionId != invitation.Inviter.SessionId || room.Started
+                || invitee.Character is null || invitee.EntertainmentRoomId != 0
+                || !invitee.AuxiliaryGameSession || invitee.ChannelId != room.ChannelId
+                || invitee.ArenaGameType != room.GameType
+                || resultCode is not (PartyAgreementAccepted or PartyAgreementRefused))
                 return false;
+            _entertainmentInvitationsByInvitee.Remove(invitee.SessionId);
             inviter = invitation.Inviter;
             if (resultCode == PartyAgreementAccepted)
             {
@@ -447,6 +461,11 @@ public sealed partial class NetworkAdapterService
                 reason = "already-started";
                 return true;
             }
+            if (room.EndGamePayload.Length != 0 && room.Members.Keys.Any(id => !room.ResultRecipients.Contains(id)))
+            {
+                reason = "members-awaiting-result";
+                return false;
+            }
             if (room.OwnerSessionId != requester.SessionId)
             {
                 reason = "requester-is-not-owner";
@@ -464,6 +483,14 @@ public sealed partial class NetworkAdapterService
             for (var page = 0; page < EntertainmentProtocol.GameDataPageCount; page++)
                 room.GameDataPages.Add(EntertainmentProtocol.BuildGameData());
             room.Started = true;
+            room.RoundId = Guid.NewGuid();
+            room.EndNotificationSent = false;
+            room.CompletedCells.Clear();
+            room.StartedUtc = DateTime.UtcNow;
+            room.EndGamePayload = [];
+            room.ResultRecipients.Clear();
+            room.FinalScores = null;
+            room.SettledCharacters.Clear();
             room.ScoresBySession.Clear();
             room.PicnicLivesBySession.Clear();
             foreach (var member in room.Members.Values)
@@ -484,6 +511,7 @@ public sealed partial class NetworkAdapterService
         {
             if (!_entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out var room)
                 || !room.Started
+                || room.FinalScores is not null
                 || !room.Members.ContainsKey(requester.SessionId)
                 || !room.GameDataPagesDeliveredBySession.TryGetValue(
                     requester.SessionId,
@@ -508,9 +536,10 @@ public sealed partial class NetworkAdapterService
         lives = 0;
         lock (_entertainmentRoomGate)
         {
-            if (requestedLives > ushort.MaxValue
+            if (requestedLives > 3
                 || !_entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out var room)
                 || !room.Started
+                || room.FinalScores is not null
                 || !room.Members.ContainsKey(requester.SessionId)
                 || requester.Character is null)
                 return false;
@@ -534,14 +563,12 @@ public sealed partial class NetworkAdapterService
         {
             if (!_entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out var room)
                 || !room.Started
+                || room.FinalScores is not null
                 || !room.Members.ContainsKey(requester.SessionId)
                 || requester.Character is null)
                 return false;
             userUid = GetSceneEntityId(requester.Character);
-            var current = room.ScoresBySession.GetValueOrDefault(requester.SessionId);
-            room.ScoresBySession[requester.SessionId] = (uint)Math.Min(
-                (ulong)uint.MaxValue,
-                (ulong)current + scoreIncrement);
+            if (scoreIncrement is not (10 or 20)) return false;
             responseValue = synchronizedValue;
             return true;
         }
@@ -549,7 +576,7 @@ public sealed partial class NetworkAdapterService
 
     private bool TryBuildEntertainmentPicnicCellState(
         ConnectionSession requester,
-        byte playerSlot,
+        byte cellIndex,
         byte state,
         byte completionFlag,
         byte elapsedSeconds,
@@ -560,15 +587,20 @@ public sealed partial class NetworkAdapterService
         {
             if (!_entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out var room)
                 || !room.Started
+                || room.FinalScores is not null
                 || !room.Members.ContainsKey(requester.SessionId)
-                || requester.Character is null
-                || playerSlot != requester.EntertainmentSlotIndex)
+                || requester.Character is null || state > 3 || completionFlag > 3
+                || (room.CompletedCells.TryGetValue(requester.SessionId, out var previous) && cellIndex <= previous))
                 return false;
-            _ = elapsedSeconds;
+            room.CompletedCells[requester.SessionId] = cellIndex;
+            var delta = completionFlag != 0 && completionFlag == state
+                ? state * 100 + Math.Max(0, 22 - (int)elapsedSeconds) : 0;
+            var score = (ushort)Math.Min(ushort.MaxValue,
+                (ulong)room.ScoresBySession.GetValueOrDefault(requester.SessionId) + (uint)delta);
+            room.ScoresBySession[requester.SessionId] = score;
             responsePayload = EntertainmentProtocol.BuildPicnicCellState(
-                GetSceneEntityId(requester.Character),
-                state,
-                completionFlag);
+                GetSceneEntityId(requester.Character), score, 0);
+            BinaryPrimitives.WriteUInt16LittleEndian(responsePayload.AsSpan(6), score);
             return true;
         }
     }
@@ -577,7 +609,7 @@ public sealed partial class NetworkAdapterService
     {
         lock (_entertainmentRoomGate)
             return _entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out var room)
-                   && room.Started
+                   && room.Started && room.FinalScores is null
                    && room.Members.ContainsKey(requester.SessionId);
     }
 
@@ -607,6 +639,7 @@ public sealed partial class NetworkAdapterService
         {
             if (!_entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out var room)
                 || !room.Started
+                || room.FinalScores is not null
                 || !room.Members.ContainsKey(requester.SessionId)
                 || requester.Character is null
                 || uid != GetSceneEntityId(requester.Character))
@@ -616,45 +649,78 @@ public sealed partial class NetworkAdapterService
         }
     }
 
-    private byte[]? BuildEntertainmentEndGamePayload(ConnectionSession requester)
+    private async Task<byte[]?> BuildEntertainmentEndGamePayloadAsync(ConnectionSession requester, CancellationToken token)
     {
+        EntertainmentRoom? room;
         lock (_entertainmentRoomGate)
         {
-            if (!_entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out var room)
-                || !room.Started
-                || !room.Members.ContainsKey(requester.SessionId))
-                return null;
-            var members = room.Members.Values
-                .Where(member => member.Character is not null)
-                .OrderBy(member => member.SessionId == requester.SessionId ? 0 : 1)
-                .ThenBy(member => member.EntertainmentSlotIndex)
-                .ToArray();
-            var records = members.Select(member =>
-            {
-                var character = member.Character!;
-                var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
-                var nextLevel = character.Level >= CharacterProgression.MaximumLevel
-                    ? levelStart + 1
-                    : CharacterProgression.ExperienceRequiredForLevel(character.Level + 1);
-                return new EntertainmentEndGameRecord(
-                    GetSceneEntityId(character),
-                    checked((byte)Math.Clamp(character.Level, 1, byte.MaxValue)),
-                    1,
-                    1,
-                    room.ScoresBySession.GetValueOrDefault(member.SessionId),
-                    checked((uint)Math.Clamp(character.Experience, 0L, uint.MaxValue)),
-                    checked((uint)Math.Clamp(levelStart, 0L, uint.MaxValue - 1L)),
-                    checked((uint)Math.Clamp(nextLevel, 1L, uint.MaxValue)),
-                    1,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0);
-            }).ToArray();
-            return EntertainmentProtocol.BuildEndGameInfo(records);
+            if (!_entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out room)
+                || !room.Members.ContainsKey(requester.SessionId)) return null;
         }
+        await room.SettlementGate.WaitAsync(token);
+        try
+        {
+            ConnectionSession[] members;
+            Guid round;
+            lock (_entertainmentRoomGate)
+            {
+                if (!room.Members.ContainsKey(requester.SessionId)) return null;
+                if (room.EndGamePayload.Length != 0)
+                {
+                    room.ResultRecipients.Add(requester.SessionId);
+                    return room.EndGamePayload.ToArray();
+                }
+                if (!room.Started || DateTime.UtcNow - room.StartedUtc < TimeSpan.FromSeconds(10)) return null;
+                room.FinalScores ??= new Dictionary<string, uint>(room.ScoresBySession, StringComparer.Ordinal);
+                round = room.RoundId;
+                members = room.Members.Values.Where(member => member.Character is not null)
+                    .OrderByDescending(member => room.FinalScores.GetValueOrDefault(member.SessionId))
+                    .ThenBy(member => member.EntertainmentSlotIndex).ToArray();
+            }
+            var highest = members.Select(member => room.FinalScores.GetValueOrDefault(member.SessionId)).DefaultIfEmpty().Max();
+            foreach (var member in members)
+            {
+                if (room.SettledCharacters.ContainsKey(member.SessionId)) continue;
+                var owner = _activeWorldSessions.Values.FirstOrDefault(item => item.AccountId == member.AccountId
+                    && item.CharacterId == member.Character!.Id && IsTrackedWorldSession(item.Session));
+                if (owner is null) continue;
+                var score = room.FinalScores.GetValueOrDefault(member.SessionId);
+                // Local reward policy: ten pet experience for participation, twenty for a non-tied victory.
+                var victory = members.Length > 1 && score > 0 && score == highest
+                    && members.Count(other => room.FinalScores.GetValueOrDefault(other.SessionId) == highest) == 1;
+                var saved = await _database.ApplyDungeonRewardAsync(owner.AccountId, owner.CharacterId, owner.SessionId,
+                    0, 0, 0, 0, 0, 0, 0, victory ? 20 : 10, 0, token, completed: false,
+                    activitySettlementKey: "entertainment:" + round.ToString("N"));
+                if (saved is null) return null;
+                member.Character = saved;
+                owner.Session.Character = saved;
+                room.SettledCharacters[member.SessionId] = saved;
+            }
+            lock (_entertainmentRoomGate)
+            {
+                if (room.RoundId != round) return null;
+                var records = members.Select(member =>
+                {
+                    var character = room.SettledCharacters.GetValueOrDefault(member.SessionId) ?? member.Character!;
+                    var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
+                    var nextLevel = character.Level >= CharacterProgression.MaximumLevel ? levelStart + 1
+                        : CharacterProgression.ExperienceRequiredForLevel(character.Level + 1);
+                    return new EntertainmentEndGameRecord(GetSceneEntityId(character),
+                        checked((byte)Math.Clamp(character.Level, 1, byte.MaxValue)),
+                        CharacterTitleState.GetGrade(character), CharacterTitleState.GetGrade(character),
+                        room.FinalScores.GetValueOrDefault(member.SessionId),
+                        checked((uint)Math.Clamp(character.Experience, 0L, uint.MaxValue)),
+                        checked((uint)Math.Clamp(levelStart, 0L, uint.MaxValue - 1L)),
+                        checked((uint)Math.Clamp(nextLevel, 1L, uint.MaxValue)), 1, 0, 0, 0, 0, 0, 0);
+                }).ToArray();
+                room.EndGamePayload = EntertainmentProtocol.BuildEndGameInfo(records);
+                room.Started = false;
+                room.ResultRecipients.Add(requester.SessionId);
+                foreach (var member in room.Members.Values) member.EntertainmentReady = false;
+                return room.EndGamePayload.ToArray();
+            }
+        }
+        finally { room.SettlementGate.Release(); }
     }
 
     private void QueueEntertainmentMemberSnapshots(ConnectionSession initialized)
@@ -902,5 +968,48 @@ public sealed partial class NetworkAdapterService
         member.EntertainmentMulticastInitialized = false;
         member.EntertainmentP2PProtocolConfirmed = false;
         ResetP2PState(member);
+    }
+
+    private void ObserveEntertainmentDeadline(ConnectionSession source)
+    {
+        lock (_entertainmentRoomGate)
+        {
+            if (!_entertainmentRooms.TryGetValue(source.EntertainmentRoomId, out var room)
+                || !room.Started || room.EndNotificationSent || !room.Members.ContainsKey(source.SessionId)
+                || DateTime.UtcNow - room.StartedUtc < TimeSpan.FromSeconds(120)) return;
+            room.EndNotificationSent = true;
+            room.FinalScores ??= new Dictionary<string, uint>(room.ScoresBySession, StringComparer.Ordinal);
+            QueueEntertainmentBroadcast(source, 0xD903, [], true, "entertainment round complete");
+        }
+    }
+
+    private byte[]? UpdateEntertainmentRoomSettings(byte[] frame, byte[] payload, ConnectionSession requester)
+    {
+        if (payload.Length != 36 || !requester.OnlineTracked || !requester.AuxiliaryGameSession
+            || !TryDecodeFixedGbkString(payload.AsSpan(0, 24), false, out var title)) return null;
+        var password = string.Empty;
+        if (payload[24] > 1 && !TryDecodeFixedGbkString(payload.AsSpan(24, 8), false, out password)) return null;
+        var response = new byte[36];
+        lock (_entertainmentRoomGate)
+        {
+            if (!_entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out var room)
+                || room.OwnerSessionId != requester.SessionId || room.Started) return null;
+            room.CreateRequest = room.CreateRequest with { Title = title, Password = password };
+            var encoding = System.Text.Encoding.GetEncoding(936);
+            encoding.GetBytes(title).AsSpan().CopyTo(response);
+            encoding.GetBytes(password).AsSpan().CopyTo(response.AsSpan(24));
+            QueueEntertainmentBroadcast(requester, 0xCF7A, response, false, "entertainment room settings");
+        }
+        QueueEntertainmentLobbyRoomListRefresh(requester, "entertainment room settings");
+        return BuildNativeFrame(frame, 0xCF7A, response, requester);
+    }
+
+    private ushort FindPublicEntertainmentRoom(ConnectionSession requester)
+    {
+        lock (_entertainmentRoomGate)
+            return (ushort)(_entertainmentRooms.Values.Where(room => room.ChannelId == requester.ChannelId
+                && room.GameType == requester.ArenaGameType && !room.Started && room.Password.Length == 0
+                && room.Members.Count < EntertainmentProtocol.MaximumMembers)
+                .OrderBy(room => room.Id).FirstOrDefault()?.Id ?? 0);
     }
 }

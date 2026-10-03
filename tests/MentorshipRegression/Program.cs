@@ -40,6 +40,8 @@ internal static partial class Program
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         if (args.Contains("--describe-resources"))
         {
+            if (ShopCatalog.TryGet(17000015, out var graduationItem))
+                Console.WriteLine($"GRADUATION_ITEM {graduationItem.ItemCode} {graduationItem.Name} {graduationItem.Section}");
             foreach (var quest in QuestCatalog.Quests.Where(q => q.Objectives.Any(o => o.ObjectiveType == 11)))
                 Console.WriteLine($"MENTOR_RESOURCE {quest.QuestId} {quest.Name} "
                     + string.Join(";", quest.Rewards.Select(r => $"{r.RewardType}:{r.RewardCode}:{r.Amount}")));
@@ -51,6 +53,7 @@ internal static partial class Program
             return;
         }
         await CheckProductionMentorshipAsync();
+        await CheckGameplayReviewAsync();
         CheckContracts();
         await using var fixture = await Fixture.CreateAsync();
         await CheckAdvertisingAsync(fixture);
@@ -98,8 +101,9 @@ internal static partial class Program
             var account = await Database.OpenLocalAccountAsync(username);
             await Database.CreateLocalCharacterAsync(account, name, 0);
             var character = (await Database.GetCharacterAsync(account))!;
-            await ExecuteAsync("UPDATE Characters SET Level = $level WHERE Id = $id", ("$level", level), ("$id", character.Id));
+            await ExecuteAsync("UPDATE Characters SET Level = $level, Hans = 1000 WHERE Id = $id", ("$level", level), ("$id", character.Id));
             character.Level = level;
+            character.Hans = 1000;
             return await RegisterSessionAsync(character, username, channel);
         }
 

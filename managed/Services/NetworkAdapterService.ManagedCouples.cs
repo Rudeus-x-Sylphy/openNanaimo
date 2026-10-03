@@ -125,10 +125,10 @@ public sealed partial class NetworkAdapterService
         return reward with
         {
             CharacterExperience = (int)Math.Min(int.MaxValue,
-                CoupleBenefitPolicy.ScaleExperience(
+                await ScaleMentorshipExperienceAsync(session, CoupleBenefitPolicy.ScaleExperience(
                     checked((uint)Math.Max(0, reward.CharacterExperience)),
                     relation?.RingItemCode ?? 0,
-                    eligible))
+                    eligible), token))
         };
     }
 

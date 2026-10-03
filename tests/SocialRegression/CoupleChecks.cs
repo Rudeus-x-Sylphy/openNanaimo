@@ -69,10 +69,10 @@ internal static partial class Program
         var requesterOpcodes = requesterNotifications.Select(item => (ushort)Get(item, "Opcode")!).ToArray();
         var requesterTownRefresh = requesterNotifications.Single(item => (ushort)Get(item, "Opcode")! == 0xC36A);
         var requesterTownPayload = (byte[])Get(requesterTownRefresh, "Payload")!;
-        Check(requesterOpcodes.SequenceEqual(new ushort[] { 0xC36A, 0xC47F, 0xC584, 0xC430 })
+        Check(requesterOpcodes.SequenceEqual(new ushort[] { 0xC36B, 0xC36A, 0xC47F, 0xCB21, 0xC584, 0xC430 })
             && Encoding.GetEncoding(936).GetString(requesterTownPayload, 84, 16).TrimEnd('\0') == first.Name
             && BinaryPrimitives.ReadUInt16LittleEndian(requesterTownPayload.AsSpan(100)) == 2
-            && CoupleProtocol.TryReadPeerName((byte[])Get(requesterNotifications[2], "Payload")!, out var requesterPartner)
+            && CoupleProtocol.TryReadPeerName((byte[])Get(requesterNotifications[4], "Payload")!, out var requesterPartner)
             && requesterPartner == second.Name,
             "proposal acceptance refreshes the existing town actor marker before the relationship answer and inventory");
         var relation = await fixture.Database.GetActiveCoupleRelationAsync(first.Id);

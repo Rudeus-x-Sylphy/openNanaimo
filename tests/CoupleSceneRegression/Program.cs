@@ -255,11 +255,11 @@ internal static class Program
         var notices = Broadcasts(queueOwner).Cast<object>().Where(item =>
             ReferenceEquals(Get<object>(Get<object>(item, "Target"), "Session"), recipient)).ToArray();
         var expected = inventory
-            ? new ushort[] { 0xC36A, 0xC47F, opcode, 0xC430 }
-            : new ushort[] { 0xC36A, 0xC47F, opcode };
+            ? new ushort[] { 0xC36B, 0xC36A, 0xC47F, 0xCB21, opcode, 0xC430 }
+            : new ushort[] { 0xC36B, 0xC36A, 0xC47F, 0xCB21, opcode };
         Check(notices.Select(item => Get<ushort>(item, "Opcode")).SequenceEqual(expected),
-            "participants receive an in-place town actor refresh before the relationship result");
-        var townPayload = Get<byte[]>(notices[0], "Payload");
+            "participants receive an same-identity town actor replacement before the relationship result");
+        var townPayload = Get<byte[]>(notices[1], "Payload");
         var subject = Character(queueOwner);
         var expectedPartner = subject.ActiveCoupleRingItemCode == 0 ? "" : Character(recipient).Name;
         Check(ReadName(townPayload.AsSpan(84, 16)) == expectedPartner
@@ -275,12 +275,12 @@ internal static class Program
         var notices = Broadcasts(queueOwner).Cast<object>().Where(item =>
             ReferenceEquals(Get<object>(Get<object>(item, "Target"), "Session"), observer)).ToArray();
         var subjects = second is null ? new[] { first } : new[] { first, second };
-        Check(notices.Length == subjects.Length * 2, "an observer receives exactly the changed visible characters");
+        Check(notices.Length == subjects.Length * 4, "an observer receives exactly the changed visible characters");
         for (var i = 0; i < subjects.Length; i++)
         {
             var subject = subjects[i];
-            var payload = Get<byte[]>(notices[i * 2], "Payload");
-            Check(Get<ushort>(notices[i * 2], "Opcode") == 0xC36A && Get<ushort>(notices[i * 2 + 1], "Opcode") == 0xC47F,
+            var payload = Get<byte[]>(notices[i * 4 + 1], "Payload");
+            Check(Get<ushort>(notices[i * 4 + 1], "Opcode") == 0xC36A && Get<ushort>(notices[i * 4 + 2], "Opcode") == 0xC47F,
                 "observer construction precedes appearance attachment");
             Check(BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(52)) >> 20
                 == WireIdentityAllocator.GetSceneEntityId(Character(subject).Id), "observer state belongs to the changed subject");
@@ -320,7 +320,7 @@ internal static class Program
             ReferenceEquals(Get<object>(Get<object>(item, "Target"), "Session"), peer)).Select(item => Get<ushort>(item, "Opcode"));
         var partnerSession = Get<IList>(owner, "PendingSessionBroadcasts").Cast<object>().Where(item =>
             ReferenceEquals(Get<object>(item, "Target"), peer)).Select(item => Get<ushort>(item, "Opcode"));
-        Check(partnerNative.Concat(partnerSession).SequenceEqual(new ushort[] { 0xC36A, 0xC47F, 0xC586 }),
+        Check(partnerNative.Concat(partnerSession).SequenceEqual(new ushort[] { 0xC36B, 0xC36A, 0xC47F, 0xCB21, 0xC586 }),
             "ordinary inventory separation refreshes the existing peer before its relationship decision");
         CheckUnmoved(owner, 417, 99); CheckUnmoved(peer, 417, 99);
         Check(Character(owner).ActiveCouplePartnerName == "" && Character(peer).ActiveCouplePartnerName == "",
@@ -391,14 +391,14 @@ internal static class Program
         members.SetValue(first, 0); members.SetValue(peer, 1); members.SetValue(first, 2);
         Invoke<object?>(f.Service, "QueueCoupleTownSceneRefresh", first, members);
         var notices = Broadcasts(first).Cast<object>().ToArray();
-        Check(notices.Count(item => ReferenceEquals(Get<object>(Get<object>(item, "Target"), "Session"), visible)) == 4,
+        Check(notices.Count(item => ReferenceEquals(Get<object>(Get<object>(item, "Target"), "Session"), visible)) == 8,
             "duplicate participants do not duplicate observer updates");
-        Check(notices.Count(item => ReferenceEquals(Get<object>(Get<object>(item, "Target"), "Session"), first)) == 2
-            && notices.Count(item => ReferenceEquals(Get<object>(Get<object>(item, "Target"), "Session"), peer)) == 2,
-            "both couple participants receive the other actor's in-place marker refresh");
+        Check(notices.Count(item => ReferenceEquals(Get<object>(Get<object>(item, "Target"), "Session"), first)) == 4
+            && notices.Count(item => ReferenceEquals(Get<object>(Get<object>(item, "Target"), "Session"), peer)) == 4,
+            "both couple participants receive the other actor's same-identity marker replacement");
         Check(notices.All(item => !hidden.Contains(Get<object>(Get<object>(item, "Target"), "Session"))),
             "relationship refresh excludes hidden and other scene scopes");
-        Check(notices.All(item => Get<ushort>(item, "Opcode") is 0xC36A or 0xC47F),
+        Check(notices.All(item => Get<ushort>(item, "Opcode") is 0xC36B or 0xC36A or 0xC47F or 0xCB21),
             "participant and observer refreshes contain no whole-page state");
         var saved = Get<byte[]>(notices[0], "Payload").ToArray();
         Character(first).ActiveCouplePartnerName = "Changed";

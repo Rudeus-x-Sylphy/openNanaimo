@@ -177,6 +177,7 @@ if (args.Contains("--inventory-quickbar-self-test"))
 {
     InventoryQuickbarChecks.Run();
     await InventoryQuickbarChecks.RunReindexCollisionAsync();
+    await InventoryQuickbarChecks.RunGrantReindexAsync();
     return;
 }
 if (args.Contains("--apartment-protocol-self-test"))

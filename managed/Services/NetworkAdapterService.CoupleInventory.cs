@@ -13,7 +13,7 @@ public sealed partial class NetworkAdapterService
             .Where(row => CoupleBenefitPolicy.IsRingItemCode(row.Code)
                 || CoupleBenefitPolicy.IsSeparationItemCode(row.Code)).ToArray();
         var payload = new byte[4 + (coupons.Length + coupleItems.Length) * 8];
-        BinaryPrimitives.WriteUInt16LittleEndian(payload, 1);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload, 0);
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2), checked((ushort)(coupons.Length + coupleItems.Length)));
         for (var i = 0; i < coupons.Length; i++)
         {

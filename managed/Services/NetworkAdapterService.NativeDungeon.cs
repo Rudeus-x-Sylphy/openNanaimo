@@ -159,6 +159,8 @@ public sealed partial class NetworkAdapterService
             return true;
         }
         if (session.NativeDungeon is null) return false;
+        if (opcode == 0xCF70 && frame.Length == 8)
+            session.NativeContinuationRosterRequested = true;
         if (opcode == 0xCF6C
             && TryParseNativeDungeonSelectionFrame(
                 frame,
@@ -976,7 +978,10 @@ public sealed partial class NetworkAdapterService
         // the selection tuple; the result belongs to the completed stage.
         var pendingRanking = GetPendingNativeDungeonRanking(session);
         var progressionBefore = session.Character;
-        await RefreshCoupleBenefitsAsync(session, token);
+        // A partner can reconnect with the same actor identity. Refresh the
+        // worker generation binding at each consumption boundary.
+        await RefreshCoupleBenefitsCoreAsync(session, token,
+            force: frame is { Length: 12 } && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6)) == 0xCF93);
         var requestOpcode = frame is { Length: >= 8 }
             ? BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2))
             : (ushort)0;
@@ -1024,6 +1029,7 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonStage = nextStage;
                 session.NativeDungeonLogicalDifficulty = nextLogicalDifficulty;
                 acceptedDungeonTransition = true;
+                session.NativeCoupleIdentityRetained = session.NativeCoupleIdentityPublished;
                 session.NativeCoupleStartRequested = false;
                 session.NativeCoupleIdentityPublished = false;
                 _log($"NativeDungeon effective tuple advanced: old={previousTuple} new={session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{nextDungeon}/{nextStage}/{nextLogicalDifficulty} via=CF8B/CF8C");
@@ -1057,6 +1063,20 @@ public sealed partial class NetworkAdapterService
         session.NativeBattleResources = MergeNativeDungeonQuickItemResources(
             session.NativeBattleResources, frame, exchange.Frames,
             checked((ushort)session.NativeCheckpoint.Get(4)));
+        if (requestOpcode == 0xD034 && session.NativeBattleResources is { } pickupResources)
+        {
+            foreach (var response in exchange.Frames)
+                if (response.Length == 24 && BinaryPrimitives.ReadUInt32LittleEndian(response.AsSpan(16)) is 2 or 3)
+                    pickupResources = pickupResources.ApplySuccessfulPickup(response, checked((ushort)next.Get(4)),
+                        pickupResources.MaximumHp, pickupResources.MaximumMp);
+            session.NativeBattleResources = pickupResources;
+        }
+        if (requestOpcode == 0xCF9B && session.NativeBattleResources is { SettlementFrozen: false } skillResources
+            && exchange.Frames.Any(response => response.Length == 16
+                && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) == 0xCF9C
+                && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8)) == next.Get(4)
+                && response[10] == 0))
+            session.NativeBattleResources = skillResources with { CurrentMp = (ushort)Math.Min(skillResources.MaximumMp, next.Get(28)) };
         session.NativeBattleResources?.ApplyTo(next);
         NativeDungeonSettlementRecord? settlement = pendingRanking;
         if (requestOpcode == 0xCF87 && session.NativeDungeonSelectionValid
@@ -1166,11 +1186,15 @@ public sealed partial class NetworkAdapterService
         }
         await ObserveNativeDungeonQuickItemResourcesAsync(session, response, battleEpoch, token);
         var responseOpcode = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6, 2));
-        if (responseOpcode == 0xC588)
+        // Town actor construction belongs to the managed town-entry request.
+        // A departing battle can acknowledge transport without creating actors.
+        if (responseOpcode is 0xC588 or 0xC368 or 0xC389)
             return;
         ObserveNativePartyContinuation(session, response);
-        if (session.NativeDungeonNextTransitionAuthorized
+        if (session.NativeDungeonNextTransitionAuthorized && session.NativeContinuationRosterRequested
             && responseOpcode == 0xCF71 && response.Length == 0xB8
+            && session.Character is { } rosterOwner
+            && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(0x1A, 2)) == GetSceneEntityId(rosterOwner)
             && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(4, 2)) == response.Length)
         {
             // The continuation has reached its ready room. End only the
@@ -1180,7 +1204,8 @@ public sealed partial class NetworkAdapterService
             _log("NativeDungeon continuation reached CF71 ready room; explicit town leave enabled");
         }
         if (session.NativeDungeonSettlementAwaitingAction
-            && IsNativeDungeonTransitionFrame(responseOpcode))
+            && IsNativeDungeonTransitionFrame(responseOpcode)
+            && !IsNativePartyContinuationPreclear(session, response))
         {
             _log($"NativeDungeon unsolicited settlement transition suppressed: response=0x{responseOpcode:X4}");
             return;
@@ -1222,7 +1247,18 @@ public sealed partial class NetworkAdapterService
                 _log($"NativeDungeon battle pickup resources updated: character={resourceCharacter.Id} hp={updated.CurrentHp}/{resourceCharacter.MaxHp} mp={updated.CurrentMp}/{resourceCharacter.MaxMp} attackMode={updated.AttackMode}");
             }
         }
-        if (PatchNativeBattleResourceFrame(response, session.Character, session.NativeBattleResources)
+        var resourceOwner = ResolveNativeResourceOwner(session, response);
+        var projectedResources = resourceOwner?.NativeBattleResources;
+        if (resourceOwner is not null && !ReferenceEquals(resourceOwner, session) && projectedResources is not null)
+        {
+            var hpOffset = responseOpcode == 0xCF71 ? 0x4E : 0x0E;
+            projectedResources = projectedResources with
+            {
+                CurrentHp = (ushort)Math.Min(projectedResources.MaximumHp, BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(hpOffset))),
+                CurrentMp = (ushort)Math.Min(projectedResources.MaximumMp, BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(hpOffset + 2)))
+            };
+        }
+        if (PatchNativeBattleResourceFrame(response, resourceOwner?.Character, projectedResources)
             && responseOpcode is 0xCF71 or 0xCF72
             && session.NativeBattleResources is { } patched)
         {
@@ -1372,7 +1408,7 @@ public sealed partial class NetworkAdapterService
     {
         if (character is null || frame.Length < 8)
             return false;
-        var localUid = checked((ushort)Math.Clamp(character.Id, 1L, (long)ushort.MaxValue));
+        var localUid = GetSceneEntityId(character);
         var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2));
         if (opcode == 0xCF71)
         {
@@ -1428,6 +1464,21 @@ public sealed partial class NetworkAdapterService
         frame[countOffset] = owner.RevivalUseCount;
         RewriteNativeChecksum(frame);
         return true;
+    }
+
+    private ConnectionSession? ResolveNativeResourceOwner(ConnectionSession viewer, byte[] frame)
+    {
+        if (frame.Length < 8) return null;
+        var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6));
+        var offset = opcode == 0xCF71 && frame.Length == 184 ? 0x1A
+            : opcode == 0xCF72 && frame.Length == 116 ? 8 : -1;
+        if (offset < 0) return null;
+        var uid = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(offset));
+        if (viewer.Character is { } local && GetSceneEntityId(local) == uid) return viewer;
+        if (viewer.NativeLease is null) return null;
+        return _activeWorldSessions.Values.Select(p => p.Session).FirstOrDefault(peer =>
+            IsTrackedWorldSession(peer) && HasSameNativeCoupleStage(viewer, peer)
+            && peer.Character is { } actor && GetSceneEntityId(actor) == uid);
     }
 
     private CharacterRecord? ResolveNativeRevivalOwner(ConnectionSession viewer, byte[] frame)

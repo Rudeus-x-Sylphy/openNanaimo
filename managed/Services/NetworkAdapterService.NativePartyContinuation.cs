@@ -113,6 +113,16 @@ public sealed partial class NetworkAdapterService
         }
     }
 
+    private bool IsNativePartyContinuationPreclear(ConnectionSession session, byte[] response)
+    {
+        if (response.Length != 44 || BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(4)) != 44
+            || BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) != 0xCF6D
+            || BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8)) != 10) return false;
+        lock (_nativePartyContinuationGate)
+            return _nativePartyContinuations.TryGetValue(session, out var pending)
+                && IsNativePartyContinuationCurrent(session, pending);
+    }
+
     private bool IsNativePartyContinuationTeardown(ConnectionSession session, ushort opcode)
     {
         lock (_nativePartyContinuationGate)
@@ -154,6 +164,7 @@ public sealed partial class NetworkAdapterService
         session.NativeDungeonLogicalDifficulty = difficulty;
         session.NativeDungeonSettlementAwaitingAction = false;
         session.NativeDungeonTownTransitionAuthorized = false;
+        session.NativeCoupleIdentityRetained = session.NativeCoupleIdentityPublished;
         session.NativeCoupleStartRequested = false;
         session.NativeCoupleIdentityPublished = false;
         if (session.NativeDungeonDeathLatched)

@@ -55,12 +55,12 @@ public sealed partial class NetworkAdapterService
         }
     }
 
-    private async Task<byte[]> PrepareForcedSeparationAsync(
+    private async Task<byte[]> PrepareSeparationAsync(
         byte[] frame, uint itemCode, uint identity, ConnectionSession session, CancellationToken token)
     {
         byte[] Reply(bool success) => BuildNativeFrame(frame, 0xC46E,
             BuildTokenUseResultPayload(success, itemCode, identity), session);
-        if (itemCode != 43_100_002 || session.Character is null
+        if (!CoupleBenefitPolicy.IsSeparationItemCode(itemCode) || session.Character is null
             || !_activeWorldSessions.TryGetValue(session.SessionId, out var requester)
             || !IsCurrentCouplePresence(requester)) return Reply(false);
         await RefreshSessionCharacterAsync(session, token);
@@ -70,6 +70,9 @@ public sealed partial class NetworkAdapterService
             requester.AccountId, requester.CharacterId, requester.SessionId, itemCode, ordinal, token);
         var relation = await _database.GetActiveCoupleRelationAsync(requester.CharacterId, token);
         if (selection is null || relation is null) return Reply(false);
+        // Both coupons open their native confirmation. Mutual separation is
+        // committed only after the authenticated partner accepts the request.
+        if (itemCode == 43_100_001) return Reply(true);
         lock (_coupleSelectionGate)
         {
             PruneCoupleSelectionsLocked();
@@ -240,12 +243,7 @@ public sealed partial class NetworkAdapterService
                 && IsCurrentCouplePresence(presence))
             .DistinctBy(item => item.SessionId)
             .ToArray();
-        // A relationship decision changes the native town actor state in-place.  The
-        // responder/requester do not reconstruct their peer from the C584/C586 answer;
-        // they need the same C36A -> C47F refresh as every other observer.  Previously
-        // this loop explicitly skipped both participants, so the database/profile was
-        // correct while the already-instantiated town actors kept an empty/stale
-        // partner-name/ring projection (and separation left the old marker visible).
+        // Replace the existing peer before publishing its changed relationship.
         foreach (var recipient in _activeWorldSessions.Values)
         {
             if (!IsCurrentCouplePresence(recipient))
@@ -254,7 +252,7 @@ public sealed partial class NetworkAdapterService
             {
                 if (recipient.SessionId == subject.SessionId)
                     continue;
-                QueueTownPeerSnapshot(queueOwner, recipient, subject);
+                QueueTownPeerSnapshot(queueOwner, recipient, subject, replaceExisting: true);
             }
         }
     }

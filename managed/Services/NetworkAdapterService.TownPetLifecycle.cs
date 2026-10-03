@@ -1,10 +1,8 @@
-﻿namespace OpenNanaimo.Adapter.Services;
+namespace OpenNanaimo.Adapter.Services;
 
 public sealed partial class NetworkAdapterService
 {
-    // Managed town traffic does not traverse gs_runtime.inc's selector4 fallback.
-    // Complete the page-local scene from the first valid town activity, but make
-    // the actor visible to the already-present peers as well as to the entrant.
+    // Entry publications are queued behind the local C368 construction.
     private async Task CompleteTownPetSceneOnActivityAsync(
         ConnectionSession session,
         CancellationToken token)

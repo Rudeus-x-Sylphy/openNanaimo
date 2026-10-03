@@ -80,6 +80,19 @@ static void card_system_reset_epoch(unsigned epoch){g_card_epoch=epoch;g_card_cl
 static unsigned card_drop_create_from(unsigned producer_kind,unsigned producer_id,const unsigned*pool,const unsigned char*grades,unsigned count){struct card_drop_claim*r;unsigned grade=0u;if(g_card_claim_count>=CARD_DROP_CAP){if(!g_card_claim_cap_warned){g_card_claim_cap_warned=1;printf("  [CARD] claim-cap-reached cap=%u epoch=%u code=0\n",(unsigned)CARD_DROP_CAP,g_card_epoch);fflush(0);}return 0u;}r=&g_card_claims[g_card_claim_count++];memset(r,0,sizeof(*r));r->epoch=g_card_epoch;r->producer_kind=producer_kind;r->producer_id=producer_id;r->code=card_random_pick_from(pool,grades,count,&grade);printf("  [CARD] decision epoch=%u kind=%u producer=%u code=%u ordinal=%u pool=%u grade=%u\n",r->epoch,producer_kind,producer_id,r->code,g_card_claim_count,count,grade);fflush(0);return r->code;}
 static unsigned card_drop_create(unsigned producer_kind,unsigned producer_id){return card_drop_create_from(producer_kind,producer_id,0,0,0u);}
 /* 1=new grant, 2=idempotent repeat, 0=invalid/save failure. */
-static int card_pickup_commit(unsigned scene_uid,unsigned code){unsigned i;int idx;card_db_load();idx=card_code_index(code);if(idx<0)return 0;for(i=0;i<g_card_claim_count;i++){struct card_drop_claim*r=&g_card_claims[i];if(r->code!=code)continue;if(r->scene_bound&&r->scene_uid!=scene_uid)continue;if(!r->scene_bound){r->scene_uid=scene_uid;r->scene_bound=1;}if(r->picked)return 2;g_card_counts[idx]++;if(!card_db_save()){g_card_counts[idx]--;return 0;}r->picked=1;printf("  [CARDDB] grant code=%u count=%u scene=%u epoch=%u\n",code,g_card_counts[idx],scene_uid,r->epoch);fflush(0);return 1;}return 0;}
+static int card_pickup_commit(unsigned scene_uid,unsigned code){
+    unsigned i;int idx;struct card_drop_claim *claim=0;
+    card_db_load();idx=card_code_index(code);if(idx<0)return 0;
+    for(i=0;i<g_card_claim_count;i++){
+        struct card_drop_claim *r=&g_card_claims[i];
+        if(r->epoch!=g_card_epoch||r->code!=code)continue;
+        if(r->scene_bound&&r->scene_uid==scene_uid){claim=r;break;}
+        if(!claim&&!r->scene_bound&&!r->picked)claim=r;
+    }
+    if(!claim)return 0;if(claim->picked)return 2;
+    g_card_counts[idx]++;if(!card_db_save()){g_card_counts[idx]--;return 0;}
+    claim->scene_uid=scene_uid;claim->scene_bound=1;claim->picked=1;
+    return 1;
+}
 static unsigned card_inventory_count(unsigned code){int idx;card_db_load();idx=card_code_index(code);return idx>=0?g_card_counts[idx]:0u;}
 #endif

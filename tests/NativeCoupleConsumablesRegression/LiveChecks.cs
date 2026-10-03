@@ -90,6 +90,8 @@ internal static class LiveChecks
             }
             check(Get<NativeDungeonState>(first, "NativeCheckpoint").Get(NativeDungeonState.CouplePartnerUidOffset) == 0,
                 "production test starts without a seeded partner");
+            // Retained managed identity can outlive the worker's generation binding.
+            CoupleBenefitPolicy.WriteNativePartner(Get<NativeDungeonState>(first, "NativeCheckpoint"), checked((ushort)peer.Id));
             check(await Call<bool>(service, "RouteNativeDungeonAsync", NativeDungeonClient.Frame(0xCF93, new byte[4]),
                 (ushort)0xCF93, "WorldAdapter", first, CancellationToken.None), "production CF93 route handled");
             check(Get<NativeDungeonState>(first, "NativeCheckpoint").Get(NativeDungeonState.CouplePartnerUidOffset) == peer.Id,

@@ -54,6 +54,26 @@ static void begin_profile_mode(struct boss_hp_sync_context *ctx,const struct bos
     assert(boss_component_boss_load_mode(ctx,mode));
 }
 
+static void verify_three_body_bar_all_difficulties(void){
+    struct boss_hp_sync_context ctx;struct boss_hp_sync_result r;
+    unsigned char req[0x20],frame[BOSS_HP_SYNC_D012_LEN];
+    unsigned dungeon,difficulty,i,j,total,remaining;
+    for(dungeon=1u;dungeon<=2u;dungeon++)for(difficulty=0u;difficulty<3u;difficulty++){
+        boss_hp_sync_init(&ctx);boss_hp_sync_begin_game_domain(&ctx,0u,0u,dungeon,0u,difficulty,dungeon*3u+difficulty);
+        assert(ctx.profile&&ctx.component_count==3u);total=ctx.mode_max_hp;
+        for(i=0u;i<3u;i++){
+            request(req,0u,0u,i);
+            assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),1000000u,1u,&r)==BOSS_HP_SYNC_OK);
+            assert(r.applied_damage==ctx.component_max_hp[i]);
+            remaining=0u;for(j=0u;j<3u;j++)remaining+=ctx.component_hp[j];
+            assert(ctx.hp==remaining&&remaining==total*(2u-i)/3u);
+            memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&r)==BOSS_HP_SYNC_OK);
+            assert(boss_hp_sync_get32(frame,0x28)==remaining);
+            assert((i==2u)==(r.final_terminal!=0u));
+        }
+    }
+}
+
 static void verify_level1_dungeon1_parallel_visual_ledger(void){
     struct boss_hp_sync_context ctx;struct boss_hp_sync_result first,first_end,second,final;
     unsigned char req[0x20],frame[BOSS_HP_SYNC_D012_LEN];
@@ -66,7 +86,7 @@ static void verify_level1_dungeon1_parallel_visual_ledger(void){
     assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),619u,1u,&first)==BOSS_HP_SYNC_OK);
     assert(first.applied_damage==600u&&ctx.component_hp[0]==1400u&&ctx.component_hp[1]==2000u&&ctx.hp==3400u);
     memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&first)==BOSS_HP_SYNC_OK);
-    assert(boss_hp_sync_get32(frame,0x28)==1400u);
+    assert(boss_hp_sync_get32(frame,0x28)==3400u);
 
     assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),1000000u,1u,&first_end)==BOSS_HP_SYNC_OK);
     assert(first_end.component_first_terminal&&!first_end.final_terminal&&ctx.component_hp[0]==0u&&ctx.component_hp[1]==2000u&&ctx.hp==2000u);
@@ -102,9 +122,8 @@ static void verify_first_normal_split(void){
     assert(first_end.applied_damage==244u&&first_end.component_first_terminal&&!first_end.final_terminal);
     assert(first_end.target_ordinal==0u&&ctx.component_hp[0]==0u&&ctx.component_hp[1]==3960u&&ctx.hp==7920u);
     memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,sizeof(frame),&first_end)==BOSS_HP_SYNC_OK);
-    /* The retired component is addressed exactly, while the recording switches
-       to the next live component instead of exposing the 7920 aggregate. */
-    assert(frame[0x19]==0u&&boss_hp_sync_get16(frame,0x1A)==0u&&boss_hp_sync_get32(frame,0x28)==3960u);
+    /* Exact retirement preserves the 7920 remaining HP across both siblings. */
+    assert(frame[0x19]==0u&&boss_hp_sync_get16(frame,0x1A)==0u&&boss_hp_sync_get32(frame,0x28)==7920u);
 
     assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),3970u,1u,&second)==BOSS_HP_SYNC_OK);
     assert(second.component_route_collapsed&&second.wire_ordinal==0u&&second.target_ordinal==1u);
@@ -233,7 +252,7 @@ static void audit_all_split_topologies(void){
     assert(split_modes==339u&&same_child_split_modes==118u&&multi_child_split_modes==221u&&checked==split_modes);
 }
 
-int main(void){verify_level1_dungeon1_parallel_visual_ledger();verify_first_normal_split();verify_multi_child_split();verify_split_mode_settlement_gate();audit_all_split_topologies();return 0;}
+int main(void){verify_three_body_bar_all_difficulties();verify_level1_dungeon1_parallel_visual_ledger();verify_first_normal_split();verify_multi_child_split();verify_split_mode_settlement_gate();audit_all_split_topologies();return 0;}
 '''
         with tempfile.TemporaryDirectory(prefix="nanaimo-split-boss-") as temp:
             directory = Path(temp)
@@ -266,7 +285,7 @@ int main(void){verify_level1_dungeon1_parallel_visual_ledger();verify_first_norm
         self.assertIn("if(r->component_route_collapsed)r->target_ordinal=def->ordinal", runtime)
         self.assertIn("if(damage>c->component_hp[loaded_slot])damage=c->component_hp[loaded_slot]", runtime)
         self.assertIn("boss_hp_sync_visual_recording_hp", runtime)
-        self.assertIn("if(c->component_hp[i]>0u)return c->component_hp[i]", runtime)
+        self.assertIn("(void)r;return c?c->hp:0u", runtime)
         self.assertIn("c->component_hp[loaded_slot]-=damage", runtime)
         self.assertIn("r->component_first_terminal=1u", runtime)
         self.assertIn("if(r->child_first_terminal)teamplay_send_d013_boss_child_retire", protocol)

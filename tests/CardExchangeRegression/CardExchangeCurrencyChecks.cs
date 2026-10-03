@@ -32,6 +32,9 @@ internal static partial class Program
         BinaryPrimitives.WriteUInt64LittleEndian(retrieval.AsSpan(8), number);
         var collected = (await DispatchAsync(service, seller, 0xC5B6, retrieval, 84))!;
         CheckExchangeBalanceResponse(service, seller, collected, 0xC5B7, 12, 170116, 11916);
+        Check(collected.Length == 348 && BinaryPrimitives.ReadUInt16LittleEndian(collected.AsSpan(50)) == 0xC5B1
+            && collected.AsSpan(60, 288).IndexOfAnyExcept((byte)0) < 0,
+            "collecting sold-out proceeds immediately publishes an empty owned-list without a second click");
         var replay = (await DispatchAsync(service, seller, 0xC5B6, retrieval, 84))!;
         CheckExchangeBalanceResponse(service, seller, replay, 0xC5B7, 12, 170116, 11916);
         Check(await f.WalletAsync(f.Seller) == (170116L, 11916L)
@@ -46,7 +49,7 @@ internal static partial class Program
         Check(Opcode(response) == operation && Code(response) == 1
             && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(4)) == firstLength,
             "exchange acknowledgement precedes its balance refresh");
-        var balance = response.AsSpan(firstLength);
+        var balance = response.AsSpan(firstLength, 32);
         Check(balance.Length == 32 && BinaryPrimitives.ReadUInt16LittleEndian(balance.Slice(4)) == 32
             && BinaryPrimitives.ReadUInt16LittleEndian(balance.Slice(6)) == 0xC37B
             && BinaryPrimitives.ReadUInt64LittleEndian(balance.Slice(8)) == gold

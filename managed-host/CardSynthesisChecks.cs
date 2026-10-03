@@ -118,6 +118,18 @@ internal static class CardSynthesisChecks
                     [13_000_201u] = 1
                 });
 
+            await using (var seedConnection = Open(database.DatabasePath))
+            {
+                await seedConnection.OpenAsync();
+                await using var seedSlots = seedConnection.CreateCommand();
+                seedSlots.CommandText = """
+                    INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES($id,14000013,2,'seed');
+                    INSERT INTO CharacterQuickSlots(CharacterId,Slot,ItemCode,InventoryIndex,UpdatedAt) VALUES($id,0,14000013,1,'seed');
+                    """;
+                seedSlots.Parameters.AddWithValue("$id", characterId);
+                await seedSlots.ExecuteNonQueryAsync();
+            }
+
             var twoCard = await database.SynthesizeCardItemAsync(
                 accountId, characterId, sessionId, 631, CancellationToken.None);
             Check(twoCard.Success && twoCard.ItemCode == 14_000_004u && twoCard.KeyKind == "free",
@@ -144,6 +156,14 @@ internal static class CardSynthesisChecks
                 && HasItem(state, 19_000_001u) && HasItem(state, 21_000_019u)
                 && HasItem(state, 41_000_501u),
                 "domains 14,17,19,21,41 persist through CharacterItems");
+            var inventoryPayload = NetworkAdapterService.BuildGameInventoryPayload(state);
+            var selectedSlot = state.QuickSlots.Single(slot => slot.Slot == 0);
+            var selectedRow = 4 + selectedSlot.InventoryIndex * 8;
+            Check(selectedSlot.ItemCode == 14000013u && selectedSlot.InventoryIndex > 1
+                && BinaryPrimitives.ReadUInt32LittleEndian(inventoryPayload.AsSpan(selectedRow)) == 14000013u
+                && inventoryPayload[selectedRow + 6] == 1
+                && inventoryPayload[selectedRow - 2] == 0,
+                "synthesis grants preserve the selected duplicate instance and its inventory highlight");
             var pet = state.Items.Single(item => item.ItemCode == 15_000_009u);
             Check(pet.Quantity == 1 && pet.PetCurrentStage > 0 && pet.PetMaximumStage > 0,
                 "domain15 persists a usable PET state");
@@ -218,6 +238,18 @@ internal static class CardSynthesisChecks
             await UpsertCardAsync(database.DatabasePath, characterId, 12_000_010u, 1);
             await UpsertCardAsync(database.DatabasePath, characterId, 12_000_011u, 1);
             await UpsertCardAsync(database.DatabasePath, characterId, 12_000_020u, 1);
+            for (ushort amount = 1; amount <= 10; amount++)
+            {
+                var response = NetworkAdapterService.BuildSkillPointSynthesisResultPayload(true, amount);
+                Check(response.Length == 16 && BinaryPrimitives.ReadUInt32LittleEndian(response) == 600
+                    && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(4)) == amount
+                    && response.AsSpan(6).ToArray().All(value => value == 0),
+                    $"SP success credits exactly {amount} through its dedicated completion");
+            }
+            Check(BinaryPrimitives.ReadUInt16LittleEndian(
+                NetworkAdapterService.BuildSkillPointSynthesisResultPayload(true, 0).AsSpan(4)) == 0,
+                "SP retry carries a zero credit delta");
+
             var projectileUse = await database.SynthesizeSkillPointCardAsync(
                 accountId, characterId, sessionId, 0xFFF0BDC1u, CancellationToken.None);
             var projectileTenUse = await database.SynthesizeSkillPointCardAsync(

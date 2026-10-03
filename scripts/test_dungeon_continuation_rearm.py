@@ -43,8 +43,8 @@ static void reset(unsigned mode,int surrendered,int authored){
 }
 int main(void){unsigned mode,surrendered,authored;
 for(mode=1;mode<=2;mode++)for(surrendered=0;surrendered<=1;surrendered++)for(authored=0;authored<=1;authored++){
- reset(mode,surrendered,authored);assert(count==(surrendered?2:1));assert(ops[count-1]==0xCF8C);
- if(surrendered)assert(ops[0]==0xCF6D);assert(!pending);
+ reset(mode,surrendered,authored);assert(count==2);assert(ops[count-1]==0xCF8C);
+ assert(ops[0]==0xCF6D);assert(!pending);
 }
 reset(0,1,0);assert(count==0&&pending);reset(3,1,0);assert(count==0&&pending);
 next_exists=0;reset(2,1,0);assert(count==2&&ops[0]==0xCF6D&&ops[1]==0xCF8C);
@@ -60,7 +60,7 @@ assert(!injury_armed&&!injury_dead&&!death_latched&&!retry_acknowledged&&!lifest
 assert(!settlement_sent&&post_reset_pending);
 /* Super-Boss retry uses the same tuple even when the button requests real0. */
 current_stage_index=1;settlement_sent=1;combat_hp=0;injury_dead=1;
-reset(1,0,1);assert(count==1&&response_stage==1&&response_dungeon==2);
+reset(1,0,1);assert(count==2&&response_stage==1&&response_dungeon==2);
 /* Being dead without a completed result cannot authorize a free reset. */
 combat_hp=0;injury_dead=1;settlement_sent=0;
 reset(1,1,1);assert(count==0&&combat_hp==0&&pending);

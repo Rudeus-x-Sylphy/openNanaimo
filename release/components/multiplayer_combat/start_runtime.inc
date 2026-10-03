@@ -22,9 +22,12 @@ static int multiplayer_register_connection(int port,SOCKET c){
     return idx;
 }
 static void multiplayer_mark_room(int active){
+    int idx=g_multi_current;
+    int was_active=idx>=0&&idx<MULTI_MAX_PLAYERS&&g_multi_conn[idx].room_active;
     multiplayer_mark_room_room_start_base_legacy(active);
-    if(g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS)
-        g_multi_start_profile_pending[g_multi_current]=0u;
+    /* A roster refresh preserves an already delivered map authorization. */
+    if(idx>=0&&idx<MULTI_MAX_PLAYERS&&(!active||!was_active))
+        g_multi_start_profile_pending[idx]=0u;
 }
 static unsigned multiplayer_start_profile_pending_current(void){
     int idx=g_multi_current;

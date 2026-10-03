@@ -193,6 +193,7 @@ extern void* __attribute__((cdecl)) fopen(const char*, const char*);extern int _
 #endif
 #include "components/pet/attack_mode_powerup.inc"
 #include "components/skills/slot_state.inc"
+#include "components/skills/mana_policy.inc"
 #if TEAMPLAY_FEATURE_PROFILE_STATE_ISOLATION
 #include "components/skills/profile_state.inc"
 #include "components/cards/profile_state.inc"

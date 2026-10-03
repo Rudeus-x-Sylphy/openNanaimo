@@ -291,7 +291,7 @@ $currentDungeonGrade=if($ini.name_hex){Read-DungeonGradeState $ProfileStateRoot 
 $defaultDungeonGrade=-1;if($ini.ContainsKey('dungeon_grade')){[int]$parsedGrade=-1;if([int]::TryParse([string]$ini.dungeon_grade,[ref]$parsedGrade)-and$parsedGrade-ge0-and$parsedGrade-le42){$defaultDungeonGrade=$parsedGrade}}
 $titleChoices=New-DungeonTitleChoices $currentDungeonGrade
 $defaultLevel=if($ini.level){[int]$ini.level}else{25}
-$defaultPetAge=if($ini.pet_age_a){[int]$ini.pet_age_a}else{3}
+$defaultPetAge=if($ini.pet_age_a){[int]$ini.pet_age_a}else{$null}
 $defaultAttackMode=if($ini.initial_attack_mode-ne$null){[int]$ini.initial_attack_mode}else{-1};$script:firstAttackModeLoad=$true
 $defaultHpMax=Read-ProfileU16 $ini 'hp_max' 1500
 $defaultMpMax=Read-ProfileU16 $ini 'mp_max' 500

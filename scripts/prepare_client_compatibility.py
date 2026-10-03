@@ -514,6 +514,20 @@ def restore_native_state(data: bytes) -> tuple[bytes, dict]:
     return data, _migration_report('restore_native_state', revival=revival, power=power)
 
 
+# Boss width and its zero gate share the authoritative remaining-health field.
+BOSS_HEALTH_DISPLAY_SITES = (
+    ('boss_health_zero_gate', 0x00742DF1, bytes.fromhex('83B90801000000'), bytes.fromhex('83B90C01000000')),
+    ('boss_health_width', 0x00742E12, bytes.fromhex('DB8008010000'), bytes.fromhex('DB800C010000')),
+)
+
+
+def patch_boss_health_display(data: bytes) -> tuple[bytes, dict]:
+    rows = {}
+    for name, va, old, new in BOSS_HEALTH_DISPLAY_SITES:
+        data, rows[name] = _patch_site(data, va, old, new, name, 'the Boss health display differs')
+    return data, _migration_report('patch_boss_health_display', **rows)
+
+
 def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     """Manual results and settlement-only EXP display; retain mouse and live score."""
     data, timer = _patch_site(data, SETTLEMENT_AUTO_GATE_VA,
@@ -527,9 +541,10 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
         'restore_settlement_mouse_confirmation', 'the settlement automatic action gate differs')
     data, power = restore_native_power(data)
     data, experience = dungeon_experience_compat.patch_experience_preview(data, _patch_site)
+    data, boss_health = patch_boss_health_display(data)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
         other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power,
-        settlement_experience=experience)
+        settlement_experience=experience, boss_health=boss_health)
 
 
 def _gift_preview_patch_bytes() -> tuple[bytes, bytes]:
@@ -981,6 +996,7 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
             ('settlement_mouse_confirmation', SETTLEMENT_AUTO_ACTION_GATE_VA, SETTLEMENT_AUTO_ACTION_GATE_OLD)))
         expected_sites.extend((name, va, new)
                               for name, va, _, new in dungeon_experience_compat.patch_sites())
+        expected_sites.extend((name, va, new) for name, va, _, new in BOSS_HEALTH_DISPLAY_SITES)
     for name, va, expected in expected_sites:
         offset = _va_offset(data, va, len(expected))
         checks.append(_check(name, data[offset:offset + len(expected)] == expected,

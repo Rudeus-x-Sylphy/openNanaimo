@@ -55,6 +55,12 @@ int main(void){
             subprocess.run([str(executable)], check=True)
 
     def test_members_complete_multiple_loading_epochs(self):
+        self.run_loading_epochs(False)
+
+    def test_superboss_slow_member_and_explicit_return(self):
+        self.run_loading_epochs(True)
+
+    def run_loading_epochs(self, superboss):
         self.assertTrue(BRIDGE.is_file())
         port = None
         for candidate in range(62100, 64000, 10):
@@ -100,7 +106,7 @@ int main(void){
                         connection.sendall(frame(0xF100, state))
                         receive(connection, 0xF102)
                         selection = bytearray(32)
-                        selection[28] = 0
+                        selection[28] = 2 if superboss else 0
                         connection.sendall(frame(0xCF6C, selection))
                         receive(connection, 0xCF6D)
                     for epoch in range(3):
@@ -109,13 +115,16 @@ int main(void){
                             receive(connection, 0xC588)
                             connection.sendall(frame(0xCF70))
                             receive(connection, 0xCF71)
-                        owner.sendall(frame(0xCFEB, struct.pack("<HH", 0, 0)))
+                        real_stage = 1 if superboss and epoch else 0
+                        owner.sendall(frame(0xCFEB, struct.pack("<HH", real_stage, 0)))
                         owner_data = receive(owner, 0xCFEC)
                         member_data = receive(member, 0xCFEC)
                         self.assertEqual(owner_data[8:0x2DA], member_data[8:0x2DA])
                         self.assertEqual(owner_data[0x2DA:0x2DE], member_data[0x2DA:0x2DE])
+                        member.sendall(frame(0xCF70))
+                        receive(member, 0xCF71)
                         if epoch == 1:
-                            member.sendall(frame(0xCFEB, struct.pack("<HH", 0, 0)))
+                            member.sendall(frame(0xCFEB, struct.pack("<HH", real_stage, 0)))
                             member_requested_data = receive(member, 0xCFEC)
                             self.assertEqual(member_data[8:], member_requested_data[8:])
                         for connection in connections:
@@ -128,12 +137,37 @@ int main(void){
                         for connection in (member, owner):
                             receive(connection, 0xCF80)
                         if epoch < 2:
-                            owner.sendall(frame(0xCF8B, bytes((0, 0, 2, 0))))
-                            reset_owner = receive(owner, 0xCF8C)
-                            reset_member = receive(member, 0xCF8C)
+                            if epoch == 0:
+                                fallen = bytearray(seed(12, 0))
+                                struct.pack_into("<I", fallen, 20, 0)
+                                struct.pack_into("<I", fallen, 28, 0)
+                                member.sendall(frame(0xF100, fallen))
+                                receive(member, 0xF102)
+                            owner.sendall(frame(0xCF8B, bytes((0, 0, 1 if superboss else 2, 0))))
+                            owner_frames, member_frames = [], []
+                            reset_owner = receive(owner, 0xCF8C, owner_frames)
+                            reset_member = receive(member, 0xCF8C, member_frames)
+                            for frames in (owner_frames, member_frames):
+                                opcodes = [struct.unpack_from("<H", item, 6)[0] for item in frames]
+                                self.assertIn(0xCF6D, opcodes)
+                                self.assertLess(opcodes.index(0xCF6D), opcodes.index(0xCF8C))
                             self.assertEqual(reset_owner[8:], reset_member[8:])
-                            self.assertEqual(reset_member[0x2E], epoch + 1)
-                    print("NATIVE_PARTY_CONTINUATION_PASS epochs=3 members=2")
+                            self.assertEqual(reset_member[0x2E], 2 if superboss else epoch + 1)
+                            self.assertEqual(reset_member[0x28], 1 if superboss else 0)
+                            member.sendall(frame(0xF101))
+                            resumed = receive(member, 0xF102)
+                            self.assertEqual(struct.unpack_from("<I", resumed, 8+20)[0], 2000)
+                            self.assertEqual(struct.unpack_from("<I", resumed, 8+28)[0], 1000)
+                    for connection in connections:
+                        connection.sendall(frame(0xCF73))
+                        connection.sendall(frame(0xCF1D))
+                        captured = []
+                        receive(connection, 0xCF1E, captured)
+                        connection.sendall(frame(0xF101))
+                        receive(connection, 0xF102, captured)
+                        self.assertFalse(any(struct.unpack_from("<H", item, 6)[0] in (0xC368, 0xC379, 0xC389)
+                                             for item in captured))
+                    print(f"NATIVE_PARTY_CONTINUATION_PASS epochs=3 members=2 superboss={superboss}")
                 except Exception:
                     output.flush()
                     print((root / "native.txt").read_text("utf-8", errors="replace")[-16000:])

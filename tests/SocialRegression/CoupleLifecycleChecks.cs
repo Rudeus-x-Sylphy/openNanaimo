@@ -39,10 +39,10 @@ internal static partial class Program
             Check(saved.Items.Single(item => item.ItemCode == ring.ItemCode).Quantity == 1,
                 "exactly one selected ring consumed " + ring.ItemCode);
             Check(CoupleNoticesFor(peer, owner).Select(item => (ushort)Get(item, "Opcode")!)
-                .SequenceEqual(new ushort[] { 0xC36A, 0xC47F, 0xC584, 0xC430 }), "owner actor refresh precedes confirmation and inventory " + ring.ItemCode);
+                .SequenceEqual(new ushort[] { 0xC36B, 0xC36A, 0xC47F, 0xCB21, 0xC584, 0xC430 }), "owner actor refresh precedes confirmation and inventory " + ring.ItemCode);
             var coupleSceneRefreshes = CoupleNoticesFor(peer, fixture.First);
             Check(coupleSceneRefreshes.Select(item => (ushort)Get(item, "Opcode")!)
-                    .SequenceEqual(new ushort[] { 0xC36A, 0xC47F, 0xC36A, 0xC47F })
+                    .SequenceEqual(new ushort[] { 0xC36B, 0xC36A, 0xC47F, 0xCB21, 0xC36B, 0xC36A, 0xC47F, 0xCB21 })
                 && coupleSceneRefreshes.Where(item => (ushort)Get(item, "Opcode")! == 0xC36A).All(item =>
                     BinaryPrimitives.ReadUInt16LittleEndian(((byte[])Get(item, "Payload")!).AsSpan(100))
                         == ring.ItemCode - 43_000_000),
@@ -63,6 +63,14 @@ internal static partial class Program
             }
             await fixture.Database.GrantInventoryItemToAccountAsync(account, 43100001, 1);
             var end = CoupleRequest(fixture, owner, peer, 43100001);
+            var useCoupon = new byte[8];
+            BinaryPrimitives.WriteUInt32LittleEndian(useCoupon, 43100001);
+            BinaryPrimitives.WriteUInt32LittleEndian(useCoupon.AsSpan(4),
+                BinaryPrimitives.ReadUInt16LittleEndian(end.AsSpan(20)));
+            var opened = await Dispatch(fixture, owner, 0xC46D, useCoupon);
+            Check(opened is { Length: 20 } && BinaryPrimitives.ReadUInt32LittleEndian(opened.AsSpan(8)) == 1
+                && await fixture.Database.GetActiveCoupleRelationAsync(Character(owner).Id) is not null,
+                "mutual coupon use opens confirmation and preserves the active relationship " + ring.ItemCode);
             await DispatchCouple(fixture, owner, 0xC585, end);
             var refuse = SeparationAnswer(owner, end, 20);
             Check(await DispatchCouple(fixture, peer, 0xC586, refuse) is { Length: 32 }

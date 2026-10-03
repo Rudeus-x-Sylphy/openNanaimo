@@ -235,7 +235,7 @@ internal static class DungeonTransitionChecks
             await Send(NativeDungeonClient.Frame(0xCF1D, []));
             native = null; // Production CF1D route disposed this test-owned connection.
             Check(Get(session, "NativeDungeon") is null, name + ": disconnect closes worker");
-            Check(Drain(session).Select(Op).SequenceEqual(new ushort[] { 0xCF1E, 0xC368, 0xC379, 0xC389 }), name + ": explicit town disconnect retains worker village replies");
+            Check(Drain(session).Select(Op).SequenceEqual(new ushort[] { 0xCF1E, 0xC379 }), name + ": explicit town disconnect completes transport while town-entry requests own actor construction");
             var pending = (BattleResourceSnapshot?)Get(session, "PendingBattleResourceSnapshot");
             Check(pending is null, name + ": explicit town boundary clears next-stage carry");
             Check(!(bool)Get(session, "NativeDungeonNextTransitionAuthorized")!

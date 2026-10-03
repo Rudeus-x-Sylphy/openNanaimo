@@ -456,6 +456,46 @@ public sealed partial class DatabaseService
         return true;
     }
 
+    internal static async Task<bool> ReindexGameQuickSlotsAfterGrantAsync(
+        SqliteConnection connection, SqliteTransaction transaction, long characterId,
+        IReadOnlyList<uint> before, CancellationToken cancellationToken)
+    {
+        var after = await GetGameInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken);
+        var occurrences = new Dictionary<uint, int>();
+        var remap = new Dictionary<int, int>();
+        for (var index = 0; index < before.Count; index++)
+        {
+            var code = before[index];
+            var occurrence = occurrences.GetValueOrDefault(code);
+            occurrences[code] = occurrence + 1;
+            var remaining = occurrence;
+            for (var next = 0; next < after.Count; next++)
+                if (after[next] == code && remaining-- == 0) { remap[index] = next; break; }
+        }
+        var slots = new List<CharacterQuickSlotRecord>();
+        await using (var read = connection.CreateCommand())
+        {
+            read.Transaction = transaction;
+            read.CommandText = "SELECT Slot, ItemCode, InventoryIndex FROM CharacterQuickSlots WHERE CharacterId=$id ORDER BY Slot";
+            read.Parameters.AddWithValue("$id", characterId);
+            await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var index = reader.GetInt32(2);
+                var code = checked((uint)reader.GetInt64(1));
+                if (index < 0 || index >= before.Count || before[index] != code) continue;
+                if (!remap.TryGetValue(index, out var next)) return false;
+                slots.Add(new CharacterQuickSlotRecord
+                {
+                    Slot = checked((byte)reader.GetInt32(0)), ItemCode = code,
+                    InventoryIndex = checked((byte)next)
+                });
+            }
+        }
+        await ReplaceGameQuickSlotsAsync(connection, transaction, characterId, slots, cancellationToken);
+        return true;
+    }
+
     private static async Task ReplaceGameQuickSlotsAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,

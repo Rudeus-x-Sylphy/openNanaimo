@@ -46,6 +46,41 @@ internal static class InventoryQuickbarChecks
             "quickbar reindex never changes another character");
     }
 
+    internal static async Task RunGrantReindexAsync()
+    {
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE CharacterItems(CharacterId INTEGER,ItemCode INTEGER,Quantity INTEGER);
+            CREATE TABLE CharacterQuickSlots(CharacterId INTEGER,Slot INTEGER,ItemCode INTEGER,InventoryIndex INTEGER,UpdatedAt TEXT,
+                PRIMARY KEY(CharacterId,Slot),UNIQUE(CharacterId,InventoryIndex));
+            INSERT INTO CharacterItems VALUES(1,14000001,3),(1,14000013,3);
+            INSERT INTO CharacterQuickSlots VALUES(1,0,14000013,0,'before'),(1,1,14000013,1,'before');
+            """;
+        await command.ExecuteNonQueryAsync();
+        await using (var transaction = connection.BeginTransaction())
+        {
+            Check(await DatabaseService.ReindexGameQuickSlotsAfterGrantAsync(connection, transaction, 1,
+                new uint[] { 14000013, 14000013 }, default), "batch reward reindex succeeds");
+            await transaction.CommitAsync();
+        }
+        command.CommandText = "SELECT group_concat(InventoryIndex, ',') FROM CharacterQuickSlots WHERE CharacterId=1 ORDER BY Slot";
+        Check(Convert.ToString(await command.ExecuteScalarAsync()) == "3,4",
+            "batch rewards shift both old duplicates and append the newly granted duplicate");
+        command.CommandText = "UPDATE CharacterItems SET Quantity=84 WHERE ItemCode=14000001";
+        await command.ExecuteNonQueryAsync();
+        await using (var transaction = connection.BeginTransaction())
+        {
+            Check(!await DatabaseService.ReindexGameQuickSlotsAfterGrantAsync(connection, transaction, 1,
+                new uint[] {14000001,14000001,14000001,14000013,14000013,14000013}, default),
+                "overflow protects selected inventory instances");
+            await transaction.RollbackAsync();
+        }
+        command.CommandText = "SELECT group_concat(InventoryIndex, ',') FROM CharacterQuickSlots WHERE CharacterId=1 ORDER BY Slot";
+        Check(Convert.ToString(await command.ExecuteScalarAsync()) == "3,4", "rejected grant keeps quick slots atomic");
+    }
+
     internal static void Run()
     {
         var injured = new BattleResourceSnapshot(11917, 800, 2)

@@ -151,6 +151,7 @@ static void quickbar_share_couple_gameitem(SOCKET c,unsigned code,unsigned slot,
     stable_resource_put16(p,16,dh);stable_resource_put16(p,18,dm);stable_resource_put16(p,20,0u);stable_resource_put16(p,22,0u);
     sendbuf(g_multi_conn[target].socket,p,24);
     send_cf94_gameitem_result(g_multi_conn[target].socket,1,code,0xFFFFu,dh,dm);
+    multiplayer_broadcast_actor_resources_current();
     multi_switch_back(src,target);
     mkpkt(p,0xCF94,24,1);stable_resource_put16(p,8,partner);stable_resource_put16(p,10,0xFFFFu);stable_put32(p,12,code);
     stable_resource_put16(p,16,dh);stable_resource_put16(p,18,dm);stable_resource_put16(p,20,0u);stable_resource_put16(p,22,0u);sendbuf(c,p,24);

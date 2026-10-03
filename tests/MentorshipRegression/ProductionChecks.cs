@@ -45,6 +45,14 @@ internal static partial class Program
             Set(session, "NativeDungeonDungeon", checked((byte)course.DungeonBit));
             Set(session, "NativeDungeonStage", (byte)0);
         }
+        Check(await InvokeMentorship<Task<uint>>(f.Service, "ScaleMentorshipExperienceAsync",
+                f.Student, 100u, CancellationToken.None) == 150,
+            "active teacher and student receive one hundred fifty percent experience in the same dungeon");
+        Set(f.Student, "NativeDungeonStage", (byte)1);
+        Check(await InvokeMentorship<Task<uint>>(f.Service, "ScaleMentorshipExperienceAsync",
+                f.Student, 100u, CancellationToken.None) == 100,
+            "different dungeon stages preserve base experience");
+        Set(f.Student, "NativeDungeonStage", (byte)0);
         Set(f.Teacher, "NativeBattleEpoch", 10L);
         Set(f.Student, "NativeBattleEpoch", 2L);
         string Round(object session) => InvokeMentorship<string>(f.Service, "GetNativeMentorshipSettlementKey", session);
@@ -71,6 +79,10 @@ internal static partial class Program
             Set(session, "NativeDungeon", null);
             Set(session, "NativeLease", null);
         }
+        Check((await f.Service.GraduateMentorshipAsync(Id(f.Teacher), relation.Id)).Code == MentorshipResultCode.Ineligible,
+            "completed coursework still requires student level twenty");
+        await f.ExecuteAsync("UPDATE Characters SET Level = 20 WHERE Id = $id", ("$id", Character(f.Student).Id));
+        Character(f.Student).Level = 20;
         Check(await MentorCommand(f, f.Teacher, "/mentor graduate " + relation.Id) is not null, "production graduation is reachable through the private command");
         var graduated = (await f.Database.GetMentorshipRelationsAsync(Actor(f.Student), true)).Single();
         Check(graduated.State == MentorshipRelationState.Graduated && graduated.GraduationRewardGranted,

@@ -10,8 +10,8 @@ internal sealed class InventoryIdentityMap
     // The native game-item page treats wire identity 0 as the empty/default
     // value. Real C430 sessions allocate the first visible instance from 1
     // and keep that identity stable after compact DB ordinals change.
-    private const int FirstWireIdentity = 1;
-    private const int Capacity = 84;
+    internal const int FirstWireIdentity = 1;
+    internal const int Capacity = 84;
     private const int LastWireIdentity = FirstWireIdentity + Capacity - 1;
 
     private readonly Dictionary<byte, (uint Code, long Order)> _items = [];
