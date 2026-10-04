@@ -132,6 +132,18 @@ class SocialApartmentResourceTests(unittest.TestCase):
         self.assertFalse((outside / "furniture.oow").exists())
         self.assert_source_preserved()
 
+    def test_reused_slot_receives_new_entertainment_state(self):
+        _, work = self.prepare()
+        resource = self.source / "animalstate.st"
+        resource.write_bytes(bytes(868))
+        repeated, _ = self.prepare()
+        self.assertTrue(repeated["Reused"])
+        self.assertEqual((work / resource.name).read_bytes(), resource.read_bytes())
+        before = (work / resource.name).stat().st_mtime_ns
+        self.prepare()
+        self.assertEqual((work / resource.name).stat().st_mtime_ns, before)
+        self.assert_source_preserved()
+
     def test_repeat_preparation_is_content_idempotent(self):
         original, work = self.prepare()
         self.assert_assets(work)

@@ -14,11 +14,11 @@ static unsigned expected_associated(const struct stage_damage_damage_context *ct
     const struct hp_sync_target_def *child,*parent;unsigned parent_selector;
     if(selector>=(unsigned)p->target_count)return 0u;
     child=&hp_sync_target_defs[p->first_row+selector];
-    if(child->target_type!=4u||child->association<0||(unsigned)child->selector!=selector)return 0u;
-    parent_selector=(unsigned)child->placement_selector_start+(unsigned)child->association;
+    if(child->target_type!=4u||(unsigned)child->selector!=selector)return 0u;
+    parent_selector=child->association>=0?(unsigned)child->placement_selector_start+(unsigned)child->association:selector;
     if(parent_selector>=(unsigned)p->target_count)return 0u;
     parent=&hp_sync_target_defs[p->first_row+parent_selector];
-    if((unsigned)parent->selector!=parent_selector||parent->target_type==4u||parent->nominal_hp<=0||
+    if((unsigned)parent->selector!=parent_selector||parent->nominal_hp<=0||
        parent->placement_index!=child->placement_index||parent->resource_index!=child->resource_index||parent->segment!=child->segment)return 0u;
     if(parent_out)*parent_out=parent_selector;
     return stage_damage_monster_contact_lookup(ctx,parent_selector);
@@ -60,9 +60,9 @@ int main(void){
         if(scope_mapped)mapped_scopes++;
     }
     CHECK(scopes==282u);CHECK(mapped_scopes==261u);CHECK(type4_total==43517u);
-    CHECK(association_candidates==31095u);CHECK(standalone==12422u);CHECK(broken_association==1923u);
-    CHECK(mapped==29172u);CHECK(hazards==STAGE_DAMAGE_SCENE_HAZARD_SELECTED_ROW_COUNT);CHECK(hazards==216u);
-    CHECK(unclassified_type4==14129u);CHECK(type4_total-mapped-hazards==unclassified_type4);CHECK(unmapped>mapped);
+    CHECK(association_candidates==31095u);CHECK(standalone==12422u);CHECK(broken_association==1851u);
+    CHECK(mapped==29259u);CHECK(hazards==STAGE_DAMAGE_SCENE_HAZARD_SELECTED_ROW_COUNT);CHECK(hazards==216u);
+    CHECK(unclassified_type4==14042u);CHECK(type4_total-mapped-hazards==unclassified_type4);CHECK(unmapped>mapped);
     CHECK(STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT==1u);
     stage_damage_damage_begin(&ctx,0u,15u,2u,0u,2u,1u,1u);
     CHECK(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])==16u);
@@ -71,6 +71,20 @@ int main(void){
         CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==1146u);
         CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE&&out.target_type==4u);
         CHECK(!strncmp(out.resource,"ep15_dg02_m_154_",16));
+    }
+    /* Vertical contact assemblies: twelve body rows and one positive root. */
+    for(i=0u;i<3u;i++){
+        static const unsigned starts[3][2]={{52u,79u},{87u,114u},{95u,137u}};
+        unsigned direction,part;
+        stage_damage_damage_begin(&ctx,0u,1u,0u,0u,i,1u,1u);
+        for(direction=0u;direction<2u;direction++)for(part=0u;part<13u;part++){
+            unsigned selected=starts[i][direction]+part;
+            req[10]=(unsigned char)selected;req[11]=0u;req[12]=2u;req[13]=0u;
+            CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==180u);
+            CHECK(out.associated_selector==starts[i][direction]+12u);
+            CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE);
+            CHECK(stage_damage_player_d00f_damage(&ctx,req,80u,&out)==0u);
+        }
     }
     for(i=0u;i<3u;i++){
         stage_damage_damage_begin(&ctx,0u,0u,2u,0u,i,1u,1u);req[0x0A]=239u;req[0x0B]=0u;req[0x0C]=0u;req[0x0D]=0u;
@@ -88,6 +102,20 @@ int main(void){
     CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);
     req[0x0A]=0u;req[0x0B]=0u;CHECK(stage_damage_player_d00f_damage(&ctx,req,80u,&out)==0u);
     CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);
+    /* Coral emitters retain their exact selected-scope parent attack. */
+    for(i=0u;i<3u;i++){
+        const struct hp_sync_profile_def *p;unsigned matched=0u;
+        stage_damage_damage_begin(&ctx,0u,4u,2u,0u,i,1u,1u);p=stage_damage_find_target_profile(&ctx);CHECK(p);
+        for(selector=0u;selector<p->target_count;selector++){
+            const struct hp_sync_target_def*x=&hp_sync_target_defs[p->first_row+selector];
+            const char*name=hp_sync_resources[x->resource_index].name;
+            if(x->target_type!=4u || (strcmp(name,"ani_obj_ep04_dg02_03_00.mmo") && strcmp(name,"ani_obj_ep04_dg02_03_01.mmo")))continue;
+            req[0x0A]=(unsigned char)selector;req[0x0B]=(unsigned char)(selector>>8);
+            CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==510u);
+            CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE);matched++;
+        }
+        CHECK(matched>0u);
+    }
     printf("ASSOCIATED_SCENE_DAMAGE_PASS scopes=%u mapped_scopes=%u type4=%u association_candidates=%u exact_associated=%u broken_association=%u standalone=%u hazards=%u unclassified=%u all_unmapped=%u ep15=%u\n",scopes,mapped_scopes,type4_total,association_candidates,mapped,broken_association,standalone,hazards,unclassified_type4,unmapped,(unsigned)(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])));
     return 0;
 }
@@ -109,7 +137,7 @@ class AssociatedSceneDamageTests(unittest.TestCase):
             run_result = subprocess.run(
                 [str(binary)], cwd=directory, capture_output=True, text=True, errors="replace", timeout=60)
             self.assertEqual(run_result.returncode, 0, run_result.stdout + run_result.stderr)
-            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=282 mapped_scopes=261 type4=43517 association_candidates=31095 exact_associated=29172 broken_association=1923 standalone=12422 hazards=216 unclassified=14129", run_result.stdout)
+            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=282 mapped_scopes=261 type4=43517 association_candidates=31095 exact_associated=29259 broken_association=1851 standalone=12422 hazards=216 unclassified=14042", run_result.stdout)
 
     def test_dispatch_is_exact_not_global_kind60_damage(self):
         source = (ROOT / "release/components/game_session/gs_runtime.inc").read_text("utf-8")

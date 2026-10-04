@@ -211,6 +211,33 @@ static void verify_split_mode_settlement_gate(void){
     assert(boss_hp_sync_final_terminal_seen(&ctx));
 }
 
+static void verify_fire_orb_body_and_ice(void){
+    unsigned slot,i;struct boss_hp_sync_context c;struct boss_hp_sync_result hit,repeat;
+    unsigned char req[32],frame[60];
+    for(slot=0;slot<9;slot++){
+        const struct boss_component_boss_profile*p=boss_component_boss_find_profile(0,4,2,0,slot);
+        begin_profile_mode(&c,p,0);assert(!c.scripted_component_active);
+        for(i=0;i<c.component_count;i++){
+            const struct boss_component_boss_component*x=&boss_component_boss_components[c.component_def_index[i]];
+            unsigned before=c.hp;
+            if(!x->scaled_hp)continue;
+            request(req,0,x->child,x->ordinal);
+            assert(boss_hp_sync_apply_d011_attack(&c,req,32,x->basis+1,1,&hit)==BOSS_HP_SYNC_OK);
+            assert(hit.applied_damage==1 && c.hp==before-1 && !hit.scripted_report_suppressed);
+            memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,60,&hit)==BOSS_HP_SYNC_OK);
+            assert(frame[0x19]==255 && boss_hp_sync_get32(frame,0x28)==before-1);
+            assert(boss_hp_sync_apply_d011_attack(&c,req,32,x->basis+x->scaled_hp,1,&hit)==BOSS_HP_SYNC_OK);
+            assert(hit.component_first_terminal && c.hp==before-x->scaled_hp);
+            if(c.hp){
+                assert(!hit.final_terminal);
+                assert(boss_hp_sync_apply_d011_attack(&c,req,32,1000000,1,&repeat)==BOSS_HP_SYNC_OK);
+                assert(!repeat.applied_damage && c.hp==before-x->scaled_hp);
+            }
+        }
+        assert(c.hp==0 && boss_hp_sync_final_terminal_seen(&c));
+    }
+}
+
 static void audit_all_split_topologies(void){
     unsigned pi,mode,i,j,split_modes=0u,same_child_split_modes=0u,multi_child_split_modes=0u,checked=0u;
     for(pi=0u;pi<BOSS_COMPONENT_BOSS_PROFILE_COUNT;pi++){
@@ -252,7 +279,7 @@ static void audit_all_split_topologies(void){
     assert(split_modes==339u&&same_child_split_modes==118u&&multi_child_split_modes==221u&&checked==split_modes);
 }
 
-int main(void){verify_three_body_bar_all_difficulties();verify_level1_dungeon1_parallel_visual_ledger();verify_first_normal_split();verify_multi_child_split();verify_split_mode_settlement_gate();audit_all_split_topologies();return 0;}
+int main(void){verify_fire_orb_body_and_ice();verify_three_body_bar_all_difficulties();verify_level1_dungeon1_parallel_visual_ledger();verify_first_normal_split();verify_multi_child_split();verify_split_mode_settlement_gate();audit_all_split_topologies();return 0;}
 '''
         with tempfile.TemporaryDirectory(prefix="nanaimo-split-boss-") as temp:
             directory = Path(temp)
@@ -295,7 +322,11 @@ int main(void){verify_three_body_bar_all_difficulties();verify_level1_dungeon1_p
         self.assertIn("boss_hp_sync_apply_external_contact(&boss_ctx", session)
         self.assertNotIn("boss_hp_sync_apply_external_damage(&boss_ctx", session)
         self.assertNotIn("scripted_terminal_contact", session)
-        self.assertIn("req[0x10],req[0x11],boss_hp_sync_get16(req,0x12)", runtime)
+        contact = runtime.split("static int boss_hp_sync_apply_external_contact(", 1)[1].split("/* Compatibility entry", 1)[0]
+        self.assertIn("mode=req[0x10];child=req[0x11];ordinal=boss_hp_sync_get16(req,0x12)", contact)
+        self.assertIn("boss_hp_sync_apply_external_component_damage(c,mode,child,ordinal,damage,r)", contact)
+        self.assertIn("if(mode!=c->mode_index+1u)return BOSS_HP_SYNC_BAD_MODE", contact)
+        self.assertIn("boss_component_boss_find_profile_component(c->profile,mode,child,ordinal,&def,0)", contact)
         self.assertIn("if(!meat_boss_result.scripted_report_suppressed)", session)
 
 

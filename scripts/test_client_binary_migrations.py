@@ -188,6 +188,8 @@ class UserOwnedNativeWindowTests(unittest.TestCase):
         allowed = set()
         for va, span in ((0x6E2F90, 7), (0x6E30A0, 64), (0x6F096A, 10), (0x41FB54, 64),
                          (0x76F7C7, 2), (0x762AF5, 6), (0x76FA2E, 2),
+                         (0x763E3E, 6), (0x7653E3, 2),  # member town input and display
+                         (0x763E3A, 10), (0x7653DF, 6),  # member town control gates
                          (0x74C19A, 3),  # score-derived EXP; full setter is guarded
                          (0x742DF3, 1), (0x742E14, 1),  # authoritative Boss health fields
                          (0xC396C0, 4), (0x513690, 192), (0x53207E, 4)):

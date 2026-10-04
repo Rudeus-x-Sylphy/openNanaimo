@@ -175,6 +175,10 @@ static void boss_hp_sync_classify_scripted_components(struct boss_hp_sync_contex
     if(!c)return;c->scripted_component_active=0u;c->scripted_shell_child=0u;c->scripted_terminal_child=0u;c->scripted_terminal_max_hp=0u;c->scripted_terminal_seen=0u;c->completion_shell_active=0u;c->completion_shell_child=0u;c->completion_shell_observed=0u;c->completion_shell_projection_active=0u;c->completion_shell_pool_start_hp=0u;c->completion_shell_required_start_hp=0u;
     memset(positive_count,0,sizeof(positive_count));memset(zero_type4_count,0,sizeof(zero_type4_count));memset(zero_other_count,0,sizeof(zero_other_count));memset(positive_type_mask,0,sizeof(positive_type_mask));
     for(i=0u;i<c->component_count;i++){unsigned index=c->component_def_index[i];const struct boss_component_boss_component*x;if(index>=BOSS_COMPONENT_BOSS_COMPONENT_COUNT)return;x=&boss_component_boss_components[index];if(x->child>=BOSS_HP_SYNC_MAX_CHILDREN)return;if(x->scaled_hp){positive_count[x->child]++;if(x->target_type<32u)positive_type_mask[x->child]|=1u<<x->target_type;else positive_type_mask[x->child]|=0x80000000u;}else if(x->target_type==4u)zero_type4_count[x->child]++;else zero_other_count[x->child]++;}
+    /* Fire orb: the body and ice components contribute to the same mode HP.
+       Publish each hit through the ordinary neutral recording path; reserving
+       every response for component retirement hides live body damage. */
+    if(c->profile&&c->profile->hd==0u&&c->profile->episode==4u&&c->profile->dungeon==2u&&c->profile->stage_index==0u)return;
     if(c->positive_child_count==2u){
         for(primary=0u;primary<BOSS_HP_SYNC_MAX_CHILDREN;primary++)if(c->child_max_hp[primary]>0u&&positive_count[primary]==1u&&positive_type_mask[primary]==(1u<<3)&&zero_type4_count[primary]>=8u&&zero_other_count[primary]==0u){
             for(auxiliary=primary+1u;auxiliary<BOSS_HP_SYNC_MAX_CHILDREN;auxiliary++)if(c->child_max_hp[auxiliary]>0u&&positive_count[auxiliary]>=4u&&positive_type_mask[auxiliary]==1u&&zero_type4_count[auxiliary]==0u&&zero_other_count[auxiliary]==0u){found++;found_primary=primary;found_auxiliary=auxiliary;}
@@ -559,9 +563,21 @@ static int boss_hp_sync_apply_external_component_damage(struct boss_hp_sync_cont
     c->request_count=requests;r->request_count=requests;boss_hp_sync_project_multimode_recording(c,r);return rc;
 }
 static int boss_hp_sync_apply_external_contact(struct boss_hp_sync_context*c,const unsigned char*req,unsigned len,unsigned damage,struct boss_hp_sync_result*r){
+    const struct boss_component_boss_component*def=0;unsigned mode,child,ordinal,requests;unsigned char hit[BOSS_HP_SYNC_D011_LEN];int rc;
     boss_hp_sync_zero_result(c,r);if(len!=0x1Cu)return BOSS_HP_SYNC_BAD_LENGTH;
     if(boss_hp_sync_get16(req,0x08)!=40u)return BOSS_HP_SYNC_BAD_TARGET;
-    return boss_hp_sync_apply_external_component_damage(c,req[0x10],req[0x11],boss_hp_sync_get16(req,0x12),damage,r);
+    mode=req[0x10];child=req[0x11];ordinal=boss_hp_sync_get16(req,0x12);
+    if(c&&c->phase==BOSS_HP_SYNC_PHASE_RUNNING&&!c->invalid_slot&&!c->lookup_miss&&c->profile&&c->awaiting_next_mode){
+        /* Contact identity authorizes the same next-mode transition as D011.
+           Validate the positive component before changing any HP ledger. */
+        if(mode!=c->mode_index+1u)return BOSS_HP_SYNC_BAD_MODE;
+        if(!damage||!boss_component_boss_find_profile_component(c->profile,mode,child,ordinal,&def,0)||!def->scaled_hp)return BOSS_HP_SYNC_BAD_TARGET;
+        if(damage>def->scaled_hp)damage=def->scaled_hp;
+        memset(hit,0,sizeof(hit));hit[0x12]=(unsigned char)mode;hit[0x13]=(unsigned char)child;boss_hp_sync_put32(hit,0x14,ordinal);
+        requests=c->request_count;rc=boss_hp_sync_apply_d011_attack(c,hit,sizeof(hit),damage+def->basis,1u,r);
+        c->request_count=requests;r->request_count=requests;boss_hp_sync_project_multimode_recording(c,r);return rc;
+    }
+    return boss_hp_sync_apply_external_component_damage(c,mode,child,ordinal,damage,r);
 }
 /* Compatibility entry for a single authored positive component only. A scalar
    damage value must never be distributed over an ambiguous component topology. */

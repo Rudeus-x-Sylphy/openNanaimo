@@ -40,7 +40,7 @@ internal static partial class Program
     {
         var first = Character(fixture.First);
         var second = Character(fixture.Second);
-        Check((await fixture.Database.GrantInventoryItemToAccountAsync(first.AccountId, 43000002, 2)).Success, "owned proposal rings");
+        Check((await fixture.Database.GrantInventoryItemToAccountAsync(first.AccountId, 43000002, 3)).Success, "owned proposal rings");
         var request = CoupleRequest(fixture, fixture.First, fixture.Second, 43000002);
         Broadcasts(fixture.First).Clear();
         Check(await DispatchCouple(fixture, fixture.First, 0xC583, request) is null && Broadcasts(fixture.First).Count == 1,
@@ -48,7 +48,12 @@ internal static partial class Program
         Check(await DispatchCouple(fixture, fixture.Third, 0xC584, CoupleAnswer(fixture.First, request, 10)) is null
             && await fixture.Database.GetActiveCoupleRelationAsync(first.Id) is null, "third party cannot accept a proposal");
         var refused = await DispatchCouple(fixture, fixture.Second, 0xC584, CoupleAnswer(fixture.First, request, 20));
-        Check(refused is { Length: 36 } && await fixture.Database.GetActiveCoupleRelationAsync(first.Id) is null, "proposal refusal preserves ring ownership");
+        Check(refused is { Length: 36 } && await fixture.Database.GetActiveCoupleRelationAsync(first.Id) is null
+            && (await fixture.Database.GetCharacterByIdAsync(first.Id))!.Items.Single(item => item.ItemCode == 43000002).Quantity == 2,
+            "proposal refusal consumes exactly one ring and preserves single status");
+        Check(await DispatchCouple(fixture, fixture.Second, 0xC584, CoupleAnswer(fixture.First, request, 20)) is null,
+            "duplicate refusal is idempotent");
+        request = CoupleRequest(fixture, fixture.First, fixture.Second, 43000002);
         await DispatchCouple(fixture, fixture.First, 0xC583, request);
         var pending = (System.Collections.IDictionary)typeof(NetworkAdapterService).GetField("_coupleSelections", PrivateInstance)!.GetValue(fixture.Service)!;
         foreach (var value in pending.Values) Set(Get(value!, "Inventory")!, "ExpiresAtUtc", DateTime.UtcNow.AddMinutes(-1));

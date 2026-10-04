@@ -18,9 +18,9 @@ internal static class HealthRecoveryChecks
         var character = new CharacterRecord { Level = 4, MaxHp = 5400, MaxMp = 520, CurrentHp = 900, CurrentMp = 375 };
         Check(HealthRecoveryPolicy.TickInterval == TimeSpan.FromSeconds(5),
             "recovery interval is five seconds");
-        Check(HealthRecoveryPolicy.Town == new HealthRecoveryParameters(100, 10)
-              && HealthRecoveryPolicy.Apartment == new HealthRecoveryParameters(100, 10),
-            "town and apartment use 100 HP / 10 MP ticks");
+        Check(HealthRecoveryPolicy.Town == new HealthRecoveryParameters(50, 10)
+              && HealthRecoveryPolicy.Apartment == new HealthRecoveryParameters(70, 20),
+            "town uses 50/10 and apartment starts at 70/20 per five seconds");
 
         var ownerWithPopularHouse = new ApartmentRecoveryContext(
             OwnerCharacterId: 10,
@@ -38,11 +38,21 @@ internal static class HealthRecoveryChecks
         };
         Check(HealthRecoveryPolicy.GetApartmentParameters(ownerWithPopularHouse) == new HealthRecoveryParameters(500, 50)
               && HealthRecoveryPolicy.GetApartmentParameters(visitorInSameRoom) == new HealthRecoveryParameters(500, 50)
-              && HealthRecoveryPolicy.GetApartmentParameters(quietRoom) == new HealthRecoveryParameters(100, 10),
+              && HealthRecoveryPolicy.GetApartmentParameters(quietRoom) == new HealthRecoveryParameters(70, 20),
             "apartment visit tiers apply the same persisted room rate to owners and visitors");
 
+        foreach (var visits in new long[] { 0, 9, 10, 49, 50, 199, 200, 499, 500, long.MaxValue })
+        {
+            var rate = ApartmentPopularityPolicy.GetRecoveryParameters(visits);
+            var display = NetworkAdapterService.BuildApartmentAutoHealingPayload(character, null, rate);
+            Check(display.Length == 20 && BinaryPrimitives.ReadUInt16LittleEndian(display.AsSpan(16)) == rate.HpStep
+                && BinaryPrimitives.ReadUInt16LittleEndian(display.AsSpan(18)) == rate.MpStep
+                && rate.HpStep >= 70 && rate.MpStep >= 20,
+                "room thermometer carries the exact recovery rate at visit boundary " + visits);
+        }
+
         var town = HealthRecoveryPolicy.Resolve(character, HealthRecoveryScene.Town, true, false);
-        Check(town.Eligible && town.Changed && town.CurrentHp == 1000 && town.CurrentMp == 385,
+        Check(town.Eligible && town.Changed && town.CurrentHp == 950 && town.CurrentMp == 385,
             "one eligible town tick resolves to the observed quantum");
         var battle = HealthRecoveryPolicy.Resolve(character, HealthRecoveryScene.Town, true, true);
         Check(!battle.Eligible && !battle.Changed,
@@ -164,13 +174,13 @@ internal static class HealthRecoveryChecks
 
             var firstTick = await database.ApplyHealthRecoveryStepAsync(
                 accountId, characterId, sessionId, HealthRecoveryScene.Town);
-            Check(firstTick.Applied && firstTick.CurrentHp == 1000 && firstTick.CurrentMp == 385,
+            Check(firstTick.Applied && firstTick.CurrentHp == 950 && firstTick.CurrentMp == 385,
                 "timed town tick persists atomically");
             Set(session, "Character", (await database.GetCharacterAsync(accountId))!);
             var d8ffPayload = (byte[])healingPayloadBuilder.Invoke(null, [Get(session, "Character")!])!;
             Check(BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(8, 2)) == 5400
                   && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(10, 2)) == 520
-                  && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(12, 2)) == 1000
+                  && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(12, 2)) == 950
                   && BinaryPrimitives.ReadUInt16LittleEndian(d8ffPayload.AsSpan(14, 2)) == 385,
                 "D8FF payload carries max and current resources after a tick");
 
@@ -178,7 +188,7 @@ internal static class HealthRecoveryChecks
             BinaryPrimitives.WriteUInt16LittleEndian(c38d, 1);
             Check((await Dispatch(0xC38D, c38d)) is { } c38e && ReadOpcode(c38e) == 0xC38E,
                 "C38D apartment entry returns C38E");
-            CheckResources(await database.GetCharacterAsync(accountId), 1000, 385,
+            CheckResources(await database.GetCharacterAsync(accountId), 950, 385,
                 "C38D only synchronizes and does not heal immediately");
             Check(schedule.TryGetActiveScene(out var activeApartment)
                   && activeApartment == HealthRecoveryScene.Apartment,
@@ -189,7 +199,7 @@ internal static class HealthRecoveryChecks
             BinaryPrimitives.WriteUInt16LittleEndian(c38f.AsSpan(2, 2), 240);
             Check((await Dispatch(0xC38F, c38f)) is { } c390 && ReadOpcode(c390) == 0xC390,
                 "C38F apartment refresh returns C390");
-            CheckResources(await database.GetCharacterAsync(accountId), 1000, 385,
+            CheckResources(await database.GetCharacterAsync(accountId), 950, 385,
                 "C38F only synchronizes and does not heal immediately");
 
             await WriteResourcesAsync(database.DatabasePath, characterId, 5400, 520, 5390, 515);
@@ -221,12 +231,12 @@ internal static class HealthRecoveryChecks
                 characterId, ownerCharacterId, visitDay);
             Check(apartmentState.Eligible && !apartmentState.IsOwner
                   && apartmentState.TodayVisitIndex == 1 && apartmentState.TotalVisitIndex == 10
-                  && apartmentState.HpPerTick == 150 && apartmentState.MpPerTick == 15,
+                  && apartmentState.HpPerTick == 150 && apartmentState.MpPerTick == 20,
                 "persisted room popularity resolves a verifiable visitor recovery rate");
             await WriteResourcesAsync(database.DatabasePath, characterId, 5400, 520, 900, 375);
             var popularTick = await database.ApplyApartmentHealthRecoveryStepAsync(
                 accountId, characterId, sessionId, ownerCharacterId);
-            Check(popularTick.Applied && popularTick.CurrentHp == 1050 && popularTick.CurrentMp == 390,
+            Check(popularTick.Applied && popularTick.CurrentHp == 1050 && popularTick.CurrentMp == 395,
                 "apartment persistence applies the room owner's popularity tier");
 
             await WriteResourcesAsync(database.DatabasePath, characterId, 5400, 520, 1000, 385);
@@ -240,7 +250,7 @@ internal static class HealthRecoveryChecks
                 "reconnect preserves partial resources");
             var reconnectTick = await database.ApplyHealthRecoveryStepAsync(
                 accountId, characterId, reconnectSession, HealthRecoveryScene.Town);
-            Check(reconnectTick.Applied && reconnectTick.CurrentHp == 1100 && reconnectTick.CurrentMp == 395,
+            Check(reconnectTick.Applied && reconnectTick.CurrentHp == 1050 && reconnectTick.CurrentMp == 395,
                 "reconnected session owns subsequent recovery ticks");
 
             var dead = (await database.GetCharacterAsync(accountId))!;

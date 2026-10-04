@@ -23,8 +23,8 @@ def main() -> None:
     protocol = PROTOCOL.read_text(encoding="utf-8")
     session = SESSION.read_text(encoding="utf-8")
     builder = extract_function("send_cf78_empty_lobby", protocol)
-    if "send_cf78_empty_lobby(c,wire_ep,wire_dg)" not in session:
-        raise AssertionError("CF77 handler does not pass episode/dungeon to CF78")
+    if "send_cf78_empty_lobby(c,current_stage_index,g_multi_current>=0?g_multi_conn[g_multi_current].show_stage:0u)" not in session:
+        raise AssertionError("CF77 handler must project confirmed real/show stage, never episode/dungeon")
     if "op==10u||op==100u" not in session:
         raise AssertionError("CF77 mode10 and mode100 do not share the base tuple decoder")
 
@@ -47,14 +47,14 @@ static unsigned u32(int off){return u16(off)|(u16(off+2)<<16);}
 '''
     tail = r'''
 int main(void){
-    send_cf78_empty_lobby(0,15u,1u);
+    send_cf78_empty_lobby(0,0u,0u);
     assert(captured_len==36 && u16(6)==0xCF78 && u16(8)==100u);
-    assert(captured[0x0A]==15u && captured[0x0B]==1u && u32(0x0C)==21u);
+    assert(captured[0x0A]==0u && captured[0x0B]==0u && u32(0x0C)==21u);
     current_uid=22u;owner_uid=21u;
-    send_cf78_empty_lobby(0,15u,2u);
+    send_cf78_empty_lobby(0,1u,4u);
     assert(captured_len==36 && u16(8)==10u);
-    assert(captured[0x0A]==15u && captured[0x0B]==2u && u32(0x0C)==22u);
-    puts("DUNGEON_CF78_MAPPING_PASS episode/dungeon preserved for owner and guest");
+    assert(captured[0x0A]==1u && captured[0x0B]==4u && u32(0x0C)==22u);
+    puts("DUNGEON_CF78_MAPPING_PASS real/show stage preserved for owner and guest");
     return 0;
 }
 '''

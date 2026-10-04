@@ -3,8 +3,8 @@
 #define SKILL_PROGRESS_COUNT 16u
 #define SKILL_PROGRESS_MAX_GRADE 5u
 static unsigned g_skill_progress_loaded=0u;
-static unsigned g_skill_progress_sp=65535u;
-static unsigned g_skill_progress_sp_meat=65535u;
+static unsigned g_skill_progress_sp=0u;
+static unsigned g_skill_progress_sp_meat=0u;
 static unsigned char g_skill_progress_grade[SKILL_PROGRESS_COUNT];
 static unsigned g_skill_progress_slots[2];
 #if TEAMPLAY_FEATURE_SKILL_DEFAULT_FIRST2_POLICY
@@ -21,7 +21,7 @@ static int skill_progress_index(unsigned code){return code>=52000000u&&code<=520
 static int skill_progress_key_equal(const char*a,const char*b){while(*a&&*b&&*a==*b){a++;b++;}return *a==*b;}
 static void skill_progress_make_key(char*out){static const char h[]="0123456789ABCDEF";unsigned i,n=g_stable_name_len;if(n>16u)n=16u;if(!n){out[0]='d';out[1]='e';out[2]='f';out[3]='a';out[4]='u';out[5]='l';out[6]='t';out[7]=0;return;}for(i=0;i<n;i++){unsigned v=(unsigned char)g_stable_name[i];out[i*2]=h[v>>4];out[i*2+1]=h[v&15u];}out[n*2]=0;}
 static void skill_progress_path(char*out,const char*key,const char*suffix){const char*p="skill_progress_state_v2_";unsigned n=0,i=0;while(*p)out[n++]=*p++;while(key[i])out[n++]=key[i++];while(*suffix)out[n++]=*suffix++;out[n]=0;}
-static void skill_progress_defaults(void){g_skill_progress_sp=65535u;g_skill_progress_sp_meat=65535u;memset(g_skill_progress_grade,0,sizeof(g_skill_progress_grade));g_skill_progress_slots[0]=g_skill_progress_slots[1]=0u;
+static void skill_progress_defaults(void){g_skill_progress_sp=0u;g_skill_progress_sp_meat=0u;memset(g_skill_progress_grade,0,sizeof(g_skill_progress_grade));g_skill_progress_slots[0]=g_skill_progress_slots[1]=0u;
 #if TEAMPLAY_FEATURE_SKILL_DEFAULT_FIRST2_POLICY
 g_skill_progress_policy_first2=0u;
 #endif

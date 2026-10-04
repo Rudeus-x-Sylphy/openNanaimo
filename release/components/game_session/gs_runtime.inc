@@ -417,12 +417,17 @@ static void gs_thread(void* arg){
                     }
 #endif
 #ifdef NANAIMO_GAMEPLAY_BRIDGE
-                    if(type==0xF104){
+                    if(type==0xF108){
+                        if(len==8 && g_multi_conn[multiplayer_idx].room_active){
+                            send_cf72_dynamic_actor_refresh_phase(c,multiplayer_current_uid(),NATIVE_CF72_PROFILE);
+                            multiplayer_broadcast_actor_resources_current();
+                        }
+                    } else if(type==0xF104){
                         /* mkpkt clears its full 4096-byte construction buffer. */
-                        char ack[4096];unsigned mode=0u,hp=0u,mp=0u;int ok=0;
+                        char ack[4096];unsigned mode=0u,hp=0u,mp=0u;int ok=0,was_dead=injury_dead||death_latched;
                         if(len==16){mode=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8);hp=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);mp=(unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8);ok=mode==0u&&hp>0u&&hp<=pet_crafting_pet_effective_hp_max()&&mp>0u&&mp<=pet_crafting_pet_effective_mp_max();}
                         if(ok){combat_hp=hp;g_profile_hp_current=hp;g_profile_mp_current=mp;injury_dead=0;death_latched=0;retry_acknowledged=0;lifesteal_remainder=0u;printf("  [REVIVE] internal F104 paid-continue sync hp=%u mp=%u battle=%u latch-cleared\n",hp,mp,boss_ctx.battle_epoch);fflush(0);}else{printf("  [REVIVE] internal F104 rejected len=%d mode=%u hp=%u mp=%u injury_dead=%d combat_hp=%u max_hp=%u max_mp=%u\n",len,mode,hp,mp,injury_dead,combat_hp,pet_crafting_pet_effective_hp_max(),pet_crafting_pet_effective_mp_max());fflush(0);}
-                        mkpkt(ack,0xF105,16,1);ack[8]=(char)(ok?1:0);ack[9]=0;ack[10]=(char)mode;ack[11]=(char)(mode>>8);ack[12]=(char)hp;ack[13]=(char)(hp>>8);ack[14]=(char)mp;ack[15]=(char)(mp>>8);sendbuf(c,ack,16);
+                        mkpkt(ack,0xF105,16,1);ack[8]=(char)(ok?1:0);ack[9]=0;ack[10]=(char)mode;ack[11]=(char)(mode>>8);ack[12]=(char)hp;ack[13]=(char)(hp>>8);ack[14]=(char)mp;ack[15]=(char)(mp>>8);sendbuf(c,ack,16);if(ok&&was_dead)game_session_broadcast_revival_current(20u);
                     } else if(managed_bridge_handle(c,type,len,(const unsigned char*)&buf[off])) {
                         /* Internal state exchange; never routed from a game client. */
                         if(type==0xF100)combat_hp=pet_crafting_pet_effective_hp_current();
@@ -691,6 +696,7 @@ static void gs_thread(void* arg){
                         stable_monster_hp_select_stage(monster_hp_ctx,crate_policy,current_hd,current_stage,current_dungeon,current_stage_index,current_difficulty,dungeon_room_epoch);
 #endif
 #endif
+                        multiplayer_store_stage(current_stage_index,0u,current_slot,current_difficulty,current_dungeon);
                         boss_hp_sync_select_stage(&boss_ctx,current_stage);
                         attack_mode_powerup_reset(&power_ctx,g_initial_attack_mode,dungeon_room_epoch);
                         printf("  [GS %d] CF6C epoch=%u hp-domain hd=%u ep=%u dg=%u st=%u difficulty=%u(wire+0x26) -> reset room gates; CF6D/dynamic CFEC\n",port,dungeon_room_epoch,current_hd,current_stage,current_dungeon,current_stage_index,current_difficulty);fflush(0);
@@ -955,7 +961,7 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                     handle_meat_collision_report(c,port,monster_hp_ctx,crate_policy,&score_ctx,teamplay_authoritative_stage(current_stage),dungeon_room_epoch,boss_ctx.battle_epoch,candidate,(unsigned)((unsigned char)buf[off]|((unsigned char)buf[off+1]<<8)),g_meat_collision.code,g_meat_collision.grade,carrier,&mr);
                                     if(mr.reject_reason==MEAT_REJECT_UNBOUND){int boss_meat_applied=0;
 #if TEAMPLAY_FEATURE_MEAT_BOSS_DAMAGE
-                                        if(request_kind==40u&&boss_ctx.phase==BOSS_HP_SYNC_PHASE_RUNNING&&!boss_ctx.awaiting_next_mode){
+                                        if(request_kind==40u&&boss_ctx.phase==BOSS_HP_SYNC_PHASE_RUNNING){
                                             struct boss_hp_sync_result meat_boss_result;
                                             unsigned meat_damage=meat_skill_damage(g_meat_collision.code,g_meat_collision.grade);
                                             int meat_boss_rc=boss_hp_sync_apply_external_contact(&boss_ctx,(const unsigned char*)&buf[off],(unsigned)len,meat_damage,&meat_boss_result);
@@ -1049,7 +1055,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                         }
                         else { printf("  [GS %d] D011 quarantined boss_rc=%d phase=%u profile=%u mode=%u wire_mode=%u child=%u ordinal=%u expected=%u len=%d
 ",port,boss_rc,boss_ctx.phase,boss_ctx.profile_kind,boss_ctx.mode_index,(unsigned char)buf[off+0x12],(unsigned char)buf[off+0x13],(unsigned)((unsigned char)buf[off+0x14]|((unsigned char)buf[off+0x15]<<8)|((unsigned char)buf[off+0x16]<<16)|((unsigned char)buf[off+0x17]<<24)),boss_ctx.expected_ordinal,len); fflush(0); }
-                    } else if(type==0xCF95 && len==8){unsigned revive_before=0u,revive_after=0u;if(death_latched&&!retry_acknowledged&&death_battle_epoch==boss_ctx.battle_epoch&&game_session_revival_consume_retry(&revive_before,&revive_after)){retry_acknowledged=1;combat_hp=pet_crafting_pet_effective_hp_max();g_profile_hp_current=combat_hp;injury_dead=0;printf("  [REVIVE] GOT CF95 battle=%u uses=%u->%u hp=%u -> CF96/CF84/CF72 latch-retained-until-combat-or-CF87\n",death_battle_epoch,revive_before,revive_after,combat_hp);fflush(0);sleep(0);send_cf96_retry_inventory_instances(c);sleep(0);game_session_send_cf84_revive(c,multiplayer_current_uid());sleep(0);send_cf72_dynamic_actor_refresh_phase(c,multiplayer_current_uid(),NATIVE_CF72_REVIVE);multiplayer_broadcast_actor_resources_current();}else{printf("  [REVIVE] GOT CF95 no-revive latched=%d death_battle=%u current_battle=%u uses=%u -> idempotent CF96 only\n",death_latched,death_battle_epoch,boss_ctx.battle_epoch,game_session_revival_count());fflush(0);sleep(0);send_cf96_retry_inventory_instances(c);}
+                    } else if(type==0xCF95 && len==8){unsigned revive_before=0u,revive_after=0u;if(death_latched&&!retry_acknowledged&&death_battle_epoch==boss_ctx.battle_epoch&&game_session_revival_consume_retry(&revive_before,&revive_after)){retry_acknowledged=1;combat_hp=pet_crafting_pet_effective_hp_max();g_profile_hp_current=combat_hp;g_profile_mp_current=pet_crafting_pet_effective_mp_max();injury_dead=0;printf("  [REVIVE] GOT CF95 battle=%u uses=%u->%u hp=%u -> CF96/CF84/CF72 latch-retained-until-combat-or-CF87\n",death_battle_epoch,revive_before,revive_after,combat_hp);fflush(0);sleep(0);send_cf96_retry_inventory_instances(c);sleep(0);game_session_send_cf84_revive(c,multiplayer_current_uid());sleep(0);send_cf72_dynamic_actor_refresh_phase(c,multiplayer_current_uid(),NATIVE_CF72_REVIVE);game_session_broadcast_revival_current(60u);}else{printf("  [REVIVE] GOT CF95 no-revive latched=%d death_battle=%u current_battle=%u uses=%u -> idempotent CF96 only\n",death_latched,death_battle_epoch,boss_ctx.battle_epoch,game_session_revival_count());fflush(0);sleep(0);send_cf96_retry_inventory_instances(c);}
                     } else if(type==0xCF87 && len==12 && !settlement_sent){
                         cf87_total++;
                         if(death_latched&&death_battle_epoch==boss_ctx.battle_epoch){printf("  [DEATH_INVENTORY] GOT CF87 after local death -> immediate CF88 score=%u no-boss-settle\n",score_ctx.total);fflush(0);sleep(0);teamplay_send_cf88_room_playable_noexp(c,score_ctx.total);settlement_sent=1;death_latched=0;retry_acknowledged=0;}
@@ -1209,6 +1215,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                         map_identity_reset_transport(&map_identity);
 #endif
                         current_hd=0; current_stage=0; current_dungeon=0; current_stage_index=0; current_difficulty=0; current_slot=0;
+                        multiplayer_store_stage(0u,0u,0u,0u,0u);
                         combat_hp=pet_crafting_pet_effective_hp_current();injury_armed=0;injury_dead=0;death_latched=0;retry_acknowledged=0;death_battle_epoch=0u;injury_room_epoch=dungeon_room_epoch;injury_battle_epoch=0u;
 #if TEAMPLAY_FEATURE_SHARED_HP
                         if(multiplayer_current_uid()==multiplayer_owner_uid())teamplay_shared_reset_transport();
@@ -1233,10 +1240,12 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                             else{printf("  [GS %d] SESSION_TARGET_POLICY CF77 reject invalid difficulty=%u; retain hd=%u ep=%u dg=%u diff=%u slot=%u\n",port,wire_diff,current_hd,current_stage,current_dungeon,current_difficulty,current_slot);fflush(0);}
                         }
 #endif
-                        printf("  [GS %d] GOT CF77 dungeon lobby action op=%u fields=%u/%u/%u/%u -> CF78 episode=%u dungeon=%u\n",
+                        /* A fresh CF09 starts at 0/0. A retained continuation
+                           keeps its confirmed real/show stage, not ep/dg. */
+                        printf("  [GS %d] GOT CF77 dungeon lobby action op=%u fields=%u/%u/%u/%u -> CF78 real_stage=%u\n",
                                port,op,(unsigned char)buf[off+10],(unsigned char)buf[off+11],
-                               (unsigned char)buf[off+12],(unsigned char)buf[off+13],wire_ep,wire_dg); fflush(0);
-                        sleep(0); send_cf78_empty_lobby(c,wire_ep,wire_dg);
+                               (unsigned char)buf[off+12],(unsigned char)buf[off+13],current_stage_index); fflush(0);
+                        sleep(0); send_cf78_empty_lobby(c,current_stage_index,g_multi_current>=0?g_multi_conn[g_multi_current].show_stage:0u);
                     } else if(type==0xC4E0 && len==32){printf("  [MULTI] C4E0 invite from=%u\n",multiplayer_current_uid());fflush(0);multiplayer_forward_invite((const unsigned char*)&buf[off],len);
                     } else if(type==0xC4E1 && len==12){unsigned inviter=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);printf("  [MULTI] C4E1 accept uid=%u inviter=%u\n",multiplayer_current_uid(),inviter);fflush(0);multiplayer_accept_party(inviter);
                     } else if(type==0xC4E7 && len==8){printf("  [MULTI] C4E7 exit uid=%u\n",multiplayer_current_uid());fflush(0);multiplayer_exit_party();

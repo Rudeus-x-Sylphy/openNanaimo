@@ -16,7 +16,7 @@ public sealed partial class DatabaseService
             INSERT OR IGNORE INTO AdapterSettings(Key,Value,UpdatedAt) VALUES
               ('InitialGrantHans','9999999',$now),
               ('InitialGrantCash','9999999',$now),
-              ('InitialGrantSkillPoints','5000',$now);
+              ('InitialGrantSkillPoints','0',$now);
             """;
         command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
         await command.ExecuteNonQueryAsync(token);

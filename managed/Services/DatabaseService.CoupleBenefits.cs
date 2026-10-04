@@ -79,10 +79,10 @@ public sealed partial class DatabaseService
 
     internal async Task<CoupleCommitResult> CommitCoupleSelectionAsync(
         CoupleInventorySelection selection, long partnerAccountId, long partnerCharacterId,
-        string? partnerSessionId, bool separation, long expectedRelationId = 0, CancellationToken token = default)
+        string? partnerSessionId, bool separation, long expectedRelationId = 0, CancellationToken token = default, bool refusedProposal = false)
     {
         static CoupleCommitResult Failure(string error) => new(false, error, 0, null);
-        if (selection.ExpiresAtUtc <= DateTime.UtcNow || selection.AccountId <= 0
+        if ((refusedProposal && separation) || selection.ExpiresAtUtc <= DateTime.UtcNow || selection.AccountId <= 0
             || partnerAccountId <= 0 || selection.AccountId == partnerAccountId
             || partnerCharacterId <= 0 || partnerCharacterId == selection.CharacterId
             || (separation ? !CoupleBenefitPolicy.IsSeparationItemCode(selection.ItemCode)
@@ -163,6 +163,11 @@ public sealed partial class DatabaseService
             return Failure("The selected inventory instance changed.");
         await ReindexGameQuickSlotsAfterRemovalAsync(connection, transaction, selection.CharacterId,
             inventory, checked((byte)selection.InventorySlot), token);
+        if (refusedProposal)
+        {
+            await transaction.CommitAsync(token);
+            return new CoupleCommitResult(true, string.Empty, checked((ushort)remaining), null);
+        }
         var firstId = Math.Min(selection.CharacterId, partnerCharacterId);
         var secondId = Math.Max(selection.CharacterId, partnerCharacterId);
         await using (var write = connection.CreateCommand())

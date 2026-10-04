@@ -140,19 +140,18 @@ static const struct hp_sync_profile_def *stage_damage_find_target_profile(const 
         if(cmp<0)lo=mid+1u;else if(cmp>0)hi=mid;else return p;
     }return 0;
 }
-/* Kind60 reports a selected-slot target selector, not a PON owner.  Only an
- * authored type4 row with an explicit same-placement/resource association to
- * a positive ordinary target may inherit that target's exact contact attack.
- * Unassociated scene rows, non-damaging parents, misses and kind80 stay echo-only. */
+/* Kind60 reports a selected-slot target selector, not a PON owner.  An authored type4 row
+ * uses its explicit same-placement/resource root, or itself when it is the
+ * positive-HP root. The root must have an exact selected-scope contact attack. */
 static unsigned stage_damage_scene_associated_lookup(const struct stage_damage_damage_context *ctx,unsigned selector,struct stage_damage_damage_lookup *out){
     const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);const struct hp_sync_target_def *child,*parent;unsigned associated,damage;
     if(!profile||selector>=(unsigned)profile->target_count)return 0u;
     child=&hp_sync_target_defs[profile->first_row+selector];
-    if((unsigned)child->selector!=selector||child->target_type!=4u||child->association<0)return 0u;
-    associated=(unsigned)child->placement_selector_start+(unsigned)child->association;
+    if((unsigned)child->selector!=selector||child->target_type!=4u)return 0u;
+    associated=child->association>=0?(unsigned)child->placement_selector_start+(unsigned)child->association:selector;
     if(associated>=(unsigned)profile->target_count)return 0u;
     parent=&hp_sync_target_defs[profile->first_row+associated];
-    if((unsigned)parent->selector!=associated||parent->target_type==4u||parent->nominal_hp<=0||
+    if((unsigned)parent->selector!=associated||parent->nominal_hp<=0||
        parent->placement_index!=child->placement_index||parent->resource_index!=child->resource_index||
        parent->segment!=child->segment)return 0u;
     damage=stage_damage_monster_contact_lookup(ctx,associated);if(!damage)return 0u;

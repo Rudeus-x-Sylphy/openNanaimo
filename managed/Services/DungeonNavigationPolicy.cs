@@ -71,17 +71,18 @@ internal static class DungeonNavigationPolicy
 
     internal static void WriteQuickEnterResponseSelection(
         Span<byte> quickEnterResponsePayload,
-        byte episode,
-        byte dungeon,
+        byte realStage,
+        byte showStage,
         uint roomId)
     {
         if (quickEnterResponsePayload.Length < 8)
             throw new ArgumentException("CF78 response payload is too short.", nameof(quickEnterResponsePayload));
 
-        // Both successful CF78 branches consume payload +2/+3 as
-        // episode/dungeon and payload +4 as the DWORD room id.
-        quickEnterResponsePayload[2] = episode;
-        quickEnterResponsePayload[3] = dungeon;
+        // CF78 != CF77: sub_7196E0 writes +2/+3 to RealStage/ShowStage
+        // (manager +0x1E540/+0x1E544). Mode0/status100 also writes +2
+        // directly at 0x6F801D. Episode/dungeon here corrupt the stage.
+        quickEnterResponsePayload[2] = realStage;
+        quickEnterResponsePayload[3] = showStage;
         BinaryPrimitives.WriteUInt32LittleEndian(quickEnterResponsePayload.Slice(4, 4), roomId);
     }
 

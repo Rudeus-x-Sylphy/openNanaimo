@@ -36,7 +36,7 @@ def drain(connection):
 
 
 @contextlib.contextmanager
-def party(dungeon=2, difficulty=2, episode=0, stage=0):
+def party(dungeon=2, difficulty=2, episode=0, stage=0, quick_entry=False, show_stage=0):
     port = None
     for candidate in range(60000, 61800, 10):
         reserved = []
@@ -79,7 +79,15 @@ def party(dungeon=2, difficulty=2, episode=0, stage=0):
                     struct.pack_into('<I', state, 28, 1000)
                     connection.sendall(frame(0xF100, state))
                     receive(connection, 0xF102)
-                    if uid == 11:
+                    if quick_entry:
+                        connection.sendall(frame(0xCF09))
+                        receive(connection, 0xCF0A)
+                        connection.sendall(frame(0xCF77, struct.pack('<HBBBBH', 100, 0, episode, dungeon, difficulty, 0xFFFF)))
+                        entry = receive(connection, 0xCF78)
+                        # Original 0x7196E0 installs these bytes as RealStage /
+                        # ShowStage. They are NOT a copy of episode/dungeon.
+                        assert entry[10:12] == bytes((stage, 0)), (episode, dungeon, uid, entry.hex())
+                    elif uid == 11:
                         selection = bytearray(32)
                         selection[27] = episode
                         selection[28] = dungeon
@@ -95,7 +103,7 @@ def party(dungeon=2, difficulty=2, episode=0, stage=0):
                     receive(connection, 0xC588)
                     connection.sendall(frame(0xCF70))
                     receive(connection, 0xCF71)
-                clients[0].sendall(frame(0xCFEB, struct.pack("<HH", stage, 0)))
+                clients[0].sendall(frame(0xCFEB, struct.pack("<HH", stage, show_stage)))
                 receive(clients[0], 0xCFEC)
                 preload = drain(clients[1])
                 operations = [struct.unpack_from('<H', item, 6)[0] for item in preload]
@@ -127,6 +135,23 @@ class PartyStateTests(unittest.TestCase):
         for connection in clients:
             self.assertEqual(len(receive(connection, 0xCF80)), 8)
             drain(connection)
+
+    def test_quick_entry_stage_identity_all_villages(self):
+        for episode, dungeon in ((0, 1), (1, 0), (3, 2), (7, 1), (15, 1), (100, 0)):
+            for first in (0, 1):
+                with self.subTest(episode=episode, dungeon=dungeon, first=first), party(
+                        episode=episode, dungeon=dungeon, quick_entry=True) as clients:
+                    self.start(clients, first)
+
+    def test_fresh_transport_clears_previous_show_stage(self):
+        with party(show_stage=4) as clients:
+            self.start(clients, 0)
+            for connection in clients:
+                connection.sendall(frame(0xCF09))
+                receive(connection, 0xCF0A)
+                connection.sendall(frame(0xCF77, struct.pack('<HBBBBH', 100, 0, 1, 0, 2, 0xFFFF)))
+                entry = receive(connection, 0xCF78)
+                self.assertEqual(entry[10:12], bytes(2))
 
     def injure(self, actor, viewer, uid):
         actor.sendall(frame(0xD014, struct.pack('<HHHBB', 20, 0, 0, 0, uid)))

@@ -86,6 +86,7 @@ internal static class DungeonTransitionChecks
             "independent display-stage byte preserves the Super-Boss ranking selection");
         await RunScenario("challenge boss", mode: 1, dungeon: 2, real: 1);
         await RunScenario("retry current", mode: 1, dungeon: 0);
+        await RunScenario("retry direct reload then town", mode: 1, skipRoster: true);
         await RunScenario("long battle next dungeon", mode: 2, rearm: true);
         await RunScenario("long battle retry", mode: 1, rearm: true);
         await RunScenario("normal town return");
@@ -97,7 +98,7 @@ internal static class DungeonTransitionChecks
         await RunScenario("town after next battle begins", mode: 2, startBattle: true);
         Console.WriteLine($"DUNGEON_TRANSITION_REGRESSION_PASS checks={checks}");
     }
-    private static async Task RunScenario(string name, ushort mode = 0, byte dungeon = 0, byte real = 0, bool death = false, bool startBattle = false, bool rearm = false, byte stage = 0, bool rejectFirst = false)
+    private static async Task RunScenario(string name, ushort mode = 0, byte dungeon = 0, byte real = 0, bool death = false, bool startBattle = false, bool rearm = false, byte stage = 0, bool rejectFirst = false, bool skipRoster = false)
     {
         string root = Path.Combine(Path.GetTempPath(), "nanaimo-next-dungeon-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -207,10 +208,20 @@ internal static class DungeonTransitionChecks
                     ? Get(session, "NativeBattleResources") is BattleResourceSnapshot { CurrentHp: 1000, CurrentMp: 500, AttackMode: 0 }
                     : Get(session, "NativeBattleResources") is BattleResourceSnapshot { CurrentHp: 123, CurrentMp: 45, AttackMode: 2 },
                     name + ": retained worker keeps HP/MP/P carry");
-                await Send(NativeDungeonClient.Frame(0xCF70, []));
+                if (skipRoster)
+                {
+                    await Send(NativeDungeonClient.Frame(0xCFEB, [real, 0, 0, 0]));
+                    Check(!(bool)Get(session, "NativeDungeonNextTransitionAuthorized")!
+                        && Drain(session).Select(Op).SequenceEqual(new ushort[] { 0xCFEC }),
+                        name + ": direct profile reload ends transport teardown protection");
+                }
+                else
+                {
+                await Send(NativeDungeonClient.Frame(0xCF70, new byte[4]));
                 await readyDelivered.Task.WaitAsync(token);
                 Check(!(bool)Get(session, "NativeDungeonNextTransitionAuthorized")!
                     && Drain(session).Select(Op).SequenceEqual(new ushort[] { 0xCF71 }), name + ": CF70/CF71 reaches next ready room");
+                }
                 if (death)
                 {
                     await Send(NativeDungeonClient.Frame(0xCFEB, [stage, 0, 0, 0]));

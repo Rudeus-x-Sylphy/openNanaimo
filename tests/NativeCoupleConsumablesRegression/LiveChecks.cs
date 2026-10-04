@@ -43,14 +43,16 @@ internal static class LiveChecks
             var account = await database.OpenLocalAccountAsync(name);
             await database.CreateLocalCharacterAsync(account, name, 0);
             await database.GrantInventoryItemToAccountAsync(account, 14000001, 3);
+            await database.GrantInventoryItemToAccountAsync(account, 15000001, 1);
+            await database.GrantInventoryItemToAccountAsync(account, 17018835, 1);
             var character = (await database.GetCharacterAsync(account))!;
             var session = Activator.CreateInstance(SessionType, nonPublic: true)!;
             var sessionId = Get<string>(session, "SessionId");
             check(await database.BeginWorldSessionAsync(account, character.Id, sessionId, 1, "127.0.0.1"), "live sharing session " + name);
             Set(session, "AccountId", account); Set(session, "Character", character); Set(session, "OnlineTracked", true);
             Set(session, "ChannelId", 1); Set(session, "PartyId", 101);
-            Set(session, "NativeDungeonSelectionValid", true); Set(session, "NativeForwarding", true);
-            Set(session, "NativeCoupleStartRequested", true); Set(session, "NativeCoupleIdentityPublished", true);
+            Set(session, "NativeDungeonSelectionValid", sessions.Count == 0); Set(session, "NativeForwarding", true);
+            Set(session, "NativeCoupleStartRequested", false); Set(session, "NativeCoupleIdentityPublished", false);
             var presenceType = typeof(NetworkAdapterService).GetNestedType("WorldPresence", BindingFlags.NonPublic)!;
             var presence = Activator.CreateInstance(presenceType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 null, [session, sessionId, account, character.Id, name, name, "127.0.0.1", 1, DateTime.UtcNow, DateTime.UtcNow, (Action<string>)(_ => {})], null)!;
@@ -81,12 +83,106 @@ internal static class LiveChecks
                 Set(session, "NativeDungeon", client); Set(session, "NativeLease", index == 0 ? leaseA : leaseB); Set(session, "NativeBattleEpoch", epoch);
                 var state = NativeDungeonState.Create(character, [], []);
                 CoupleBenefitPolicy.WriteNativeRing(state, 43000002);
-                BinaryPrimitives.WriteUInt32LittleEndian(state.Bytes.AsSpan(224), 14000001);
-                BinaryPrimitives.WriteUInt32LittleEndian(state.Bytes.AsSpan(228), 1);
                 Set(session, "NativeBattleResources", BattleResourceSnapshot.Capture(state, epoch));
                 Set(session, "NativeCheckpoint", await client.ExchangeAsync(null, state, CancellationToken.None));
                 var creation = new byte[44]; BinaryPrimitives.WriteUInt16LittleEndian(creation.AsSpan(24), 100);
-                await client.ExchangeCapturedAsync(NativeDungeonClient.Frame(0xCF6C, creation), null, CancellationToken.None);
+                if (index == 0)
+                    await client.ExchangeCapturedAsync(NativeDungeonClient.Frame(0xCF6C, creation), null, CancellationToken.None);
+                else
+                {
+                    check(!Get<bool>(session, "NativeDungeonSelectionValid"), "room join starts without a synthetic creation tuple");
+                    Set(session, "NativeContinuationRosterRequested", true);
+                    var roster = NativeDungeonClient.Frame(0xCF71, new byte[0xB0]);
+                    BinaryPrimitives.WriteUInt16LittleEndian(roster.AsSpan(0x18), checked((ushort)Get<NativeDungeonState>(first, "NativeCheckpoint").Get(4)));
+                    BinaryPrimitives.WriteUInt16LittleEndian(roster.AsSpan(0x1A), checked((ushort)Get<NativeDungeonState>(session, "NativeCheckpoint").Get(4)));
+                    Set(session, "NativeLease", new NativeDungeonPool.Lease(pool, "foreign", leaseB.Port, Guid.NewGuid()));
+                    await Call(service, "HandleNativeWorkerFrameAsync", session, roster, epoch, CancellationToken.None);
+                    check(!Get<bool>(session, "NativeDungeonSelectionValid"), "roster from another worker generation cannot establish room selection");
+                    Set(session, "NativeLease", leaseB); Set(session, "PartyId", 102);
+                    await Call(service, "HandleNativeWorkerFrameAsync", session, roster, epoch, CancellationToken.None);
+                    check(!Get<bool>(session, "NativeDungeonSelectionValid"), "roster cannot borrow selection from another party");
+                    Set(session, "PartyId", 101);
+                    BinaryPrimitives.WriteUInt16LittleEndian(roster.AsSpan(0x18), 65534);
+                    await Call(service, "HandleNativeWorkerFrameAsync", session, roster, epoch, CancellationToken.None);
+                    check(!Get<bool>(session, "NativeDungeonSelectionValid"), "room selection requires the roster's actual owner identity");
+                    await client.ExchangeCapturedAsync(NativeDungeonClient.Frame(0xCF75, new byte[12]), null, CancellationToken.None);
+                    await Call<bool>(service, "RouteNativeDungeonAsync", NativeDungeonClient.Frame(0xCF70, new byte[4]),
+                        (ushort)0xCF70, "WorldAdapter", session, CancellationToken.None);
+                    await client.ExchangeAsync(null, null, CancellationToken.None);
+                    check(Get<bool>(session, "NativeDungeonSelectionValid"), "own ready roster binds the joining member to the owner's selection");
+                }
+                var inventory = (await Call<byte[]?>(service, "HandleNativeFrameAsync",
+                    NativeDungeonClient.Frame(0xC42F, []), (ushort)0xC42F, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None))!;
+                var handle = BinaryPrimitives.ReadUInt16LittleEndian(inventory.AsSpan(16));
+                Set(session, "NativeCoupleStartRequested", false);
+                var equipment = new byte[136]; equipment[27] = 1; equipment[42] = 1;
+                BinaryPrimitives.WriteUInt32LittleEndian(equipment.AsSpan(36), 14000001);
+                BinaryPrimitives.WriteUInt16LittleEndian(equipment.AsSpan(40), handle);
+                character.Appearance.CopyTo(equipment, 96);
+                var completion = (await Call<byte[]?>(service, "HandleNativeFrameAsync",
+                    NativeDungeonClient.Frame(0xC47D, equipment), (ushort)0xC47D, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None))!;
+                check(BinaryPrimitives.ReadUInt16LittleEndian(completion.AsSpan(6)) == 0xC47E,
+                    "live equipment completion " + character.Name);
+                var roomRefresh = new List<byte[]>();
+                for (var offset = 0; offset < completion.Length;)
+                {
+                    var size = BinaryPrimitives.ReadUInt16LittleEndian(completion.AsSpan(offset + 4));
+                    if (BinaryPrimitives.ReadUInt16LittleEndian(completion.AsSpan(offset + 6)) == 0xCF72)
+                        roomRefresh.Add(completion.AsSpan(offset, size).ToArray());
+                    offset += size;
+                }
+                check(roomRefresh.Count == 1 && roomRefresh[0].Length == 0x74
+                    && BinaryPrimitives.ReadUInt32LittleEndian(roomRefresh[0].AsSpan(0x38)) == 14000001,
+                    "live worker refreshes the visible ready-room quickbar " + character.Name);
+                for (var reopen = 0; reopen < 2; reopen++)
+                    await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC378, []),
+                        (ushort)0xC378, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None);
+                var liveInventory = await client.ExchangeAsync(null, null, CancellationToken.None);
+                check(liveInventory.Get(224) == 14000001 && liveInventory.Get(228) > 0
+                    && (await database.GetCharacterByIdAsync(character.Id))!.QuickSlots.Single().ItemCode == 14000001,
+                    "live worker retains the backpack-assigned quick slot across repeated opens " + character.Name);
+                Set(session, "NativeCoupleStartRequested", false);
+                var petEquipment = new byte[136];
+                Get<CharacterRecord>(session, "Character").Appearance.CopyTo(petEquipment, 96);
+                BinaryPrimitives.WriteUInt32LittleEndian(petEquipment.AsSpan(88), 15000001);
+                BinaryPrimitives.WriteUInt32LittleEndian(petEquipment.AsSpan(124), 15000001);
+                await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC47D, petEquipment),
+                    (ushort)0xC47D, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None);
+                var selectedPet = await client.ExchangeAsync(null, null, CancellationToken.None);
+                check(selectedPet.Get(68) == 15000001 && selectedPet.Get(224) == 14000001
+                    && (await database.GetCharacterByIdAsync(character.Id))!.EquippedPetItemCode == 15000001,
+                    "live ready room pet selection retains quick slot " + character.Name);
+                var pets = (await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC44B, []),
+                    (ushort)0xC44B, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None))!;
+                byte PetHandle(uint code) => checked((byte)Enumerable.Range(0, pets[10])
+                    .Where(i => BinaryPrimitives.ReadUInt32LittleEndian(pets.AsSpan(12 + i * 36)) == code)
+                    .Select(i => BinaryPrimitives.ReadUInt16LittleEndian(pets.AsSpan(20 + i * 36))).Single());
+                var socket = new byte[16]; socket[0] = 1; socket[2] = PetHandle(15000001); socket[4] = PetHandle(17018835);
+                var socketed = (await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC44F, socket),
+                    (ushort)0xC44F, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None))!;
+                var accessoryState = await client.ExchangeAsync(null, null, CancellationToken.None);
+                check(BinaryPrimitives.ReadUInt16LittleEndian(socketed.AsSpan(8)) == 2000 && accessoryState.Get(140) == 17018835
+                    && (await database.GetCharacterByIdAsync(character.Id))!.Items.Single(i => i.ItemCode == 15000001).PetAccessory0 == 17018835,
+                    "live ready room accessory import agrees with persistence " + character.Name);
+                var deselect = new byte[136]; Get<CharacterRecord>(session, "Character").Appearance.CopyTo(deselect, 96);
+                BinaryPrimitives.WriteUInt32LittleEndian(deselect.AsSpan(92), 15000001);
+                BinaryPrimitives.WriteUInt32LittleEndian(deselect.AsSpan(124), 0);
+                await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC47D, deselect),
+                    (ushort)0xC47D, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None);
+                await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC378, []),
+                    (ushort)0xC378, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None);
+                var deselectedPet = await client.ExchangeAsync(null, null, CancellationToken.None);
+                check(deselectedPet.Get(68) == 0 && deselectedPet.Get(224) == 14000001
+                    && (await database.GetCharacterByIdAsync(character.Id))!.EquippedPetItemCode == 0,
+                    "live ready room pet deselection survives backpack reopening " + character.Name);
+                typeof(NetworkAdapterService).GetMethod("ArmNativeDungeonRevivalCycle", Private)!.Invoke(service, [session]);
+            }
+            foreach (var session in sessions)
+            {
+                await Call(service, "HandleNativeWorkerFrameAsync", session, NativeDungeonClient.Frame(0xCF80, []),
+                    Get<long>(session, "NativeBattleEpoch"), CancellationToken.None);
+                check(Get<bool>(session, "NativeCoupleStartRequested") && Get<bool>(session, "NativeCoupleIdentityPublished"),
+                    "member acknowledgement enables native shared recovery without a local start request");
             }
             check(Get<NativeDungeonState>(first, "NativeCheckpoint").Get(NativeDungeonState.CouplePartnerUidOffset) == 0,
                 "production test starts without a seeded partner");

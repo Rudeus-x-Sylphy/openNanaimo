@@ -435,7 +435,7 @@ public sealed partial class DatabaseService
               FreeMagicExpansionExpires=$free_magic, SelectedSkill0=$skill0, SelectedSkill1=$skill1,
               SkillSlotExpansionExpires=$skill_expiry,
               CurrentMapId=0, CurrentTownPage=0, PositionX=320, PositionY=240,
-              SkillPoints=65535 WHERE Id=$id
+              SkillPoints=0, SkillPointsMeat=0 WHERE Id=$id
             """, ("$appearance", appearance), ("$gender", Read("gender")), ("$level", level),
             ("$exp", CharacterProgression.ExperienceRequiredForLevel(level)),
             ("$hpmax", Read("hp_max", 1500)), ("$hp", Read("hp_max", 1500)),

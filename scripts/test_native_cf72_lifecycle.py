@@ -2,6 +2,7 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -159,7 +160,7 @@ class NativeCf72LifecycleTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory(prefix="native-cf72-")
-        cls.addClassCleanup(cls.temp.cleanup)
+        cls.addClassCleanup(cls.cleanup_worktree)
         cls.work = Path(cls.temp.name)
         source = cls.work / "harness.c"
         source.write_text(HARNESS, encoding="utf-8")
@@ -170,6 +171,21 @@ class NativeCf72LifecycleTests(unittest.TestCase):
             if result.returncode:
                 raise AssertionError(result.stdout + result.stderr)
             cls.binaries.append(exe)
+
+    @classmethod
+    def cleanup_worktree(cls):
+        target = Path(cls.temp.name).resolve()
+        if target.parent != Path(tempfile.gettempdir()).resolve() or not target.name.startswith("native-cf72-"):
+            raise RuntimeError("Invalid lifecycle test directory")
+        # Windows scanners can briefly retain an exited executable's handle.
+        for attempt in range(20):
+            try:
+                cls.temp.cleanup()
+                return
+            except PermissionError:
+                if attempt == 19:
+                    raise
+                time.sleep(0.25)
 
     def test_packet_and_lifecycle_matrix(self):
         for exe in self.binaries:

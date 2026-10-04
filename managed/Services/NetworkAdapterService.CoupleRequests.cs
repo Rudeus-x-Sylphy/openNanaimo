@@ -200,20 +200,23 @@ public sealed partial class NetworkAdapterService
             _coupleSelections.Remove(key);
         }
         var finalStatus = answer.Status;
-        if (finalStatus == CoupleProtocol.Accepted)
+        var consumed = false;
+        var refusedProposal = opcode == CoupleProtocol.RingResponseOpcode && finalStatus == CoupleProtocol.Refused;
+        if (finalStatus == CoupleProtocol.Accepted || refusedProposal)
         {
             var separation = opcode == CoupleProtocol.SeparationResponseOpcode;
             var result = await _database.CommitCoupleSelectionAsync(pending.Inventory,
                 pending.Responder.AccountId, pending.Responder.CharacterId, pending.Responder.SessionId,
-                separation, pending.RelationId, token);
+                separation, pending.RelationId, token, refusedProposal);
             if (!result.Success) finalStatus = separation ? CoupleProtocol.InvalidPartner : CoupleProtocol.AlreadyRelated;
             else
             {
+                consumed = true;
                 pending.Requester.Session.GameInventoryIdentities.Remove(pending.InventoryIdentity);
                 InvalidateCoupleSelections(pending.Requester.CharacterId, pending.Responder.CharacterId);
                 await RefreshSessionCharacterAsync(pending.Requester.Session, token);
                 await RefreshSessionCharacterAsync(session, token);
-                QueueCoupleTownSceneRefresh(session, pending.Requester.Session, session);
+                if (!refusedProposal) QueueCoupleTownSceneRefresh(session, pending.Requester.Session, session);
             }
         }
         if (IsCurrentCouplePresence(pending.Requester))
@@ -221,7 +224,7 @@ public sealed partial class NetworkAdapterService
             session.PendingBroadcasts.Add(new PendingNativeBroadcast(pending.Requester, opcode,
                 CoupleProtocol.BuildResponse(opcode, session.Character!.Name, pending.Inventory.ItemCode,
                     pending.InventoryIdentity, finalStatus, session.Character), "couple decision confirmed"));
-            if (finalStatus == CoupleProtocol.Accepted)
+            if (consumed)
             {
                 session.PendingBroadcasts.Add(new PendingNativeBroadcast(pending.Requester, 0xC430,
                     BuildGameInventoryPayload(pending.Requester.Session.Character), "couple inventory refreshed"));

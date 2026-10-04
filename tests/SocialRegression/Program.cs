@@ -25,6 +25,7 @@ internal static partial class Program
             Console.WriteLine($"COUPLE_ENCOUNTER_PASS checks={_checks}");
             return;
         }
+        await CheckNativeInventoryAsync();
         CheckPolicies();
         CheckChatEncoding();
         await using var fixture = await Fixture.CreateAsync();

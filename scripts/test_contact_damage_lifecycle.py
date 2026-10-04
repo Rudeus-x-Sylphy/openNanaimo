@@ -22,20 +22,27 @@ int main(int argc,char**argv){
     pSd=capture;pT=clock_fixed;g_multi_current=0;g_profile_defense_flat=0;
     g_multi_conn[0].active=1;g_multi_conn[0].uid=21;g_multi_conn[0].socket=100;
     mode=(unsigned)atoi(argv[1]);kind=mode==0u?20u:mode==1u?40u:60u;req[8]=kind;
-    if(mode==2u){
+    if(mode==6u){
+        stage_damage_damage_begin(&ctx,0,4,2,0,2,1,1);req[10]=0xB6;req[11]=1;req[12]=2;
+    }else if(mode==2u){
         stage_damage_damage_begin(&ctx,0,15,2,0,2,1,1);req[10]=17;req[12]=2;
     }else if(mode==3u){
         stage_damage_damage_begin(&ctx,0,0,2,0,0,1,1);req[10]=239;
+    }else if(mode>=4u){
+        stage_damage_damage_begin(&ctx,0,1,0,0,2,1,1);req[10]=mode==4u?95u:149u;req[12]=2u;
     }else{
         stage_damage_damage_begin(&ctx,0,3,2,1,1,1,1);
         if(kind==20u){req[10]=9;req[11]=1;}else{req[0x12]=9;}
     }
-    CHECK(stage_damage_player_d00f_damage(&ctx,req,kind,&lookup)==(mode==0u?188u:mode==1u?369u:mode==2u?1146u:100u));
+    CHECK(stage_damage_player_d00f_damage(&ctx,req,kind,&lookup)==(mode==0u?188u:mode==1u?369u:mode==2u?1146u:mode==6u?510u:mode>=4u?180u:100u));
     if(mode==2u){CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE);CHECK(lookup.owner==17u&&lookup.source==2u&&lookup.associated_selector==16u);CHECK(!strcmp(lookup.resource,"ep15_dg02_m_154_00.mmo"));}
     if(mode==3u){CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);CHECK(lookup.owner==239u&&lookup.source==0u);CHECK(!strcmp(lookup.resource,"ep01_dg02_new_obj_meteor.mmo"));}
+    if(mode==6u){CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE);
+        CHECK(lookup.owner==438u&&lookup.associated_selector==439u);
+        CHECK(!strcmp(lookup.resource,"ani_obj_ep04_dg02_03_01.mmo"));}
     rc=player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill);
     CHECK(rc==1&&sends==1&&size==36&&word(6)==0xD010&&word(8)==21&&word(10)==100);
-    CHECK(hp==(mode==0u?4812u:mode==1u?4631u:mode==2u?3854u:4900u)&&word(16)==hp&&word(18)==5000-hp);
+    CHECK(hp==(mode==0u?4812u:mode==1u?4631u:mode==2u?3854u:mode==6u?4490u:mode>=4u?4820u:4900u)&&word(16)==hp&&word(18)==5000-hp);
     CHECK(frame[29]==kind&&word(12)==789);
     if(kind==40u){CHECK(word(26)==9&&frame[30]==0&&frame[31]==0&&word(32)==9);}
     if(mode==2u){CHECK(word(26)==17u&&frame[29]==60u&&word(30)==0u);}if(mode==3u){CHECK(word(26)==239u&&frame[29]==60u&&word(30)==0u);}
@@ -50,7 +57,7 @@ int main(int argc,char**argv){
      * epoch or suppress this captured kind60 route. */
     hp=5000;dead=0;
     CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i+1);
-    CHECK(hp==(mode==0u?4812u:mode==1u?4631u:mode==2u?3854u:4900u));i=sends;
+    CHECK(hp==(mode==0u?4812u:mode==1u?4631u:mode==2u?3854u:mode==6u?4490u:mode>=4u?4820u:4900u));i=sends;
     hp=5000;dead=0;
     CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,2,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i);
     skill_effect_cleanup_arm(&skill,52000015,5,1,1,123000);
@@ -92,7 +99,7 @@ class ContactDamageLifecycleTests(unittest.TestCase):
         if result.returncode: raise AssertionError(result.stdout + result.stderr)
 
     def test_production_damage_matrix(self):
-        for kind in range(4):
+        for kind in range(7):
             with self.subTest(kind=kind):
                 result = subprocess.run([str(self.exe), str(kind)], cwd=self.work, capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

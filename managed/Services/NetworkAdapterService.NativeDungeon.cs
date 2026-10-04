@@ -101,7 +101,7 @@ public sealed partial class NetworkAdapterService
     private async Task<bool> RouteNativeDungeonAsync(byte[] frame, ushort opcode, string channel,
         ConnectionSession session, CancellationToken token)
     {
-        if (opcode is >= 0xF100 and <= 0xF103 or 0xF106) return true;
+        if (opcode is >= 0xF100 and <= 0xF108) return true;
         if (!NativeDungeonEnabled || channel != "WorldAdapter") return false;
         if (opcode == 0xCF09 && frame.Length is 64 or 132 && session.OnlineTracked && session.Character is not null)
         {
@@ -159,7 +159,8 @@ public sealed partial class NetworkAdapterService
             return true;
         }
         if (session.NativeDungeon is null) return false;
-        if (opcode == 0xCF70 && frame.Length == 8)
+        if (opcode == 0xCF70 && frame.Length == 12
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4, 2)) == 12)
             session.NativeContinuationRosterRequested = true;
         if (opcode == 0xCF6C
             && TryParseNativeDungeonSelectionFrame(
@@ -210,8 +211,6 @@ public sealed partial class NetworkAdapterService
                 frame, channel, session, continueMode, clientCostField, token);
             return true;
         }
-        if (opcode == 0xC378 && frame.Length == 8 && session.OnlineTracked)
-            await CommitNativeCheckpointAsync(session, null, token);
         bool enteringShop = session.OnlineTracked &&
             ((opcode == 0xC37A && frame.Length == 8 + ShopMoveRequestPayloadLength) ||
              (opcode == 0xC3AB && frame.Length == 8 + VillageShopEnterRequestPayloadLength &&
@@ -803,7 +802,7 @@ public sealed partial class NetworkAdapterService
         }
 
         session.NativeDungeonDeathLatched = false;
-        var revivePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 60);
+        var revivePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 60, checked((ushort)checkpoint.Get(4)));
         var revive = BuildNativeFrame(frame, 0xCF84, revivePayload, session);
         session.DungeonRunRevived = true;
         var revivalProgress = await _database.AdvanceQuestActionAsync(
@@ -929,7 +928,7 @@ public sealed partial class NetworkAdapterService
             session.NativeBattleResources, exchange.State);
         session.NativeDungeonDeathLatched = false;
         CompleteNativeDungeonPaidContinue(session, committed);
-        var continuePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 20);
+        var continuePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 20, checked((ushort)exchange.State.Get(4)));
         var response = BuildNativeFrame(frame, 0xCF84, continuePayload, session);
         session.DungeonRunRevived = true;
         var revivalProgress = await _database.AdvanceQuestActionAsync(
@@ -1191,10 +1190,11 @@ public sealed partial class NetworkAdapterService
         if (responseOpcode is 0xC588 or 0xC368 or 0xC389)
             return;
         ObserveNativePartyContinuation(session, response);
+        ObserveNativeJoinedRoomSelection(session, response);
         if (session.NativeDungeonNextTransitionAuthorized && session.NativeContinuationRosterRequested
             && responseOpcode == 0xCF71 && response.Length == 0xB8
             && session.Character is { } rosterOwner
-            && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(0x1A, 2)) == GetSceneEntityId(rosterOwner)
+            && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(0x1A, 2)) == (session.NativeCheckpoint?.Get(4) ?? GetSceneEntityId(rosterOwner))
             && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(4, 2)) == response.Length)
         {
             // The continuation has reached its ready room. End only the
@@ -1265,7 +1265,7 @@ public sealed partial class NetworkAdapterService
             _log($"NativeDungeon next-stage resources published: response=0x{responseOpcode:X4} hp={patched.CurrentHp} mp={patched.CurrentMp} attackMode={patched.AttackMode}");
         }
         if (session.Character is { } character
-            && TryReadNativeDungeonLocalHp(response, GetSceneEntityId(character), out var currentHp))
+            && TryReadNativeDungeonLocalHp(response, checked((ushort)(session.NativeCheckpoint?.Get(4) ?? GetSceneEntityId(character))), out var currentHp))
         {
             if (session.NativeBattleResources is { SettlementFrozen: true })
             {
@@ -1297,6 +1297,11 @@ public sealed partial class NetworkAdapterService
             await ApplyNativeQuestHitAsync(session, response, token);
             return;
         }
+        // The worker's item handles are private to its inventory ledger. Publish
+        // the persisted projection so backpack and room use the same identities.
+        if (responseOpcode == 0xC379 && response.Length == 0x144 && session.Character is { } inventoryOwner)
+            response = BuildNativeFrame(response, responseOpcode, BuildBoxInfoPayloadWithSkills(inventoryOwner,
+                await _database.GetCharacterSkillsAsync(inventoryOwner.Id, token)), session);
         if (!session.NativeForwarding) return;
         if (responseOpcode == 0xCF88)
         {

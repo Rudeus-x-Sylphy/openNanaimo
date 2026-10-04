@@ -16,6 +16,7 @@ RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
     'scripts/verify_client_baseline.py',
     'scripts/prepare_client_compatibility.py',
+    'scripts/prepare_entertainment_resources.py',
     'scripts/apartment_exterior_panel.py',
     'scripts/dungeon7_visuals.py',
     'scripts/dungeon_experience_compat.py',

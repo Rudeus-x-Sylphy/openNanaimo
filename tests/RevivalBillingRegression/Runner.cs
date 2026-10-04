@@ -29,14 +29,84 @@ internal static class RevivalBillingChecks
     public static async Task Main()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        await CheckRemoteRevivalProjection();
         await CheckContinuationResources();
         await CheckStaleSessionWalletRefresh();
         await CheckLiveBilling();
+        await CheckNativeRetryDispatch();
+        await CheckMemberStartContinue();
         await CheckCommittedPaymentRetry();
         await CheckInsufficientFunds();
         await CheckDeathSettlementFlow();
         await CheckRejectedTransitions();
         Console.WriteLine($"REVIVAL_BILLING_REGRESSION_PASS checks={checks}");
+    }
+
+    private static async Task CheckRemoteRevivalProjection()
+    {
+        await using var f = await Fixture.Create(1000, 2, largeId: true);
+        await f.Start();
+        await f.Hp(0);
+        var before = Get(f.Session, "NativeBattleResources");
+        foreach (var variant in new ushort[] { 20, 60 })
+        {
+            var recovery = NativeDungeonClient.Frame(0xCF84, new byte[16]);
+            Put(recovery, 8, variant); Put(recovery, 10, 65000);
+            Put(recovery, 12, 1234); Put(recovery, 14, 567);
+            BinaryPrimitives.WriteInt64LittleEndian(recovery.AsSpan(16), 0x123456789L);
+            var expected = recovery[8..];
+            await (Task)Receive.Invoke(f.Service, [f.Session, recovery, 7L, f.Stop.Token])!;
+            var writes = f.Drain();
+            Check(writes.Count == 1 && U16(writes[0], 6) == 0xCF84
+                && writes[0].AsSpan(8).SequenceEqual(expected),
+                "remote recovery preserves actor identity, choice and complete resources");
+            Check(f.Dead && Equals(before, Get(f.Session, "NativeBattleResources")),
+                "remote recovery preserves the observer death and resource state");
+            await f.Balance(1000, 2, "remote recovery preserves observer payment balances");
+            await (Task)Receive.Invoke(f.Service, [f.Session, recovery, 6L, f.Stop.Token])!;
+            Check(f.Drain().Count == 0, "recovery delivery is scoped to the active worker generation");
+        }
+    }
+
+    private static async Task CheckMemberStartContinue()
+    {
+        await using var f = await Fixture.Create(1000, 2, largeId: true);
+        var start = NativeDungeonClient.Frame(0xCF80, []);
+        await (Task)Receive.Invoke(f.Service, [f.Session, start, 7L, f.Stop.Token])!;
+        Check((bool)Get(f.Session, "NativeCoupleStartRequested")!
+            && (bool)Get(f.Session, "NativeCoupleIdentityPublished")!,
+            "member start acknowledgement activates coupled recovery without a local start request");
+        await f.Hp(0);
+        await f.Revive(0, 300);
+        await f.Balance(700, 2, "member super-battle continue bills the selected gold cost");
+        f.Recovered(20, 2000, 800);
+        await f.Hp(0);
+        await f.Revive(1, 300);
+        await f.Balance(700, 1, "member super-battle egg selection remains independent of gold");
+        f.Recovered(60, 2000, 800);
+    }
+
+    private static async Task CheckNativeRetryDispatch()
+    {
+        await using var f = await Fixture.Create(1000, 2);
+        await f.Start();
+        await f.Hp(0);
+        Check(Convert.ToInt32(Get(f.Session, "DungeonRoomId")) == 0,
+            "native retry fixture owns a native room independently of managed rooms");
+        async Task<byte[]> Dispatch()
+        {
+            var request = NativeDungeonClient.Frame(0xCF95, []);
+            return (await (Task<byte[]?>)Method("HandleNativeFrameAsync").Invoke(f.Service,
+                [request, (ushort)0xCF95, "WorldAdapter", "local", "127.0.0.1", f.Session, f.Stop.Token])!)!;
+        }
+        var reply = await Dispatch();
+        Check(U16(reply, 6) == 0xCF96 && !f.Dead && f.Character.CurrentHp > 0,
+            "native-only room acknowledges retry and clears the death gate");
+        await f.Balance(1000, 1, "native retry debits one egg and preserves coins");
+        var again = await Dispatch();
+        Check(again.Length == 8 && U16(again, 6) == 0xCF96,
+            "repeated native retry is an acknowledgement without another restore");
+        await f.Balance(1000, 1, "duplicate native retry preserves the debit");
     }
 
     private static async Task CheckContinuationResources()
@@ -278,7 +348,7 @@ internal static class RevivalBillingChecks
         public CharacterRecord Character => (CharacterRecord)Get(Session, "Character")!;
         public bool Dead => (bool)Get(Session, "NativeDungeonDeathLatched")!;
 
-        public static async Task<Fixture> Create(long coins, int eggs)
+        public static async Task<Fixture> Create(long coins, int eggs, bool largeId = false)
         {
             var root = Path.Combine(Path.GetTempPath(), "nanaimo-revival-billing-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
@@ -286,6 +356,14 @@ internal static class RevivalBillingChecks
             var db = new DatabaseService(root);
             await db.InitializeAsync();
             var account = await db.OpenLocalAccountAsync("revival-cycle");
+            if (largeId)
+            {
+                await using var seed = new SqliteConnection($"Data Source={Path.Combine(root, "game.db")}");
+                await seed.OpenAsync();
+                await using var command = seed.CreateCommand();
+                command.CommandText = "INSERT INTO sqlite_sequence(name,seq) SELECT 'Characters',5000 WHERE NOT EXISTS(SELECT 1 FROM sqlite_sequence WHERE name='Characters'); UPDATE sqlite_sequence SET seq=5000 WHERE name='Characters';";
+                await command.ExecuteNonQueryAsync();
+            }
             var id = await db.CreateLocalCharacterAsync(account, "Revival", 1);
             await using (var sql = new SqliteConnection($"Data Source={Path.Combine(root, "game.db")}"))
             {
@@ -342,6 +420,7 @@ internal static class RevivalBillingChecks
         }
         public async Task ReadyRoom()
         {
+            await Send(0xCF70, new byte[4]);
             var frame = NativeDungeonClient.Frame(0xCF71, new byte[0xB0]);
             Put(frame, 0x18, (ushort)Character.Id); Put(frame, 0x1A, (ushort)Character.Id);
             Put(frame, 0x4A, 2000); Put(frame, 0x4C, 800); Put(frame, 0x4E, 1000); Put(frame, 0x50, 400);
@@ -358,7 +437,7 @@ internal static class RevivalBillingChecks
         public void Recovered(ushort variant, int hp, int mp)
         {
             var replies = Drain();
-            Check(replies.Count == 1 && U16(replies[0], 6) == 0xCF84 && U16(replies[0], 8) == variant,
+            Check(replies.Count == 1 && U16(replies[0], 6) == 0xCF84 && U16(replies[0], 8) == variant && U16(replies[0], 10) == Character.Id,
                 "recovery grants the correct single success");
             Check(!Dead && Character.CurrentHp == hp && Character.CurrentMp == mp
                 && U16(replies[0], 12) == hp && U16(replies[0], 14) == mp,
@@ -484,6 +563,7 @@ internal static class RevivalBillingChecks
                             profile[0x2DB - 8] = frame[10];
                             await stream.WriteAsync(NativeDungeonClient.Frame(0xCFEC, profile));
                             break;
+                        case 0xCF70:
                         case 0xCF7F:
                             break;
                         default: throw new InvalidOperationException($"Unexpected component operation {U16(frame,6):X4}");

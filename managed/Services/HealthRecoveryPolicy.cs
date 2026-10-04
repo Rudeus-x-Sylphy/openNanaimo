@@ -99,7 +99,7 @@ internal static class HealthRecoveryPolicy
 {
     internal const int MinimumAutomaticRecoveryLevel = 4;
     internal static TimeSpan TickInterval { get; } = TimeSpan.FromSeconds(5);
-    internal static HealthRecoveryParameters Town { get; } = new(100, 10);
+    internal static HealthRecoveryParameters Town { get; } = new(50, 10);
     internal static HealthRecoveryParameters Apartment { get; } = ApartmentPopularityPolicy.GetRecoveryParameters(0);
 
     internal static HealthRecoveryParameters GetParameters(

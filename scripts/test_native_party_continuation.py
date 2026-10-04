@@ -110,6 +110,12 @@ int main(void){
                         connection.sendall(frame(0xCF6C, selection))
                         receive(connection, 0xCF6D)
                     for epoch in range(3):
+                        if epoch:
+                            for connection in connections:
+                                connection.sendall(frame(0xCF77, struct.pack("<HBBBBH", 100, 0, 0,
+                                    2 if superboss else epoch, 0, 0xFFFF)))
+                                entry = receive(connection, 0xCF78)
+                                self.assertEqual(entry[10:12], bytes((1 if superboss else 0, 0)))
                         for connection in connections:
                             connection.sendall(frame(0xC587))
                             receive(connection, 0xC588)

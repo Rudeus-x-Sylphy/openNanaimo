@@ -31,6 +31,8 @@ internal static class LauncherProfileChecks
                 $"hp_max={hp}\nhp_current={hp - 1}\nmp_max={mp}\nmp_current={mp - 1}\nattack=3456\ndefense=789\ncoin=0\nnana_point=0\n" +
                 "card_key_gold=7\ncard_key_mystery=8\nquickbar_expiry=2099123123\nfree_magic_key_expiry=2099123123\nskill_slot_x=52000001\nskill_grade0=5\nskill_grade1=5\n";
             var first = await database.ImportLocalProfileAsync(Profile(25, 1800, 700, "39"), root);
+            Check(first.SkillPoints == 0 && first.SkillPointsMeat == 0,
+                "new GUI profile starts with zero SP in both skill trees");
             var initialAvatarBonus = AvatarEquipmentCatalog.GetResourceBonuses(first.Appearance, first.Level);
             Check(first.MaxHp == 1800 && first.MaxMp == 700
                 && first.CurrentHp == 1800 + initialAvatarBonus.Hp
@@ -42,11 +44,13 @@ internal static class LauncherProfileChecks
             {
                 await injury.OpenAsync();
                 await using var seed = injury.CreateCommand();
-                seed.CommandText = "UPDATE Characters SET CurrentHp=1800,CurrentMp=700 WHERE Id=$id";
+                seed.CommandText = "UPDATE Characters SET CurrentHp=1800,CurrentMp=700,SkillPoints=37,SkillPointsMeat=41 WHERE Id=$id";
                 seed.Parameters.AddWithValue("$id", first.Id);
                 await seed.ExecuteNonQueryAsync();
             }
             var second = await database.ImportLocalProfileAsync(Profile(60, 2400, 5000, "auto"), root);
+            Check(second.SkillPoints == 37 && second.SkillPointsMeat == 41,
+                "GUI profile reapply preserves earned SP independently in both trees");
             Check(first.Id == second.Id, "profile reapply changes character identity");
             Check(second.Level == 25 && second.Experience == CharacterProgression.ExperienceRequiredForLevel(25),
                 "profile re-registration overwrote existing level/experience progression");

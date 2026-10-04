@@ -409,6 +409,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public Dictionary<string, (ConnectionSession Actor, int Remaining)> TownAttachmentRefreshes { get; } = new();
         public bool TownMapMarkerInitialized { get; set; }
         public long ApartmentOwnerCharacterId { get; set; }
+        public HealthRecoveryParameters ApartmentRecoveryParameters { get; set; } = HealthRecoveryPolicy.Apartment;
         public HealthRecoverySchedule HealthRecovery { get; } = new();
         public byte VillageShopCode { get; set; }
         public int TradeRoomId { get; set; }
@@ -480,7 +481,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         ConnectionSession Target,
         ushort Opcode,
         byte[] Payload,
-        string Reason);
+        string Reason,
+        Guid? EntertainmentRoundId = null);
 
     private sealed record OutboundNativeWrite(
         byte[] Frames,
@@ -1915,7 +1917,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return (success, success ? frame : [], opcode);
     }
 
-    private async Task<byte[]?> HandleNativeFrameAsync(
+    private async Task<byte[]?> HandleNativeFrameCoreAsync(
         byte[] frame,
         ushort opcode,
         string channel,
@@ -1943,8 +1945,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         if (string.Equals(channel, "WorldAdapter", StringComparison.Ordinal) && IsTrackedWorldSession(session))
             ObserveCardExchangeRequest(frame, opcode, session);
-        if (IsEntertainmentSession(channel, session) && session.OnlineTracked)
-            ObserveEntertainmentDeadline(session);
+
         if (MentorProtocol.IsSupportedMentorshipOpcode(opcode))
             return await HandleMentorshipFrameAsync(frame, opcode, payload, session, token);
         if (opcode == 0xCB25 && TryReadMentorshipPrivateCommand(payload, out var privateMentorshipCommand, out var privateMentorshipPeer))
@@ -2623,18 +2624,21 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return changeResponse;
 
                 var petUserData = BuildUserDataChangePayload(session.Character);
-                QueueSceneBroadcast(session, 0xC47F, petUserData, "pet accessory/upgrade change");
-                return CombineNativeFrames(
-                    changeResponse,
-                    BuildNativeFrame(frame, 0xC47F, petUserData, session),
-                    BuildNativeFrame(
-                        frame,
-                        0xC379,
-                        BuildBoxInfoPayloadWithSkills(
-                            session.Character,
-                            await _database.GetCharacterSkillsAsync(session.Character.Id, token)),
-                        session),
-                    BuildNativeFrame(frame, 0xC44C, BuildPetInventoryPayload(session.Character), session));
+                var petFrames = new List<byte[]> { changeResponse };
+                if (!SuppressInventoryActorRebuild(session))
+                {
+                    QueueSceneBroadcast(session, 0xC47F, petUserData, "pet accessory/upgrade change");
+                    petFrames.Add(BuildNativeFrame(frame, 0xC47F, petUserData, session));
+                }
+                petFrames.Add(BuildNativeFrame(
+                    frame,
+                    0xC379,
+                    BuildBoxInfoPayloadWithSkills(
+                        session.Character,
+                        await _database.GetCharacterSkillsAsync(session.Character.Id, token)),
+                    session));
+                petFrames.Add(BuildNativeFrame(frame, 0xC44C, BuildPetInventoryPayload(session.Character), session));
+                return CombineNativeFrames(petFrames.ToArray());
             }
 
             case 0xC47D: // REQ_CHANGE_INVENTORYITEM
@@ -2694,8 +2698,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return inventoryResult;
 
                 var changedUserDataPayload = BuildUserDataChangePayload(session.Character);
-                var suppressUnsafeActorRebuild = session.DungeonRoomId != 0
-                    || session.ApartmentOwnerCharacterId > 0;
+                var suppressUnsafeActorRebuild = SuppressInventoryActorRebuild(session);
                 if (!suppressUnsafeActorRebuild)
                     QueueSceneBroadcast(session, 0xC47F, changedUserDataPayload, "scene appearance/pet change");
                 var inventoryFrames = new List<byte[]> { inventoryResult };
@@ -3065,7 +3068,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 ushort identity = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(4));
                 // The captured trailing WORD is nonzero: it is not part of identity.
                 await RefreshInventoryCharacterAsync(session, token);
-                bool valid = session.DungeonRoomId == 0 && !session.NativeForwarding
+                bool valid = session.DungeonRoomId == 0 && (!session.NativeForwarding || IsNativeReadyRoomInventory(session))
                     && TryResolveSessionInventoryIdentity(session, identity, out _, out var code)
                     && code == itemCode;
                 var result = DungeonQuickItemConsumeResult.Failed;
@@ -3613,6 +3616,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 LeaveVillageShopScene(session, "apartment enter");
                 LeaveApartmentScene(session, "apartment room change");
                 session.ApartmentOwnerCharacterId = apartmentOwner.Id;
+                session.ApartmentRecoveryParameters = ApartmentPopularityPolicy.GetRecoveryParameters(apartmentVisits.Total);
                 ActivateNonCombatHealthRecovery(session, HealthRecoveryScene.Apartment);
                 QueueUserAutoHealing(session, session, "synchronize apartment HP/MP after C38D");
                 _log($"{channel}:{remote} apartment entered: mode={moveMode} owner={requestedOwner} character={apartmentOwner.Name} objects={apartmentPlacements.Count(item => item.InteriorType >= 2)}; returning complete C38E room state");
@@ -8236,7 +8240,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
                 if (entertainmentStartReason == "ok")
+                {
                     QueueEntertainmentLobbyRoomListRefresh(session, "entertainment game started");
+                    QueueEntertainmentBroadcast(session, 0xCFE6, entertainmentGameDataPage,
+                        false, "entertainment common initial board");
+                }
                 return BuildNativeFrame(frame, 0xCFE6, entertainmentGameDataPage, session);
             }
 
@@ -8262,13 +8270,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     responsePayload,
                     false,
                     "entertainment picnic remaining games");
-                var responseFrame = BuildNativeFrame(frame, 0xD004, responsePayload, session);
-                var nextGameDataPage = TakeNextEntertainmentGameDataPage(session);
-                return nextGameDataPage is null
-                    ? responseFrame
-                    : CombineNativeFrames(
-                        responseFrame,
-                        BuildNativeFrame(frame, 0xCFE6, nextGameDataPage, session));
+                return BuildNativeFrame(frame, 0xD004, responsePayload, session);
             }
 
             case 0xD005: // REQ_PICNIC_PROGRESS -> ANS_PICNIC_PROGRESS
@@ -8294,13 +8296,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     responsePayload,
                     false,
                     "entertainment picnic score");
-                var responseFrame = BuildNativeFrame(frame, 0xD006, responsePayload, session);
-                var nextGameDataPage = TakeNextEntertainmentGameDataPage(session);
-                return nextGameDataPage is null
-                    ? responseFrame
-                    : CombineNativeFrames(
-                        responseFrame,
-                        BuildNativeFrame(frame, 0xCFE6, nextGameDataPage, session));
+                return BuildNativeFrame(frame, 0xD006, responsePayload, session);
             }
 
             case 0xD007: // REQ_PICNIC_CELL -> ANS_PICNIC_CELL
@@ -8335,10 +8331,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         || !session.OnlineTracked
                         || session.Character is null
                         || payload.Length != 0
-                        || !IsStartedEntertainmentRoomMember(session))
+                        || !IsStartedEntertainmentRoomMember(session, requireCountdown: true))
                         return null;
-                    var entertainmentRoom = GetEntertainmentRoom(session)!;
-                    lock (_entertainmentRoomGate) entertainmentRoom.PicnicLivesBySession[session.SessionId] = 3;
+                    if (!TryContinueEntertainmentGame(session)) return null;
                     var continued = EntertainmentProtocol.BuildPicnicPlayerState(GetSceneEntityId(session.Character), 3);
                     QueueEntertainmentBroadcast(session, 0xCF82, continued, false, "entertainment continue");
                     return CombineNativeFrames(BuildNativeFrame(frame, 0xCF82, continued, session),
@@ -8549,6 +8544,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     {
                         if (!IsStartedEntertainmentRoomMember(session))
                             return null;
+                        if (!TryStartEntertainmentCountdown(session)) return null;
                         QueueEntertainmentBroadcast(
                             session,
                             0xCF80,
@@ -12887,9 +12883,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         source.PendingBroadcasts.Add(new PendingNativeBroadcast(
             target,
             0xD8FF,
-            BuildUserHpMpAutoHealingPayloadWithResources(
-                character,
-                targetSession.NonCombatResourceSnapshot),
+            BuildSceneAutoHealingPayload(targetSession, character, targetSession.NonCombatResourceSnapshot),
             reason));
     }
 
@@ -13522,6 +13516,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var target = notification.Target;
         if (!target.OnlineTracked || target.Stream is null)
             return;
+        if (notification.EntertainmentRoundId is { } round)
+        {
+            lock (_entertainmentRoomGate)
+                if (!_entertainmentRooms.TryGetValue(target.EntertainmentRoomId, out var room)
+                    || room.RoundId != round || !room.Members.ContainsKey(target.SessionId)) return;
+        }
         try
         {
             var requestTemplate = new byte[8];
@@ -14558,6 +14558,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         while (await timer.WaitForNextTickAsync(token))
         {
             var nowUtc = DateTimeOffset.UtcNow;
+            await SendSessionBroadcastBatchAsync(CollectEntertainmentDeadlines(nowUtc.UtcDateTime), token);
             foreach (var presence in _activeWorldSessions.Values.ToArray())
             {
                 var session = presence.Session;
@@ -14626,12 +14627,21 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             parameters = HealthRecoveryPolicy.GetParameters(scene);
         }
 
+        var rateChanged = scene == HealthRecoveryScene.Apartment
+            && session.ApartmentRecoveryParameters != parameters;
+        if (scene == HealthRecoveryScene.Apartment)
+            session.ApartmentRecoveryParameters = parameters;
         EnsureNonCombatInventoryVitals(session);
         if (session.NonCombatResourceSnapshot is { } visibleResources)
         {
             var recovered = visibleResources.ApplyNonCombatRecovery(parameters.HpStep, parameters.MpStep);
             if (recovered == visibleResources)
+            {
+                if (rateChanged)
+                    await SendNativeBroadcastAsync(new PendingNativeBroadcast(presence, 0xD8FF,
+                        BuildSceneAutoHealingPayload(session, character, recovered), "apartment recovery rate changed"), token);
                 return;
+            }
             var beforeHp = visibleResources.CurrentHp;
             var beforeMp = visibleResources.CurrentMp;
             character.CurrentHp = recovered.CurrentHp;
@@ -14649,7 +14659,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 new PendingNativeBroadcast(
                     presence,
                     0xD8FF,
-                    BuildUserHpMpAutoHealingPayloadWithResources(character, recovered),
+                    BuildSceneAutoHealingPayload(session, character, recovered),
                     $"{scene.ToString().ToLowerInvariant()} HP/MP recovery tick"),
                 token);
             _log($"Non-combat recovery tick: scene={scene} character={character.Id} hp={beforeHp}->{recovered.CurrentHp}/{recovered.MaximumHp} mp={beforeMp}->{recovered.CurrentMp}/{recovered.MaximumMp}");
@@ -14681,7 +14691,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             new PendingNativeBroadcast(
                 presence,
                 0xD8FF,
-                BuildUserHpMpAutoHealingPayload(current),
+                BuildSceneAutoHealingPayload(session, current, null),
                 $"{scene.ToString().ToLowerInvariant()} HP/MP recovery tick"),
             token);
         _log($"Non-combat recovery tick: scene={scene} character={current.Id} hp={profileBeforeHp}->{current.CurrentHp}/{current.MaxHp} mp={profileBeforeMp}->{current.CurrentMp}/{current.MaxMp}");
@@ -16218,8 +16228,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             return payload;
         DungeonNavigationPolicy.WriteQuickEnterResponseSelection(
             payload,
-            room.Episode,
-            room.Dungeon,
+            room.HasPendingTransition ? room.PendingStage : room.Stage,
+            checked((byte)room.Battle.ShowStageNumber),
             checked((uint)room.Id));
         BuildDungeonEffectiveSlotStates(room).CopyTo(payload, 8);
         if (room.Members.TryGetValue(room.OwnerSessionId, out var owner)
@@ -16667,6 +16677,24 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private static ushort GetDungeonLevelIcon(int level) =>
         (ushort)Math.Clamp((Math.Max(1, level) - 1) / 10 + 1, 1, ClientMaximumLevelIcon);
 
+    internal static byte[] BuildApartmentAutoHealingPayload(
+        CharacterRecord character, BattleResourceSnapshot? resources, HealthRecoveryParameters parameters)
+    {
+        // Room controller reads through frame+27: the final two WORDs are the
+        // five-second rates shown by the thermometer, not the capped gain.
+        var payload = new byte[20];
+        BuildUserHpMpAutoHealingPayloadWithResources(character, resources).CopyTo(payload, 0);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(16), checked((ushort)parameters.HpStep));
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(18), checked((ushort)parameters.MpStep));
+        return payload;
+    }
+
+    private static byte[] BuildSceneAutoHealingPayload(ConnectionSession session,
+        CharacterRecord character, BattleResourceSnapshot? resources)
+        => session.ApartmentOwnerCharacterId > 0
+            ? BuildApartmentAutoHealingPayload(character, resources, session.ApartmentRecoveryParameters)
+            : BuildUserHpMpAutoHealingPayloadWithResources(character, resources);
+
     private static byte[] BuildUserHpMpAutoHealingPayload(CharacterRecord character)
         => BuildUserHpMpAutoHealingPayloadWithResources(character, null);
 
@@ -16706,9 +16734,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         if (!string.Equals(channel, "WorldAdapter", StringComparison.Ordinal)
             || !session.OnlineTracked
             || session.Character is null
-            || payload.Length != 0
-            || GetDungeonRoom(session) is null)
+            || payload.Length != 0)
             return null;
+
+        if (session.NativeDungeon is not null && session.NativeCheckpoint is not null)
+            return await HandleNativeDungeonRetryAsync(frame, session, token);
+        if (GetDungeonRoom(session) is null) return null;
 
         var nativeDeathLatched = false;
         if (session.NativeDungeon is not null && session.NativeCheckpoint is not null)

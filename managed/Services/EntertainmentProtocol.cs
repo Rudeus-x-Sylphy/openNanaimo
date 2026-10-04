@@ -61,7 +61,6 @@ internal static class EntertainmentProtocol
     public const int GameDataResponseLength = 508;
     public const int GameDataRecordLength = 84;
     public const int GameDataRecordCount = 6;
-    public const int GameDataPageCount = 2;
     public const int EndGameRecordLength = 64;
     public const int MaximumMembers = 6;
 

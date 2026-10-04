@@ -166,8 +166,12 @@ internal static class Program
         Check(Opcodes(response).SequenceEqual(new ushort[] { 0xC584 }), "refusal returns only its decision");
         Check(await f.Database.GetActiveCoupleRelationAsync(Character(owner).Id) is null,
             "refusal does not create a relationship");
-        Check(Broadcasts(peer).Cast<object>().All(item => Get<ushort>(item, "Opcode") == 0xC584),
-            "refusal does not refresh any character or profile");
+        Check(Broadcasts(peer).Cast<object>().Select(item => Get<ushort>(item, "Opcode"))
+                .SequenceEqual(new ushort[] { 0xC584, 0xC430 }),
+            "refusal confirms the decision and refreshes the consumed ring inventory");
+        Check((await f.Database.GetCharacterByIdAsync(Character(owner).Id))!.Items
+                .Where(item => item.ItemCode == ring).Sum(item => item.Quantity) == 0,
+            "refusal retires the selected ring");
     }
 
     private static async Task MarryAsync(Fixture f, object owner, object peer, object observer, uint ring)

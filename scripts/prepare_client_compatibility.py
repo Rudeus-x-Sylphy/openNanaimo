@@ -63,6 +63,13 @@ SETTLEMENT_AUTO_ACTION_GATE_NEW = SETTLEMENT_AUTO_ACTION_GATE_OLD
 SETTLEMENT_OTHER_AUTO_GATE_VA = 0x00762AF5
 SETTLEMENT_OTHER_AUTO_GATE_OLD = bytes.fromhex('0F8619030000')
 SETTLEMENT_OTHER_AUTO_GATE_NEW = bytes.fromhex('E91A03000090')
+# Keep each member's native town button available on a completed third stage.
+SETTLEMENT_MEMBER_TOWN_SITES = (
+    ('settlement_member_town_input', 0x00763E3A,
+     bytes.fromhex('837908000F85F6000000'), bytes.fromhex('83790800909090909090')),
+    ('settlement_member_town_render', 0x007653DF,
+     bytes.fromhex('83780800750E'), bytes.fromhex('837808009090')),
+)
 POWER_RESTORE_HOOK_VA = 0x006F096A
 POWER_RESTORE_HOOK_OLD = bytes.fromhex('C78590F9FFFF00000000')
 POWER_RESTORE_CAVE_VA = 0x0041FB54
@@ -539,12 +546,17 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     data, mouse = _migrate_site(data, SETTLEMENT_AUTO_ACTION_GATE_VA,
         SETTLEMENT_AUTO_ACTION_GATE_OLD, (SETTLEMENT_AUTO_ACTION_GATE_LEGACY,),
         'restore_settlement_mouse_confirmation', 'the settlement automatic action gate differs')
+    member_town = {}
+    for name, va, old, new in SETTLEMENT_MEMBER_TOWN_SITES:
+        data, member_town[name] = _patch_site(data, va, old, new, name,
+            'the settlement member town control differs')
     data, power = restore_native_power(data)
     data, experience = dungeon_experience_compat.patch_experience_preview(data, _patch_site)
     data, boss_health = patch_boss_health_display(data)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
         other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power,
-        settlement_experience=experience, boss_health=boss_health)
+        settlement_experience=experience, boss_health=boss_health,
+        member_town=_migration_report('patch_settlement_member_town', **member_town))
 
 
 def _gift_preview_patch_bytes() -> tuple[bytes, bytes]:
@@ -997,6 +1009,7 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
         expected_sites.extend((name, va, new)
                               for name, va, _, new in dungeon_experience_compat.patch_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in BOSS_HEALTH_DISPLAY_SITES)
+        expected_sites.extend((name, va, new) for name, va, _, new in SETTLEMENT_MEMBER_TOWN_SITES)
     for name, va, expected in expected_sites:
         offset = _va_offset(data, va, len(expected))
         checks.append(_check(name, data[offset:offset + len(expected)] == expected,

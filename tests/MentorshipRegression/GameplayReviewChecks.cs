@@ -55,18 +55,47 @@ internal static partial class Program
         Encoding.ASCII.GetBytes("123").CopyTo(enter, 4);
         Check((await Send(guest, 0xCF75, enter))![8] == 10, "password room accepts the matching password");
         Set(guest, "EntertainmentReady", true);
-        Check(await Send(host, 0xCFE5, []) is not null, "entertainment starts after members are ready");
+        ((IList)Get(host, "PendingSessionBroadcasts")!).Clear();
+        var initialBoard = await Send(host, 0xCFE5, []);
+        Check(initialBoard is not null, "entertainment starts after members are ready");
+        var sharedBoards = ((IList)Get(host, "PendingSessionBroadcasts")!).Cast<object>()
+            .Where(item => (ushort)Get(item, "Opcode")! == 0xCFE6 && ReferenceEquals(Get(item, "Target"), guest)).ToArray();
+        Check(sharedBoards.Length == 1 && ((byte[])Get(sharedBoards[0], "Payload")!).AsSpan().SequenceEqual(initialBoard!.AsSpan(8))
+            && (Guid)Get(sharedBoards[0], "EntertainmentRoundId")! == (Guid)Get(room, "RoundId")!,
+            "room owner supplies the same initial board to the joining member");
         Check(await Send(host, 0xCF85, []) is null, "instant settlement requests cannot farm rewards");
+        Check(await Send(host, 0xD007, [1, 2, 2, 10]) is null, "preload cannot accrue game scores");
+        Check(await Send(host, 0xCF7F, []) is null, "first loading confirmation waits for the room");
+        Check(!(bool)Get(room, "CountdownStarted")!, "waiting member keeps the common countdown unarmed");
+        Check(await Send(guest, 0xCF7F, []) is not null, "last loading confirmation starts all members once");
         Check(await Send(host, 0xD007, [1, 2, 2, 10]) is not null,
             "cell identity is independent of the reporting member slot");
         Check(await Send(host, 0xD007, [1, 2, 2, 10]) is null, "repeated cell results do not duplicate score");
         var scores = (IDictionary)Get(room, "ScoresBySession")!;
         Check((uint)scores[Id(host)]! == 212, "completed cell score is bounded and accrued once");
+        Check(await Send(guest, 0xCF81, []) is null, "active lives cannot request a replacement board");
+        Check((await Send(guest, 0xD003, new byte[4]))!.Length == 12, "life updates preserve the current board");
+        Check((await Send(host, 0xD005, [10, 0, 1, 0]))!.Length == 12, "combo updates preserve the current board");
         var continued = await Send(guest, 0xCF81, []);
         Check(continued is not null && continued.Length > 12
             && BinaryPrimitives.ReadUInt16LittleEndian(continued.AsSpan(10)) == 3,
             "entertainment continuation restores three lives and supplies another board");
-        Set(room, "StartedUtc", DateTime.UtcNow.AddMinutes(-3));
+        Check(await Send(guest, 0xCF81, []) is null, "repeated continuation grants one replacement board");
+        Set(room, "LuckyPoints", (ushort)900);
+        var lucky = await Send(guest, 0xD007, [2, 2, 2, 10]);
+        Check(lucky is not null && BinaryPrimitives.ReadUInt16LittleEndian(lucky.AsSpan(12)) == 1212
+            && BinaryPrimitives.ReadUInt16LittleEndian(lucky.AsSpan(14)) == 112
+            && BinaryPrimitives.ReadUInt32LittleEndian(lucky.AsSpan(16)) == 1000,
+            "shared lucky points roll over and award the completing member");
+        Check(await Send(guest, 0xD007, [2, 2, 2, 10]) is null,
+            "duplicate cell cannot duplicate a lucky award");
+        Check(await Send(host, 0xCF7F, []) is null, "duplicate loading confirmation preserves the independent deadline");
+        Set(room, "StartedUtc", DateTime.UtcNow.AddSeconds(-105));
+        var notices = InvokeMentorship<object>(f.Service, "CollectEntertainmentDeadlines", DateTime.UtcNow);
+        Check(((IList)notices).Count == 2, "deadline ends every member without incoming gameplay requests");
+        Check(((IList)InvokeMentorship<object>(f.Service, "CollectEntertainmentDeadlines", DateTime.UtcNow)).Count == 0,
+            "deadline notification is emitted once per round");
+        Check(await Send(host, 0xD007, [3, 3, 3, 10]) is null, "deadline freezes late scores");
         var result = await Send(host, 0xCF85, []);
         Check(result is not null && BinaryPrimitives.ReadUInt16LittleEndian(result.AsSpan(6)) == 0xCF86,
             "entertainment completes through its result response");
@@ -83,6 +112,38 @@ internal static partial class Program
         Check(await f.ScalarAsync("SELECT COUNT(*) FROM DungeonProgress") == 0,
             "entertainment rewards remain separate from dungeon progress");
 
+        var retainedLucky = (ushort)Get(room, "LuckyPoints")!;
+        Set(guest, "EntertainmentReady", true);
+        Check(await Send(host, 0xCFE5, []) is not null, "completed room starts a fresh round");
+        Check((ushort)Get(room, "LuckyPoints")! == retainedLucky
+            && (uint)((IDictionary)Get(room, "ScoresBySession")!)[Id(host)]! == 0,
+            "new round retains the room lucky pool and resets individual scores");
+        Check(((IList)InvokeMentorship<object>(f.Service, "CollectEntertainmentDeadlines", DateTime.UtcNow.AddMinutes(5))).Count == 0,
+            "preloading has no active countdown");
+        await Send(host, 0xCF7F, []);
+        await Send(guest, 0xCF7F, []);
+        var began = (DateTime)Get(room, "StartedUtc")!;
+        await Send(host, 0xCF7F, []);
+        Check((DateTime)Get(room, "StartedUtc")! == began, "member start acknowledgement preserves the common deadline");
+        Set(room, "StartedUtc", DateTime.UtcNow.AddSeconds(-20));
+        Check(await Send(host, 0xCF85, []) is null, "an unfinished round cannot settle after ten seconds");
+        await Send(host, 0xD003, new byte[4]);
+        await Send(guest, 0xD003, new byte[4]);
+        Check(((IList)InvokeMentorship<object>(f.Service, "CollectEntertainmentDeadlines", DateTime.UtcNow)).Count == 2,
+            "all players out ends the round before the deadline");
+        await Send(host, 0xCF85, []); await Send(guest, 0xCF85, []);
+
+        Set(guest, "EntertainmentReady", true);
+        await Send(host, 0xCFE5, []); await Send(host, 0xCF7F, []);
+        Check(await Send(guest, 0xCF73, []) is not null, "member can leave during common preload");
+        var remainingStart = (IList)InvokeMentorship<object>(f.Service, "CollectEntertainmentDeadlines", DateTime.UtcNow);
+        Check(remainingStart.Count == 1 && (ushort)Get(remainingStart[0]!, "Opcode")! == 0xCF80,
+            "preload departure starts the remaining loaded member exactly once");
+        Check(await Send(host, 0xCF7F, []) is null, "late confirmation cannot restart the surviving member");
+        Set(room, "StartedUtc", DateTime.UtcNow.AddSeconds(-105));
+        InvokeMentorship<object>(f.Service, "CollectEntertainmentDeadlines", DateTime.UtcNow);
+        await Send(host, 0xCF85, []);
+
         // Invitation responses use the source connection's flush queue.
         var invitee = Auxiliary(f.Other, 1);
         var invite = new byte[24];
@@ -98,6 +159,9 @@ internal static partial class Program
         Check(await Send(invitee, 0xC4E1, agreement) is not null
             && ((IList)Get(invitee, "PendingSessionBroadcasts")!).Count > 0,
             "accepted invitation immediately queues the host acknowledgement on the responding connection");
+        Set(invitee, "EntertainmentReady", true);
+        Check(await Send(host, 0xCFE5, []) is not null,
+            "a newly joined member starts the next round without claiming another player's earlier result");
 
         var attacker = Auxiliary(f.Teacher, 4); var victim = Auxiliary(f.Student, 4);
         Character(attacker).Strength = 50; Character(victim).MaxHp = 5000; Character(attacker).MaxHp = 500;

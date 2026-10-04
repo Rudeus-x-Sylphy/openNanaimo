@@ -148,11 +148,11 @@ def audit(registry):
             else:
                 counts["standalone"] += 1
             exact = False
-            if association >= 0:
-                parent_selector = placement_start + association
+            if association >= 0 or nominal_hp > 0:
+                parent_selector = placement_start + association if association >= 0 else selector
                 if parent_selector < target_count:
                     parent = targets[first_row + parent_selector]
-                    exact = (parent[6] == parent_selector and parent[8] != 4 and parent[1] > 0 and
+                    exact = (parent[6] == parent_selector and parent[1] > 0 and
                              parent[5] == placement and parent[4] == resource_index and parent[10] == segment and
                              _contact_damage(contacts, scope_key, parent_selector) > 0)
             policy = policy_by_resource.get(resource_name)
@@ -188,11 +188,11 @@ def audit(registry):
         "scopes": 282,
         "type4": 43517,
         "association_candidates": 31095,
-        "exact_associated": 29172,
-        "broken_association": 1923,
+        "exact_associated": 29259,
+        "broken_association": 1851,
         "standalone": 12422,
         "registered_hazards": 216,
-        "unclassified": 14129,
+        "unclassified": 14042,
     }
     for key, expected in required.items():
         if counts[key] != expected:

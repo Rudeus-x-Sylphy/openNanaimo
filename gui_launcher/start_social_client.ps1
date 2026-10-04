@@ -707,6 +707,17 @@ try{
 $resourceMigration=$null
 if($hasState){
     Sync-IsolatedApartmentResources $WorkingDirectory $workDir $CacheRoot
+    $entertainmentState=Join-Path $WorkingDirectory 'animalstate.st'
+    if(Test-Path -LiteralPath $entertainmentState -PathType Leaf){
+        $isolatedState=Join-Path $workDir 'animalstate.st'
+        Assert-ChildPath $CacheRoot $isolatedState
+        Assert-NoReparseAncestors $workDir
+        if((Test-Path -LiteralPath $isolatedState)-and((Get-Item -LiteralPath $isolatedState -Force).Attributes-band[IO.FileAttributes]::ReparsePoint)){throw 'Entertainment state resource must be a regular file.'}
+        if(-not(Test-Path -LiteralPath $isolatedState)){
+            if((Get-Item -LiteralPath $entertainmentState).Length-ne868){throw 'Invalid entertainment state resource.'}
+            Copy-Item -LiteralPath $entertainmentState -Destination $isolatedState
+        }
+    }
     $resourceMigration=Update-PreparedResourceIsolation $target $metadata $state $source $sourceHash $replacement $CacheRoot
     if($resourceMigration){$state=Assert-PreparedState $target $metadata $source $WorkingDirectory $CacheRoot $workDir $runtimeDir $sourceHash $replacement}
 }

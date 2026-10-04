@@ -546,13 +546,14 @@ static void send_cf76_room_click(SOCKET c){
     printf("  S0xCF76 room-click status=10 compact=12B t=%lds\n",sec()); fflush(0);
 }
 
-/* CF77 is the dungeon-lobby action request.  The CF78 dispatcher
-   case at 0x6F7D9F consumes frame +0x0A/+0x0B as the selected episode and
-   dungeon when it constructs the ready-room view.  Keep those selectors from
-   the CF77 base tuple; they are not owner/guest role bytes.  The client reads
-   a DWORD room id at +0x0C and three availability bytes at +0x10..+0x12. */
-static void send_cf78_empty_lobby(SOCKET c,unsigned episode,unsigned dungeon){
-    char p[4096];unsigned uid=multiplayer_current_uid(),owner=multiplayer_owner_uid(),status=(uid==owner)?100u:10u;mkpkt(p,0xCF78,0x24,1);stable_resource_put16(p,8,status);p[0x0A]=(char)episode;p[0x0B]=(char)dungeon;stable_put32(p,0x0C,uid);sendbuf(c,p,0x24);printf("  S0xCF78 dungeon-ready-room uid=%u owner=%u status=%u episode=%u dungeon=%u len=36 t=%lds\n",uid,owner,status,episode,dungeon,sec());fflush(0);
+/* CF78 is not an echo of CF77's hd/episode/dungeon/difficulty tuple.
+   In mode!=0, both status10/100 call 0x7196E0: frame +0x0A is
+   RealStage (manager+0x1E540), +0x0B is ShowStage (+0x1E544).
+   Mode0/status100 also installs +0x0A at 0x6F8011..0x6F801D.
+   Echoing episode here corrupts the client's stage (Open St Data File Error).
+   +0x0C remains a DWORD room id; +0x10..+0x12 are availability bytes. */
+static void send_cf78_empty_lobby(SOCKET c,unsigned real_stage,unsigned show_stage){
+    char p[4096];unsigned uid=multiplayer_current_uid(),owner=multiplayer_owner_uid(),status=(uid==owner)?100u:10u;mkpkt(p,0xCF78,0x24,1);stable_resource_put16(p,8,status);p[0x0A]=(char)real_stage;p[0x0B]=(char)show_stage;stable_put32(p,0x0C,uid);sendbuf(c,p,0x24);printf("  S0xCF78 dungeon-ready-room uid=%u owner=%u status=%u real_stage=%u show_stage=%u len=36 t=%lds\n",uid,owner,status,real_stage,show_stage,sec());fflush(0);
 }
 
 /* State4 client requests and their statically paired adapter responses. */

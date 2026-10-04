@@ -87,6 +87,29 @@ int main(void){
     /* +2C/+34 are four per-slot WORD HP/MP deltas, not damage counters. */
     {unsigned off;for(off=0x2Cu;off<0x3Cu;off++)assert(frame[off]==0u);}
 
+    /* Contact-only combat crosses the same authored boundary without a shot. */
+    boss_hp_sync_init(&ctx);
+    boss_hp_sync_begin_game_domain(&ctx,0u,0u,2u,1u,0u,0u);
+    {unsigned char contact[0x1C]={0};unsigned count;
+     boss_hp_sync_put16(contact,8u,40u);boss_hp_sync_put16(contact,0x12u,9u);
+     assert(boss_hp_sync_apply_external_contact(&ctx,contact,sizeof(contact),15000u,&result)==BOSS_HP_SYNC_OK);
+     assert(ctx.awaiting_next_mode&&result.intermediate_terminal&&!result.final_terminal);
+     count=ctx.request_count;
+     assert(boss_hp_sync_apply_external_contact(&ctx,contact,sizeof(contact),4000u,&result)==BOSS_HP_SYNC_BAD_MODE);
+     contact[0x10]=2u;
+     assert(boss_hp_sync_apply_external_contact(&ctx,contact,sizeof(contact),4000u,&result)==BOSS_HP_SYNC_BAD_MODE);
+     contact[0x10]=1u;boss_hp_sync_put16(contact,0x12u,65535u);
+     assert(boss_hp_sync_apply_external_contact(&ctx,contact,sizeof(contact),4000u,&result)==BOSS_HP_SYNC_BAD_TARGET);
+     assert(ctx.awaiting_next_mode&&ctx.mode_index==0u&&ctx.request_count==count);
+     boss_hp_sync_put16(contact,0x12u,8u);
+     assert(boss_hp_sync_apply_external_contact(&ctx,contact,sizeof(contact),4000u,&result)==BOSS_HP_SYNC_OK);
+     assert(ctx.mode_index==1u&&!ctx.awaiting_next_mode&&result.applied_damage==4000u&&result.hp==6000u);
+     assert(ctx.request_count==count&&!result.final_terminal);
+     assert(boss_hp_sync_apply_external_contact(&ctx,contact,sizeof(contact),6000u,&result)==BOSS_HP_SYNC_OK);
+     assert(result.first_terminal&&result.final_terminal&&result.hp==0u);
+     assert(boss_hp_sync_apply_external_contact(&ctx,contact,sizeof(contact),4000u,&result)!=BOSS_HP_SYNC_OK);
+    }
+
     /* Aggregate-only damage has no child/ordinal proof and remains neutral. */
     boss_hp_sync_init(&external_ctx);
     boss_hp_sync_begin_game_domain(&external_ctx,0u,0u,2u,1u,0u,0u);

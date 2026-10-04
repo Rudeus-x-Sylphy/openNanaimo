@@ -70,6 +70,8 @@ public sealed partial class NetworkAdapterService
                         cycle.Transition = null;
                         session.NativeBattleResources = session.NativeBattleResources?.ForEpoch(epoch);
                         session.NativeDungeonDeathLatched = false;
+                        session.NativeDungeonNextTransitionAuthorized = false;
+                        session.NativeDungeonTownTransitionAuthorized = false;
                         session.NativeCoupleStartRequested = true;
                         session.NativeCoupleIdentityPublished = session.NativeCoupleIdentityRetained;
                         ResetNativeDungeonContinuationRoom(session);
@@ -90,12 +92,30 @@ public sealed partial class NetworkAdapterService
 
     private void ObserveNativeDungeonCombatStart(ConnectionSession session, ReadOnlySpan<byte> frame)
     {
-        if (frame.Length != 8 || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(4, 2)) != 8
-            || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2)) != 0xCF80
-            || !_nativeContinuationRooms.TryGetValue(session, out var room) || !room.AwaitingBattleStart)
+        if (!CoupleProtocol.IsNativeStartResponse(frame) || !session.OnlineTracked
+            || session.NativeDungeon is null || !session.NativeDungeonSelectionValid
+            || session.NativeDungeonDeathLatched || session.NativeDungeonSettlementAwaitingAction
+            || session.NativeDungeonTownTransitionAuthorized)
             return;
-        ResetNativeDungeonContinuationRoom(session);
-        session.NativeBattleResources = session.NativeBattleResources?.ForEpoch(session.NativeBattleEpoch);
-        session.NativeDungeonDeathLatched = false;
+        var cycle = GetNativeRevivalCycle(session);
+        var room = _nativeContinuationRooms.GetOrCreateValue(session);
+        lock (cycle.BoundaryGate)
+        {
+            // A room member receives the owner's start acknowledgement without
+            // sending CF7F. Accept that one armed start for the member as well.
+            if (cycle.BattleStartArmed && !cycle.BattleStarted)
+            {
+                cycle.BattleStartArmed = false;
+                cycle.BattleStarted = true;
+                cycle.PendingPaidContinue = null;
+                cycle.Transition = null;
+                room.AwaitingBattleStart = true;
+                session.NativeCoupleStartRequested = true;
+            }
+            if (!room.AwaitingBattleStart) return;
+            ResetNativeDungeonContinuationRoom(session);
+            session.NativeBattleResources = session.NativeBattleResources?.ForEpoch(session.NativeBattleEpoch);
+            session.NativeDungeonDeathLatched = false;
+        }
     }
 }

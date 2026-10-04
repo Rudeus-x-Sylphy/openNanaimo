@@ -1,4 +1,5 @@
 ﻿using System.Buffers.Binary;
+using System.Reflection;
 using OpenNanaimo.Adapter.Services;
 
 static class Program
@@ -12,6 +13,7 @@ static class Program
         CheckAllVillageEntryTuples();
         CheckIncidentTuple();
         CheckRejections();
+        CheckReadyRoomProjection();
         Console.WriteLine("DUNGEON_NAVIGATION_REGRESSION_PASS progression/cf77/cf6c/cf78 tuple closure");
     }
 
@@ -72,9 +74,9 @@ static class Program
 
                     var response = new byte[28];
                     DungeonNavigationPolicy.WriteQuickEnterResponseSelection(
-                        response, episode, dungeon, 0x12345678);
-                    Check(response[2] == episode
-                          && response[3] == dungeon
+                        response, create[29], 0, 0x12345678);
+                    Check(response[2] == DungeonQuickEntrySelection.InitialStage
+                          && response[3] == 0
                           && BinaryPrimitives.ReadUInt32LittleEndian(response.AsSpan(4, 4)) == 0x12345678,
                         $"CF78 projection diverged: ep={episode} dg={dungeon}");
                 }
@@ -98,6 +100,31 @@ static class Program
         DungeonNavigationPolicy.WriteCreateRequestSelection(create, selection);
         Check(create[27] == 15 && create[28] == 1 && create[29] == 0,
             "incident tuple regressed to episode-as-stage or dungeon-2 substitution");
+    }
+
+    private static void CheckReadyRoomProjection()
+    {
+        var roomType = typeof(NetworkAdapterService).GetNestedType("DungeonRoom", BindingFlags.NonPublic)!;
+        var builder = typeof(NetworkAdapterService).GetMethod("BuildDungeonQuickEnterPayload", BindingFlags.NonPublic | BindingFlags.Static)!;
+        foreach (byte episode in new byte[] { 0, 1, 3, 7, 15, 100 })
+        foreach (byte dungeon in new byte[] { 0, 1, 2 })
+        foreach (ushort result in new ushort[] { 10, 100 })
+        {
+            var room = Activator.CreateInstance(roomType, nonPublic: true)!;
+            void Set(string key, object value) => roomType.GetProperty(key)!.SetValue(room, value);
+            Set("Id", 7); Set("OwnerSessionId", "owner");
+            var create = new byte[32]; create[27] = episode; create[28] = dungeon;
+            Set("CreateRequestPayload", create);
+            var initial = (byte[])builder.Invoke(null, [room, result])!;
+            Check(initial[2] == 0 && initial[3] == 0, "CF78 initial stage must not inherit ep/dg");
+            Set("HasPendingTransition", true); Set("PendingStage", (byte)1);
+            var battle = roomType.GetProperty("Battle")!.GetValue(room)!;
+            battle.GetType().GetProperty("ShowStageNumber")!.SetValue(battle, (ushort)4);
+            var continuation = (byte[])builder.Invoke(null, [room, result])!;
+            Check(continuation[2] == 1 && continuation[3] == 4, "CF78 must retain authorized super stage/show stage");
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(continuation.AsSpan(4, 4)) == 7,
+                "CF78 room id changed with stage projection");
+        }
     }
 
     private static void CheckRejections()

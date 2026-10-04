@@ -11,8 +11,8 @@ internal static class ApartmentPopularityPolicy
     internal static HealthRecoveryParameters GetRecoveryParameters(long totalVisitIndex)
         => totalVisitIndex switch
         {
-            < 10 => new(100, 10),
-            < 50 => new(150, 15),
+            < 10 => new(70, 20),
+            < 50 => new(150, 20),
             < 200 => new(200, 20),
             < 500 => new(300, 30),
             _ => new(500, 50)
