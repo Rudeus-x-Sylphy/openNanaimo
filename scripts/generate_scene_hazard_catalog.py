@@ -185,14 +185,14 @@ def audit(registry):
             raise ValueError(f"Negative unclassified-row drift: {name} expected={sample['expected_unclassified_rows']} actual={unclassified_rows[name]}")
 
     required = {
-        "scopes": 282,
-        "type4": 43517,
-        "association_candidates": 31095,
-        "exact_associated": 29259,
-        "broken_association": 1851,
-        "standalone": 12422,
+        "scopes": 288,
+        "type4": 44531,
+        "association_candidates": 31788,
+        "exact_associated": 29916,
+        "broken_association": 1887,
+        "standalone": 12743,
         "registered_hazards": 216,
-        "unclassified": 14042,
+        "unclassified": 14399,
     }
     for key, expected in required.items():
         if counts[key] != expected:

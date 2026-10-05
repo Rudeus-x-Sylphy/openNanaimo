@@ -52,16 +52,17 @@ if($script:calls.Count){throw 'existing adapter stopped before profile preflight
         script = r"""
 $ErrorActionPreference='Stop'
 . ./gui_launcher/inventory_admin_gui.ps1
-$bad=Join-Path $env:TEST_TMP 'bad.py'
-[IO.File]::WriteAllText($bad,"raise ValueError('UNKNOWN_CARD_SENTINEL')")
-try{Invoke-InventoryAdminPython @($bad);throw 'failure not propagated'}catch{
+[IO.File]::WriteAllText((Join-Path $env:TEST_TMP 'adapter_manifest.json'),'{"launcher_tools":1}')
+$bad=Join-Path $env:TEST_TMP 'bad.cmd'
+[IO.File]::WriteAllText($bad,"@echo off`r`necho UNKNOWN_CARD_SENTINEL 1>&2`r`nexit /b 1`r`n")
+try{Invoke-InventoryAdminBackend @($bad);throw 'failure not propagated'}catch{
  $message=$_.Exception.Message
- if($message-notmatch'Traceback'-or$message-notmatch'ValueError: UNKNOWN_CARD_SENTINEL'-or$message-notmatch'exit=1'){throw "truncated error: $message"}
+ if($message-notmatch'UNKNOWN_CARD_SENTINEL'-or$message-notmatch'exit=1'){throw "truncated error: $message"}
 }
 if($ErrorActionPreference-ne'Stop'){throw 'caller error policy not restored'}
-$good=Join-Path $env:TEST_TMP 'good.py'
-[IO.File]::WriteAllText($good,'print(''{"ok":true}'')')
-$result=Invoke-InventoryAdminPython @($good)|ConvertFrom-Json
+$good=Join-Path $env:TEST_TMP 'good.cmd'
+[IO.File]::WriteAllText($good,'@echo {"ok":true}')
+$result=Invoke-InventoryAdminBackend @($good)|ConvertFrom-Json
 if(-not$result.ok){throw 'successful JSON changed'}
 if($ErrorActionPreference-ne'Stop'){throw 'success changed caller error policy'}
 'BACKEND_FULL_ERROR_PASS'
@@ -141,7 +142,9 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
         self.assertIn("'adapter_runtime'", full_build)
         self.assertIn("'Nanaimo.Adapter.exe'", full_build)
         self.assertIn("'nanaimo_gameplay_bridge.exe'", full_build)
-        self.assertIn("$_.Name -match '^(nanaimo_adapter|nanaimo_client|game_unpack)'", cleanup)
+        self.assertIn("nanaimo_gameplay_bridge", cleanup)
+        self.assertIn("--tools state clear-legacy", cleanup)
+        self.assertNotIn("Remove-Item", cleanup)
         self.assertIn("$AdapterLog=Join-Path $Root 'adapter_nanaimo_launcher.log'", text)
         self.assertIn("$AdapterErr=Join-Path $Root 'adapter_nanaimo_launcher_stderr.log'", text)
         self.assertIn("$adapterDllRow=@($adapterContract.files|Where-Object name -eq 'Nanaimo.Adapter.dll')[0]", text)
@@ -173,7 +176,9 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
 
     def test_launcher_applies_and_verifies_user_owned_compatibility_overlay(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
-        self.assertIn("$ClientCompatibilityTool=Join-Path $Root 'scripts\\prepare_client_compatibility.py'", text)
+        self.assertIn("$ClientCompatibilityTool=$Adapter", text)
+        self.assertNotIn("Get-ClientCompatibilityPython", text)
+        self.assertIn("'--tools','compatibility'", text)
         self.assertIn("$ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay'", text)
         self.assertIn("'--apartment-recommendation'", text)
         self.assertIn('function Ensure-ClientCompatibility', text)
@@ -197,7 +202,7 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
         block = text.split('function Ensure-ClientCompatibility {', 1)[1].split('function Register-ClientProfile', 1)[0]
         args = re.findall(r"'(--[a-z0-9-]+)'", block.split('$arguments=', 1)[1].split('$output=', 1)[0])
         recipe = json.loads((ROOT / 'manifest/patch_runtime_requirements.json').read_text('utf-8'))
-        selected = [arg for arg in args if arg not in ('--source-root', '--output-root')]
+        selected = [arg for arg in args if arg not in ('--source-root', '--output-root', '--tools')]
         self.assertEqual(selected, recipe['compatibility_derivation']['launcher_selection']['arguments'])
         self.assertIn('--native-state', selected)
         self.assertNotIn('--revival-display', selected)
@@ -382,15 +387,16 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
     def test_inventory_admin_profiles_are_character_scoped(self):
         launcher = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         gui = (ROOT / 'gui_launcher/inventory_admin_gui.ps1').read_text('utf-8-sig')
-        backend = (ROOT / 'gui_launcher/inventory_admin_backend.py').read_text('utf-8-sig')
+        backend = (ROOT / 'managed-host/LauncherTools.Inventory.cs').read_text('utf-8-sig') + (ROOT / 'managed-host/LauncherTools.InventoryWrite.cs').read_text('utf-8-sig')
         self.assertIn('Add-InventoryAdminProfileSelector $tabResources $inventoryAdmin', launcher)
         self.assertIn('$profileSaveBtn=New-Object Windows.Forms.Button', launcher)
         self.assertIn('$profileSaveBtn.add_Click', launcher)
         self.assertIn('foreach($adminTab in @($tab,$petTab,$gameTab,$fTab,$cTab))', gui)
         self.assertIn("'--character-id'", gui)
-        self.assertIn("choices=['profiles','snapshot','apply','clone','selftest']", backend)
-        self.assertIn('def db_snapshot(root,character_id):', backend)
-        self.assertIn('def db_apply(root,character_id,state):', backend)
+        self.assertIn('case "profiles":', backend)
+        self.assertIn('case "clone":', backend)
+        self.assertIn('static JsonObject DbSnapshot(long id)', backend)
+        self.assertIn('JsonObject DbApply(long id', backend)
 
     def test_local_text_identity_is_resolved_before_save_and_registration(self):
         launcher=(ROOT/'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')

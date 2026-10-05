@@ -2,7 +2,7 @@
   "version": 1,
   "counts": {
     "inventory_clothing.json": 3885,
-    "inventory_pets.json": 868,
+    "inventory_pets.json": 990,
     "inventory_pet_gems.json": 18931,
     "inventory_game_items.json": 21892,
     "inventory_furniture.json": 781,
@@ -68,6 +68,11 @@
       "file": "CI._D28",
       "bytes": 1232,
       "sha256": "E6BB62AB7C285621F750B22309D04A8EEAA84F029250870FABD4C2B67D98C2B7"
+    },
+    "pi._D7": {
+      "file": "pi._D7",
+      "bytes": 550320,
+      "sha256": "6497CD2E6C0351B5FC859CED8817955E4E3FDE829F8B6C6DC365FB7C61D32372"
     }
   }
 }

@@ -394,9 +394,10 @@ public sealed partial class DatabaseService
                     UpdatedAt TEXT NOT NULL,
                     PRIMARY KEY (CharacterId, Episode, Difficulty, ArchiveSlot)
                 );
+                CREATE TABLE IF NOT EXISTS DungeonTitleResets (CharacterId INTEGER PRIMARY KEY REFERENCES Characters(Id) ON DELETE CASCADE, ResetAt TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS DungeonTitleMilestones (
                     CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
-                    Grade INTEGER NOT NULL CHECK (Grade BETWEEN 1 AND 23),
+                    Grade INTEGER NOT NULL CHECK (Grade BETWEEN 1 AND 24),
                     HdIndex INTEGER NOT NULL CHECK (HdIndex BETWEEN 0 AND 1),
                     Episode INTEGER NOT NULL CHECK (Episode BETWEEN 0 AND 255),
                     Dungeon INTEGER NOT NULL CHECK (Dungeon BETWEEN 0 AND 255),
@@ -536,6 +537,8 @@ public sealed partial class DatabaseService
         await MigratePetMaterialQuickSlotOrdinalsAsync(connection, cancellationToken);
         await MigrateDungeonProgressToOfficialLayoutAsync(connection, cancellationToken);
         await MigrateDungeonStagePerformanceAsync(connection, cancellationToken);
+        await MigrateLumineosTitlesAsync(connection, cancellationToken);
+        await EnsureLumineosPerformanceAsync(connection, null, cancellationToken);
         await MigrateLegacyDungeonLowDifficultySelectorAsync(connection, cancellationToken);
 
         await EnsureColumnAsync(connection, "Accounts", "PasswordPlaintext", "TEXT NULL", cancellationToken);
@@ -9852,20 +9855,22 @@ public sealed partial class DatabaseService
         int limit = 10,
         CancellationToken cancellationToken = default)
     {
-        if (hdIndex > 1
+        var lumineos = DungeonTitleProgression.IsLumineosTuple(hdIndex, episode, dungeon, stage);
+        if ((!lumineos && (hdIndex > 1
             || (hdIndex == 0 && episode >= 20)
             || (hdIndex == 1 && episode >= 4)
             || dungeon >= 3
-            || difficulty >= 3
             || stage > 1
-            || (stage == 1 && dungeon != 2)
+            || (stage == 1 && dungeon != 2)))
+            || difficulty >= 3
             || limit is < 1 or > 10)
             return [];
 
-        var archiveSlot = checked((byte)(dungeon + stage));
+        var archiveSlot = checked((byte)(lumineos ? dungeon * 2 + stage : dungeon + stage));
         await using var connection = await OpenConnectionAsync(cancellationToken);
+        if (lumineos) await EnsureLumineosPerformanceAsync(connection, null, cancellationToken);
         await using var command = connection.CreateCommand();
-        var table = hdIndex == 0 ? "DungeonStagePerformance" : "DungeonSecretStagePerformance";
+        var table = lumineos ? "LumineosStagePerformance" : hdIndex == 0 ? "DungeonStagePerformance" : "DungeonSecretStagePerformance";
         command.CommandText = $"""
             SELECT performance.CharacterId, character.Name, performance.BestScore, character.Level
             FROM {table} AS performance

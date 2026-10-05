@@ -65,6 +65,24 @@ class SocialApartmentResourceTests(unittest.TestCase):
         for relative, expected in self.source_hashes.items():
             self.assertEqual(sha256(self.source / relative), expected, relative)
 
+    def test_reuse_refreshes_pet_catalog_and_preserves_private_state(self):
+        source_pet = self.source / "pi._D7"
+        source_pet.write_bytes(b"old-pet-catalog")
+        _, work = self.prepare()
+        self.assertEqual((work / "pi._D7").read_bytes(), b"old-pet-catalog")
+        save = work / "keep-player-profile.dat"
+        save.write_bytes(b"private-player-data")
+        old_hash = sha256(work / "pi._D7")
+        source_pet.write_bytes(b"new-pet-catalog-with-hero")
+        result, same = self.prepare()
+        self.assertTrue(result["Reused"])
+        self.assertEqual(same, work)
+        self.assertEqual((work / "pi._D7").read_bytes(), source_pet.read_bytes())
+        self.assertEqual(save.read_bytes(), b"private-player-data")
+        self.assertEqual((self.cache / "pet-catalog-backups" / old_hash / "pi._D7").read_bytes(), b"old-pet-catalog")
+        self.prepare()
+        self.assertEqual(save.read_bytes(), b"private-player-data")
+
     def test_new_slots_have_private_complete_apartment_assets(self):
         _, first = self.prepare(1)
         _, second = self.prepare(2)

@@ -12,5 +12,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../managed/Nanaimo.Gameplay.csproj" />
+    <EmbeddedResource Include="Resources/client-compatibility.json" LogicalName="Nanaimo.ClientCompatibility.json" />
   </ItemGroup>
 </Project>

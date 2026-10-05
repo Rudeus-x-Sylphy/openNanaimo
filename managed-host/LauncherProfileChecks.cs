@@ -180,6 +180,42 @@ internal static class LauncherProfileChecks
                 && NetworkAdapterService.GetSelectedPetResourceBonuses(withGem).Hp == 400
                 && NetworkAdapterService.ResolveInventoryVitals(withGem).MaximumHp==22222 + avatarHp + 400,
                 "profile reapply preserves absolute current above base and does not double selected gem capacity");
+            // Direct GUI/profile assignment is intentionally independent of the
+            // item's ordinary equip-level requirement. Do not raise player level.
+            var heroProfile = "version=2\nname_hex=4845524F434845434B\nlevel=1\ngender=0\npet=15003361\npet_age_a=3\npet_age_b=3\nhp_max=1500\nmp_max=100\n";
+            var hero = await database.ImportLocalProfileAsync(heroProfile);
+            Check(hero.Level == 1 && hero.EquippedPetItemCode == ShopCatalog.HeroDragonCode,
+                "GUI direct Hero Dragon assignment bypasses equip requirement without level inflation");
+            Check(hero.Items.Any(i => i.ItemCode == ShopCatalog.HeroDragonCode),
+                "Hero Dragon direct profile assignment creates an owned instance");
+            var heroState = NativeDungeonState.Create(hero, [], []);
+            Check(heroState.Get(68) == ShopCatalog.HeroDragonCode && heroState.Get(72) == 3 && heroState.Get(76) == 3,
+                "Hero Dragon native projection preserves code and supported model stage");
+            var malformedHero = new PetState(ShopCatalog.HeroDragonCode, 1, 1, 0, 0, 0, 0, 0, 20);
+            var safeHero = PetProgression.NormalizeState(malformedHero);
+            Check(safeHero.CurrentStage == 3 && safeHero.MaximumStage == 3,
+                "Hero Dragon never projects missing first/second-stage images");
+            var heroReload = await database.GetCharacterAsync(hero.AccountId);
+            Check(heroReload is not null && heroReload.Level == 1 && heroReload.EquippedPetItemCode == ShopCatalog.HeroDragonCode,
+                "Hero Dragon direct assignment persists below level120");
+            Console.WriteLine("HERO_DRAGON_PROFILE_CHECKS_PASS level=1 pet=15003361 stage=3/3 persisted=true");
+            foreach (var code in ShopCatalog.KoreanPetCodes)
+            {
+                var petProfile = heroProfile.Replace("pet=15003361", $"pet={code}");
+                var imported = await database.ImportLocalProfileAsync(petProfile);
+                Check(imported.Level == 1 && imported.EquippedPetItemCode == code
+                    && imported.Items.Any(i => i.ItemCode == code), "Korean pet low-level owned assignment");
+                var normalized = PetProgression.NormalizeState(new PetState(code, 1, 1, 0, 0, 0, 0, 0, 20));
+                Check(normalized.CurrentStage == 3 && normalized.MaximumStage == 3,
+                    "Korean pet unsupported first/second-stage projection prevented");
+                var native = NativeDungeonState.Create(imported, [], []);
+                Check(native.Get(68) == code && native.Get(72) == 3 && native.Get(76) == 3,
+                    "Korean pet native projection");
+                var reloaded = await database.GetCharacterAsync(imported.AccountId);
+                Check(reloaded is not null && reloaded.Level == 1 && reloaded.EquippedPetItemCode == code,
+                    "Korean pet profile persistence");
+            }
+            Console.WriteLine($"KOREAN_PETS_PROFILE_CHECKS_PASS pets={ShopCatalog.KoreanPetCodes.Count} level=1 stage=3 persisted=true");
             Console.WriteLine("LAUNCHER_PROFILE_CHECKS_PASS level=25-preserved title=39-auto/42-fixed register11999=23 C355=39 CF71=39 native_grade=PASS frontier_reset=PASS hp=1800/2400 mp=700/5000 attack=3456 defense=789 selina_pet_level=3 accessory_d5=PASS inventory=PASS");
         }
         finally { SqliteConnection.ClearAllPools(); if (Directory.Exists(root)) Directory.Delete(root, true); }

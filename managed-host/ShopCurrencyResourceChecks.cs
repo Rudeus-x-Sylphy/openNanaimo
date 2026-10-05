@@ -8,7 +8,7 @@ internal static class ShopCurrencyResourceChecks
 {
     public static void Run()
     {
-        CheckTable("pi._D7", "PET", 4, 35, 0, 13, 14, 868, 51, 165);
+        CheckTable("pi._D7", "PET", 4, 35, 0, 13, 14, 990, 51, 165);
         CheckTable("PA._D9", "PETACCESSORY", 4, 24, 0, 19, 20, 18931, 65, 0);
         CheckTable("inter._D3", "INTERIOR", 4, 20, 0, 6, 7, 781, 352, 247);
         CheckPrice(15_001_011, 100, 0);

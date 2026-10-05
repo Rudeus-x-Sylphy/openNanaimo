@@ -403,6 +403,50 @@ class ExportPatchTests(unittest.TestCase):
             self.assertNotIn('redistribution_approved', row)
             self.assertEqual(row['approval'], 'required_per_file')
 
+    def test_refresh_cli_retires_removed_production_python_backend(self):
+        self.refresh_fixture()
+        self.add('gui_launcher/inventory_admin_backend.py', 'runtime')
+        control = self.control()
+        before = control.read_bytes()
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(refresh.main(['--root', str(self.root), '--summary']), 0)
+        self.assertEqual(control.read_bytes(), before)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(refresh.main(['--root', str(self.root), '--write', '--summary']), 0)
+        result = patch.load_manifest(control)
+        self.assertNotIn('gui_launcher/inventory_admin_backend.py',
+                         {row['path'] for row in result['files']})
+        self.assertFalse(result['runtime_acceptance'])
+        self.assertTrue((self.root / 'gui_launcher/inventory_admin_backend.py').exists())
+
+    def test_refresh_cli_still_rejects_other_ineligible_runtime_payloads(self):
+        self.refresh_fixture()
+        self.add('gui_launcher/unreviewed_backend.py', 'runtime')
+        control = self.control()
+        before = control.read_bytes()
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(refresh.main(['--root', str(self.root), '--write']), 2)
+        self.assertEqual(control.read_bytes(), before)
+
+    def test_refresh_includes_only_declared_embedded_compatibility_recipe(self):
+        self.refresh_fixture()
+        name = 'managed-host/Resources/client-compatibility.json'
+        self.add(name, 'source', b'{"recipe": "fixture"}\n')
+        row = {k: self.doc['files'][-1][k] for k in ('path', 'size', 'sha256')}
+        closure_path = self.root / 'manifest/source_closure.json'
+        closure = json.loads(closure_path.read_text('utf-8'))
+        closure['files'].append(row)
+        closure['count'] += 1
+        closure_path.write_text(json.dumps(closure), 'utf-8')
+        candidate, report = refresh.rebuild(self.root, self.doc)
+        self.assertIn(name, {item['path'] for item in candidate['files']})
+        self.assertFalse(report['source_manifest_gaps'])
+        self.assertFalse(report['approvals_generated'])
+        for bad in ('managed-host/Resources/private.json',
+                    'managed-host/Resources/Client-compatibility.json'):
+            with self.assertRaises(patch.ExportError):
+                patch.validated_closure({'count': 1, 'files': [dict(row, path=bad)]})
+
     def test_refresh_hash_change_expires_old_review(self):
         self.refresh_fixture()
         (self.root / 'docs/文件清单与导出工具.md').write_bytes(b'changed\n')

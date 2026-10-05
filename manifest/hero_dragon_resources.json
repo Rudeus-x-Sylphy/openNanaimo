@@ -1,0 +1,376 @@
+{
+  "schema": "openNanaimo.hero-dragon.v1",
+  "item_code": 15003361,
+  "family": 9157,
+  "required_level": 99,
+  "model_stage": 3,
+  "source_pet_sha256": "0ef547a8b5cc5c9a2b383657c30da3700c9599b0f737609e8572596845d3c038",
+  "resources": [
+    {
+      "path": "effs/game/shootinggamebasic/boo_homm_9157.im3",
+      "size": 10510,
+      "sha256": "f64d42f31bc797cc772dae48152b3a28769d9e57704bca47b73d9dfa580831a1",
+      "action": "copy",
+      "installed_size": 10510,
+      "installed_sha256": "f64d42f31bc797cc772dae48152b3a28769d9e57704bca47b73d9dfa580831a1"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9154_pw_01.im3",
+      "size": 94198,
+      "sha256": "914476b2a29bfff95395913ecf04721d45fdde9226373413c9e1198cf2d836ab",
+      "action": "copy",
+      "installed_size": 94198,
+      "installed_sha256": "914476b2a29bfff95395913ecf04721d45fdde9226373413c9e1198cf2d836ab"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9156_ai_01.im3",
+      "size": 13378,
+      "sha256": "b1faa0762e420210305384734434a28892b3b05f37a5f5696274b8b5aafd5115",
+      "action": "copy",
+      "installed_size": 13378,
+      "installed_sha256": "b1faa0762e420210305384734434a28892b3b05f37a5f5696274b8b5aafd5115"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9156_bs_03.im3",
+      "size": 30764,
+      "sha256": "9dad1bb7342de7ec1e2d07ef3bc064fa44edad16a15a97a41633ea7717a87d47",
+      "action": "copy",
+      "installed_size": 30764,
+      "installed_sha256": "9dad1bb7342de7ec1e2d07ef3bc064fa44edad16a15a97a41633ea7717a87d47"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9156_pw_01.im3",
+      "size": 94198,
+      "sha256": "695ed2e62e65a5c2aeb42ff67059d47bfedce2c0d8ab3c9bd0598d708ea2a636",
+      "action": "copy",
+      "installed_size": 94198,
+      "installed_sha256": "695ed2e62e65a5c2aeb42ff67059d47bfedce2c0d8ab3c9bd0598d708ea2a636"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9157_ai_01.eff",
+      "size": 4248,
+      "sha256": "9f10740ee66b45322ace6f3c907d13aaa531dda8ea61d81727cc58b0fdc004c2",
+      "action": "copy",
+      "installed_size": 4248,
+      "installed_sha256": "9f10740ee66b45322ace6f3c907d13aaa531dda8ea61d81727cc58b0fdc004c2"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9157_bs_01.eff",
+      "size": 1340,
+      "sha256": "1acfaa90dfbecc9eeb7bfdc5254456c7d2489f7a3d6884687a2ab4552deeb7e5",
+      "action": "copy",
+      "installed_size": 1340,
+      "installed_sha256": "1acfaa90dfbecc9eeb7bfdc5254456c7d2489f7a3d6884687a2ab4552deeb7e5"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9157_bs_03.eff",
+      "size": 1340,
+      "sha256": "9077cd3679d77f7d97f3457cf13f6f3c6fddebb239848a9b69b7a5a959020d98",
+      "action": "copy",
+      "installed_size": 1340,
+      "installed_sha256": "9077cd3679d77f7d97f3457cf13f6f3c6fddebb239848a9b69b7a5a959020d98"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9157_bs_04.eff",
+      "size": 1356,
+      "sha256": "2d08e404614fb6b7c10cd98bf29c53be3224b1a444b133a750cdc9ddd56b5fb0",
+      "action": "copy",
+      "installed_size": 1356,
+      "installed_sha256": "2d08e404614fb6b7c10cd98bf29c53be3224b1a444b133a750cdc9ddd56b5fb0"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9157_bs_ef_00.im3",
+      "size": 158968,
+      "sha256": "df911b9236d9321afba2133ede24657a10700aee564c01a4d0baf5c8b3cf06cf",
+      "action": "copy",
+      "installed_size": 158968,
+      "installed_sha256": "df911b9236d9321afba2133ede24657a10700aee564c01a4d0baf5c8b3cf06cf"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9157_bs_ef_01.im3",
+      "size": 187600,
+      "sha256": "787cf3b5ab82e7dee5ded9c16862e8aaac084a96e551f97bdb3a36fdd5702785",
+      "action": "copy",
+      "installed_size": 187600,
+      "installed_sha256": "787cf3b5ab82e7dee5ded9c16862e8aaac084a96e551f97bdb3a36fdd5702785"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9157_pw_01.eff",
+      "size": 18884,
+      "sha256": "431078be68d6a55d3765d4533dac9e576ce2d98648f6df0ffa8dc98bb929e759",
+      "action": "copy",
+      "installed_size": 18884,
+      "installed_sha256": "431078be68d6a55d3765d4533dac9e576ce2d98648f6df0ffa8dc98bb929e759"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9157_pw_01.im3",
+      "size": 461960,
+      "sha256": "25ad11cfbd2c43f35d8b5059d68303a5dc6f47bce5827e49d123ecf607338d7d",
+      "action": "copy",
+      "installed_size": 461960,
+      "installed_sha256": "25ad11cfbd2c43f35d8b5059d68303a5dc6f47bce5827e49d123ecf607338d7d"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_9157_pw_ef_00.im3",
+      "size": 212818,
+      "sha256": "0a1b6dda716efcdf686b1ee7c78a2ee1f686c9ab5c0201b78efae086f42f0550",
+      "action": "copy",
+      "installed_size": 212818,
+      "installed_sha256": "0a1b6dda716efcdf686b1ee7c78a2ee1f686c9ab5c0201b78efae086f42f0550"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_homm_9157.eff",
+      "size": 1212,
+      "sha256": "5ebfa72c53b767c5d1400edd21f81fbae518816ce4bd22928ecaebbab80fac52",
+      "action": "copy",
+      "installed_size": 1212,
+      "installed_sha256": "5ebfa72c53b767c5d1400edd21f81fbae518816ce4bd22928ecaebbab80fac52"
+    },
+    {
+      "path": "flying/pon/mis_boo_9157_ai_01.pon",
+      "size": 11376,
+      "sha256": "37a98709e20672e31f641f82d16e2766178774a6918de35b2babf8243ad04d69",
+      "action": "convert_pon108",
+      "installed_size": 11836,
+      "installed_sha256": "1c38d720b08e762b6b954007c782f28c0a70149f184f8c007f4e6e42cd5c59f2"
+    },
+    {
+      "path": "flying/pon/mis_boo_9157_bs_01.pon",
+      "size": 3312,
+      "sha256": "e554d05422e3ce27253201d0a63fcb9cf734d017caca300dff4d8548ac159ffe",
+      "action": "convert_pon108",
+      "installed_size": 3776,
+      "installed_sha256": "f9f88329ef066553b24bf7302e15decd05daf051e9410f47993c064f22288a3a"
+    },
+    {
+      "path": "flying/pon/mis_boo_9157_bs_03.pon",
+      "size": 3312,
+      "sha256": "99081a101ce930311ea5a34a0a64e6567ae89c9aca65db63f3e607859d071fe5",
+      "action": "convert_pon108",
+      "installed_size": 3776,
+      "installed_sha256": "2d5e4d0b81079a6d8349577fb75b200ad868dc84a6131b7e227895d4fd013255"
+    },
+    {
+      "path": "flying/pon/mis_boo_9157_bs_04.pon",
+      "size": 3312,
+      "sha256": "0549671287a0a0accdbdd5f6973640230cdb2b8f36ff6e5fd86eaeaade4ed0b8",
+      "action": "convert_pon108",
+      "installed_size": 3776,
+      "installed_sha256": "2013547fd1954e864df41956e48a879d276f8b4ad984a7663332dba383a731ce"
+    },
+    {
+      "path": "flying/pon/mis_boo_9157_pw_01.pon",
+      "size": 45232,
+      "sha256": "38a58faa97fc069002183ba118eeda0182e28f9590ab49b326eee9dafb6fa76d",
+      "action": "convert_pon108",
+      "installed_size": 45688,
+      "installed_sha256": "06b679241fbcd184b0d0e306284f29fd93c88ab596f8d81583f46f440990eb34"
+    },
+    {
+      "path": "flying/pon/mis_boo_homm_9157.pon",
+      "size": 3312,
+      "sha256": "943c4edd00410ab6d4d0ef29ab25bd21eeaa60928fa7129cc132149f4a9b7a2f",
+      "action": "convert_pon108",
+      "installed_size": 3776,
+      "installed_sha256": "21765fe947ac9cf12634527ad1608538514ae19870c0b68f499aca84e9ee36db"
+    },
+    {
+      "path": "images/Village_images/pet_images/pet_9157_3.im3",
+      "size": 376980,
+      "sha256": "958e88dc8287e70afc2e3bc529cf703b0f8032e64e5b1f9228be1e92addb9057",
+      "action": "copy",
+      "installed_size": 376980,
+      "installed_sha256": "958e88dc8287e70afc2e3bc529cf703b0f8032e64e5b1f9228be1e92addb9057"
+    },
+    {
+      "path": "images/game_images/shootinggamebasic/shootingimages/boo_9157_3.im3",
+      "size": 179580,
+      "sha256": "3243baecd8a581e2314fb946576942dd6454101e929d4cccbaccd2e067c3a05d",
+      "action": "copy",
+      "installed_size": 179580,
+      "installed_sha256": "3243baecd8a581e2314fb946576942dd6454101e929d4cccbaccd2e067c3a05d"
+    },
+    {
+      "path": "images/shop_images/Icon/pet/icon_pet_9157_3.im3",
+      "size": 9236,
+      "sha256": "b3e507a6dd79efd969f692c9c494192649c5cd18ab400ecbd8d7d6f79cb3d3bf",
+      "action": "copy",
+      "installed_size": 9236,
+      "installed_sha256": "b3e507a6dd79efd969f692c9c494192649c5cd18ab400ecbd8d7d6f79cb3d3bf"
+    }
+  ],
+  "shared_resources": [
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_d_ef_01.im3",
+      "size": 204862,
+      "sha256": "5c4d8aacdfb770bc7755ccc6c3b930ef1772abbb581819afcd9ffa58acabffdc"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_d_ef_02.im3",
+      "size": 103180,
+      "sha256": "2dd59404fd1d1719414193efcf624ea6d6577e2d0ea4ab98171e30f6d6d46dee"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_d_r.eff",
+      "size": 1784,
+      "sha256": "57e0d1d16eaee7d3c3ee226f58c8eb2731f91cbec0e4378a908d07fb46a04e6c"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_d_r.im3",
+      "size": 22948,
+      "sha256": "64882ee0e431518276675a12e76759dd36b80f9bfd7dc3ea5ee328cd6f25e7b8"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/clash_mis_boo_r_00.im3",
+      "size": 21122,
+      "sha256": "7c0d9bf1c76f344f7019f69aaa5a6371932bf88055a9d14caa6ee1ea5b80d2ea"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_clash_mis_boo_00.eff",
+      "size": 592,
+      "sha256": "be8115fffa3425dc99ac774a3b944e2cd3962d14f2c99b870b03165ebc172f5a"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_y.eff",
+      "size": 1196,
+      "sha256": "a5b45965752e98b21007e6af752f6435573f0901f3be13b0ad853f7fb80217c3"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_y.im3",
+      "size": 137228,
+      "sha256": "f6990415d2656dc7815f1a6418b595e9d6c3a48784d7898505f8f2b66fe2236e"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_y_01.im3",
+      "size": 176386,
+      "sha256": "208723ae971830a18939f3fa567a35f71a0150e2e1d827f335c8e718087683de"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/fly_ef_smoke_01_b.im3",
+      "size": 12438,
+      "sha256": "5719ee07bdce02acba7f15330a0636329c036c7b9b8f4966114c97ac009f42db"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/fly_ef_smoke_01_grey.eff",
+      "size": 1228,
+      "sha256": "d8dd3fc49c94ad774deef64277ce008feb28a69e371e4948e9b37347f1c609cb"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/fly_ef_smoke_01_grey.im3",
+      "size": 12438,
+      "sha256": "cc174759a9276b06aa8e2391a13287dfb7ae57f630fecc0233ca05bbb908c5c6"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/fly_ef_smoke_01_r.im3",
+      "size": 12438,
+      "sha256": "b3c1c7b81ef82b9ffd18e3f902a33c701f36d2a5961cc56f21ea1006afb63791"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/fly_ef_smoke_01_y.im3",
+      "size": 12438,
+      "sha256": "815c731b606e222e6e31893f7c78e9a464ba0d7816e28233852a5e7b4c3bcf65"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/fly_ef_smoke_02_t_b.eff",
+      "size": 1132,
+      "sha256": "72848a04f992a8ad37af6c46a89e964ae05d0b2231ac1e2d96dc798d45d57d85"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/fly_ef_smoke_02_t_r.eff",
+      "size": 1132,
+      "sha256": "917f374e77064147d0428d153fe149b4c080f90ee0b73910f73fd3820742cc2b"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/fly_ef_smoke_02_y.eff",
+      "size": 1132,
+      "sha256": "a32e8df16e56a10d57b4764207f71a619facc360a348e27d61b8ad6b969318c1"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_size_48.im3",
+      "size": 3782,
+      "sha256": "50d30dfc90d5dfd6b10d32f9daf1faef2e38199005ee2c257277c99649bcbfc6"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_boo_size_64.im3",
+      "size": 6516,
+      "sha256": "b5c6982a1bbcd3c89a7be786b373e1d16bf48ef3ca813e8ec25f705726f45ea2"
+    },
+    {
+      "path": "effs/game/shootinggamebasic/mis_ep17_dg00_mb_163_01boom.im3",
+      "size": 89882,
+      "sha256": "f8331d6b8f8065da641af06f1f7d7bf9133ce71f84b721a0d1950d6532a5b719"
+    },
+    {
+      "path": "images/game_images/shootinggamebasic/coll/clash_pvp_mis_00.crs",
+      "size": 392,
+      "sha256": "aa599afb55b777ff562eac96c63ca252c611554fafe3704cccf560f33f06f9ae"
+    },
+    {
+      "path": "images/game_images/shootinggamebasic/coll/mis_boo_000_bs.crs",
+      "size": 392,
+      "sha256": "ad742f4058fcfef5f283361e5db931c6b38375a94258e6bb98d0b89e697a2a89"
+    },
+    {
+      "path": "images/game_images/shootinggamebasic/coll/mis_boo_000_bs_64.crs",
+      "size": 520,
+      "sha256": "40727b4270883e48f68c117a304e238374047995af0b34e949a6526c296fff94"
+    },
+    {
+      "path": "images/game_images/shootinggamebasic/coll/mis_boo_000_pw_100.crs",
+      "size": 1608,
+      "sha256": "f00695cf93ef2429f1f9a3038c307086adf808f8b39db86b821ed459e07398ea"
+    },
+    {
+      "path": "images/game_images/shootinggamebasic/coll/mis_boo_000_pw_128.crs",
+      "size": 2056,
+      "sha256": "60df2a19b03802ead47ebdca631cff20456d0447ec272a3f6479f6414543053a"
+    },
+    {
+      "path": "sounds/fly_mis_boo_bs_00.wav",
+      "size": 90156,
+      "sha256": "1d7275e22012d5c4d2c606e38ff62f47b46ee35da194e528f6e16a19292fa6c3"
+    },
+    {
+      "path": "sounds/fly_mis_boo_pw_00.wav",
+      "size": 108428,
+      "sha256": "10c7c2e9f860de709379d7bc8315fe32829ecdb23e8997a7df284f645c1dba54"
+    }
+  ],
+  "source_required_level": 120,
+  "level_policy": "cn99-high-tier-v1",
+  "catalog_migrations": [
+    {
+      "before": {
+        "size": 552608,
+        "sha256": "3b9b1d8c6600b2d06bc94f0e55205d82fbda6f0ac832ba2e1e670bbf27fb11a7"
+      },
+      "allowed_fields": [
+        1
+      ],
+      "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
+      "after_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+    },
+    {
+      "before": {
+        "size": 483696,
+        "sha256": "864643ccc424bac86c53a477d7673b654ab4be4cdd95c2c9dcc5647a79d6896c"
+      },
+      "allowed_fields": [
+        1
+      ],
+      "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
+      "after_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+    },
+    {
+      "before": {
+        "size": 552752,
+        "sha256": "c59190101532b23fb7a39f091ae1213ee27a2d8ce0adc40007ed2f8696aca0f9"
+      },
+      "allowed_fields": [
+        1
+      ],
+      "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
+      "after_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+    }
+  ]
+}

@@ -17,10 +17,12 @@ import struct
 try:
     from . import apartment_exterior_panel as exterior_panel
     from . import dungeon7_visuals
+    from . import lumineos_scenes
     from . import dungeon_experience_compat
 except ImportError:
     import apartment_exterior_panel as exterior_panel
     import dungeon7_visuals
+    import lumineos_scenes
     import dungeon_experience_compat
 from pathlib import Path
 
@@ -256,6 +258,10 @@ def _strips(side: str):
 def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
     """Build the validated P03 road layout directly from a structurally compatible pack."""
     pack = VillagePack(data)
+    try:
+        native_layout = lumineos_scenes.is_native_layout(data, pack)
+    except ValueError as exc:
+        raise CompatibilityError(str(exc)) from exc
     output = bytearray(data)
     edits = {}
 
@@ -275,21 +281,24 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
         for x in (48, 49):
             put(17, x, y, 10, 18, 'page17 east exit to page18')
         put(17, 47, y, 11, 18, 'page17 arrival marker for source page18')
-    for x in range(50):
-        for y in range(36):
-            # Retire the generated-art relocation; restore the pre-art entry.
-            if pack.field(18, x, y, 13) == 166:
-                put(18, x, y, 13, -1, 'relocate dungeon7 action region')
-            if pack.field(18, x, y, 14) == 169:
-                put(18, x, y, 14, -1, 'relocate dungeon7 return marker')
-    for x in range(22, 28):
-        for y in (3, 4):
-            put(18, x, y, 13, 166, 'dungeon7 action166 region')
-    put(18, 25, 6, 14, 169, 'dungeon7 return marker')
+    if not native_layout:
+        for x in range(50):
+            for y in range(36):
+                # Retire the generated-art relocation; restore the pre-art entry.
+                if pack.field(18, x, y, 13) == 166:
+                    put(18, x, y, 13, -1, 'relocate dungeon7 action region')
+                if pack.field(18, x, y, 14) == 169:
+                    put(18, x, y, 14, -1, 'relocate dungeon7 return marker')
+        for x in range(22, 28):
+            for y in (3, 4):
+                put(18, x, y, 13, 166, 'dungeon7 action166 region')
+        put(18, 25, 6, 14, 169, 'dungeon7 return marker')
 
     pages = ROUTE[6:]
     neighbors = {page: {} for page in pages}
     for source, target in zip(ROUTE, ROUTE[1:]):
+        if native_layout and (source, target) == (19, 14):
+            continue  # No L9: close both sides of the formerly planned link.
         if source in neighbors:
             neighbors[source][_side(source, target)] = target
         if target in neighbors:
@@ -319,6 +328,7 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
         raise CompatibilityError(str(exc)) from exc
     changed = result != data
     return result, {
+        'layout': 'native-l7-l8' if native_layout else 'legacy-cn-l7',
         'operation': 'derive_dungeon7_village_roads',
         'status': 'patched' if changed else 'already_patched',
         'changed': changed,
@@ -851,9 +861,7 @@ def _collect_outputs(source_root: Path, furniture: bool, dungeon7: bool, revival
         if executable is None:
             require((source_root / 'game.exe').is_file(), 'source game.exe is missing for dungeon7 minimap')
             executable = (source_root / 'game.exe').read_bytes()
-        executable, row = _patch_site(executable, dungeon7_visuals.MINIMAP_VA,
-            dungeon7_visuals.MINIMAP_OLD, dungeon7_visuals.MINIMAP_NEW,
-            'dungeon7_minimap_release_boundary', 'unknown dungeon7 minimap initializer')
+        executable, row = patch_lumineos_minimap(executable, _lumineos_minimap_target(source_root))
         files[Path('game.exe')] = executable
         operations.append(row)
         village_rel = Path('Village_map_image/Village_map_image.pack')
@@ -1080,14 +1088,18 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
 
 def _verify_village_bytes(data: bytes):
     pack = VillagePack(data)
+    try:
+        native_layout = lumineos_scenes.is_native_layout(data, pack)
+    except ValueError as exc:
+        raise CompatibilityError(str(exc)) from exc
     checks = []
     page17_ok = all(pack.field(17, x, y, 7) == 0 for x in range(38, 50) for y in range(14, 21))
     page17_ok = page17_ok and all(pack.field(17, x, y, 10) == 18 for x in (48, 49) for y in range(14, 21))
     checks.append(_check('page17_to_page18', page17_ok, 'east corridor and destination page18'))
-    action_ok = all((pack.field(18, x, y, 13) == 166) == (22 <= x < 28 and y in (3, 4))
+    action_ok = all((pack.field(18, x, y, 13) == 166) == ((8 <= x <= 11 and 5 <= y <= 9) if native_layout else (22 <= x < 28 and y in (3, 4)))
                     for x in range(50) for y in range(36))
     checks.append(_check('dungeon7_action166', action_ok, 'page18 action region'))
-    checks.append(_check('dungeon7_return_marker169', all((pack.field(18, x, y, 14) == 169) == ((x, y) == (25, 6))
+    checks.append(_check('dungeon7_return_marker169', all((pack.field(18, x, y, 14) == 169) == ((x, y) == ((10, 15) if native_layout else (25, 6)))
                              for x in range(50) for y in range(36)), 'pixel=400,96'))
     try:
         scene_ok = dungeon7_visuals.verify_restored_scene(data, pack.pages[18])
@@ -1096,13 +1108,17 @@ def _verify_village_bytes(data: bytes):
     checks.append(_check('dungeon7_no_generated_scene_artwork', scene_ok, 'pre-art entry behavior'))
     route_ok = True
     for source, target in zip(ROUTE[6:-1], ROUTE[7:]):
+        if native_layout and (source, target) == (19, 14):
+            continue
         for page, other in ((source, target), (target, source)):
             exits, markers = _strips(_side(page, other))
             route_ok = route_ok and all(pack.field(page, x, y, 7) == 0 and
                                         pack.field(page, x, y, 10) == other for x, y in exits)
             route_ok = route_ok and all(pack.field(page, x, y, 7) == 0 and
                                         pack.field(page, x, y, 11) == other for x, y in markers)
-    checks.append(_check('p03_route_chain', route_ok, '16 bidirectional links after page17/page18'))
+    checks.append(_check('p03_route_chain', route_ok, 'native layout excludes the unimplemented L9 link' if native_layout else '16 bidirectional links after page17/page18'))
+    if native_layout:
+        checks.append(_check('native_l8_boundary', all(pack.field(19, x, y, 10) == -1 and pack.field(19, x, y, 7) == 1 for x, y in _strips('N')[0]), 'page19 north closed; no L9'))
     return checks
 
 
@@ -1121,10 +1137,11 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
     if dungeon7:
         checks.extend(_verify_village_bytes(read(Path('Village_map_image/Village_map_image.pack'))))
         exe = read(Path('game.exe'))
-        at = _va_offset(exe, dungeon7_visuals.MINIMAP_VA, len(dungeon7_visuals.MINIMAP_NEW))
+        target = _lumineos_minimap_target(source_root)
+        at = _va_offset(exe, dungeon7_visuals.MINIMAP_VA, len(target))
         checks.append(_check('dungeon7_minimap_boundary',
-            exe[at:at + len(dungeon7_visuals.MINIMAP_NEW)] == dungeon7_visuals.MINIMAP_NEW,
-            'chapter7 condition preserved; forced close applies to chapter8'))
+            exe[at:at + len(target)] == target,
+            'native conditions preserved; forced close follows verified resource boundary'))
         for name, folder, _, _, _, digest in dungeon7_visuals.ARTWORK:
             relative = Path(folder) / name
             removed = files is not None and relative in files and files[relative] is None
@@ -1139,6 +1156,27 @@ def _verify_data(source_root: Path, files: dict[Path, bytes] | None,
             checks.append(_check('alias_' + target_rel.name, source_data == target_data,
                                  f'{role}; source={sha256(source_data)} target={sha256(target_data)}'))
     return {'all_pass': all(row['ok'] for row in checks), 'checks': checks}
+
+
+def _lumineos_minimap_target(source_root):
+    if not (source_root / 'openNanaimo-l7-l8-resources.json').is_file():
+        return dungeon7_visuals.MINIMAP_NEW
+    try:
+        from . import port_lumineos_resources
+    except ImportError:
+        import port_lumineos_resources
+    # A marker alone never unlocks L8: verify every installed resource first.
+    port_lumineos_resources.verify(source_root)
+    return dungeon7_visuals.MINIMAP_L8
+
+
+def patch_lumineos_minimap(executable, target):
+    at = _va_offset(executable, dungeon7_visuals.MINIMAP_VA, len(target))
+    original = executable[at:at + len(target)]
+    require(original in (dungeon7_visuals.MINIMAP_OLD, dungeon7_visuals.MINIMAP_NEW,
+                         dungeon7_visuals.MINIMAP_L8), 'unknown Lumineos minimap initializer')
+    return _patch_site(executable, dungeon7_visuals.MINIMAP_VA, original, target,
+                       'lumineos_minimap_release_boundary', 'unknown Lumineos minimap initializer')
 
 
 def prepare(source_root: Path, output_root: Path, furniture: bool, dungeon7: bool,

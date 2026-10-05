@@ -105,7 +105,8 @@ public sealed partial class NetworkAdapterService
             foreach (var response in responses)
             {
                 if (!TryResolveNativeDungeonTransition(transition.Dungeon, transition.Stage, transition.Difficulty,
-                        frame, response, out _, out _, out _))
+                        frame, response, out _, out _, out _,
+                        session.NativeDungeonHdIndex, session.NativeDungeonEpisode))
                     continue;
                 session.NativeSettlementCycle = checked(session.NativeSettlementCycle + 1);
                 AdvanceNativeMentorshipRound(session);

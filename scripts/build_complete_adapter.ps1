@@ -9,6 +9,22 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $output = [IO.Path]::GetFullPath($OutputRoot)
+# Reject stale PET resource roots before building or writing any output. The
+# current recipe pins the GBK-safe catalog, not merely its row count.
+$petRecipePath = Join-Path $root 'manifest\korean_pet_resources.json'
+if (Test-Path -LiteralPath $petRecipePath -PathType Leaf) {
+    $petContainer = [string][char]0x8D44 + [char]0x6E90
+    $petData = [string][char]0x6570 + [char]0x636E
+    $petRoot = if ($ResourceDataRoot) { [IO.Path]::GetFullPath($ResourceDataRoot) } else { Join-Path $root (Join-Path 'adapter_runtime' (Join-Path $petContainer $petData)) }
+    $petPath = Join-Path $petRoot 'pi._D7'
+    $petRecipe = Get-Content -LiteralPath $petRecipePath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (-not(Test-Path -LiteralPath $petPath -PathType Leaf) -or
+        (Get-Item -LiteralPath $petPath).Length -ne [long]$petRecipe.installed_catalog.size -or
+        (Get-FileHash -LiteralPath $petPath -Algorithm SHA256).Hash -ne [string]$petRecipe.installed_catalog.sha256) {
+        throw 'PET resource catalog differs from the current reviewed recipe. Use the current adapter_runtime data; stale candidate catalogs may crash client startup.'
+    }
+}
+
 $tccCandidates = @(
     $TccPath,
     (Join-Path $root 'tools\tcc\tcc.exe')
@@ -59,6 +75,8 @@ $files = Get-ChildItem -LiteralPath $output -Recurse -File | Where-Object {
 $manifest = [ordered]@{
     version = 1
     role = 'full Nanaimo adapter'
+    launcher_tools = 1
+    state_storage = 'sqlite'
     built_at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     framework = "$TargetFramework/win-x64/self-contained"
     sdk = $sdk

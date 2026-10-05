@@ -11,7 +11,7 @@
     "reason": "Different users may use different legitimate unpacking implementations."
   },
   "compatibility_derivation": {
-    "tool": "scripts/prepare_client_compatibility.py",
+    "tool": "adapter_runtime/Nanaimo.Adapter.exe",
     "hash_gate": false,
     "source_inputs": [
       "game.exe",
@@ -128,7 +128,12 @@
       "scripts/dungeon7_visuals.py",
       "scripts/dungeon_experience_compat.py"
     ],
-    "bundled_resources": []
+    "bundled_resources": [],
+    "arguments": [
+      "--tools",
+      "compatibility"
+    ],
+    "build_time_recipe_source": "scripts/generate_managed_compatibility_recipe.py"
   },
   "provided_in_repository": [
     {

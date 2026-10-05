@@ -1,4 +1,4 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
 using System.Reflection;
 using System.Text;
 using Microsoft.Data.Sqlite;
@@ -50,7 +50,9 @@ internal static class TutorialAppearanceChecks
                 string profilePath = Path.Combine(root, "nanaimo_launcher_profile.ini");
                 string sidecarPath = Path.Combine(root, "nanaimo_inventory_state_v1.dat");
                 await File.WriteAllTextAsync(profilePath, profile);
-                await File.WriteAllTextAsync(sidecarPath, sidecar);
+                if (!File.Exists(sidecarPath)) await File.WriteAllTextAsync(sidecarPath, sidecar);
+                var preservedLegacy = await File.ReadAllTextAsync(sidecarPath);
+                new PersistentStateStore(db.DatabasePath).Put(sidecarPath, Encoding.UTF8.GetBytes(sidecar));
                 var character = await db.ImportLocalProfileAsync(profile, root);
                 byte[] stored = character.Appearance.ToArray();
                 var inventory = Owned(character);
@@ -117,7 +119,8 @@ internal static class TutorialAppearanceChecks
                 var context = LoginPayload(NewSession(relog));
                 Check(relog.TutorialCompleted && context[5] == 0 && context[6] == 2
                     && context.AsSpan(24, 36).SequenceEqual(expected), "completed relogin immediately restores configured appearance");
-                Check(await File.ReadAllTextAsync(profilePath) == profile && await File.ReadAllTextAsync(sidecarPath) == sidecar,
+                Check(await File.ReadAllTextAsync(profilePath) == profile && await File.ReadAllTextAsync(sidecarPath) == preservedLegacy
+                    && Encoding.UTF8.GetString(new PersistentStateStore(db.DatabasePath).Read(sidecarPath)!) == sidecar,
                     "INI and sidecar are unchanged throughout tutorial lifecycle");
             }
             Console.WriteLine("TUTORIAL_APPEARANCE_CHECKS_PASS cases=8 plus no-character; host construction only");

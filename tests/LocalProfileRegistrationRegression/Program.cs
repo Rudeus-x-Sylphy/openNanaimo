@@ -38,7 +38,7 @@ await Sql($"INSERT INTO CharacterApartmentItems(CharacterId,SlotIndex,ItemCode,P
 var sourceBefore = JsonSerializer.Serialize(await database.GetCharacterAsync(source));
 foreach (var name in new[] { "nanaimo_inventory_state_v1.dat", "nanaimo_apartment_state_v1.dat", "launcher_profile.ini" })
     File.WriteAllText(Path.Combine(root, name), "DO_NOT_TOUCH");
-// Supply actual catalogs for the existing Python editor backend.
+// Supply actual catalogs for the production managed editor backend.
 var dataDir = Path.Combine(root, "gui_launcher", "data"); Directory.CreateDirectory(dataDir);
 foreach (var file in Directory.GetFiles(Path.Combine(repo,"gui_launcher","data"), "inventory_*.json"))
     File.Copy(file, Path.Combine(dataDir,Path.GetFileName(file)));
@@ -51,16 +51,16 @@ async Task Run(string program, params string[] arguments)
     await process.WaitForExitAsync();
     if(process.ExitCode!=0) throw new Exception(await stdout+await stderr);
 }
-var backend = Path.Combine(repo,"gui_launcher","inventory_admin_backend.py");
+var backend = Path.Combine(repo,"adapter_runtime","Nanaimo.Adapter.exe");
 var snapshot = Path.Combine(root,"source.json");
-await Run("python","-B",backend,"snapshot","--root",root,"--character-id",sourceCharacter.Id.ToString(),"--output",snapshot);
+await Run(backend,"--tools","inventory","snapshot","--root",root,"--character-id",sourceCharacter.Id.ToString(),"--output",snapshot);
 string Hex(string s) => Convert.ToHexString(Encoding.GetEncoding(936).GetBytes(s));
 foreach (var name in new[] { "CloneOne", "Rollback", "FreshPure", "RemoteCopy" })
-    await Run("python","-B",backend,"clone","--root",root,"--name-hex",Hex(name),"--source-name-hex",Hex("Alpha"),"--source-character-id",sourceCharacter.Id.ToString(),"--input",snapshot);
+    await Run(backend,"--tools","inventory","clone","--root",root,"--name-hex",Hex(name),"--source-name-hex",Hex("Alpha"),"--source-character-id",sourceCharacter.Id.ToString(),"--input",snapshot);
 // Corrupt a catalog item so failure happens inside the database transaction.
 var badPath=Path.Combine(root,"inventory_admin_profiles",Hex("Rollback")+".json");
-var bad=System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(badPath))!;
-bad["clothing"]!.AsArray().Add(99999999);File.WriteAllText(badPath,bad.ToJsonString());
+var bad=System.Text.Json.Nodes.JsonNode.Parse(new PersistentStateStore(dbPath).Read(badPath)!)!;
+bad["clothing"]!.AsArray().Add(99999999);new PersistentStateStore(dbPath).Put(badPath,Encoding.UTF8.GetBytes(bad.ToJsonString()));
 using var cancellation=new CancellationTokenSource(TimeSpan.FromSeconds(50));
 var service=new NetworkAdapterService(database, _=>{}, root);
 var probe=new TcpListener(IPAddress.Loopback,0);probe.Start();var port=((IPEndPoint)probe.LocalEndpoint).Port;probe.Stop();
@@ -98,6 +98,7 @@ try
     Check((long)(await Sql($"SELECT Quantity FROM CharacterCards WHERE CharacterId={clone.Id} AND CardCode=12000001"))! == 1,"protected card lost");
     Check((long)(await Sql($"SELECT Quantity FROM CharacterCards WHERE CharacterId={clone.Id} AND CardCode=13000001"))! == 2,"catalog card lost");
     await Sql($"UPDATE Characters SET Hans=777,CurrentMapId=3,PositionX=456 WHERE Id={clone.Id}");
+    Directory.CreateDirectory(Path.Combine(root,"inventory_admin_profiles"));
     File.WriteAllText(Path.Combine(root,"inventory_admin_profiles",Hex("CloneOne")+".json"),"invalid-stale-snapshot");
     Check(await Register("CloneOne")=="OK\n","resume consulted stale clone");
     var resumed=(await database.GetCharacterAsync(account))!;

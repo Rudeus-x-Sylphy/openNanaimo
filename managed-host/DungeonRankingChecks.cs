@@ -238,7 +238,7 @@ internal static class DungeonRankingChecks
             Check(NetworkAdapterService.TryResolveNativeDungeonTransition(
                     6, 0, 0, challengeRequest, lumineosChallengeResponse,
                     out var lumineosChallengeDungeon, out var lumineosChallengeStage,
-                    out var lumineosChallengeDifficulty)
+                    out var lumineosChallengeDifficulty, 0, 100)
                 && lumineosChallengeDungeon == 6 && lumineosChallengeStage == 1
                 && lumineosChallengeDifficulty == 0,
                 "CF8B/CF8C preserves Lumineos dungeon6 while entering stage1 Super-BOSS");

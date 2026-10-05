@@ -1,0 +1,30 @@
+{
+  "schema": "openNanaimo.korean-resource-kit-inputs.v1",
+  "scope": "Auxiliary EFF inputs read by reviewed L7/L8 shared-model conversion validation; not extra client installation payload.",
+  "source_resources": [
+    {
+      "path": "effs/game/shootinggamebasic/ep00_mb_C_man.eff",
+      "size": 27232,
+      "sha256": "4e4c83922b1d030d336a4017c65fd23f07855707f40cb459c7ac5286a7b7135b",
+      "consumers": [
+        "flying/mmo/ep23_mb_C_man.mmo"
+      ]
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ep00_mb_C_woman.eff",
+      "size": 27232,
+      "sha256": "53a40736c0861e7e056c43a6b703c961b1b45c0b674112e1858dfa3a5e104d25",
+      "consumers": [
+        "flying/mmo/ep23_mb_C_woman.mmo"
+      ]
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ep00_mb_R_00.eff",
+      "size": 48536,
+      "sha256": "8dc97ae1d089fbdaa36827e49cf231ade7a6a002a82f27a83bb8a4299b9252fb",
+      "consumers": [
+        "flying/mmo/ep23_mb_R_00.mmo"
+      ]
+    }
+  ]
+}

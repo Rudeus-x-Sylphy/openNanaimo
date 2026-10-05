@@ -138,16 +138,17 @@ public sealed partial class DatabaseService
         if (bytes.Length is < 1 or > 14) return null;
         var root = Directory.GetParent(Path.GetDirectoryName(Path.GetFullPath(_databasePath))!)!.FullName;
         var path = Path.Combine(root, "inventory_admin_profiles", Convert.ToHexString(bytes) + ".json");
-        return File.Exists(path) ? path : null;
+        return new PersistentStateStore(_databasePath).Read(path) is not null ? path : null;
     }
 
     // Import a named editor copy once, in the same transaction as character creation.
     // This path reads only that copy, never shared runtime inventory or startup INI.
     private async Task<long> ImportNamedLocalAccountAsync(string username, string registrationIp, string path, CancellationToken token)
     {
-        if (new FileInfo(path).Length > 4 * 1024 * 1024)
+        var savedProfile = new PersistentStateStore(_databasePath).Read(path) ?? throw new InvalidDataException("Local profile is missing.");
+        if (savedProfile.Length > 4 * 1024 * 1024)
             throw new InvalidDataException("Local profile is too large.");
-        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(path, token));
+        using var document = JsonDocument.Parse(savedProfile);
         var root = document.RootElement;
         var profile = root.GetProperty("profile");
         var shop = root.GetProperty("shop");

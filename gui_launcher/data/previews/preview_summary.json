@@ -1,14 +1,14 @@
 [
   {
     "name": "pet_icons",
-    "unique_sources": 144,
-    "decoded": 144,
+    "unique_sources": 188,
+    "decoded": 188,
     "failures": {},
-    "mapped_ids": 868,
-    "available_ids": 860,
+    "mapped_ids": 990,
+    "available_ids": 982,
     "atlas_size": [
       2048,
-      320
+      384
     ]
   },
   {

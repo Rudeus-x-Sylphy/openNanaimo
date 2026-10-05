@@ -65,7 +65,7 @@ public sealed partial class DatabaseService
         public List<LocalFurnitureSidecar>? Furniture { get; init; }
     }
 
-    private static LocalSidecars? LoadLocalSidecars(string? root, string nameHex)
+    private LocalSidecars? LoadLocalSidecars(string? root, string nameHex)
     {
         if (string.IsNullOrWhiteSpace(root)) return null;
         var directory = Path.GetFullPath(root);
@@ -75,24 +75,23 @@ public sealed partial class DatabaseService
         var gamePath = Path.Combine(directory, $"card_synthesis_rewards_{suffix}.dat");
         var cardPath = Path.Combine(directory, $"card_inventory_{suffix}.dat");
         var furniturePath = Path.Combine(directory, "nanaimo_apartment_state_v1.dat");
-        if (!File.Exists(shoppingPath) && !File.Exists(petPath) && !File.Exists(gamePath)
-            && !File.Exists(cardPath) && !File.Exists(furniturePath)) return null;
+        if (new[] { shoppingPath, petPath, gamePath, cardPath, furniturePath }.All(p => new PersistentStateStore(_databasePath).Read(p) is null)) return null;
 
         return new LocalSidecars
         {
-            Shopping = File.Exists(shoppingPath) ? ParseShoppingSidecar(shoppingPath) : null,
-            Pets = File.Exists(petPath) ? ParsePetSidecar(petPath) : null,
-            GameItems = File.Exists(gamePath) ? ParseCountSidecar(gamePath, "game item") : null,
-            Cards = File.Exists(cardPath) ? ParseCardSidecar(cardPath) : null,
-            Furniture = File.Exists(furniturePath) ? ParseFurnitureSidecar(furniturePath) : null
+            Shopping = new PersistentStateStore(_databasePath).Read(shoppingPath) is not null ? ParseShoppingSidecar(shoppingPath) : null,
+            Pets = new PersistentStateStore(_databasePath).Read(petPath) is not null ? ParsePetSidecar(petPath) : null,
+            GameItems = new PersistentStateStore(_databasePath).Read(gamePath) is not null ? ParseCountSidecar(gamePath, "game item") : null,
+            Cards = new PersistentStateStore(_databasePath).Read(cardPath) is not null ? ParseCardSidecar(cardPath) : null,
+            Furniture = new PersistentStateStore(_databasePath).Read(furniturePath) is not null ? ParseFurnitureSidecar(furniturePath) : null
         };
     }
 
-    private static LocalShoppingSidecar ParseShoppingSidecar(string path)
+    private LocalShoppingSidecar ParseShoppingSidecar(string path)
     {
         var result = new LocalShoppingSidecar();
         long? coin = null, nana = null;
-        foreach (var raw in File.ReadAllLines(path, Encoding.ASCII))
+        foreach (var raw in Encoding.ASCII.GetString(new PersistentStateStore(_databasePath).Read(path) ?? throw new InvalidDataException("Missing legacy state record")).Split('\n'))
         {
             var line = raw.Trim();
             if (line.Length == 0 || line.StartsWith('#')) continue;
@@ -127,10 +126,10 @@ public sealed partial class DatabaseService
         };
     }
 
-    private static Dictionary<uint, ushort> ParseCountSidecar(string path, string label)
+    private Dictionary<uint, ushort> ParseCountSidecar(string path, string label)
     {
         var result = new Dictionary<uint, ushort>();
-        foreach (var raw in File.ReadAllLines(path, Encoding.ASCII))
+        foreach (var raw in Encoding.ASCII.GetString(new PersistentStateStore(_databasePath).Read(path) ?? throw new InvalidDataException("Missing legacy state record")).Split('\n'))
         {
             var line = raw.Trim(); if (line.Length == 0) continue;
             var pair = line.Split('=', 2); if (pair.Length != 2) throw new InvalidDataException($"Invalid {label} sidecar line: {line}");
@@ -142,7 +141,7 @@ public sealed partial class DatabaseService
         return result;
     }
 
-    private static Dictionary<uint, ushort> ParseCardSidecar(string path)
+    private Dictionary<uint, ushort> ParseCardSidecar(string path)
     {
         var result = ParseCountSidecar(path, "card");
         foreach (var (code, quantity) in result)
@@ -152,11 +151,11 @@ public sealed partial class DatabaseService
         return result;
     }
 
-    private static Dictionary<uint, LocalPetSidecar> ParsePetSidecar(string path)
+    private Dictionary<uint, LocalPetSidecar> ParsePetSidecar(string path)
     {
         var result = new Dictionary<uint, LocalPetSidecar>();
         var version = 1;
-        foreach (var raw in File.ReadAllLines(path, Encoding.ASCII))
+        foreach (var raw in Encoding.ASCII.GetString(new PersistentStateStore(_databasePath).Read(path) ?? throw new InvalidDataException("Missing legacy state record")).Split('\n'))
         {
             var line = raw.Trim(); if (line.Length == 0) continue;
             if (line.StartsWith("version=", StringComparison.Ordinal)) { if (!int.TryParse(line[8..], out version) || version is < 1 or > 2) throw new InvalidDataException("Unsupported pet sidecar version."); continue; }
@@ -171,9 +170,9 @@ public sealed partial class DatabaseService
         return result;
     }
 
-    private static List<LocalFurnitureSidecar> ParseFurnitureSidecar(string path)
+    private List<LocalFurnitureSidecar> ParseFurnitureSidecar(string path)
     {
-        var bytes = File.ReadAllBytes(path);
+        var bytes = new PersistentStateStore(_databasePath).Read(path) ?? throw new InvalidDataException("Missing legacy state record");
         if (bytes.Length != 4076 || BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(0, 4)) != 0x31545041
             || BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(4, 4)) != 1)
             throw new InvalidDataException("Invalid apartment sidecar header.");
@@ -279,15 +278,18 @@ public sealed partial class DatabaseService
                 FROM DungeonProgress
                 WHERE CharacterId=$id AND Episode BETWEEN 0 AND 15
                   AND (ClearMask & 8) != 0
+                  AND NOT EXISTS (SELECT 1 FROM DungeonTitleResets WHERE CharacterId=$id)
                 UNION ALL
                 SELECT Episode + 1 AS Grade
                 FROM DungeonStagePerformance
                 WHERE CharacterId=$id AND Episode BETWEEN 0 AND 15
                   AND ArchiveSlot=3
+                  AND NOT EXISTS (SELECT 1 FROM DungeonTitleResets WHERE CharacterId=$id)
                 UNION ALL
                 SELECT Grade
                 FROM DungeonTitleMilestones
                 WHERE CharacterId=$id
+                  AND UpdatedAt > COALESCE((SELECT ResetAt FROM DungeonTitleResets WHERE CharacterId=$id), '')
             )
             """;
         command.Parameters.AddWithValue("$id", characterId);
@@ -1095,7 +1097,24 @@ public sealed partial class DatabaseService
                 }
             }
 
-            if (DungeonTitleProgression.TryGetGrade(
+            if (lumineosTuple && result.Rating > 0)
+            {
+                await EnsureLumineosPerformanceAsync(connection, transaction, token);
+                await Execute("""
+                    INSERT INTO LumineosStagePerformance(
+                        CharacterId,Episode,Difficulty,ArchiveSlot,BestRating,BestScore,
+                        BestElapsedMinutes,ClearedAt,UpdatedAt)
+                    VALUES($id,100,$difficulty,$slot,$rating,$score,NULL,$now,$now)
+                    ON CONFLICT(CharacterId,Episode,Difficulty,ArchiveSlot) DO UPDATE SET
+                        BestRating=MAX(LumineosStagePerformance.BestRating,excluded.BestRating),
+                        BestScore=MAX(LumineosStagePerformance.BestScore,excluded.BestScore),
+                        UpdatedAt=excluded.UpdatedAt
+                    """, ("$difficulty", result.LogicalDifficulty),
+                    ("$slot", result.Dungeon * 2 + result.Stage), ("$rating", result.Rating),
+                    ("$score", result.StageRecordScore ?? result.Score), ("$now", now));
+            }
+
+            if (result.Rating > 0 && DungeonTitleProgression.TryGetGrade(
                     result.HdIndex, result.Episode, result.Dungeon, result.Stage,
                     out var awardedGrade))
             {

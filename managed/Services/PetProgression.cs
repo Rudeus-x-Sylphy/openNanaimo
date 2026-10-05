@@ -53,10 +53,11 @@ internal static class PetProgression
         if (!ShopCatalog.TryGet(15, state.ItemCode, out var pet))
             return state;
         var catalogMaximum = Math.Clamp((int)pet.PetUpgradeStage, 1, 3);
+        var minimum = Math.Clamp((int)pet.PetMinimumModelStage, 1, catalogMaximum);
         var maximum = (byte)Math.Clamp(
-            (int)(state.MaximumStage == 0 ? catalogMaximum : state.MaximumStage), 1, catalogMaximum);
+            (int)(state.MaximumStage == 0 ? catalogMaximum : state.MaximumStage), minimum, catalogMaximum);
         var current = (byte)Math.Clamp(
-            (int)(state.CurrentStage == 0 ? pet.PetModelStage : state.CurrentStage), 1, maximum);
+            (int)(state.CurrentStage == 0 ? pet.PetModelStage : state.CurrentStage), minimum, maximum);
         var level = state.Level;
         if (ShopCatalog.TryGetPetGrowthStage(pet.PetGrowthClass, current, out var growth))
             level = Math.Min(level, growth.MaximumLevel);

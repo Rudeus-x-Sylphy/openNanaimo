@@ -276,7 +276,7 @@ static void audit_all_split_topologies(void){
             }
         }
     }
-    assert(split_modes==339u&&same_child_split_modes==118u&&multi_child_split_modes==221u&&checked==split_modes);
+    assert(split_modes==348u&&same_child_split_modes==127u&&multi_child_split_modes==221u&&checked==split_modes);
 }
 
 int main(void){verify_fire_orb_body_and_ice();verify_three_body_bar_all_difficulties();verify_level1_dungeon1_parallel_visual_ledger();verify_first_normal_split();verify_multi_child_split();verify_split_mode_settlement_gate();audit_all_split_topologies();return 0;}

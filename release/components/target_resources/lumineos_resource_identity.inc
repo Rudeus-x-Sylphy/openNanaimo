@@ -7,7 +7,7 @@
  * Direct resource ep22/dg0 queries remain unchanged (including misses).
  */
 static void lumineos_resource_identity(unsigned hd,unsigned st,unsigned *ep,unsigned *dg){
-    if(hd==0u && *ep==100u && *dg<=6u){
+    if(hd==0u && *ep==100u && *dg<=7u){
         unsigned super7=(*dg==6u && st==1u);
         *ep=16u+*dg;*dg=super7?1u:0u;
     }

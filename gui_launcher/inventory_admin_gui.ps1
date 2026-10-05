@@ -1,16 +1,19 @@
 ﻿# Inventory administration UI for the Korean Nanaimo launcher.
 # Dot-source this file, then call Initialize-InventoryAdmin and Save-InventoryAdminState.
 
-function Invoke-InventoryAdminPython([string[]]$Arguments) {
-    $root=Split-Path $PSScriptRoot -Parent
-    $bundled=Join-Path $root 'tools\python\python.exe'
-    $py=if(Test-Path -LiteralPath $bundled){$bundled}else{(Get-Command python -ErrorAction Stop).Source}
+function Invoke-InventoryAdminBackend([string[]]$Arguments) {
+    $backend=$Arguments[0]
+    $contractPath=Join-Path (Split-Path $backend -Parent) 'adapter_manifest.json'
+    if(-not(Test-Path -LiteralPath $contractPath)){throw 'Managed launcher tools manifest missing; update the runtime package.'}
+    $contract=Get-Content -LiteralPath $contractPath -Raw -Encoding UTF8|ConvertFrom-Json
+    if([int]$contract.launcher_tools-lt1){throw 'Runtime does not support managed launcher tools; refusing legacy executable invocation.'}
+    $backendArguments=@('--tools','inventory')+@($Arguments|Select-Object -Skip 1)
     # Windows PowerShell 5.1 turns redirected stderr into NativeCommandError.
     # Capture the entire child result before applying the caller's Stop policy.
     $savedPreference=$ErrorActionPreference
     try{
         $ErrorActionPreference='Continue'
-        $output=@(& $py -B @Arguments 2>&1)
+        $output=@(& $backend @backendArguments 2>&1)
         $exitCode=$LASTEXITCODE
     }finally{$ErrorActionPreference=$savedPreference}
     $text=($output|ForEach-Object{$_.ToString()})-join"`r`n"
@@ -29,11 +32,22 @@ function Set-InventoryAdminFilter($view,[string]$q,[string[]]$columns){$q=Escape
 function Get-InventoryAdminCode($grid){if(-not$grid.CurrentRow){return 0};try{return [uint32]$grid.CurrentRow.Cells['ID'].Value}catch{return 0}}
 function Write-InventoryAdminTempJson($value){$p=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo-inventory-'+[guid]::NewGuid().ToString('N')+'.json');[IO.File]::WriteAllText($p,($value|ConvertTo-Json -Depth 8 -Compress),(New-Object Text.UTF8Encoding($false)));return $p}
 
-function Get-InventoryAdminProfiles($Root,$Backend,$DefaultNameHex){$arguments=@($Backend,'profiles','--root',$Root);if($DefaultNameHex){$arguments+=@('--name-hex',$DefaultNameHex)};$profiles=Invoke-InventoryAdminPython $arguments|ConvertFrom-Json;foreach($profile in $profiles){$profile}}
-function Read-InventoryAdminSnapshot($Root,$Backend,$Profile){$tmp=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo-snapshot-'+[guid]::NewGuid().ToString('N')+'.json');$args=@($Backend,'snapshot','--root',$Root,'--name-hex',[string]$Profile.name_hex,'--output',$tmp);if($null-ne$Profile.character_id-and[string]$Profile.character_id){$args+=@('--character-id',[string]$Profile.character_id)};try{[void](Invoke-InventoryAdminPython $args);return (Get-Content -LiteralPath $tmp -Raw -Encoding UTF8|ConvertFrom-Json)}finally{Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue}}
+function Get-InventoryAdminProfiles($Root,$Backend,$DefaultNameHex){$arguments=@($Backend,'profiles','--root',$Root);if($DefaultNameHex){$arguments+=@('--name-hex',$DefaultNameHex)};$profiles=Invoke-InventoryAdminBackend $arguments|ConvertFrom-Json;foreach($profile in $profiles){$profile}}
+function Read-InventoryAdminSnapshot($Root,$Backend,$Profile){$tmp=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo-snapshot-'+[guid]::NewGuid().ToString('N')+'.json');$args=@($Backend,'snapshot','--root',$Root,'--name-hex',[string]$Profile.name_hex,'--output',$tmp);if($null-ne$Profile.character_id-and[string]$Profile.character_id){$args+=@('--character-id',[string]$Profile.character_id)};try{[void](Invoke-InventoryAdminBackend $args);return (Get-Content -LiteralPath $tmp -Raw -Encoding UTF8|ConvertFrom-Json)}finally{Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue}}
 
 function Import-InventoryAdminSnapshot($Context,$Snap,$Profile){foreach($list in @($Context.Clothing,$Context.Pets,$Context.GameItems,$Context.Furniture,$Context.Cards)){$list.Clear()};foreach($x in $Snap.clothing){[void]$Context.Clothing.Add([uint32]$x)};foreach($x in $Snap.pets){[void]$Context.Pets.Add([pscustomobject]@{code=[uint32]$x.code;upgrade_material=[uint32]$x.upgrade_material;gems=@([uint32]$x.gems[0],[uint32]$x.gems[1],[uint32]$x.gems[2])})};foreach($x in $Snap.game_items){[void]$Context.GameItems.Add([pscustomobject]@{code=[uint32]$x.code;count=[uint32]$x.count;carrier=[string]$x.carrier})};foreach($x in $Snap.furniture){[void]$Context.Furniture.Add([pscustomobject]@{code=[uint32]$x.code;index=[uint16]$x.index;placed=[bool]$x.placed;type=[byte]$x.type;x=[int16]$x.x;y=[int16]$x.y;z=[byte]$x.z;mirror=[byte]$x.mirror})};foreach($x in $Snap.cards){[void]$Context.Cards.Add([pscustomobject]@{code=[uint32]$x.code;count=[uint32]$x.count})};$Context.NameHex=[string]$Snap.name_hex;if(-not$Context.NameHex){$Context.NameHex=[string]$Profile.name_hex};$Context.CharacterId=if($null-ne$Snap.character_id){[long]$Snap.character_id}elseif($null-ne$Profile.character_id-and[string]$Profile.character_id){[long]$Profile.character_id}else{$null};$Context.SelectedProfile=$Profile;$Context.AccountSuffix=[string]$Snap.account_suffix;$Context.Shop=$Snap.shop;$Context.Profile=if($Snap.profile){$Snap.profile}else{[pscustomobject]@{character_name=[string]$Profile.character_name;gender=$Profile.gender;level=$Profile.level;hp_max=$(if($null-ne$Profile.hp_max){$Profile.hp_max}else{1500});mp_max=$(if($null-ne$Profile.mp_max){$Profile.mp_max}else{100});coin=[uint64]$Snap.shop.coin;nana_point=[uint64]$Snap.shop.nana;attack=$(if($null-ne$Profile.attack){$Profile.attack}else{0});defense=$(if($null-ne$Profile.defense){$Profile.defense}else{0})}}}
-function Set-InventoryAdminProfile($Context,$Profile){if($null-eq$Profile){return};if($Context.SelectedProfile-and[string]$Context.NameHex-ieq[string]$Profile.name_hex-and[string]$Context.CharacterId-eq[string]$Profile.character_id){return};Import-InventoryAdminSnapshot $Context (Read-InventoryAdminSnapshot $Context.Root $Context.Backend $Profile) $Profile;if($Context.RefreshAll){&$Context.RefreshAll};$Context.ProfileSelectorSync=$true;try{foreach($selector in $Context.ProfileSelectors){for($i=0;$i-lt$selector.Items.Count;$i++){if([string]$selector.Items[$i].name_hex-eq$Context.NameHex-and[string]$selector.Items[$i].character_id-eq[string]$Context.CharacterId){$selector.SelectedIndex=$i;break}}}}finally{$Context.ProfileSelectorSync=$false};if($Context.ProfileChanged){&$Context.ProfileChanged $Context}}
+function Set-InventoryAdminProfile($Context,$Profile){
+    if($null-eq$Profile){return}
+    $requested=$Profile
+    Refresh-InventoryAdminProfiles $Context
+    if($null-ne$requested.character_id){
+        $Profile=@($Context.Profiles|Where-Object{$null-ne$_.character_id-and[string]$_.character_id-eq[string]$requested.character_id})[0]
+    }else{
+        $identity=if($requested.username){[string]$requested.username}else{[string]$requested.character_name}
+        $Profile=Find-InventoryAdminProfile $Context $identity
+    }
+    if($null-eq$Profile){throw '所选档案已不存在；请重新选择。'}
+if($Context.SelectedProfile-and[string]$Context.NameHex-ieq[string]$Profile.name_hex-and[string]$Context.CharacterId-eq[string]$Profile.character_id){return};Import-InventoryAdminSnapshot $Context (Read-InventoryAdminSnapshot $Context.Root $Context.Backend $Profile) $Profile;if($Context.RefreshAll){&$Context.RefreshAll};$Context.ProfileSelectorSync=$true;try{foreach($selector in $Context.ProfileSelectors){for($i=0;$i-lt$selector.Items.Count;$i++){if([string]$selector.Items[$i].name_hex-eq$Context.NameHex-and[string]$selector.Items[$i].character_id-eq[string]$Context.CharacterId){$selector.SelectedIndex=$i;break}}}}finally{$Context.ProfileSelectorSync=$false};if($Context.ProfileChanged){&$Context.ProfileChanged $Context}}
 function Add-InventoryAdminProfileSelector($Parent,$Context){$label=New-Object Windows.Forms.Label;$label.Text='用户档案';$label.Location='910,0';$label.Size='165,14';$label.ForeColor=[Drawing.Color]::DarkGreen;$Parent.Controls.Add($label);$combo=New-Object Windows.Forms.ComboBox;$combo.Location='910,16';$combo.Size='165,28';$combo.DropDownStyle='DropDownList';$combo.DropDownWidth=360;$combo.DisplayMember='display';foreach($profile in $Context.Profiles){[void]$combo.Items.Add($profile)};$Parent.Controls.Add($combo);[void]$Context.ProfileSelectors.Add($combo);$combo.add_SelectedIndexChanged(({if(-not$Context.ProfileSelectorSync-and$combo.SelectedIndex-ge0){Set-InventoryAdminProfile $Context $combo.SelectedItem}}).GetNewClosure());for($i=0;$i-lt$combo.Items.Count;$i++){if([string]$combo.Items[$i].name_hex-eq$Context.NameHex-and[string]$combo.Items[$i].character_id-eq[string]$Context.CharacterId){$combo.SelectedIndex=$i;break}}}
 function ConvertTo-InventoryAdminNameHex([string]$Name){
     $Name=$Name.Trim();$encoding=[Text.Encoding]::GetEncoding(936,(New-Object Text.EncoderExceptionFallback),(New-Object Text.DecoderExceptionFallback));$bytes=$encoding.GetBytes($Name)
@@ -53,15 +67,47 @@ function Add-InventoryAdminProfileToSelectors($Context,$Profile){
     $Context.Profiles=@($Context.Profiles+$Profile);$Context.ProfileSelectorSync=$true
     try{foreach($selector in $Context.ProfileSelectors){$exists=$false;foreach($item in $selector.Items){if([string]$item.name_hex-ieq[string]$Profile.name_hex-and[string]$item.character_id-eq[string]$Profile.character_id){$exists=$true;break}};if(-not$exists){[void]$selector.Items.Add($Profile)}}}finally{$Context.ProfileSelectorSync=$false}
 }
+function Refresh-InventoryAdminProfiles($Context){
+    $profiles=@(Get-InventoryAdminProfiles $Context.Root $Context.Backend $Context.NameHex)
+    $selected=$Context.SelectedProfile;$resolved=$null
+    if($selected){
+        if($null-ne$Context.CharacterId){
+            $resolved=@($profiles|Where-Object{$null-ne$_.character_id-and[string]$_.character_id-eq[string]$Context.CharacterId})[0]
+            if(-not$resolved){throw '所选数据库角色已不存在；请重新打开启动器选择档案。'}
+        }else{
+            $resolved=@($profiles|Where-Object{$null-ne$_.account_id-and[string]$_.username-ieq[string]$selected.username})[0]
+            if(-not$resolved){$resolved=@($profiles|Where-Object{[string]$_.name_hex-ieq[string]$Context.NameHex})[0]}
+        }
+    }
+    $Context.Profiles=$profiles
+    # Promote identity only. Reloading a snapshot here would discard unsaved UI
+    # inventory edits made since first login created the database character.
+    if($resolved){
+        $Context.SelectedProfile=$resolved
+        $Context.CharacterId=if($null-ne$resolved.character_id){[long]$resolved.character_id}else{$null}
+        if($resolved.name_hex){$Context.NameHex=[string]$resolved.name_hex}
+    }
+    $Context.ProfileSelectorSync=$true
+    try{
+        foreach($selector in $Context.ProfileSelectors){
+            $selector.Items.Clear()
+            foreach($profile in $profiles){[void]$selector.Items.Add($profile)}
+            for($i=0;$i-lt$selector.Items.Count;$i++){
+                $row=$selector.Items[$i]
+                if([string]$row.name_hex-ieq[string]$Context.NameHex-and[string]$row.character_id-eq[string]$Context.CharacterId){$selector.SelectedIndex=$i;break}
+            }
+        }
+    }finally{$Context.ProfileSelectorSync=$false}
+}
 function Ensure-InventoryAdminProfile($Context,[string]$Identity){
     $needle=$Identity.Trim();if(-not$needle){throw '用户名/角色显示名不能为空。'}
+    Refresh-InventoryAdminProfiles $Context
     $existing=Find-InventoryAdminProfile $Context $needle
     if($existing-and$null-ne$existing.account_id-and$null-eq$existing.character_id){throw 'Selected account has no character yet.'}
     if($existing){
         Set-InventoryAdminProfile $Context $existing
         if($null-eq$Context.CharacterId){
-            $path=Join-Path $Context.Root ('inventory_admin_profiles/'+$Context.NameHex+'.json')
-            if(-not(Test-Path -LiteralPath $path)){
+            if(-not$existing.persisted){
                 [void](Save-InventoryAdminState $Context $Context.NameHex $Context.Shop $Context.Profile -Clone)
             }
         }
@@ -72,14 +118,14 @@ function Ensure-InventoryAdminProfile($Context,[string]$Identity){
     $shop=$Context.Shop;if(-not$shop){$shop=[pscustomobject]@{coin=0;nana=0;equipped=@(0,0,0,0,0);effect=0;selected_pet=0}}
     $profile=$Context.Profile;if(-not$profile){$profile=[pscustomobject]@{hp_max=1500;mp_max=100;coin=[uint64]$shop.coin;nana_point=[uint64]$shop.nana;attack=0;defense=0}}
     [void](Save-InventoryAdminState $Context $targetHex $shop $profile -Clone)
-    $new=[pscustomobject]@{account_id=$null;username=$needle;account_online=$false;character_id=$null;character_name=$needle;character_online=$false;gender=$profile.gender;level=$profile.level;hp_max=$profile.hp_max;mp_max=$profile.mp_max;attack=$profile.attack;defense=$profile.defense;coin=$shop.coin;nana=$shop.nana;name_hex=$targetHex;display=$needle;source='sidecar'}
+    $new=[pscustomobject]@{account_id=$null;username=$needle;account_online=$false;character_id=$null;character_name=$needle;character_online=$false;gender=$profile.gender;level=$profile.level;hp_max=$profile.hp_max;mp_max=$profile.mp_max;attack=$profile.attack;defense=$profile.defense;coin=$shop.coin;nana=$shop.nana;name_hex=$targetHex;display=$needle;source='sidecar';persisted=$true}
     Add-InventoryAdminProfileToSelectors $Context $new
     Set-InventoryAdminProfile $Context $new
     return $Context.SelectedProfile
 }
 
 function Initialize-InventoryAdmin($Tabs,[string]$Root,[string]$NameHex){
-    $backend=Join-Path $Root 'gui_launcher\inventory_admin_backend.py';if(-not(Test-Path -LiteralPath $backend)){throw '物品管理后端不存在。'}
+    $backend=Join-Path (Split-Path $PSScriptRoot -Parent) 'adapter_runtime\Nanaimo.Adapter.exe';if(-not(Test-Path -LiteralPath $backend)){throw '物品管理后端不存在。'}
     $dataDir=Join-Path $Root 'gui_launcher\data';$needed='inventory_clothing.json','inventory_pets.json','inventory_pet_gems.json','inventory_game_items.json','inventory_furniture.json','inventory_cards.json';foreach($n in $needed){if(-not(Test-Path -LiteralPath (Join-Path $dataDir $n))){throw "物品目录缺失: $n"}}
     $profiles=@(Get-InventoryAdminProfiles $Root $backend $NameHex);if(-not$profiles.Count){throw '没有可管理的用户档案。'}
     $initial=@($profiles|Where-Object{[string]$_.name_hex-eq$NameHex})[0];if(-not$initial){$initial=$profiles[0]}
@@ -145,14 +191,15 @@ function Initialize-InventoryAdmin($Tabs,[string]$Root,[string]$NameHex){
 }
 
 function Save-InventoryAdminState($Context,[string]$NameHex,$Shop,$Profile=$null,[switch]$AsSidecar,[switch]$Clone){
+    if(-not$Clone-and-not$AsSidecar){Refresh-InventoryAdminProfiles $Context}
     if(-not$NameHex){$NameHex=$Context.NameHex};if(-not$Profile){$Profile=$Context.Profile}
     $state=[ordered]@{version=2;profile=$Profile;shop=$Shop;clothing=@($Context.Clothing);pets=@($Context.Pets|ForEach-Object{[ordered]@{code=[uint32]$_.code;upgrade_material=[uint32]$_.upgrade_material;gems=@([uint32]$_.gems[0],[uint32]$_.gems[1],[uint32]$_.gems[2])}});game_items=@($Context.GameItems|ForEach-Object{[ordered]@{code=[uint32]$_.code;count=[uint32]$_.count;carrier=[string]$_.carrier}});furniture=@($Context.Furniture);cards=@($Context.Cards|ForEach-Object{[ordered]@{code=[uint32]$_.code;count=[uint32]$_.count}})}
     $tmp=Write-InventoryAdminTempJson $state
-    try{$command=if($Clone){'clone'}else{'apply'};$args=@($Context.Backend,$command,'--root',$Context.Root,'--name-hex',$NameHex,'--input',$tmp);if($Clone){$args+=@('--source-name-hex',$Context.NameHex);if($null-ne$Context.CharacterId){$args+=@('--source-character-id',[string]$Context.CharacterId)}};if(-not$Clone-and-not$AsSidecar-and$null-ne$Context.CharacterId){$args+=@('--character-id',[string]$Context.CharacterId)};$out=Invoke-InventoryAdminPython $args;return ($out|ConvertFrom-Json)}finally{Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue}
+    try{$command=if($Clone){'clone'}else{'apply'};$args=@($Context.Backend,$command,'--root',$Context.Root,'--name-hex',$NameHex,'--input',$tmp);if($Clone){$args+=@('--source-name-hex',$Context.NameHex);if($null-ne$Context.CharacterId){$args+=@('--source-character-id',[string]$Context.CharacterId)}};if(-not$Clone-and-not$AsSidecar-and$null-ne$Context.CharacterId){$args+=@('--character-id',[string]$Context.CharacterId)};$out=Invoke-InventoryAdminBackend $args;return ($out|ConvertFrom-Json)}finally{Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue}
 }
 
 function Test-InventoryAdminInstallation([string]$Root){
-    $backend=Join-Path $Root 'gui_launcher\inventory_admin_backend.py';$summary=Get-Content -LiteralPath (Join-Path $Root 'gui_launcher\data\inventory_catalog_summary.json') -Raw -Encoding UTF8|ConvertFrom-Json
-    if([int]$summary.counts.'inventory_clothing.json'-ne3885-or[int]$summary.counts.'inventory_pets.json'-ne868-or[int]$summary.counts.'inventory_pet_gems.json'-ne18931-or[int]$summary.counts.'inventory_furniture.json'-ne781-or[int]$summary.counts.'inventory_cards.json'-ne420){throw '物品目录计数校验失败。'}
-    return Invoke-InventoryAdminPython @($backend,'selftest','--root',$Root)
+    $backend=Join-Path (Split-Path $PSScriptRoot -Parent) 'adapter_runtime\Nanaimo.Adapter.exe';$summary=Get-Content -LiteralPath (Join-Path $Root 'gui_launcher\data\inventory_catalog_summary.json') -Raw -Encoding UTF8|ConvertFrom-Json
+    if([int]$summary.counts.'inventory_clothing.json'-ne3885-or[int]$summary.counts.'inventory_pets.json'-ne990-or[int]$summary.counts.'inventory_pet_gems.json'-ne18931-or[int]$summary.counts.'inventory_furniture.json'-ne781-or[int]$summary.counts.'inventory_cards.json'-ne420){throw '物品目录计数校验失败。'}
+    return Invoke-InventoryAdminBackend @($backend,'selftest','--root',$Root)
 }

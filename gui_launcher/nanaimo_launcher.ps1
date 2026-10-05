@@ -1,4 +1,4 @@
-﻿param([switch]$ValidateOnly,[switch]$PreviewOnly,[switch]$SelfTestProfileIO,[switch]$SelfTestInventoryIO,[switch]$SelfTestLaunchModes,[switch]$SelfTestPureNewPlayer,[switch]$SelfTestAdapterManifest,[switch]$SelfTestLayout,[switch]$SelfTestCatalogPreview,[switch]$SelfTestSocialMode,[switch]$SelfTestLocalEntry,[switch]$SelfTestTitleIO,[string]$ProfileIniOverride,[string]$ProfileJsonOverride)
+﻿param([switch]$ValidateOnly,[switch]$PreviewOnly,[switch]$SelfTestProfileIO,[switch]$SelfTestInventoryIO,[switch]$SelfTestLaunchModes,[switch]$SelfTestPureNewPlayer,[switch]$SelfTestAdapterManifest,[switch]$SelfTestLayout,[switch]$SelfTestSkillProfile,[switch]$SelfTestCatalogPreview,[switch]$SelfTestHeroDragon,[switch]$SelfTestKoreanPets,[switch]$SelfTestSocialMode,[switch]$SelfTestLocalEntry,[switch]$SelfTestTitleIO,[string]$ProfileIniOverride,[string]$ProfileJsonOverride)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -12,7 +12,7 @@ $AdapterBridge=Join-Path $AdapterRuntimeRoot 'nanaimo_gameplay_bridge.exe'
 $AdapterManifest=Join-Path $AdapterRuntimeRoot 'adapter_manifest.json'
 $LegacyAdapter=Join-Path $Root 'adapter\nanaimo_adapter.exe'
 $AdapterData=Join-Path $Root 'adapter_data'
-$ClientCompatibilityTool=Join-Path $Root 'scripts\prepare_client_compatibility.py'
+$ClientCompatibilityTool=$Adapter
 $ClientCompatibilityOverlay=Join-Path $AdapterData 'client_compatibility_overlay'
 $ClientCompatibilityReport=Join-Path $ClientCompatibilityOverlay 'nanaimo_compatibility_report.json'
 $AdapterLogs=Join-Path $AdapterData 'logs'
@@ -74,9 +74,25 @@ function New-DungeonTitleChoices([int]$currentGrade=-1){
     }
     return ,$rows
 }
-function Read-DungeonGradeState([string]$root,[string]$nameHex){if(-not$nameHex){return -1};$path=Join-Path $root ("dungeon_grade_state_v1_{0}.dat"-f$nameHex);if(-not(Test-Path -LiteralPath $path)){return -1};$state=Read-KeyValueFile $path;[int]$g=-1;if($state.ContainsKey('version')-and[string]$state.version-eq'1'-and$state.ContainsKey('grade')-and[int]::TryParse([string]$state.grade,[ref]$g)-and$g-ge0-and$g-le42){return $g};return -1}
+function Assert-ManagedLauncherTools {
+    if(-not(Test-Path -LiteralPath $AdapterManifest)){throw 'Managed launcher tools manifest is missing.'}
+    $contract=Get-Content -LiteralPath $AdapterManifest -Raw -Encoding UTF8|ConvertFrom-Json
+    if([int]$contract.launcher_tools-lt1){throw 'Runtime lacks managed launcher tools; update the complete runtime package.'}
+}
+function Invoke-LauncherState([string]$stateRoot,[string[]]$stateArguments){
+    Assert-ManagedLauncherTools
+    $output=@(& $Adapter --tools state @stateArguments --root $stateRoot 2>&1)
+    if($LASTEXITCODE-ne0){throw ($output -join "`r`n")}
+    return (($output -join "`n")|ConvertFrom-Json)
+}
+function Read-DungeonGradeState([string]$root,[string]$nameHex){
+    if(-not$nameHex){return -1}
+    $state=Invoke-LauncherState $root @('read','--name',("dungeon_grade_state_v1_{0}.dat"-f$nameHex))
+    if($null-ne$state.grade){return [int]$state.grade};return -1
+}
 function Write-DungeonGradeState([string]$root,[string]$nameHex,[int]$grade){
-    if($grade-lt0-or$grade-gt42){throw '称号grade必须为0..42。'};if($nameHex-notmatch '^[0-9A-F]+$'){throw '角色名编码无效。'};$base=[IO.Path]::GetFullPath($root).TrimEnd('\')+'\';$path=[IO.Path]::GetFullPath((Join-Path $root ("dungeon_grade_state_v1_{0}.dat"-f$nameHex)));if(-not$path.StartsWith($base,[StringComparison]::OrdinalIgnoreCase)){throw '称号状态路径越界。'};$new=$path+'.new';$bak=$path+'.bak';$text="version=1`ngrade=$grade`nfrontier_valid=0`nfrontier_hd=0`nfrontier_episode=0`nfrontier_dungeon=0`nfrontier_difficulty=0`nfrontier_stage=0`n";[IO.File]::WriteAllText($new,$text,(New-Object Text.ASCIIEncoding));try{Remove-Item -LiteralPath $bak -Force -ErrorAction SilentlyContinue;if(Test-Path -LiteralPath $path){Move-Item -LiteralPath $path -Destination $bak -Force};Move-Item -LiteralPath $new -Destination $path -Force;Remove-Item -LiteralPath $bak -Force -ErrorAction SilentlyContinue}catch{Remove-Item -LiteralPath $new -Force -ErrorAction SilentlyContinue;if((Test-Path -LiteralPath $bak)-and-not(Test-Path -LiteralPath $path)){Move-Item -LiteralPath $bak -Destination $path -Force};throw};return $path
+    [void](Invoke-LauncherState $root @('grade','--name-hex',$nameHex,'--value',[string]$grade))
+    return Join-Path $root ("dungeon_grade_state_v1_{0}.dat"-f$nameHex)
 }
 $PartLabels=@{body='身体/脸型（仅模型）';hair='发型';top='上衣';bottom='下衣';accessory='饰品';effect='效果（特效道具）';other='其他/非穿戴'}
 $SkillDefs=@(
@@ -97,7 +113,7 @@ $SkillDefs=@(
     [pscustomobject]@{Index=14;Code=52000014;Name='肉弹型·上路技能Ⅲ';Tree='meat';Route=1},
     [pscustomobject]@{Index=15;Code=52000015;Name='肉弹型·下路技能Ⅲ';Tree='meat';Route=2}
 )
-function Read-KeyValueFile([string]$path){$h=@{};if(Test-Path -LiteralPath $path){foreach($line in Get-Content -LiteralPath $path){if($line-match'^\s*([^#;=]+)=(.*)$'){$h[$matches[1].Trim()]=$matches[2].Trim()}}};return $h}
+function Read-KeyValueFile([string]$path){$h=@{};if([IO.Path]::GetExtension($path)-eq'.dat'){$state=Invoke-LauncherState (Split-Path $path -Parent) @('read','--name',([IO.Path]::GetFileName($path)));foreach($p in $state.PSObject.Properties){$h[$p.Name]=[string]$p.Value};return $h};if(Test-Path -LiteralPath $path){foreach($line in Get-Content -LiteralPath $path){if($line-match'^\s*([^#;=]+)=(.*)$'){$h[$matches[1].Trim()]=$matches[2].Trim()}}};return $h}
 function Read-PureNewPlayerUsername {if(-not(Test-Path -LiteralPath $PureNewPlayerAccountState)){return ''};return [string](Get-Content -LiteralPath $PureNewPlayerAccountState -TotalCount 1).Trim()}
 function Save-PureNewPlayerUsername([string]$username){$username=$username.Trim();if($username.Length-lt1-or$username.Length-gt64-or(@($username.ToCharArray()|Where-Object{[char]::IsControl($_)}).Count-gt0)){throw '新手档用户名必须为1到64个非控制字符。'};if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null};[IO.File]::WriteAllText($PureNewPlayerAccountState,$username+("`r`n"),(New-Object Text.UTF8Encoding($false)));return $username}
 function Infer-SkillRoute($grades,[int[]]$upper,[int[]]$lower){$u=@($upper|Where-Object{[int]$grades[$_]-gt0}).Count-gt0;$l=@($lower|Where-Object{[int]$grades[$_]-gt0}).Count-gt0;if($u-and$l){return -1};if($u){return 1};if($l){return 2};return 0}
@@ -134,6 +150,8 @@ function Encode-NameHex([string]$name){
 }
 function New-ChoiceList($rows,[switch]$Pet){
     $list=New-Object Collections.ArrayList
+    $empty=[pscustomobject]@{id=[uint32]0;name='未装备';gender='';max_age=0;min_age=0;display_age=0}
+    [void]$list.Add([pscustomobject]@{Display='未装备 [0]';Id=[uint32]0;Data=$empty})
     foreach($r in $rows){
         if($Pet){$display='{0} [{1}] | {2} | 初攻 {3} | 资源:{4} | 实际:{5} | 门:{6}'-f $r.name,$r.id,$r.attack_style,$r.attack_value,$r.static_charge_text,$r.charge_text,$r.charge_gate_value; $display += ' | 自动:{0}' -f $r.auto_unlock_class}
         else{$display='{0} [{1}] | {2}'-f $r.name,$r.id,$r.gender}
@@ -266,7 +284,7 @@ function Install-LaunchModeConfig($info){
     [void](Test-LaunchModeConfig $info $ActiveGameOption)
 }
 
-if(-not(Test-Path -LiteralPath $PetJson)-or-not(Test-Path -LiteralPath $EquipJson)-or-not(Test-Path -LiteralPath $FurnitureJson)){[Windows.Forms.MessageBox]::Show('资源目录不存在，请先运行 gui_launcher\generate_catalog.py。','Nanaimo 启动器')|Out-Null;exit 2}
+if(-not(Test-Path -LiteralPath $PetJson)-or-not(Test-Path -LiteralPath $EquipJson)-or-not(Test-Path -LiteralPath $FurnitureJson)){[Windows.Forms.MessageBox]::Show('资源目录不存在，请安装完整运行包。','Nanaimo 启动器')|Out-Null;exit 2}
 $pets=Get-Content -LiteralPath $PetJson -Raw -Encoding UTF8|ConvertFrom-Json
 $equips=Get-Content -LiteralPath $EquipJson -Raw -Encoding UTF8|ConvertFrom-Json
 $furniture=Get-Content -LiteralPath $FurnitureJson -Raw -Encoding UTF8|ConvertFrom-Json
@@ -311,7 +329,7 @@ $defaultSkipTutorial=$ini.ContainsKey('skip_tutorial')-and([string]$ini.skip_tut
 $defaultUnlockAllDungeons=-not$ini.ContainsKey('unlock_all_dungeons')-or([string]$ini.unlock_all_dungeons-eq'1')
 $defaultPureNewPlayerUsername=Read-PureNewPlayerUsername
 $skillProfile=$ini
-if(-not($ini.ContainsKey('skill_config')-and[string]$ini.skill_config-eq'1')-and$ini.name_hex){$skillPath=Join-Path $Root ("skill_progress_state_v2_{0}.dat"-f([string]$ini.name_hex));if(Test-Path -LiteralPath $skillPath){$skillProfile=Read-KeyValueFile $skillPath}}
+if(-not($ini.ContainsKey('skill_config')-and[string]$ini.skill_config-eq'1')-and$ini.name_hex){$skillPath=Join-Path $Root ("skill_progress_state_v2_{0}.dat"-f([string]$ini.name_hex));$stored=Read-KeyValueFile $skillPath;if($stored.Count){$skillProfile=$stored}}
 $defaultSkillGrades=New-Object int[] 16;$haveSkillGrades=$false
 for($i=0;$i-lt16;$i++){$k="skill_grade$i";if(-not$skillProfile.ContainsKey($k)){$k="grade$i"};if($skillProfile.ContainsKey($k)){[int]$v=0;if(-not[int]::TryParse([string]$skillProfile[$k],[ref]$v)-or$v-lt0-or$v-gt5){throw "技能等级 $k 必须为0..5。"};$defaultSkillGrades[$i]=$v;$haveSkillGrades=$true}}
 if(-not$haveSkillGrades){$defaultSkillGrades[0]=$defaultSkillGrades[1]=$defaultSkillGrades[8]=$defaultSkillGrades[9]=5}
@@ -337,11 +355,11 @@ if($SelfTestTitleIO){
 if($SelfTestInventoryIO){Write-Output (Test-InventoryAdminInstallation $Root);exit 0}
 if($ValidateOnly){
     $inventoryValidation=Test-InventoryAdminInstallation $Root
-    if($pets.Count-ne868){throw 'pet catalog count'};if($equips.Count-ne3885){throw 'equipment catalog count'};if($furniture.Count-ne781){throw 'furniture catalog count'};if($attackModes.Count-ne868){throw 'attack mode catalog count'};if($petPreviewRows.Count-ne868-or$equipPreviewRows.Count-ne3885-or$furniturePreviewRows.Count-ne781-or-not(Test-Path -LiteralPath $PetPreviewPng)-or-not(Test-Path -LiteralPath $EquipPreviewPng)-or-not(Test-Path -LiteralPath $FurniturePreviewPng)){throw 'catalog preview assets'}
+    if($pets.Count-ne990){throw 'pet catalog count'};if($equips.Count-ne3885){throw 'equipment catalog count'};if($furniture.Count-ne781){throw 'furniture catalog count'};if($attackModes.Count-ne990){throw 'attack mode catalog count'};if($petPreviewRows.Count-ne990-or$equipPreviewRows.Count-ne3885-or$furniturePreviewRows.Count-ne781-or-not(Test-Path -LiteralPath $PetPreviewPng)-or-not(Test-Path -LiteralPath $EquipPreviewPng)-or-not(Test-Path -LiteralPath $FurniturePreviewPng)){throw 'catalog preview assets'}
     foreach($path in @($AdapterManifest,$Adapter,$AdapterBridge)){if(-not(Test-Path -LiteralPath $path)){throw "adapter artifact missing: $path"}};if((Get-Item -LiteralPath $Adapter).Length-ne$ExpectedAdapterSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $Adapter).Hash-ne$ExpectedAdapterHash){throw 'adapter validation'};if((Get-Item -LiteralPath $AdapterBridge).Length-ne$ExpectedBridgeSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $AdapterBridge).Hash-ne$ExpectedBridgeHash){throw 'bridge validation'}
     foreach($id in 15009205,10130337,10100028,10110337,10120352,10150103,10160017){if(-not($petById.ContainsKey([uint32]$id)-or$equipById.ContainsKey([uint32]$id))){throw "missing default id $id"}}
     $round=Decode-NameHex (Encode-NameHex '测试角色');if($round-ne'测试角色'){throw 'GBK name roundtrip'}
-    $pt=New-GridTable 'pet' $pets;$et=New-GridTable 'equip' $equips;$ft=New-GridTable 'furniture' $furniture;if($pt.Rows.Count-ne868-or$et.Rows.Count-ne3885-or$ft.Rows.Count-ne781){throw 'grid table count'}
+    $pt=New-GridTable 'pet' $pets;$et=New-GridTable 'equip' $equips;$ft=New-GridTable 'furniture' $furniture;if($pt.Rows.Count-ne990-or$et.Rows.Count-ne3885-or$ft.Rows.Count-ne781){throw 'grid table count'}
     $pv=New-Object Data.DataView;$pv.Table=$pt;$pv.RowFilter="[ID] LIKE '%15009205%'";if($pv.Count-ne1){throw 'pet filter'}
     $ev=New-Object Data.DataView;$ev.Table=$et;$ev.RowFilter="[部位] = '发型'";if($ev.Count-ne1049){throw 'equipment hair filter'};$ev.RowFilter="[部位] = '效果（特效道具）'";if($ev.Count-ne438){throw 'equipment effect filter'}
     if(@($equips|Where-Object{$_.part-eq'other'}).Count-ne2){throw 'equipment other classification'}
@@ -465,7 +483,8 @@ function Get-SkillComboCode($combo){if($combo.SelectedIndex-ge0-and$combo.Tag-an
 function Set-SkillSlotChoices($wantZ,$wantX){if($script:skillSlotRefreshing){return};$script:skillSlotRefreshing=$true;try{$g=Read-SkillGradesFromControls;$z=if($null-ne$wantZ){[uint32]$wantZ}else{Get-SkillComboCode $skillZCombo};$x=if($null-ne$wantX){[uint32]$wantX}else{Get-SkillComboCode $skillXCombo};$codes=New-Object Collections.ArrayList;$texts=New-Object Collections.ArrayList;[void]$codes.Add([uint32]0);[void]$texts.Add('未装备 [0]');foreach($d in $SkillDefs){if($g[[int]$d.Index]-gt0){$route=if([int]$d.Route-eq1){'上路'}elseif([int]$d.Route-eq2){'下路'}else{'基础'};[void]$codes.Add([uint32]$d.Code);[void]$texts.Add(("{0} | {1} | 等级{2} [{3}]"-f$d.Name,$route,$g[[int]$d.Index],$d.Code))}};$skillZCombo.BeginUpdate();$skillXCombo.BeginUpdate();$skillZCombo.Items.Clear();$skillXCombo.Items.Clear();foreach($text in $texts){[void]$skillZCombo.Items.Add($text);[void]$skillXCombo.Items.Add($text)};$skillZCombo.Tag=@($codes);$skillXCombo.Tag=@($codes);$skillZCombo.EndUpdate();$skillXCombo.EndUpdate();$zi=[Array]::IndexOf([object[]]@($codes),[object][uint32]$z);$xi=[Array]::IndexOf([object[]]@($codes),[object][uint32]$x);$skillZCombo.SelectedIndex=if($zi-ge0){$zi}else{0};$skillXCombo.SelectedIndex=if($xi-ge0){$xi}else{0}}finally{$script:skillSlotRefreshing=$false}}
 function Set-SkillRouteState([string]$tree,[switch]$ClearInactive){if($tree-eq'projectile'){$route=$projectileRouteCombo.SelectedIndex;$upper=[int[]](2,4,6);$lower=[int[]](3,5,7)}else{$route=$meatRouteCombo.SelectedIndex;$upper=[int[]](10,12,14);$lower=[int[]](11,13,15)};foreach($i in $upper){$skillGradeBoxes[$i].Enabled=($route-eq1);if($ClearInactive-and$route-ne1){$skillGradeBoxes[$i].Value=0}};foreach($i in $lower){$skillGradeBoxes[$i].Enabled=($route-eq2);if($ClearInactive-and$route-ne2){$skillGradeBoxes[$i].Value=0}}}
 function Get-SkillSelection{$g=Read-SkillGradesFromControls;$pr=[int]$projectileRouteCombo.SelectedIndex;$mr=[int]$meatRouteCombo.SelectedIndex;$pu=@(2,4,6|Where-Object{$g[$_]-gt0}).Count-gt0;$pl=@(3,5,7|Where-Object{$g[$_]-gt0}).Count-gt0;$mu=@(10,12,14|Where-Object{$g[$_]-gt0}).Count-gt0;$ml=@(11,13,15|Where-Object{$g[$_]-gt0}).Count-gt0;if($pu-and$pl){throw '炮弹型上、下路线发生冲突，只能保留一条。'};if($mu-and$ml){throw '肉弹型上、下路线发生冲突，只能保留一条。'};if(($pr-eq1-and$pl)-or($pr-eq2-and$pu)-or($pr-eq0-and($pu-or$pl))){throw '炮弹型路线选择与分支加点不一致。'};if(($mr-eq1-and$ml)-or($mr-eq2-and$mu)-or($mr-eq0-and($mu-or$ml))){throw '肉弹型路线选择与分支加点不一致。'};$z=Get-SkillComboCode $skillZCombo;$x=Get-SkillComboCode $skillXCombo;foreach($code in @($z,$x)){if($code){$idx=[int]($code-52000000);if($idx-lt0-or$idx-ge16-or$g[$idx]-le0){throw "Z/X选择了未加点技能 $code。"}}};if($z-and$z-eq$x){throw 'Z和X不能装备同一个技能。'};return [pscustomobject]@{projectile_route=$pr;meat_route=$mr;grades=$g;slot_z=$z;slot_x=$x}}
-function Update-SkillWarning{try{$s=Get-SkillSelection;$skillWarning.ForeColor=[Drawing.Color]::DarkGreen;$skillWarning.Text=("技能配置有效：炮弹={0}，肉弹={1}，Z={2}，X={3}"-f@('未选','上路','下路')[$s.projectile_route],@('未选','上路','下路')[$s.meat_route],(Skill-CodeName $s.slot_z),(Skill-CodeName $s.slot_x))}catch{$skillWarning.ForeColor=[Drawing.Color]::Red;$skillWarning.Text='技能配置冲突：'+$_.Exception.Message}}
+function Update-SkillWarning{try{$s=Get-SkillSelection;$skillWarning.ForeColor=[Drawing.Color]::DarkGreen;$skillWarning.Text=("技能配置有效：炮弹={0}，肉弹={1}，Z={2}，X={3}"-f@('未选','上路','下路')[$s.projectile_route],@('未选','上路','下路')[$s.meat_route],(Skill-CodeName $s.slot_z),(Skill-CodeName $s.slot_x));if($s.slot_x-and[decimal]$skillSlotExpiryBox.Value-le[decimal](Get-Date -Format 'yyyyMMddHH')){$skillWarning.ForeColor=[Drawing.Color]::DarkOrange;$skillWarning.Text+='；X槽期限未启用或已到期：选槽保存不会自动开通权限。'}}catch{$skillWarning.ForeColor=[Drawing.Color]::Red;$skillWarning.Text='技能配置冲突：'+$_.Exception.Message}}
+$skillSlotExpiryBox.add_ValueChanged({Update-SkillWarning})
 Set-SkillRouteState projectile;Set-SkillRouteState meat;Set-SkillSlotChoices $defaultSkillZ $defaultSkillX;Update-SkillWarning
 $projectileRouteCombo.add_SelectedIndexChanged({Set-SkillRouteState projectile -ClearInactive;Set-SkillSlotChoices $null $null;Update-SkillWarning});$meatRouteCombo.add_SelectedIndexChanged({Set-SkillRouteState meat -ClearInactive;Set-SkillSlotChoices $null $null;Update-SkillWarning})
 foreach($b in $skillGradeBoxes){$b.add_ValueChanged({Set-SkillSlotChoices $null $null;Update-SkillWarning})};$skillZCombo.add_SelectedIndexChanged({if(-not$script:skillSlotRefreshing){Update-SkillWarning}});$skillXCombo.add_SelectedIndexChanged({if(-not$script:skillSlotRefreshing){Update-SkillWarning}})
@@ -614,18 +633,18 @@ $pureNewPlayerUsernameBox.add_TextChanged({if($launchInfoBox){Update-LaunchPrevi
 $unlockAllDungeonsBox.add_CheckedChanged({if($launchInfoBox){Update-LaunchPreview}})
 
 function Update-PetAgeOptions([Nullable[int]]$desired){
-$r=Get-SelectedData $petCombo;if(-not$r){return};$max=[Math]::Max(0,[int]$r.max_age);$min=if([uint32]$r.id-in[uint32[]](15000001,15000002,15000003)){1}else{0};if($min-gt$max){$min=$max};$want=if($null-ne$desired){[int]$desired}else{[int]$r.display_age};if($r.wire_age_status-eq'observed' -and $want-lt[int]$r.wire_current_age){$want=[int]$r.wire_current_age};$want=[Math]::Min($max,[Math]::Max($min,$want))
+$r=Get-SelectedData $petCombo;if(-not$r){return};$max=[Math]::Max(0,[int]$r.max_age);$min=if($null-ne$r.min_age){[int]$r.min_age}elseif([uint32]$r.id-in[uint32[]](15000001,15000002,15000003)){1}else{0};if($min-gt$max){$min=$max};$want=if($null-ne$desired){[int]$desired}else{[int]$r.display_age};if($r.wire_age_status-eq'observed' -and $want-lt[int]$r.wire_current_age){$want=[int]$r.wire_current_age};$want=[Math]::Min($max,[Math]::Max($min,$want))
 $petAgeCombo.BeginUpdate();$petAgeCombo.Items.Clear();for($i=$min;$i-le$max;$i++){[void]$petAgeCombo.Items.Add("$i 岁")};$petAgeCombo.Tag=$min;$petAgeCombo.EndUpdate();$petAgeCombo.SelectedIndex=$want-$min
 }
 function Selected-PetAge {$min=if($null-ne$petAgeCombo.Tag){[int]$petAgeCombo.Tag}else{0};if($petAgeCombo.SelectedIndex-ge0){return $min+[int]$petAgeCombo.SelectedIndex};return $min}
 function Update-AttackModes {
-    $pet=Get-SelectedData $petCombo;$attackCombo.Items.Clear();if(-not$pet){return}
+    $pet=Get-SelectedData $petCombo;$attackCombo.Items.Clear();if(-not$pet){return};if(-not[uint32]$pet.id){[void]$attackCombo.Items.Add('未装备宠物');$attackCombo.SelectedIndex=0;return}
     $m=$attackByPet[[uint32]$pet.id];if(-not$m){[void]$attackCombo.Items.Add('映射缺失');$attackCombo.SelectedIndex=0;return}
     foreach($st in $m.basic_stages){if([int]$st.slot-gt2){continue};$tag=if([int]$st.slot-eq0){'PROFILE_DEFAULTS最低档+auto'}else{"PROFILE_DEFAULTS初始档$($st.slot)"};[void]$attackCombo.Items.Add(("阶段{0} slot{1} owner={2} {3} [{4}]"-f$st.display_stage,$st.slot,$st.owner_key,$st.resource,$tag))}
     $want=if($script:firstAttackModeLoad-and$defaultAttackMode-ge0-and$defaultAttackMode-le2){[int]$defaultAttackMode}else{[int]$m.initial_slot};$attackIndex=[int]$want;if($attackIndex-lt0){$attackIndex=0};if($attackIndex-ge$attackCombo.Items.Count){$attackIndex=$attackCombo.Items.Count-1};$attackCombo.SelectedIndex=$attackIndex;$script:firstAttackModeLoad=$false
 }
 function Selected-AttackMode {if($attackCombo.SelectedIndex-ge0){return [int]$attackCombo.SelectedIndex};return 0}
-function Update-PetDetail {$r=Get-SelectedData $petCombo;if($r){$petDetail.Text="攻击：$($r.attack_style) 初攻：$($r.attack_value) 原生槽：$($r.native_initial_slot) Power序列：$($r.power_unlock_sequence -join '/')；蓄力资源：$($r.static_charge_text)，实际：$($r.charge_text)，门值：$($r.charge_gate_value)，MP门：实机确认，候选需求=$($r.charge_gate_value)，精确比较链待闭合；自动资源：$($r.static_auto_resource)，解锁：$($r.auto_unlock_class)，owner：$($r.auto_owners -join '/')，跟踪资源：$($r.homing_resource)，MP：$($r.auto_mp_gate)，wire：$($r.auto_wire_status)；岁数：$(Selected-PetAge)/$($r.max_age) wire=$($r.wire_age_status)"}}
+function Update-PetDetail {$r=Get-SelectedData $petCombo;if($r){if(-not[uint32]$r.id){$petDetail.Text='未装备宠物；保存后保留宠物箱，仅取消当前出战。';return};if($r.optional_resource_port-eq'korean_pets'){$petDetail.Text="$($r.name) | $($r.id) | 佩戴等级$($r.level_requirement)（原始$($r.source_level_requirement)）；GUI直接指定不受等级限制。固定3阶外观；数值基础攻击$($r.attack_value)；宝石槽$($r.slot_count)。名称为中文译名；游戏内显示、攻击及MP门控待实测。";return};if([uint32]$r.id-eq15003361){$petDetail.Text="英雄龙 | 15003361 | 佩戴等级$($r.level_requirement)（原始$($r.source_level_requirement)）；GUI直接指定不受等级限制。固定3阶外观；基础攻击915；三宝石槽。普通/P升级/蓄力/自动/追踪资源已接入，客户端实测待确认。";return};$petDetail.Text="攻击：$($r.attack_style) 初攻：$($r.attack_value) 原生槽：$($r.native_initial_slot) Power序列：$($r.power_unlock_sequence -join '/')；蓄力资源：$($r.static_charge_text)，实际：$($r.charge_text)，门值：$($r.charge_gate_value)，MP门：实机确认，候选需求=$($r.charge_gate_value)，精确比较链待闭合；自动资源：$($r.static_auto_resource)，解锁：$($r.auto_unlock_class)，owner：$($r.auto_owners -join '/')，跟踪资源：$($r.homing_resource)，MP：$($r.auto_mp_gate)，wire：$($r.auto_wire_status)；岁数：$(Selected-PetAge)/$($r.max_age) wire=$($r.wire_age_status)"}}
 $petCombo.add_SelectedIndexChanged({$r=Get-SelectedData $petCombo;if($r){Update-PetAgeOptions ([int]$r.display_age)};Update-AttackModes;Update-PetDetail})
 $petAgeCombo.add_SelectedIndexChanged({Update-PetDetail})
 $nameBox.add_TextChanged({if($launchInfoBox){Update-LaunchPreview}})
@@ -661,22 +680,18 @@ if($SelfTestAdapterManifest){Test-AdapterBinary;Write-Output 'ADAPTER_RUNTIME_MA
 function Test-ClientBinary {
     if(-not(Test-Path -LiteralPath $Client -PathType Leaf)){throw "Client missing: $Client"}
 }
-function Get-ClientCompatibilityPython {
-    $bundled=Join-Path $Root 'tools\python\python.exe'
-    if(Test-Path -LiteralPath $bundled -PathType Leaf){return [pscustomobject]@{Path=$bundled;Prefix=@('-B')}}
-    $py=Get-Command py.exe -ErrorAction SilentlyContinue
-    if($py){return [pscustomobject]@{Path=$py.Source;Prefix=@('-3','-B')}}
-    $python=Get-Command python.exe -ErrorAction SilentlyContinue
-    if($python){return [pscustomobject]@{Path=$python.Source;Prefix=@('-B')}}
-    throw 'Client compatibility preparation requires Python 3 (py.exe or python.exe).'
-}
 function Ensure-ClientCompatibility {
+    Assert-ManagedLauncherTools
     Test-ClientBinary
-    if(-not(Test-Path -LiteralPath $ClientCompatibilityTool -PathType Leaf)){throw "Client compatibility tool missing: $ClientCompatibilityTool"}
-    if(-not(Test-Path -LiteralPath $AdapterData)){New-Item -ItemType Directory -Path $AdapterData -Force|Out-Null}
-    $runtime=Get-ClientCompatibilityPython
-    $arguments=@($runtime.Prefix)+@($ClientCompatibilityTool,'--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--character-creation','--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--apartment-recommendation','--dungeon7','--overwrite','--apply')
-    $output=@(& $runtime.Path @arguments 2>&1)
+    if(-not(Test-Path -LiteralPath $ClientCompatibilityTool -PathType Leaf)){throw "Managed tools missing: $ClientCompatibilityTool"}
+    $selectedPet=Get-SelectedData $petCombo
+    if($selectedPet-and([uint32]$selectedPet.id-eq15003361-or$selectedPet.optional_resource_port-eq'korean_pets')){
+        $kind=if([uint32]$selectedPet.id-eq15003361){'hero'}else{'korean'}
+        $check=& $ClientCompatibilityTool --tools verify-resources --kind $kind --root $Root --client-root $Root 2>&1
+        if($LASTEXITCODE-ne0){throw "宠物资源校验失败，已停止启动。$($check -join ' ')"}
+    }
+    $arguments=@('--tools','compatibility','--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--character-creation','--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--apartment-recommendation','--dungeon7','--overwrite','--apply')
+    $output=@(& $ClientCompatibilityTool @arguments 2>&1)
     if($LASTEXITCODE-ne0){throw ("Client compatibility preparation refused:`r`n"+($output-join"`r`n"))}
     if(-not(Test-Path -LiteralPath $ClientCompatibilityReport -PathType Leaf)){throw 'Client compatibility report was not generated.'}
     $report=Get-Content -LiteralPath $ClientCompatibilityReport -Raw -Encoding UTF8|ConvertFrom-Json
@@ -867,19 +882,32 @@ $inventoryAdmin.ProfileChanged={param($ctx)
     }
     foreach($pair in @(@($apartmentPointsBox,'apartment_recommendation_points'),@($cardKeyNormalBox,'card_key_normal'),@($cardKeyGoldBox,'card_key_gold'),@($cardKeyMysteryBox,'card_key_mystery'),@($cardKeySpecialBox,'card_key_special'),@($freeMagicKeyExpiryBox,'free_magic_key_expiry'),@($quickbarExpiryBox,'quickbar_expiry'),@($skillSlotExpiryBox,'skill_slot_expiry'))){if($null-ne$ctx.Profile.($pair[1])){$value=[decimal]$ctx.Profile.($pair[1]);$pair[0].Value=[Math]::Min($pair[0].Maximum,[Math]::Max($pair[0].Minimum,$value))}}
     if($null-ne$ctx.Profile.skill_slot_expiry_apply){$skillSlotExpiryApplyBox.Checked=[bool]$ctx.Profile.skill_slot_expiry_apply}
+    if($null-ne$ctx.Profile.skill_grade0){
+        $grades=New-Object int[] 16
+        for($i=0;$i-lt16;$i++){$grades[$i]=[int]$ctx.Profile.("skill_grade$i")}
+        $projectileRouteCombo.SelectedIndex=Infer-SkillRoute $grades ([int[]](2,4,6)) ([int[]](3,5,7))
+        $meatRouteCombo.SelectedIndex=Infer-SkillRoute $grades ([int[]](10,12,14)) ([int[]](11,13,15))
+        for($i=0;$i-lt16;$i++){$skillGradeBoxes[$i].Value=$grades[$i]}
+        Set-SkillSlotChoices ([uint32]$ctx.Profile.skill_slot_z) ([uint32]$ctx.Profile.skill_slot_x)
+        Update-SkillWarning
+    }
     if($ctx.Shop){
-        $appearance=@($ctx.Shop.equipped);$parts=@('hair','body','top','bottom','accessory');for($i=0;$i-lt$parts.Count-and$i-lt$appearance.Count;$i++){if([uint32]$appearance[$i]){[void](Select-ComboId $comboMap[$parts[$i]] ([uint32]$appearance[$i]))}}
-        if([uint32]$ctx.Shop.effect){[void](Select-ComboId $comboMap.effect ([uint32]$ctx.Shop.effect))}
-        if([uint32]$ctx.Shop.selected_pet){[void](Select-ComboId $petCombo ([uint32]$ctx.Shop.selected_pet));Update-PetAgeOptions $null}
+        $appearance=@($ctx.Shop.equipped);$parts=@('hair','body','top','bottom','accessory');for($i=0;$i-lt$parts.Count-and$i-lt$appearance.Count;$i++){[void](Select-ComboId $comboMap[$parts[$i]] ([uint32]$appearance[$i]))}
+        [void](Select-ComboId $comboMap.effect ([uint32]$ctx.Shop.effect))
+        [void](Select-ComboId $petCombo ([uint32]$ctx.Shop.selected_pet));Update-PetAgeOptions $null
     }
 }.GetNewClosure()
+if($null-ne$inventoryAdmin.CharacterId){&$inventoryAdmin.ProfileChanged $inventoryAdmin}
 [void](Add-InventoryAdminProfileSelector $tabResources $inventoryAdmin)
 $profileSaveBtn=New-Object Windows.Forms.Button;$profileSaveBtn.Text='保存所选档案';$profileSaveBtn.Location=New-Object Drawing.Point(900,50);$profileSaveBtn.Size=New-Object Drawing.Size(175,36);$profileSaveBtn.BackColor=[Drawing.Color]::LightGreen;$tabResources.Controls.Add($profileSaveBtn)
-$profileSaveBtn.add_Click({try{if((Get-LocalAdapters).Count){throw '请先停止适配器再修改用户档案。'};[void](Sync-LauncherProfileIdentity);$resources=Get-ResourceSelection;$inventoryAdmin.Shop.coin=[uint64]$resources.coin;$inventoryAdmin.Shop.nana=[uint64]$resources.nana_point;foreach($entry in @{hp_max=$resources.hp_max;mp_max=$resources.mp_max;attack=$resources.attack;defense=$resources.defense;coin=$resources.coin;nana_point=$resources.nana_point}.GetEnumerator()){$inventoryAdmin.Profile|Add-Member -NotePropertyName $entry.Key -NotePropertyValue $entry.Value -Force};$result=Save-InventoryAdminState $inventoryAdmin $inventoryAdmin.NameHex $inventoryAdmin.Shop $inventoryAdmin.Profile;$status.Text="已保存所选用户档案：$($inventoryAdmin.SelectedProfile.display)；备份：$($result.backup)"}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'档案保存失败')|Out-Null}})
+$profileSaveBtn.add_Click({try{if((Get-LocalAdapters).Count){throw '请先停止适配器再修改用户档案。'};[void](Sync-LauncherProfileIdentity);Capture-LauncherProfileEditorState;$result=Save-InventoryAdminState $inventoryAdmin $inventoryAdmin.NameHex $inventoryAdmin.Shop $inventoryAdmin.Profile;$status.Text="已保存所选用户档案：$($inventoryAdmin.SelectedProfile.display)；目标：$($result.source)；备份：$($result.backup)"}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'档案保存失败')|Out-Null}})
 function Capture-LauncherProfileEditorState {
     if(-not$inventoryAdmin.Profile){$inventoryAdmin.Profile=[pscustomobject]@{}}
     $inventoryAdmin.Profile|Add-Member -NotePropertyName level -NotePropertyValue ([int]$levelBox.Value) -Force
     $inventoryAdmin.Profile|Add-Member -NotePropertyName gender -NotePropertyValue ([int]$genderCombo.SelectedIndex) -Force
+    $skills=Get-SkillSelection
+    foreach($entry in @{skill_slot_z=$skills.slot_z;skill_slot_x=$skills.slot_x;skill_projectile_route=$skills.projectile_route;skill_meat_route=$skills.meat_route}.GetEnumerator()){$inventoryAdmin.Profile|Add-Member -NotePropertyName $entry.Key -NotePropertyValue $entry.Value -Force}
+    for($i=0;$i-lt16;$i++){$inventoryAdmin.Profile|Add-Member -NotePropertyName ("skill_grade$i") -NotePropertyValue ([int]$skills.grades[$i]) -Force}
     $resources=Get-ResourceSelection
     foreach($entry in $resources.GetEnumerator()){$inventoryAdmin.Profile|Add-Member -NotePropertyName $entry.Key -NotePropertyValue $entry.Value -Force}
     if(-not$inventoryAdmin.Shop){$inventoryAdmin.Shop=[pscustomobject]@{equipped=@(0,0,0,0,0);effect=0;selected_pet=0}}
@@ -890,7 +918,7 @@ function Capture-LauncherProfileEditorState {
 function Sync-LauncherProfileIdentity {
     if($pureNewPlayerBox.Checked){return $null}
     $identity=$nameBox.Text.Trim();$existing=Find-InventoryAdminProfile $inventoryAdmin $identity
-    if(-not$existing-or($null-eq$existing.character_id-and-not(Test-Path -LiteralPath (Join-Path $Root ('inventory_admin_profiles/'+$existing.name_hex+'.json'))))){[void](ConvertTo-InventoryAdminNameHex $identity);Capture-LauncherProfileEditorState}
+    if(-not$existing-or($null-eq$existing.character_id-and-not$existing.persisted)){[void](ConvertTo-InventoryAdminNameHex $identity);Capture-LauncherProfileEditorState}
     $profile=Ensure-InventoryAdminProfile $inventoryAdmin $identity
     if($profile-and$profile.character_name-and[string]$nameBox.Text.Trim()-ne[string]$profile.character_name){$nameBox.Text=[string]$profile.character_name}
     return $profile
@@ -899,7 +927,7 @@ $nameBox.add_Leave({try{if(-not$pureNewPlayerBox.Checked){[void](Sync-LauncherPr
 $tabs.TabPages.Add($tabLaunchInfo);$tabs.TabPages.Add($tabPets);$tabs.TabPages.Add($tabEquip);$tabs.TabPages.Add($tabFurniture)
 function Save-Profile {
     if($pureNewPlayerBox.Checked){throw '纯新手档不会保存或导入GUI角色配置；请取消勾选后再保存常规档。'}
-    if((Get-LocalAdapters).Count){throw '适配器运行期间不能改写仓库/背包文件。请先停止适配器再保存；“进入 Nanaimo”不会再隐式保存或重启服务。'}
+    if((Get-LocalAdapters).Count){throw '适配器运行期间不能离线改写角色数据库。请先停止适配器再保存；“进入 Nanaimo”不会再隐式保存或重启服务。'}
     [void](Sync-LauncherProfileIdentity)
     Capture-LauncherProfileEditorState
     $name=$nameBox.Text.Trim();$hex=Encode-NameHex $name;$pet=Get-SelectedData $petCombo;if(-not$pet){throw '请选择宠物。'}
@@ -935,7 +963,7 @@ if($SelfTestProfileIO){
 }
 $saveBtn.add_Click({try{Save-Profile;[Windows.Forms.MessageBox]::Show('配置已保存。','Nanaimo 启动器')|Out-Null}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'配置错误')|Out-Null}})
 $folderBtn.add_Click({$target=if(Test-Path -LiteralPath $AdapterLogs){$AdapterLogs}else{$Root};Start-Process explorer.exe -ArgumentList $target})
-$resetProgressBtn.add_Click({try{if((Get-LocalAdapters).Count){throw 'Stop the local Nanaimo protocol adapter first.'};$name=$nameBox.Text.Trim();if(-not$name){throw 'Character name is required.'};$hex=Encode-NameHex $name;$paths=@((Join-Path $Root ("level_progress_state_v1_{0}.dat"-f$hex)),(Join-Path $Root ("level_progress_state_v1_{0}.bak"-f$hex)),(Join-Path $Root ("level_progress_state_v1_{0}.new"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.dat"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.bak"-f$hex)),(Join-Path $Root ("dungeon_grade_state_v1_{0}.new"-f$hex)));Remove-Item -LiteralPath $paths -Force -ErrorAction SilentlyContinue;$status.Text="Reset level, EXP, and dungeon-title progress for $name. Next start seeds level $([int]$levelBox.Value) and dungeon grade 0."}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Reset failed')|Out-Null}})
+$resetProgressBtn.add_Click({try{if((Get-LocalAdapters).Count){throw 'Stop the local Nanaimo protocol adapter first.'};$name=$nameBox.Text.Trim();if(-not$name){throw 'Character name is required.'};$hex=Encode-NameHex $name;[void](Invoke-LauncherState $Root @('reset','--name-hex',$hex,'--level',([string][int]$levelBox.Value)));$status.Text="Reset database level/EXP and title progress for $name; original files preserved in migration archive."}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Reset failed')|Out-Null}})
 $defaultBtn.add_Click({$pureNewPlayerBox.Checked=$false;$skipTutorialBox.Checked=$false;$unlockAllDungeonsBox.Checked=$true;$nameBox.Text='Greyrat';$titleCombo.SelectedIndex=0;$levelBox.Value=25;$hpMaxBox.Value=1500;$mpMaxBox.Value=500;$attackBox.Value=0;$defenseBox.Value=0;$coinBox.Value=0;$nanaPointBox.Value=0;$apartmentPointsBox.Value=1000;$cardKeyNormalBox.Value=99;$cardKeyGoldBox.Value=99;$cardKeyMysteryBox.Value=99;$cardKeySpecialBox.Value=99;$freeMagicKeyExpiryBox.Value=2099123123;$quickbarExpiryBox.Value=0;$skillSlotExpiryBox.Value=0;$skillSlotExpiryApplyBox.Checked=$true;$projectileRouteCombo.SelectedIndex=0;$meatRouteCombo.SelectedIndex=0;for($i=0;$i-lt16;$i++){$skillGradeBoxes[$i].Value=0};foreach($i in 0,1,8,9){$skillGradeBoxes[$i].Value=5};Set-SkillSlotChoices 0 0;Update-SkillWarning;$genderCombo.SelectedIndex=1;Select-ComboId $petCombo 15009205|Out-Null;Update-PetAgeOptions 3;Select-ComboId $comboMap.hair 10130337|Out-Null;Select-ComboId $comboMap.body 10100028|Out-Null;Select-ComboId $comboMap.top 10110337|Out-Null;Select-ComboId $comboMap.bottom 10120352|Out-Null;Select-ComboId $comboMap.accessory 10150103|Out-Null;Select-ComboId $comboMap.effect 10160017|Out-Null;Update-PetDetail;Update-LaunchModePresentation})
 $adapterBtn.add_Click({
     try{
@@ -1031,6 +1059,31 @@ if($SelfTestSocialMode){
     Write-Output "GUI_SOCIAL_MODE_SELFTEST_PASS detected=$detectedLanIp participants=3 source_ip_isolation=true dynamic_adapter_ip=true"
     $form.Close();$form.Dispose();exit 0
 }
+# Real editor capture/reload without saving files or starting an adapter.
+if($SelfTestSkillProfile){
+    try{
+        $pureNewPlayerBox.Checked=$false
+        $projectileRouteCombo.SelectedIndex=0;$meatRouteCombo.SelectedIndex=0
+        for($i=0;$i-lt16;$i++){$skillGradeBoxes[$i].Value=0}
+        $skillGradeBoxes[0].Value=3;$skillGradeBoxes[8].Value=4
+        Set-SkillSlotChoices ([uint32]52000008) ([uint32]52000000)
+        Capture-LauncherProfileEditorState
+        if($inventoryAdmin.Profile.skill_slot_z-ne52000008-or$inventoryAdmin.Profile.skill_slot_x-ne52000000-or$inventoryAdmin.Profile.skill_grade0-ne3-or$inventoryAdmin.Profile.skill_grade8-ne4){throw 'skill editor capture mismatch'}
+        $inventoryAdmin.Profile.skill_slot_z=[uint32]52000000;$inventoryAdmin.Profile.skill_slot_x=[uint32]52000008
+        $inventoryAdmin.Profile.skill_grade0=2;$inventoryAdmin.Profile.skill_grade8=5
+        &$inventoryAdmin.ProfileChanged $inventoryAdmin
+        $selection=Get-SkillSelection
+        if($selection.slot_z-ne52000000-or$selection.slot_x-ne52000008-or$selection.grades[0]-ne2-or$selection.grades[8]-ne5){throw 'skill profile reload mismatch'}
+        $skillSlotExpiryBox.Value=0;Update-SkillWarning;if($skillWarning.ForeColor-ne[Drawing.Color]::DarkOrange){throw 'expired X slot warning missing'}
+        $inventoryAdmin.Profile.skill_slot_z=[uint32]0;$inventoryAdmin.Profile.skill_slot_x=[uint32]0
+        for($i=0;$i-lt16;$i++){$inventoryAdmin.Profile.("skill_grade$i")=0}
+        &$inventoryAdmin.ProfileChanged $inventoryAdmin
+        $selection=Get-SkillSelection
+        if($selection.slot_z-ne0-or$selection.slot_x-ne0-or@($selection.grades|Where-Object{$_-ne0}).Count){throw 'previous character skills leaked into empty profile'}
+        Write-Output 'GUI_SKILL_PROFILE_SELFTEST_PASS capture=16-grades+2-slots reload=database zero=clears editor_writes=0 legacy_reads_may_migrate=true'
+    }finally{$form.Dispose()}
+    exit 0
+}
 # Exercise real WinForms layout without launching a game or saving any player state.
 if($SelfTestLayout){
     $form.ShowInTaskbar=$false;$form.Opacity=0;[void]$form.Show()
@@ -1089,7 +1142,7 @@ if($SelfTestLayout){
                 }
             }
         }
-        Write-Output 'GUI_LAYOUT_SELFTEST_PASS sizes=1000x870,1120x940 scales=1,1.25,1.5 skill_grades=16 prerequisite_sections=2 separators=2 routes=2 slots=2 overlap=false defaults=PASS connection_text=absent startup_compaction=40 new_player_options=independent_single_row tabs=ordered card_add_all=PASS card_remove_all=PASS state_writes=0'
+        Write-Output 'GUI_LAYOUT_SELFTEST_PASS sizes=1000x870,1120x940 scales=1,1.25,1.5 skill_grades=16 prerequisite_sections=2 separators=2 routes=2 slots=2 overlap=false defaults=PASS connection_text=absent startup_compaction=40 new_player_options=independent_single_row tabs=ordered card_add_all=PASS card_remove_all=PASS editor_writes=0 legacy_reads_may_migrate=true'
     }finally{$form.Close();$form.Dispose()}
     exit 0
 }
@@ -1111,6 +1164,37 @@ if($SelfTestPureNewPlayer){
         Write-Output 'GUI_PURE_NEW_PLAYER_SELFTEST_PASS profile=isolated native_startup=listening tutorial=required unlock_all_dungeons=0 level=1 grants=0 registration=json normal_profile_unchanged=true'
     }finally{$PureNewPlayerProfile=$savedPurePath;$PureNewPlayerAccountState=$savedAccountState;Remove-Item -LiteralPath $tempPure,$tempAccount -Force -ErrorAction SilentlyContinue;$form.Close();$form.Dispose()}
     exit 0
+}
+
+if($SelfTestKoreanPets){
+    $levelBox.Value=1
+    $added=@($pets|Where-Object optional_resource_port -eq 'korean_pets')
+    if($added.Count-ne121){throw 'Korean pet count mismatch.'}
+    foreach($row in $added){
+        if(-not(Select-ComboId $petCombo ([uint32]$row.id))){throw "Pet missing: $($row.id)"}
+        Update-PetAgeOptions 1
+        if([int]$levelBox.Value-ne1-or(Selected-PetAge)-ne3-or$petAgeCombo.Items.Count-ne1){throw "Invalid pet model stage/level: $($row.id)"}
+        if(-not$attackByPet[[uint32]$row.id]){throw "Attack mapping missing: $($row.id)"}
+        $icon=@($petPreviewRows|Where-Object id -eq $row.id)
+        if($icon.Count-ne1-or-not$icon[0].available){throw "Icon missing: $($row.id)"}
+    }
+    Write-Output 'KOREAN_PETS_GUI_SELFTEST_PASS pets=121 level=1 stage=3 icons=PASS attacks=PASS runtime_acceptance=false'
+    $form.Dispose();exit 0
+}
+
+if($SelfTestHeroDragon){
+    $levelBox.Value=1
+    if(-not(Select-ComboId $petCombo 15003361)){throw 'Hero Dragon is missing from the selector.'}
+    Update-PetAgeOptions 1
+    $hero=Get-SelectedData $petCombo
+    if([uint32]$hero.id-ne15003361-or[int]$hero.level_requirement-ne99-or[int]$levelBox.Value-ne1){throw 'Hero Dragon direct selection changed player level.'}
+    if((Selected-PetAge)-ne3-or$petAgeCombo.Items.Count-ne1){throw 'Hero Dragon offers unsupported model stages.'}
+    $icon=@($petPreviewRows|Where-Object id -eq 15003361)
+    if($icon.Count-ne1-or-not$icon[0].available){throw 'Hero Dragon icon is missing.'}
+    if($attackByPet[[uint32]15003361].initial_owner_key-ne1422){throw 'Hero Dragon attack mapping is missing.'}
+    if($petDetail.Text-notmatch 'GUI直接指定不受等级限制'){throw 'Hero Dragon direct-assignment hint missing.'}
+    Write-Output 'HERO_DRAGON_GUI_SELFTEST_PASS level=1 requirement=99 pet=15003361 stage=3 icon=PASS attack=1422'
+    $form.Dispose();exit 0
 }
 
 if($SelfTestCatalogPreview){

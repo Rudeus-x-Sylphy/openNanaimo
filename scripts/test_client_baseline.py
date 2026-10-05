@@ -51,7 +51,8 @@ class ClientStructureTests(unittest.TestCase):
         launcher = (ROOT / "gui_launcher/nanaimo_launcher.ps1").read_text("utf-8-sig")
         for name in ("Test-VillagePack", "Test-SuperBossStage", "Test-LocalResourcePatches"):
             self.assertNotIn(name, launcher)
-        self.assertIn("prepare_client_compatibility.py", launcher)
+        self.assertIn("'--tools','compatibility'", launcher)
+        self.assertNotIn("prepare_client_compatibility.py", launcher)
 
     def test_no_retired_resource_dependencies(self):
         requirements = (ROOT / "manifest/patch_runtime_requirements.json").read_text("utf-8-sig")

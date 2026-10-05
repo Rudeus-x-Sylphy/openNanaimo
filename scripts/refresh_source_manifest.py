@@ -33,6 +33,26 @@ def collect(root=ROOT):
             if (path.is_file() and path.suffix in {'.cs', '.csproj'}
                     and not {'bin', 'obj'}.intersection(path.relative_to(base).parts)):
                 seen.add(path.resolve())
+    # Embedded payloads are real compiler inputs, not optional loose resources.
+    import xml.etree.ElementTree as ET
+    for project in tuple(p for p in seen if p.suffix == '.csproj'):
+        for item in ET.parse(project).iter('EmbeddedResource'):
+            rel = item.get('Include', '').replace('\\', '/')
+            if not rel or '*' in rel:
+                raise ValueError('unsupported embedded resource declaration: ' + str(project))
+            resource = (project.parent / rel).resolve()
+            if not resource.is_relative_to(root) or not resource.is_file() or resource.is_symlink():
+                raise ValueError('missing or unsafe embedded source resource: ' + rel)
+            seen.add(resource)
+    # Authoritative card distribution inputs must travel with the compiled table.
+    if (root / "release/components/cards/card_drop_cn_data.inc").resolve() in seen:
+        for rel in ('release/components/cards/card_drop_cn.csv',
+                    'release/components/cards/card_drop_cn_boss_bindings.json',
+                    'scripts/generate_cn_card_drops.py'):
+            path = root / rel
+            if not path.is_file():
+                raise ValueError('missing card distribution input: ' + rel)
+            seen.add(path.resolve())
     complete_build = root / 'scripts/build_complete_adapter.ps1'
     if complete_build.is_file():
         seen.add(complete_build.resolve())

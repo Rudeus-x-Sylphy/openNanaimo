@@ -28,6 +28,7 @@ public sealed class ShopCatalogItem
     public ushort DurationDays { get; init; }
     // pi._D7 field 23 is the current/model age; field 21 is the independent gem-slot count.
     public byte PetModelStage { get; init; }
+    public byte PetMinimumModelStage { get; init; } = 1;
     public byte PetGemSlotCount { get; init; }
     public byte PetUpgradeStage { get; init; }
     public byte PetGrowthClass { get; init; }
@@ -107,7 +108,12 @@ internal static class ShopCatalog
     private const string MiscItemResourceName = "OpenNanaimo.Adapter.ClientData.MI._D22";
     private const string FaceCouponResourceName = "OpenNanaimo.Adapter.ClientData.SF._D21";
     private const string HansGiftResourceName = "OpenNanaimo.Adapter.ClientData.htoken._D25";
-    private const int PetRecordCount = 868;
+    internal const uint HeroDragonCode = 15_003_361u;
+    private const int PetRecordCount = 990;
+    internal static readonly IReadOnlySet<uint> KoreanPetCodes = new HashSet<uint>
+    {
+        15003340u, 15003341u, 15003342u, 15003343u, 15003344u, 15003345u, 15003346u, 15003347u, 15003348u, 15003349u, 15003350u, 15003351u, 15003352u, 15003353u, 15003354u, 15003355u, 15003356u, 15003357u, 15009337u, 15009338u, 15009339u, 15009340u, 15009341u, 15009342u, 15009343u, 15009344u, 15009345u, 15009346u, 15003362u, 15009347u, 15003363u, 15009348u, 15003364u, 15009349u, 15003365u, 15009350u, 15003366u, 15009351u, 15009352u, 15009353u, 15009354u, 15009355u, 15009356u, 15009325u, 15009326u, 15009327u, 15009328u, 15009329u, 15009330u, 15009331u, 15009332u, 15009333u, 15009334u, 15009335u, 15009336u, 15009310u, 15009315u, 15009320u, 15009311u, 15009316u, 15009321u, 15009312u, 15009317u, 15009322u, 15009313u, 15009318u, 15009323u, 15009314u, 15009319u, 15009324u, 15009295u, 15009300u, 15009305u, 15009296u, 15009301u, 15009306u, 15009297u, 15009302u, 15009307u, 15009298u, 15009303u, 15009308u, 15009299u, 15009304u, 15009309u, 15009280u, 15009285u, 15009290u, 15009281u, 15009286u, 15009291u, 15009282u, 15009287u, 15009292u, 15009283u, 15009288u, 15009293u, 15009284u, 15009289u, 15009294u, 15003322u, 15003331u, 15003323u, 15003332u, 15003324u, 15003333u, 15003325u, 15003334u, 15003326u, 15003335u, 15003327u, 15003336u, 15003328u, 15003337u, 15003329u, 15003338u, 15003330u, 15003339u, 15003358u, 15003359u, 15003360u
+    };
     private static readonly Lazy<IReadOnlyDictionary<uint, ShopCatalogItem>> Items = new(Load);
     private static IReadOnlyDictionary<byte, PetGrowthStage[]> _petGrowthStages =
         new Dictionary<byte, PetGrowthStage[]>();
@@ -849,6 +855,7 @@ internal static class ShopCatalog
             CashPrice = cashPrice,
             DurationDays = duration,
             PetModelStage = petModelStage,
+            PetMinimumModelStage = itemCode == HeroDragonCode || KoreanPetCodes.Contains(itemCode) ? (byte)3 : (byte)1,
             PetGemSlotCount = petGemSlotCount,
             PetUpgradeStage = petUpgradeStage,
             PetGrowthClass = petGrowthClass,

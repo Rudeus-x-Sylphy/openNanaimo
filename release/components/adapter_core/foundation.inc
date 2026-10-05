@@ -15,7 +15,8 @@ extern void* __attribute__((cdecl)) memcpy(void*, const void*, int);
 extern void* __attribute__((cdecl)) memmove(void*, const void*, int);
 extern int __attribute__((cdecl)) fflush(void*);
 extern int __attribute__((cdecl)) sleep(unsigned int);
-extern DWORD __attribute__((stdcall)) _beginthread(void*, unsigned, void*);
+extern DWORD __attribute__((stdcall)) _beginthread(void*, unsigned, void*);
+#include "../storage/sqlite_state.inc"
 typedef int (__attribute__((stdcall)) *PF_WSAStartup)(WORD, void*);
 typedef SOCKET (__attribute__((stdcall)) *PF_socket)(int,int,int);
 typedef int (__attribute__((stdcall)) *PF_bind)(SOCKET,const void*,int);

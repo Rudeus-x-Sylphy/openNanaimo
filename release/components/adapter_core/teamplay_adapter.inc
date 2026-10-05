@@ -1,7 +1,20 @@
+#include "../targets/terminal_item_drop_data.inc"
+/* Exact generated target identity, not a filename/selector heuristic. MMO
+ * +0x1A==5 is a terminal random item; +0x18==5 visual crates keep their
+ * separate immediate/dedupe path. This catalog currently covers L8 only. */
+static int terminal_item_drop_is_authored(const struct hp_sync_target_def*td,
+                                         const struct hp_sync_profile_def*profile){
+    unsigned row,lo=0u,hi=TERMINAL_ITEM_DROP_ROW_COUNT;
+    if(!td||!profile||profile->hd_id!=0u||profile->stage_id!=23u)return 0;
+    row=(unsigned)(td-hp_sync_target_defs);
+    if(row<profile->first_row||row>=profile->first_row+profile->target_count)return 0;
+    while(lo<hi){unsigned mid=lo+(hi-lo)/2u;if(terminal_item_drop_rows[mid]<row)lo=mid+1u;else hi=mid;}
+    return lo<TERMINAL_ITEM_DROP_ROW_COUNT&&terminal_item_drop_rows[lo]==row;
+}
 #ifndef CARD_ORDINARY_DROP_PERCENT
 #define CARD_ORDINARY_DROP_PERCENT 30u
 #endif
-#define CARD_DROP_BUILD_TAG 2026092404u
+#define CARD_DROP_BUILD_TAG 2026100501u
 /* COMBAT_ECONOMY private card roll. The roll uses CARD_ORDINARY_DROP_PERCENT and
    the card-only floor CARD_ORDINARY_DROP_MIN_HP; it must not reuse
    COMBAT_ECONOMY_REWARD_MIN_HP, which belongs to the Hans economy (max_hp/50 with
@@ -20,34 +33,31 @@ static int card_roll_basis_points(unsigned basis_points,unsigned *roll){
     if(!roll)return 0;if(!basis_points){*roll=0u;return 0;}if(basis_points>=10000u){*roll=0u;return 1;}
     *roll=card_rand_bounded(10000u);return *roll<basis_points;
 }
-/* ArenaServer is handled separately by the managed host. Manual supplements
-   additionally require a resolved normal-dungeon profile, never just a name. */
-static int card_manual_normal_dungeon_profile(const struct hp_sync_profile_def*p){
-    return p&&p->hd_id==0u&&p->stage_id<=15u&&p->dungeon_id<=2u&&p->stage_index<=1u&&p->slot_index<=8u;
-}
 static void combat_economy_select_ordinary_terminal_reward(const struct hp_sync_target_def*td,const struct hp_sync_profile_def*profile,const char*resource,unsigned selector,
         unsigned old_hp,unsigned new_hp,unsigned monster_hp,unsigned*subtype,unsigned*code){
-    unsigned roll=0u,hans=0u;int eligible,card_won=0;int ci=flight_items_coin_index();unsigned pool_count=0u,pool_monster=0u;const unsigned*pool=0;const unsigned char*pool_grades=0;*subtype=0u;*code=0u;
-    eligible=(td&&td->reward_kind==0u&&td->raw_hp>0u&&td->target_type!=4u&&old_hp>0u&&new_hp==0u&&!card_terminal_policy_card_denied_name(resource));
-    /* The HP selector is a static target index, not a DCC7 placement UID.
-       Resolve the actual killed model's MMO monster code to the album instead. */
-    if(eligible)pool=card_monster_name_pool_lookup_scoped(resource,card_manual_normal_dungeon_profile(profile),&pool_grades,&pool_count,&pool_monster);
-    /* Each authored normal stage owns one SP card. The card identity itself
-       selects the corresponding skill-family balance when consumed. */
-    {unsigned sp_code=profile?card_skill_point_for_stage(profile->hd_id,profile->stage_id):0u;
-     if(eligible&&sp_code&&card_manual_normal_dungeon_profile(profile)&&card_ordinary_drop_hp_eligible(monster_hp)){
-        const unsigned char sp_grade=1u;
-        if(card_roll_basis_points(CARD_SKILL_POINT_DROP_BASIS_POINTS,&roll)){
-            unsigned card=card_drop_create_from(2u,selector,&sp_code,&sp_grade,1u);
-            if(card){*subtype=30u;*code=card;card_won=1;g_card_terminal_policy_card_wins[ci]++;combat_economy_coin_note_card_replacement(monster_hp);}
-        }
-        printf("  [CARD_ECONOMY] stage-sp terminal selector=%u episode=%u monster_hp=%u basis_points=%u roll=%u won=%d code=%u\n",selector,profile->stage_id,monster_hp,(unsigned)CARD_SKILL_POINT_DROP_BASIS_POINTS,roll,card_won,*code);fflush(0);
-    }}
-    if(!card_won&&eligible&&(card_manual_normal_dungeon_profile(profile)||card_secret_set_index(profile?(unsigned)profile->stage_id:0u)<0)&&card_ordinary_drop_hp_eligible(monster_hp)&&(pool||!CARD_DROP_POOL_STRICT)){
-        if(card_roll_card_roll_trace(CARD_ORDINARY_DROP_PERCENT,&roll)){unsigned card=card_drop_create_from(2u,selector,pool,pool_grades,pool_count);if(card){*subtype=30u;*code=card;card_won=1;g_card_terminal_policy_card_wins[ci]++;combat_economy_coin_note_card_replacement(monster_hp);}}
-        printf("  [CARD_ECONOMY] terminal tag=%u tbl=%u selector=%u resource=%s monster_hp=%u card_min_hp=%u hans_min_hp=%u pct=%u roll=%u won=%d code=%u pool_monster=%u pool_cards=%u pool_source=%s w1=%u w2=%u w3=%u w4=%u\n",(unsigned)CARD_DROP_BUILD_TAG,(unsigned)CARD_MONSTER_NAME_POOL_COUNT,selector,resource?resource:"<unknown>",monster_hp,(unsigned)CARD_ORDINARY_DROP_MIN_HP,(unsigned)COMBAT_ECONOMY_REWARD_MIN_HP,(unsigned)CARD_ORDINARY_DROP_PERCENT,roll,card_won,*code,pool_monster,pool_count,pool?"name":"global",(unsigned)CARD_DROP_WEIGHT_GRADE1,(unsigned)CARD_DROP_WEIGHT_GRADE2,(unsigned)CARD_DROP_WEIGHT_GRADE3,(unsigned)CARD_DROP_WEIGHT_GRADE4);fflush(0);
+    unsigned roll=0u,hans=0u;int eligible,card_won=0;int ci=flight_items_coin_index();const struct card_cn_pool*pool=0;*subtype=0u;*code=0u;
+    /* Called only on an accepted terminal D00E, shared by projectile, meat,
+       and collision paths. Do not replace the native effect with Hans/cards.
+       The normal HP terminal ledger suppresses repeats before this call. */
+    if(old_hp>0u&&new_hp==0u&&terminal_item_drop_is_authored(td,profile)){
+        teamplay_note_drop(0x80000000u|selector);
+        printf("  [TERMINAL_ITEM] offer selector=%u resource=%s field=MMO+0x1A kind=5 hp=%u->0\n",selector,resource?resource:"<unknown>",old_hp);fflush(0);
+        return;
     }
-    if(eligible&&!pool&&card_secret_set_index(profile?(unsigned)profile->stage_id:0u)<0){printf("  [CARD_ECONOMY] no-album-source tag=%u selector=%u resource=%s strict=%u\n",(unsigned)CARD_DROP_BUILD_TAG,selector,resource?resource:"<unknown>",(unsigned)CARD_DROP_POOL_STRICT);fflush(0);}
+    eligible=(td&&td->reward_kind==0u&&td->raw_hp>0u&&td->target_type!=4u&&old_hp>0u&&new_hp==0u&&!card_terminal_policy_card_denied_name(resource));
+    /* Exact resource tuple, never album/name-only or episode-wide fallback. */
+    if(eligible&&profile)pool=card_cn_lookup(profile->hd_id,profile->stage_id,profile->dungeon_id,profile->stage_index,resource);
+    if(eligible&&card_ordinary_drop_hp_eligible(monster_hp)&&pool){
+        if(card_cn_weight(pool,2u)&&card_roll_basis_points(CARD_SKILL_POINT_DROP_BASIS_POINTS,&roll)){
+            *code=card_cn_drop_create(2u,selector,pool,2u);
+        }
+        if(!*code&&card_cn_weight(pool,1u)&&card_roll_card_roll_trace(CARD_ORDINARY_DROP_PERCENT,&roll)){
+            *code=card_cn_drop_create(2u,selector,pool,1u);
+        }
+        if(*code){*subtype=30u;card_won=1;g_card_terminal_policy_card_wins[ci]++;combat_economy_coin_note_card_replacement(monster_hp);}
+        printf("  [CARD_ECONOMY] csv-terminal tag=%u selector=%u resource=%s monster_hp=%u pct=%u roll=%u won=%d code=%u\n",(unsigned)CARD_DROP_BUILD_TAG,selector,resource?resource:"<unknown>",monster_hp,(unsigned)CARD_ORDINARY_DROP_PERCENT,roll,card_won,*code);fflush(0);
+    }
+    if(eligible&&!pool){printf("  [CARD_ECONOMY] no-csv-source selector=%u resource=%s\n",selector,resource?resource:"<unknown>");fflush(0);}
     if(!card_won){hans=flight_items_coin_on_terminal(td,resource,selector,old_hp,new_hp,monster_hp);if(hans){*subtype=20u;*code=hans;}}
     if(!*subtype)printf("  [ECONOMY] terminal-no-drop selector=%u monster_hp=%u eligible=%d below_card_floor=%d below_hans_floor=%d\n",selector,monster_hp,eligible,monster_hp<CARD_ORDINARY_DROP_MIN_HP,monster_hp<COMBAT_ECONOMY_REWARD_MIN_HP);fflush(0);
 }

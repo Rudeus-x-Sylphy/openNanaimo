@@ -48,7 +48,7 @@ static void kill_order(const struct boss_component_boss_profile*p,unsigned mode,
         unsigned slot=slots[i],before[80],hp=c.hp,damage=c.component_hp[slot];
         const struct boss_component_boss_component*x=&boss_component_boss_components[c.component_def_index[slot]];
         memcpy(before,c.component_hp,sizeof(before));request(req,mode,x->child,x->ordinal);
-        assert(hit_component(&c,mode,x->child,x->ordinal,1000000u,&hit)==BOSS_HP_SYNC_OK);
+        assert(hit_component(&c,mode,x->child,x->ordinal,100000000u,&hit)==BOSS_HP_SYNC_OK);
         assert(hit.component_first_terminal && hit.applied_damage==damage);
         assert(!hit.component_route_collapsed && !c.component_hp[slot]);
         for(j=0;j<c.component_count;j++)if(j!=slot)assert(c.component_hp[j]==before[j]);
@@ -66,7 +66,7 @@ static void kill_order(const struct boss_component_boss_profile*p,unsigned mode,
             assert(!hit.intermediate_terminal && !hit.final_terminal && !c.awaiting_next_mode);
             /* Parallel-body first-tuple aliasing is a separate compatibility policy. */
             if(external_hits || !(slot==0u && boss_hp_sync_parallel_component_mode(&c,0,0))){
-                assert(hit_component(&c,mode,x->child,x->ordinal,1000000u,&repeat)==BOSS_HP_SYNC_OK);
+                assert(hit_component(&c,mode,x->child,x->ordinal,100000000u,&repeat)==BOSS_HP_SYNC_OK);
                 assert(repeat.component_repeated_terminal && repeat.scripted_report_suppressed && !repeat.applied_damage);
                 assert(c.component_hp[slot]==0u);
             }
@@ -74,7 +74,7 @@ static void kill_order(const struct boss_component_boss_profile*p,unsigned mode,
             assert(hit.intermediate_terminal && hit.phase_transition_retire && c.awaiting_next_mode);
             assert(!hit.first_terminal && !hit.final_terminal && !boss_hp_sync_final_terminal_seen(&c));
             for(j=0x1C;j<60;j++)assert(frame[j]==0u);
-            assert(boss_hp_sync_apply_d011_attack(&c,req,32,1000000u,1u,&repeat)==BOSS_HP_SYNC_TERMINAL_QUARANTINED);
+            assert(boss_hp_sync_apply_d011_attack(&c,req,32,100000000u,1u,&repeat)==BOSS_HP_SYNC_TERMINAL_QUARANTINED);
         }else assert(hit.first_terminal && hit.final_terminal && boss_hp_sync_final_terminal_seen(&c));
     }
 }
@@ -91,7 +91,7 @@ static void audit_modes(void){
             }
         }
     }
-    assert(modes==1251u && split==339u);printf("external=%u modes=%u split=%u kill_orders=%u\n",external_hits,modes,split,runs);
+    assert(modes==1278u && split==348u);printf("external=%u modes=%u split=%u kill_orders=%u\n",external_hits,modes,split,runs);
 }
 static unsigned permutations(const struct boss_component_boss_profile*p,unsigned*slots,unsigned n,unsigned at){
     unsigned i,t,runs=0;if(at==n){kill_order(p,0,slots,n);return 1;}

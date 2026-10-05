@@ -77,7 +77,7 @@ GUI 的 **“构建与启动纯新手档”** 会为每次启动创建唯一且�
 | 项目 | 说明 |
 |---|---|
 | Windows | 启动器是 PowerShell + WinForms 脚本，系统自带的 Windows PowerShell 即可 |
-| Python 3 | 一键启动会调用 `scripts/prepare_client_compatibility.py` 现场派生客户端兼容覆盖；仓库优先使用 `tools/python/python.exe`，否则使用 PATH 中的 `py.exe` / `python.exe`，都没有时会直接报错 |
+| 托管启动工具 | 运行包中的`Nanaimo.Adapter.exe --tools`负责人物管理、迁移、客户端兼容准备及资源校验；启动与游戏运行不要求Python或.NET SDK |
 | Nanaimo 客户端 | 自行合法取得；启动器读取**与仓库内容同一个根目录**下的 `game.exe`，缺失即拒绝启动，并需要 `flying/`、`Village_map_image/` 等原始资源 |
 | `adapter_runtime/` | **已随本仓库提供**，无需自行构建 |
 
@@ -99,7 +99,7 @@ GUI 的 **“构建与启动纯新手档”** 会为每次启动创建唯一且�
 启动器会自动完成所需的客户端兼容准备；也可先手工执行只读预检：
 
 ```powershell
-python -B scripts/prepare_client_compatibility.py `
+.\adapter_runtime\Nanaimo.Adapter.exe --tools compatibility `
   --source-root '<原始客户端目录>' `
   --output-root '<新建覆盖目录>' --all --dry-run
 ```

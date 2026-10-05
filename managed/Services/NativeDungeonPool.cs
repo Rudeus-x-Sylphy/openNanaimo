@@ -105,6 +105,8 @@ public sealed class NativeDungeonPool(string executable, string dataDirectory) :
             WorkingDirectory = directory, UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardOutput = true, RedirectStandardError = true
         };
+        start.Environment["NANAIMO_STATE_DB"] = Path.Combine(Directory.GetParent(Path.GetFullPath(dataDirectory))!.FullName, "game.db");
+        start.Environment["NANAIMO_STATE_NAMESPACE"] = Path.GetRelativePath(Directory.GetParent(Path.GetFullPath(dataDirectory))!.FullName, directory).Replace('\\', '/');
         foreach (string arg in new[] { (port + 8).ToString(), "0", "0", "0", "room-profile.ini", port.ToString() }) start.ArgumentList.Add(arg);
         var process = Process.Start(start) ?? throw new IOException("Cannot start native dungeon room.");
         _job.Add(process);

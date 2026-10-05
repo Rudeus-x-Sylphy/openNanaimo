@@ -2,7 +2,7 @@ namespace OpenNanaimo.Adapter.Services;
 
 internal static class DungeonTitleProgression
 {
-    internal const byte MaximumAutomaticGrade = 23;
+    internal const byte MaximumAutomaticGrade = 24;
     internal const byte LumineosWireEpisode = 100;
 
     internal static bool TryGetGrade(
@@ -25,10 +25,10 @@ internal static class DungeonTitleProgression
             return true;
         }
 
-        // Village 5 / Lumineos keeps the wire identity ep100/dungeon0..6.
-        // Resource lookup aliases ep16..22/dungeon0, but progression must use
+        // Village 5 / Lumineos keeps the wire identity ep100/dungeon0..7.
+        // Resource lookup aliases ep16..23/dungeon0, but progression must use
         // the unchanged selection tuple rather than the resource alias.
-        if (episode == LumineosWireEpisode && dungeon <= 6)
+        if (episode == LumineosWireEpisode && dungeon <= 7)
         {
             grade = checked((byte)(17 + dungeon));
             return true;
@@ -40,7 +40,7 @@ internal static class DungeonTitleProgression
     internal static bool IsLumineosTuple(byte hdIndex, byte episode, byte dungeon, byte stage)
         => hdIndex == 0
             && episode == LumineosWireEpisode
-            && dungeon <= 6
+            && dungeon <= 7
             && stage <= 1;
 
     internal static bool IsLegacyEpisode15R7State(ReadOnlySpan<byte> state)

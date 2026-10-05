@@ -596,30 +596,10 @@ static int boss_hp_sync_apply_external_damage(struct boss_hp_sync_context*c,unsi
 #endif
 #if BOSS_HP_SYNC_CARD_POOLS
 static unsigned boss_hp_sync_terminal_card(const struct boss_hp_sync_result*r){
-    const unsigned char*grades=0;const unsigned*pool=0;unsigned count=0u,producer=(r?r->stage:0u);
-    if(r&&r->card_pool_key!=BOSS_HP_SYNC_CARD_POOL_UNRESOLVED)
-        pool=card_manual_boss_lookup(r->card_pool_hd,r->card_pool_key,&grades,&count);
-    if(!pool&&r&&r->card_pool_key!=BOSS_HP_SYNC_CARD_POOL_UNRESOLVED){
-        int secret_set=card_secret_set_index(r->card_pool_key>>25);
-        if(secret_set>=0){
-            unsigned card=card_drop_create_from(1u,producer,card_secret_set_cards[secret_set],card_secret_set_grades,CARD_SECRET_SET_SIZE);
-            printf("  [CARD] boss-secret-set key=%u set=%d code=%u\n",r->card_pool_key,secret_set,card);fflush(0);
-            return card;
-        }
-    }
-    if(!pool&&r&&r->card_pool_key!=BOSS_HP_SYNC_CARD_POOL_UNRESOLVED)
-        pool=card_drop_pool_boss_lookup(r->card_pool_key,&grades,&count);
-    if(pool&&count){
-        unsigned card=card_drop_create_from(1u,producer,pool,grades,count);
-        printf("  [CARD] boss-own-card key=%u pool=%u code=%u\n",r->card_pool_key,count,card);fflush(0);
-        return card;
-    }
-#if CARD_BOSS_DROP_UNCATALOGUED_FALLBACK
-    return card_drop_create(1u,producer);
-#else
-    printf("  [CARD] boss-no-own-card key=%u\n",r?r->card_pool_key:0u);fflush(0);
-    return 0u;
-#endif
+    const struct card_cn_pool*pool=r?card_cn_boss_lookup(r->card_pool_hd,r->card_pool_key):0;
+    unsigned card=card_cn_drop_create(1u,r?r->stage:0u,pool,0u);
+    printf("  [CARD_CN] boss-terminal key=%u pool=%s code=%u\n",r?r->card_pool_key:0u,pool?pool->name:"<none>",card);fflush(0);
+    return card;
 }
 #endif
 static int boss_hp_sync_encode_d012_payload(unsigned char*frame,unsigned len,const struct boss_hp_sync_result*r){

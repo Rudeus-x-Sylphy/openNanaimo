@@ -17,6 +17,7 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    if (args.Length > 0 && args[0] == "--tools") { await LauncherTools.RunAsync(args[1..]); return; }
     if (args.Contains("--native-dungeon-experience-self-test"))
     {
         await NativeDungeonExperienceChecks.RunAsync();
@@ -148,6 +149,11 @@ static async Task RunAsync(string[] args)
         BattleResourceSnapshotChecks.Run();
         return;
     }
+    if (args.Contains("--lumineos-self-test"))
+    {
+        await LumineosChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--dungeon-ranking-self-test"))
     {
         await DungeonRankingChecks.RunAsync();
@@ -253,6 +259,8 @@ var start = new ProcessStartInfo(native)
     WorkingDirectory = nativeData, UseShellExecute = false, CreateNoWindow = true,
     RedirectStandardOutput = true, RedirectStandardError = true
 };
+start.Environment["NANAIMO_STATE_DB"] = Path.GetFullPath(databasePath);
+start.Environment["NANAIMO_STATE_NAMESPACE"] = Path.GetRelativePath(data, nativeData).Replace('\\', '/');
 foreach (string arg in new[] { "51005", "0", "0", "0", profile }) start.ArgumentList.Add(arg);
 using var workerJob = new NativeProcessJob();
 using var worker = Process.Start(start) ?? throw new InvalidOperationException("Cannot start native dungeon worker.");

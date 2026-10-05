@@ -150,7 +150,8 @@ public sealed partial class NetworkAdapterService
         }
         if (!TryResolveNativeDungeonTransition(pending.Selection.Dungeon, pending.Selection.Stage,
                 pending.Selection.Difficulty, pending.Request, response,
-                out var dungeon, out var stage, out var difficulty)) return;
+                out var dungeon, out var stage, out var difficulty,
+                pending.Selection.HdIndex, pending.Selection.Episode)) return;
         _nativePartyContinuations.Remove(session);
         // Members do not issue the owner's continue action themselves. Bind
         // the verified room action to the same per-member completion boundary.
@@ -230,7 +231,8 @@ public sealed partial class NetworkAdapterService
         response[0x28] = selection.Stage;
         response[0x2E] = selection.Dungeon;
         return TryResolveNativeDungeonTransition(pending.Selection.Dungeon, pending.Selection.Stage,
-                pending.Selection.Difficulty, pending.Request, response, out var dungeon, out var stage, out var difficulty)
+                pending.Selection.Difficulty, pending.Request, response, out var dungeon, out var stage, out var difficulty,
+                pending.Selection.HdIndex, pending.Selection.Episode)
             && selection.Dungeon == dungeon && selection.Stage == stage && selection.Difficulty == difficulty;
     }
 

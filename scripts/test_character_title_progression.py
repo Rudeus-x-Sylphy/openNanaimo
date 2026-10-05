@@ -30,7 +30,7 @@ int main(void){
         }
     }
     tuple.episode=100u;
-    for(dg=0u;dg<=6u;dg++){
+    for(dg=0u;dg<=7u;dg++){
         tuple.dungeon=dg;
         for(diff=0u;diff<=2u;diff++){
             tuple.difficulty=diff;tuple.stage_index=0u;
@@ -41,7 +41,7 @@ int main(void){
         }
     }
     tuple.episode=3u;tuple.dungeon=2u;tuple.difficulty=0u;tuple.stage_index=1u;
-    CHECK(progression_dungeon_grade_award_current(1,&tuple,&result));CHECK(result.new_grade==23u&&result.grade_up==0u);
+    CHECK(progression_dungeon_grade_award_current(1,&tuple,&result));CHECK(result.new_grade==24u&&result.grade_up==0u);
     memset(&state,0,sizeof(state));state.grade=23u;state.frontier_valid=1u;
     state.frontier.hd=0u;state.frontier.episode=15u;state.frontier.dungeon=2u;state.frontier.difficulty=2u;state.frontier.stage_index=0u;
     CHECK(progression_dungeon_grade_save_name(g_stable_name,g_stable_name_len,&state));
@@ -50,7 +50,7 @@ int main(void){
     CHECK(progression_dungeon_grade_read_name(g_stable_name,g_stable_name_len,&after,1));CHECK(after.grade==16u);
     state.grade=39u;state.frontier_valid=0u;CHECK(progression_dungeon_grade_save_name(g_stable_name,g_stable_name_len,&state));
     CHECK(progression_dungeon_grade_award_current(1,&tuple,&result));CHECK(result.new_grade==39u&&result.grade_up==0u);
-    printf("TITLE_MILESTONE_PASS P1..P16=ep0..15/dg2/st1 R1..R7=ep100/dg0..6/st1 all_difficulties stage0=none legacy_stage0=bounded0 legacy_stage1=16 no_downgrade\n");return 0;
+    printf("TITLE_MILESTONE_PASS P1..P16=ep0..15/dg2/st1 R1..R8=ep100/dg0..7/st1 all_difficulties stage0=none legacy_stage0=bounded0 legacy_stage1=16 no_downgrade\n");return 0;
 }
 '''
 class TitleMilestones(unittest.TestCase):

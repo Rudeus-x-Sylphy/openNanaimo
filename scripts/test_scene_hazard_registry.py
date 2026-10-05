@@ -31,10 +31,10 @@ class SceneHazardRegistryTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
-            "SCENE_HAZARD_CATALOG_PASS scopes=282 type4=43517 "
-            "association_candidates=31095 exact_associated=29259 "
-            "broken_association=1851 standalone=12422 hazards=216 "
-            "unclassified=14042 policies=1 negative_samples=7",
+            "SCENE_HAZARD_CATALOG_PASS scopes=288 type4=44531 "
+            "association_candidates=31788 exact_associated=29916 "
+            "broken_association=1887 standalone=12743 hazards=216 "
+            "unclassified=14399 policies=1 negative_samples=7",
             result.stdout,
         )
 

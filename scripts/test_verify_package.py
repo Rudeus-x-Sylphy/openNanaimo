@@ -140,9 +140,14 @@ class VerifyPackageTests(unittest.TestCase):
         cleanup_patterns = re.findall(r"'([^']+)'", cleanup.split('$patterns=@(', 1)[1].split(')', 1)[0])
         for name in ('adapter_pet_items_fixture.dat', 'adapter_cash_bundle_migration_fixture.dat',
                      'adapter_nanaimo_launcher.log'):
-            for rules in (patterns, cleanup_patterns):
+            for rules in (patterns,):
                 with self.subTest(name=name, rules=rules):
                     self.assertTrue(any(fnmatch.fnmatch(name, rule) for rule in rules))
+            if name.endswith('.dat'):
+                self.assertFalse(any(fnmatch.fnmatch(name, rule) for rule in cleanup_patterns))
+                self.assertIn('--tools state clear-legacy', cleanup)
+            else:
+                self.assertTrue(any(fnmatch.fnmatch(name, rule) for rule in cleanup_patterns))
 
     def test_recursive_include_closure(self):
         mod = self.root / 'adapter'

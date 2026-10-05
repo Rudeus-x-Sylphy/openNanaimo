@@ -98,13 +98,13 @@ def _name(raw):
     return raw.split(b'\0', 1)[0].replace(b'\\', b'/').lower()
 
 
-def scene_record(data, grid_start):
+def scene_record(data, grid_start, page=18):
     require(len(data) >= 13 and data[:9] == b'NANA_PACK', 'invalid dungeon7 pack signature')
     count = struct.unpack_from('<I', data, 9)[0]
     require(13 + count * 8 <= len(data), 'truncated dungeon7 pack directory')
     directory = [struct.unpack_from('<II', data, 13 + i * 8) for i in range(count)]
     require(len({key for key, _ in directory}) == count, 'duplicate dungeon7 pack key')
-    offsets = [offset for key, offset in directory if key == 50018]
+    offsets = [offset for key, offset in directory if key == 50000 + page]
     require(len(offsets) == 1, 'missing dungeon7 scene record')
     start = offsets[0]
     require(13 + count * 8 <= start <= len(data) - 4, 'invalid dungeon7 record offset')
@@ -115,7 +115,7 @@ def scene_record(data, grid_start):
         require(13 + count * 8 <= offset <= len(data) - 4, 'invalid village record offset')
         other_end = offset + 4 + struct.unpack_from('<I', data, offset)[0]
         require(other_end <= len(data), 'truncated village record')
-        require(key == 50018 or other_end <= start or offset >= end, 'overlapping village record')
+        require(key == 50000 + page or other_end <= start or offset >= end, 'overlapping village record')
     textures, cursor = _table(data, grid_start + 64800, end)
     layers = []
     texture_ids = {index for index, _ in textures}
@@ -187,6 +187,8 @@ MINIMAP_OLD = bytes.fromhex(
     'e8c182b1ff85c074118b4dfc8b55f8c7848a640b000001000000ebc38b45f8'
     'c7807c0b0000000000008b4df8c781c00b0000010000008b55f8c782c40b0000010000008be55dc3')
 MINIMAP_NEW = MINIMAP_OLD[:0x61] + b'\x80' + MINIMAP_OLD[0x62:]
+# With a verified L8 overlay, retain L8's native condition and force L9 closed.
+MINIMAP_L8 = MINIMAP_OLD[:0x61] + b'\x84' + MINIMAP_OLD[0x62:]
 
 
 def restore_scene(data, grid_start):

@@ -19,7 +19,8 @@ import export_patch as patch
 
 def rebuild(root: Path, previous: dict, additions: list[str] | None = None) -> tuple[dict, dict]:
     root = patch.no_links(root)
-    patch.validate_manifest(previous)
+    patch.validate_manifest({**previous, 'files': [row for row in previous['files']
+                             if row.get('path') != 'gui_launcher/inventory_admin_backend.py']})
     old = {e['path']: e for e in previous['files']}
     closure_path = patch.safe_file(root, 'manifest/source_closure.json')
     closure = patch.validated_closure(patch.load_json(closure_path))
@@ -35,6 +36,8 @@ def rebuild(root: Path, previous: dict, additions: list[str] | None = None) -> t
         )
         if entry['layer'] == 'source' and closure_domain:
             continue
+        if name == 'gui_launcher/inventory_admin_backend.py':
+            continue  # Retired production Python backend; managed source/runtime replaces it.
         selected[name] = entry['layer']
     for row in closure:
         selected[row['path']] = 'source'
@@ -167,7 +170,10 @@ def main(argv=None) -> int:
             raise patch.ExportError('workspace root does not exist')
         control = patch.no_links(args.allowlist or root / 'manifest/patch_allowlist.json')
         before = patch.digest(control)
-        candidate, report = rebuild(root, patch.load_manifest(control), args.add)
+        # Rebuild validates the current schema after removing the one retired
+        # production Python backend. Strict export loading must not preempt
+        # that migration; all remaining rows still pass payload_policy.
+        candidate, report = rebuild(root, patch.load_json(control), args.add)
         if args.write:
             if patch.digest(patch.no_links(control)) != before:
                 raise patch.ExportError('input allowlist changed during refresh; retry')

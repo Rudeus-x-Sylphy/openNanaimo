@@ -46,8 +46,20 @@ internal static class DungeonCombatCatalog
     public static int BossCount => Data.Value.BossTemplates.Count;
     public static int BossComponentCount => Data.Value.BossTemplates.Values.Sum(value => value.Components.Count);
 
-    public static bool HasStage(byte hd, byte episode, byte dungeon, byte stage) =>
-        Data.Value.Stages.Contains(new StageKey(hd, episode, dungeon, stage));
+    // Keep this lookup-only alias aligned with lumineos_resource_identity.inc.
+    private static void ResourceIdentity(byte hd, byte stage, ref byte episode, ref byte dungeon)
+    {
+        if (hd != 0 || episode != 100 || dungeon > 7) return;
+        var legacyL7Boss = dungeon == 6 && stage == 1;
+        episode = checked((byte)(16 + dungeon));
+        dungeon = legacyL7Boss ? (byte)1 : (byte)0;
+    }
+
+    public static bool HasStage(byte hd, byte episode, byte dungeon, byte stage)
+    {
+        ResourceIdentity(hd, stage, ref episode, ref dungeon);
+        return Data.Value.Stages.Contains(new StageKey(hd, episode, dungeon, stage));
+    }
 
     public static bool TryGet(
         byte hd,
@@ -141,6 +153,7 @@ internal static class DungeonCombatCatalog
     {
         if (mapIndex > byte.MaxValue)
             return [];
+        ResourceIdentity(hd, stage, ref episode, ref dungeon);
         return Data.Value.BossTemplates
             .Where(pair => pair.Key.Hd == hd
                 && pair.Key.Episode == episode
@@ -161,6 +174,7 @@ internal static class DungeonCombatCatalog
     {
         if (mapIndex > byte.MaxValue)
             return [];
+        ResourceIdentity(hd, stage, ref episode, ref dungeon);
         return Data.Value.InitiallyScheduledBosses.GetValueOrDefault(
             new StageSlotKey(hd, episode, dungeon, stage, (byte)mapIndex), []);
     }
@@ -180,6 +194,7 @@ internal static class DungeonCombatCatalog
         }
 
         var slot = (byte)mapIndex;
+        ResourceIdentity(hd, stage, ref episode, ref dungeon);
         var hitScore = Data.Value.RuntimeEntries
             .Where(pair => pair.Key.Hd == hd
                 && pair.Key.Episode == episode
@@ -217,6 +232,7 @@ internal static class DungeonCombatCatalog
             return false;
         }
 
+        ResourceIdentity(hd, stage, ref episode, ref dungeon);
         key = new CombatKey(hd, episode, dungeon, stage, (byte)mapIndex, (ushort)uid);
         return true;
     }

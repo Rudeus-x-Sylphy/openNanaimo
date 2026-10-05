@@ -83,8 +83,9 @@ def payload_policy(value: str, layer: str) -> None:
         good = value in {
             "start_nanaimo_launcher.bat", "gui_launcher/nanaimo_launcher.ps1",
             "gui_launcher/start_social_client.ps1",
+            "gui_launcher/lumineos_resource_identity.ps1",
+            "gui_launcher/korean_pet_resource_identity.ps1",
             "gui_launcher/client_connect.ps1", "gui_launcher/inventory_admin_gui.ps1",
-            "gui_launcher/inventory_admin_backend.py",
             "gui_launcher/launch_modes/gamestartoption.network.ini",
             "gui_launcher/launch_modes/gamestartoption.standalone.ini",
             "adapter/nanaimo_adapter.exe",
@@ -94,15 +95,18 @@ def payload_policy(value: str, layer: str) -> None:
     elif layer == "source":
         card_generation_sources = {
             "release/components/cards/card_drop_manual_sources.json",
+            "release/components/cards/card_drop_cn.csv",
+            "release/components/cards/card_drop_cn_boss_bindings.json",
             "release/components/cards/gen_card_drop_pool_boss.py",
             "release/components/cards/generate_card_drop_data.py",
         }
         good = ((parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"})
                 or (parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"})
+                or value == "managed-host/Resources/client-compatibility.json"
                 or (parts[0] == "scripts" and p.suffix in {".py", ".ps1"})
                 or value in DUNGEON7_ARTWORK
                 or value in card_generation_sources
-                or value == "manifest/source_closure.json")
+                or value in {"manifest/source_closure.json", "manifest/lumineos_combat.json", "manifest/lumineos_resource_port.json", "manifest/korean_pet_resources.json"})
     elif layer == "docs":
         good = value == "README.md" or (parts[0] == "docs" and p.suffix == ".md")
     elif layer == "knowledge":
@@ -293,7 +297,13 @@ def validated_closure(closure: dict) -> list[dict]:
         native = p.parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"}
         managed = p.parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"}
         build_script = rel == "scripts/build_complete_adapter.ps1"
-        if not (native or managed or build_script):
+        embedded_recipe = rel == "managed-host/Resources/client-compatibility.json"
+        card_distribution = rel in {
+            "release/components/cards/card_drop_cn.csv",
+            "release/components/cards/card_drop_cn_boss_bindings.json",
+            "scripts/generate_cn_card_drops.py",
+        }
+        if not (native or managed or build_script or embedded_recipe or card_distribution):
             raise ExportError("source closure contains an ineligible project source")
         payload_policy(rel, "source")
         if rel.casefold() in seen:

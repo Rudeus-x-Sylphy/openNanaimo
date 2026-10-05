@@ -79,6 +79,7 @@ static unsigned card_random_pick_from(const unsigned*pool,const unsigned char*gr
 static void card_system_reset_epoch(unsigned epoch){g_card_epoch=epoch;g_card_claim_count=0;g_card_claim_cap_warned=0;memset(g_card_claims,0,sizeof(g_card_claims));printf("  [CARD] reset epoch=%u pool=%u\n",epoch,CARD_RANDOM_POOL_COUNT);fflush(0);}
 static unsigned card_drop_create_from(unsigned producer_kind,unsigned producer_id,const unsigned*pool,const unsigned char*grades,unsigned count){struct card_drop_claim*r;unsigned grade=0u;if(g_card_claim_count>=CARD_DROP_CAP){if(!g_card_claim_cap_warned){g_card_claim_cap_warned=1;printf("  [CARD] claim-cap-reached cap=%u epoch=%u code=0\n",(unsigned)CARD_DROP_CAP,g_card_epoch);fflush(0);}return 0u;}r=&g_card_claims[g_card_claim_count++];memset(r,0,sizeof(*r));r->epoch=g_card_epoch;r->producer_kind=producer_kind;r->producer_id=producer_id;r->code=card_random_pick_from(pool,grades,count,&grade);printf("  [CARD] decision epoch=%u kind=%u producer=%u code=%u ordinal=%u pool=%u grade=%u\n",r->epoch,producer_kind,producer_id,r->code,g_card_claim_count,count,grade);fflush(0);return r->code;}
 static unsigned card_drop_create(unsigned producer_kind,unsigned producer_id){return card_drop_create_from(producer_kind,producer_id,0,0,0u);}
+#include "card_cn_runtime.inc"
 /* 1=new grant, 2=idempotent repeat, 0=invalid/save failure. */
 static int card_pickup_commit(unsigned scene_uid,unsigned code){
     unsigned i;int idx;struct card_drop_claim *claim=0;

@@ -22,6 +22,7 @@ internal static class MigrationChecks
         await ChannelReentryChecks.RunAsync();
         await ShopCurrencyPaginationChecks.RunAsync();
         await DungeonRankingChecks.RunAsync();
+        await LumineosChecks.RunAsync();
         BattleResourceSnapshotChecks.Run();
         await HealthRecoveryChecks.RunAsync();
         await ApartmentInventoryChecks.RunAsync();

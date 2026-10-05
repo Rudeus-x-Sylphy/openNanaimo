@@ -230,6 +230,12 @@ class Dungeon7VisualTests(unittest.TestCase):
                     self.assertEqual(before[6], 0)
                     self.assertEqual(after[6], seventh)
                     self.assertEqual(after[7], 0)
+                    l8 = run(visuals.MINIMAP_L8, flags)
+                    self.assertEqual(l8[6], seventh)
+                    self.assertEqual(l8[7], eighth)
+                    self.assertEqual(l8[8], 0)
+                    for index in set(range(25)) - {6, 8}:
+                        self.assertEqual(l8[index], before[index])
                     for index in set(range(25)) - {6, 7}:
                         self.assertEqual(after[index], before[index])
 

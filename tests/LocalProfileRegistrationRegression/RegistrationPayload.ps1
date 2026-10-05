@@ -1,7 +1,7 @@
 ﻿param([string]$Repository,[string]$DataRoot,[string]$Identity,[string]$OutputPath)
 $ErrorActionPreference='Stop'
 . (Join-Path $Repository 'gui_launcher/inventory_admin_gui.ps1')
-$backend=Join-Path $Repository 'gui_launcher/inventory_admin_backend.py'
+$backend=Join-Path $Repository 'adapter_runtime/Nanaimo.Adapter.exe'
 $ctx=[pscustomobject]@{Profiles=@(Get-InventoryAdminProfiles $DataRoot $backend '')}
 $selected=Find-InventoryAdminProfile $ctx $Identity
 if(-not$selected){throw ('No selected test profile: '+$Identity+' profiles='+($ctx.Profiles|ConvertTo-Json -Depth 3 -Compress))}

@@ -2,7 +2,7 @@
 Add-Type -AssemblyName System.Windows.Forms
 . (Join-Path $env:PROFILE_TEST_REPO 'gui_launcher/inventory_admin_gui.ps1')
 $root=$env:PROFILE_TEST_ROOT
-$backend=Join-Path $env:PROFILE_TEST_REPO 'gui_launcher/inventory_admin_backend.py'
+$backend=Join-Path $env:PROFILE_TEST_REPO 'adapter_runtime/Nanaimo.Adapter.exe'
 $profiles=Get-InventoryAdminProfiles $root $backend '416C706861'
 $ctx=[pscustomobject]@{Root=$root;Backend=$backend;AccountSuffix='';NameHex='';CharacterId=$null;SelectedProfile=$null;Profiles=@($profiles);ProfileSelectors=New-Object Collections.ArrayList;ProfileSelectorSync=$false;ProfileChanged=$null;Profile=$null;Clothing=New-Object Collections.ArrayList;Pets=New-Object Collections.ArrayList;GameItems=New-Object Collections.ArrayList;Furniture=New-Object Collections.ArrayList;Cards=New-Object Collections.ArrayList;Shop=$null;RefreshAll=$null}
 $form=New-Object Windows.Forms.Form
@@ -24,11 +24,13 @@ try{
     $comboMap=@{};foreach($part in @('hair','body','top','bottom','accessory','effect')){$comboMap[$part]=[pscustomobject]@{id=0}}
     $petCombo=[pscustomobject]@{id=0}
     function Get-SelectedData($combo){return $combo}
+    function Get-SkillSelection{$grades=New-Object int[] 16;$grades[0]=3;$grades[8]=4;return [pscustomobject]@{projectile_route=0;meat_route=0;grades=$grades;slot_z=[uint32]52000008;slot_x=[uint32]52000000}}
     function Get-ResourceSelection{return [ordered]@{hp_max=2345;mp_max=345;attack=6;defense=7;coin=888;nana_point=999;apartment_recommendation_points=456}}
     $nameBox.Text='Fresh'
     $selected=Sync-LauncherProfileIdentity
     if($selected.character_name-ne'Fresh'-or$ctx.CharacterId-ne$null-or$ctx.Profile.level-ne23-or$ctx.Profile.gender-ne1-or$ctx.Profile.hp_max-ne2345-or$ctx.Shop.coin-ne888){throw ('clone identity/resources lost: '+($ctx.Profile|ConvertTo-Json -Compress))}
     if($ctx.Cards.Count-ne4){throw 'clone discarded protected cards'}
+    if($ctx.Profile.skill_slot_z-ne52000008-or$ctx.Profile.skill_slot_x-ne52000000-or$ctx.Profile.skill_grade8-ne4){throw 'clone discarded skill editor selection'}
     foreach($selector in $ctx.ProfileSelectors){if($selector.SelectedItem.character_name-ne'Fresh'){throw 'selector not switched'}}
     if(Test-Path (Join-Path $root 'nanaimo_inventory_state_v1.dat')){throw 'choosing a name changed active inventory'}
     $ctx.Shop.coin=7654;$ctx.Profile.hp_max=3456

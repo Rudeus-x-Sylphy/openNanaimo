@@ -59,10 +59,10 @@ int main(void){
         }
         if(scope_mapped)mapped_scopes++;
     }
-    CHECK(scopes==282u);CHECK(mapped_scopes==261u);CHECK(type4_total==43517u);
-    CHECK(association_candidates==31095u);CHECK(standalone==12422u);CHECK(broken_association==1851u);
-    CHECK(mapped==29259u);CHECK(hazards==STAGE_DAMAGE_SCENE_HAZARD_SELECTED_ROW_COUNT);CHECK(hazards==216u);
-    CHECK(unclassified_type4==14042u);CHECK(type4_total-mapped-hazards==unclassified_type4);CHECK(unmapped>mapped);
+    CHECK(scopes==288u);CHECK(mapped_scopes==267u);CHECK(type4_total==44531u);
+    CHECK(association_candidates==31788u);CHECK(standalone==12743u);CHECK(broken_association==1887u);
+    CHECK(mapped==29916u);CHECK(hazards==STAGE_DAMAGE_SCENE_HAZARD_SELECTED_ROW_COUNT);CHECK(hazards==216u);
+    CHECK(unclassified_type4==14399u);CHECK(type4_total-mapped-hazards==unclassified_type4);CHECK(unmapped>mapped);
     CHECK(STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT==1u);
     stage_damage_damage_begin(&ctx,0u,15u,2u,0u,2u,1u,1u);
     CHECK(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])==16u);
@@ -137,7 +137,7 @@ class AssociatedSceneDamageTests(unittest.TestCase):
             run_result = subprocess.run(
                 [str(binary)], cwd=directory, capture_output=True, text=True, errors="replace", timeout=60)
             self.assertEqual(run_result.returncode, 0, run_result.stdout + run_result.stderr)
-            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=282 mapped_scopes=261 type4=43517 association_candidates=31095 exact_associated=29259 broken_association=1851 standalone=12422 hazards=216 unclassified=14042", run_result.stdout)
+            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=288 mapped_scopes=267 type4=44531 association_candidates=31788 exact_associated=29916 broken_association=1887 standalone=12743 hazards=216 unclassified=14399", run_result.stdout)
 
     def test_dispatch_is_exact_not_global_kind60_damage(self):
         source = (ROOT / "release/components/game_session/gs_runtime.inc").read_text("utf-8")

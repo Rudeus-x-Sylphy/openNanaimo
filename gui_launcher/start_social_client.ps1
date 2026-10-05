@@ -512,13 +512,41 @@ function Quote-NativeArgument([string]$Argument){
     [void]$builder.Append('"');return $builder.ToString()
 }
 
+function Sync-IsolatedPetCatalog([string]$SourceRoot,[string]$WorkRoot,[string]$CacheRoot){
+    $source=Join-Path $SourceRoot 'pi._D7'
+    if(-not(Test-Path -LiteralPath $source -PathType Leaf)){return}
+    $target=Join-Path $WorkRoot 'pi._D7'
+    Assert-ChildPath $CacheRoot $target
+    Assert-NoReparseAncestors (Split-Path $target -Parent)
+    if(Test-ReparsePoint $target){throw 'Prepared pet catalog cannot be a reparse point.'}
+    $sourceHash=Get-OptionalFileHash $source
+    $oldHash=Get-OptionalFileHash $target
+    if($oldHash-eq$sourceHash){return}
+    if($oldHash){
+        $backupDir=Join-Path $CacheRoot ("pet-catalog-backups\{0}"-f$oldHash)
+        Assert-ChildPath $CacheRoot $backupDir
+        Assert-NoReparseAncestors $backupDir
+        New-Item -ItemType Directory -Path $backupDir -Force|Out-Null
+        $backup=Join-Path $backupDir 'pi._D7'
+        if(Test-Path -LiteralPath $backup){if((Get-OptionalFileHash $backup)-ne$oldHash){throw 'Pet catalog backup mismatch.'}}
+        else{Copy-Item -LiteralPath $target -Destination $backup}
+    }
+    # Caller holds the slot lock and has rejected an active client process.
+    # A failed copy/hash check aborts preparation, never starts that client.
+    Copy-Item -LiteralPath $source -Destination $target -Force
+    if((Get-OptionalFileHash $target)-ne$sourceHash){throw 'Prepared pet catalog refresh failed.'}
+}
+
+. (Join-Path $PSScriptRoot 'lumineos_resource_identity.ps1')
+. (Join-Path $PSScriptRoot 'korean_pet_resource_identity.ps1')
+
 function New-IsolatedClientWorkTree([string]$SourceRoot,[string]$WorkRoot,[string]$CacheRoot,[string]$ConfigText){
     Assert-ChildPath $CacheRoot $WorkRoot
     Assert-NoReparseAncestors $WorkRoot
     New-Item -ItemType Directory -Path $WorkRoot -Force|Out-Null
     $cacheFull=(Get-FullPath $CacheRoot).TrimEnd('\')
     foreach($sourceDirectory in @(Get-ChildItem -LiteralPath $SourceRoot -Directory -Force)){
-        if($sourceDirectory.Name-eq'.openNanaimo-social'){continue}
+        if($sourceDirectory.Name-in@('.openNanaimo-social','.openNanaimo-resource-backups')){continue}
         $sourceFull=Get-FullPath $sourceDirectory.FullName
         if($cacheFull.Equals($sourceFull,[StringComparison]::OrdinalIgnoreCase)-or$cacheFull.StartsWith($sourceFull.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase)){continue}
         $targetPath=Join-Path $WorkRoot $sourceDirectory.Name
@@ -539,6 +567,9 @@ function New-IsolatedClientWorkTree([string]$SourceRoot,[string]$WorkRoot,[strin
     }
     foreach($directoryName in @('Working','runtime')){New-Item -ItemType Directory -Path (Join-Path $WorkRoot $directoryName) -Force|Out-Null}
     Sync-IsolatedApartmentResources $SourceRoot $WorkRoot $CacheRoot
+    Sync-LumineosResourceIdentity $SourceRoot $WorkRoot $CacheRoot
+    Sync-IsolatedPetCatalog $SourceRoot $WorkRoot $CacheRoot
+    Sync-KoreanPetResourceIdentity $SourceRoot $WorkRoot $CacheRoot
     $stateDirectory=Join-Path $WorkRoot 'StateOption'
     if(-not(Test-Path -LiteralPath $stateDirectory -PathType Container)){New-Item -ItemType Directory -Path $stateDirectory -Force|Out-Null}
     if(-not[string]::IsNullOrWhiteSpace($ConfigText)){
@@ -707,6 +738,9 @@ try{
 $resourceMigration=$null
 if($hasState){
     Sync-IsolatedApartmentResources $WorkingDirectory $workDir $CacheRoot
+    Sync-LumineosResourceIdentity $WorkingDirectory $workDir $CacheRoot
+    Sync-IsolatedPetCatalog $WorkingDirectory $workDir $CacheRoot
+    Sync-KoreanPetResourceIdentity $WorkingDirectory $workDir $CacheRoot
     $entertainmentState=Join-Path $WorkingDirectory 'animalstate.st'
     if(Test-Path -LiteralPath $entertainmentState -PathType Leaf){
         $isolatedState=Join-Path $workDir 'animalstate.st'

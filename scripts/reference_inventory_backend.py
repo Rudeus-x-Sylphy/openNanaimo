@@ -1,7 +1,10 @@
-#!/usr/bin/env python3
+"""Frozen pre-migration reference for development parity tests only.
+Not shipped or invoked as a launcher/runtime backend. Use Nanaimo.Adapter --tools inventory.
+"""
 from __future__ import annotations
 import argparse,copy,json,os,shutil,sqlite3,struct,tempfile,time
 from pathlib import Path
+from datetime import datetime
 
 SHOP='nanaimo_inventory_state_v1.dat'; APT='nanaimo_apartment_state_v1.dat'
 
@@ -78,7 +81,7 @@ def db_snapshot(root,character_id):
     try:
         ccols=table_columns(con,'Characters')
         fields=['Id','AccountId','Name','Gender','Appearance','EquippedPetItemCode','Level','MaxHp','MaxMp','CurrentHp','CurrentMp','Hans','Cash','IsOnline']
-        for optional in ('AttackModifier','DefenseFlat','ApartmentRecommendationPoints'):
+        for optional in ('AttackModifier','DefenseFlat','ApartmentRecommendationPoints','SelectedSkill0','SelectedSkill1','SkillSlotExpansionExpires'):
             if optional in ccols:fields.append(optional)
         row=con.execute(f"SELECT {','.join(fields)} FROM Characters WHERE Id=?",(character_id,)).fetchone()
         if row is None:raise ValueError('selected character profile no longer exists')
@@ -122,6 +125,15 @@ def db_snapshot(root,character_id):
             cards=[{'code':int(r[0]),'count':int(r[1])} for r in con.execute('SELECT CardCode,Quantity FROM CharacterCards WHERE CharacterId=? ORDER BY CardCode',(character_id,))]
         resources={'hp_max':int(char.get('MaxHp',1500)),'mp_max':int(char.get('MaxMp',100)),'coin':int(char.get('Hans',0)),'nana_point':int(char.get('Cash',0)),
                    'attack':int(char.get('AttackModifier',0)),'defense':int(char.get('DefenseFlat',0))}
+        if 'SelectedSkill0' in char:
+            resources.update(skill_slot_z=int(char['SelectedSkill0']),skill_slot_x=int(char['SelectedSkill1']),
+                             skill_slot_expiry=int(char['SkillSlotExpansionExpires']),skill_slot_expiry_apply=False)
+            grades=[0]*16
+            for code,grade in con.execute('SELECT SkillCode,Grade FROM CharacterSkills WHERE CharacterId=?',(character_id,)):
+                if 52000000<=code<52000016:grades[code-52000000]=grade
+            resources.update({f'skill_grade{i}':grade for i,grade in enumerate(grades)})
+            for key,upper,lower in (('skill_projectile_route',(2,4,6),(3,5,7)),('skill_meat_route',(10,12,14),(11,13,15))):
+                resources[key]=1 if any(grades[i] for i in upper) else 2 if any(grades[i] for i in lower) else 0
         return {'version':2,'source':'database','character_id':int(character_id),'name_hex':name_hex(str(char['Name'])),
                 'profile':{'character_name':str(char['Name']),'gender':int(char['Gender']),'level':int(char['Level']),'is_online':bool(char['IsOnline']),**resources},
                 'account_suffix':account_suffix(name_hex(str(char['Name']))),'shop':shop,'clothing':clothing,'pets':pets,'game_items':games,'furniture':furniture,'cards':cards}
@@ -150,10 +162,32 @@ def db_apply(root,character_id,state):
     _,by=catalogs(root);db=database_path(root)
     clothing=uniq(state.get('clothing',[]));pets_in=state.get('pets',[]);pets=uniq(r['code'] for r in pets_in)
     games=state.get('game_items',[]);cards=state.get('cards',[]);furniture=state.get('furniture',[])
+    shop=state.get('shop',{})
+    equipped=[int(x) for x in shop.get('equipped',[])]
+    if len(equipped)!=5:raise ValueError('profile needs five equipment slots')
+    effect=int(shop.get('effect',0));selected=int(shop.get('selected_pet',0))
+    for code in equipped+[effect]:
+        if code and code not in by['clothing']:raise ValueError(f'unknown clothing {code}')
+        if code and code not in clothing:clothing.append(code)
+    if selected and selected not in by['pets']:raise ValueError(f'unknown selected pet {selected}')
+    if selected and selected not in pets:pets.append(selected)
     if len(clothing)>256 or len(pets)>128:raise ValueError('inventory capacity exceeded')
     if any(c not in by['clothing'] for c in clothing):raise ValueError('unknown clothing code')
     if any(c not in by['pets'] for c in pets):raise ValueError('unknown pet code')
     if any(int(r['code']) not in by['game'] for r in games):raise ValueError('unknown game item code')
+    if len({int(r['code']) for r in games})!=len(games):raise ValueError('duplicate game item code')
+    if any(not 1<=int(r['count'])<=65535 for r in games):raise ValueError('game item count out of range')
+    pet_map={int(r['code']):r for r in pets_in}
+    pet_values={}
+    for code in pets:
+        meta=by['pets'][code];r=pet_map.get(code,{})
+        gems=[int(x) for x in r.get('gems',[0,0,0])][:3];gems += [0]*(3-len(gems))
+        for i,g in enumerate(gems):
+            if i>=int(meta.get('slot_count',0)):gems[i]=0
+            elif g and g not in by['gems']:raise ValueError(f'unknown pet gem {g}')
+        upgrade=int(r.get('upgrade_material',0))
+        if upgrade not in (0,int(meta.get('upgrade_material',0))):raise ValueError(f'invalid upgrade material pet={code}')
+        pet_values[code]=(upgrade,gems)
     apartment_bytes(furniture,by['furniture'])
     coin=int(state.get('shop',{}).get('coin',0));nana=int(state.get('shop',{}).get('nana',0))
     if not(0<=coin<=0xffffffff and 0<=nana<=0xffffffff):raise ValueError('database currency out of range')
@@ -164,10 +198,11 @@ def db_apply(root,character_id,state):
         dst=sqlite3.connect(backup/'game.db')
         try:con.backup(dst)
         finally:dst.close()
+        con.execute('BEGIN IMMEDIATE')
         online=con.execute('SELECT c.IsOnline,a.IsOnline FROM Characters c JOIN Accounts a ON a.Id=c.AccountId WHERE c.Id=?',(character_id,)).fetchone()
         if online is None:raise ValueError('selected character profile no longer exists')
         if int(online[0]) or int(online[1]):raise ValueError('selected user is online; stop clients and adapter before editing')
-        now=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime());con.execute('BEGIN IMMEDIATE')
+        now=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())
         existing_cards=[{'code':int(r[0]),'count':int(r[1])} for r in con.execute('SELECT CardCode,Quantity FROM CharacterCards WHERE CharacterId=?',(character_id,))]
         cards,protected_cards=partition_admin_cards(cards,existing_cards,by['cards'])
         ccols=table_columns(con,'Characters');updates={'Hans':coin,'Cash':nana}
@@ -176,18 +211,76 @@ def db_apply(root,character_id,state):
             if col in ccols and key in profile:updates[col]=int(profile[key])
         if 'MaxHp' in updates and 'CurrentHp' in ccols:updates['CurrentHp']=min(int(profile.get('hp_current',updates['MaxHp'])),updates['MaxHp'])
         if 'MaxMp' in updates and 'CurrentMp' in ccols:updates['CurrentMp']=min(int(profile.get('mp_current',updates['MaxMp'])),updates['MaxMp'])
+        # Explicit editor skills share the inventory transaction; an inventory-only
+        # caller omitting these keys must never reset skills, SP, or slot entitlement.
+        skill_keys={'skill_slot_z','skill_slot_x'}|{f'skill_grade{i}' for i in range(16)}
+        if skill_keys.intersection(profile):
+            if not {'SelectedSkill0','SelectedSkill1'}<=ccols:raise ValueError('database skill schema is missing')
+            grades=[0]*16
+            for code,grade in con.execute('SELECT SkillCode,Grade FROM CharacterSkills WHERE CharacterId=?',(character_id,)):
+                if 52000000<=code<52000016:grades[code-52000000]=int(grade)
+            for i in range(16):
+                if f'skill_grade{i}' in profile:
+                    grades[i]=int(profile[f'skill_grade{i}'])
+                    if not 0<=grades[i]<=5:raise ValueError('skill grade must be 0..5')
+            for upper,lower in (((2,4,6),(3,5,7)),((10,12,14),(11,13,15))):
+                if any(grades[i] for i in upper) and any(grades[i] for i in lower):raise ValueError('conflicting skill branches')
+            previous=con.execute('SELECT SelectedSkill0,SelectedSkill1 FROM Characters WHERE Id=?',(character_id,)).fetchone()
+            slots=[int(profile.get(key,previous[i])) for i,key in enumerate(('skill_slot_z','skill_slot_x'))]
+            for code in slots:
+                if code and (not 52000000<=code<52000016 or grades[code-52000000]==0):raise ValueError('selected skill is not learned')
+            if slots[0] and slots[0]==slots[1]:raise ValueError('Z and X must be different skills')
+            updates.update(SelectedSkill0=slots[0],SelectedSkill1=slots[1])
+            for i,grade in enumerate(grades):
+                if f'skill_grade{i}' not in profile:continue
+                if grade:con.execute('INSERT INTO CharacterSkills(CharacterId,SkillCode,Grade,UpdatedAt) VALUES(?,?,?,?) ON CONFLICT(CharacterId,SkillCode) DO UPDATE SET Grade=excluded.Grade,UpdatedAt=excluded.UpdatedAt',(character_id,52000000+i,grade,now))
+                else:con.execute('DELETE FROM CharacterSkills WHERE CharacterId=? AND SkillCode=?',(character_id,52000000+i))
+        if profile.get('skill_slot_expiry_apply',False):
+            expiry=int(profile.get('skill_slot_expiry',0))
+            if expiry and not 2000010100<=expiry<=2100123123:raise ValueError('invalid Z/X slot expiry')
+            if expiry:
+                try:datetime.strptime(str(expiry),'%Y%m%d%H')
+                except ValueError:raise ValueError('invalid Z/X slot expiry date') from None
+            if 'SkillSlotExpansionExpires' not in ccols:raise ValueError('database skill slot expiry schema is missing')
+            updates['SkillSlotExpansionExpires']=expiry
+        character=con.execute('SELECT Appearance,Gender FROM Characters WHERE Id=?',(character_id,)).fetchone()
+        appearance=bytearray(character['Appearance'] or b'')
+        appearance.extend(bytes(max(0,36-len(appearance))))
+        for offset,code in zip((0,4,8,12,20),equipped):struct.pack_into('<I',appearance,offset,code)
+        struct.pack_into('<I',appearance,24,effect)
+        struct.pack_into('<I',appearance,28,selected)
+        struct.pack_into('<I',appearance,32,int(character['Gender']))
+        updates.update(Appearance=bytes(appearance),EquippedPetItemCode=selected)
+        if 'LastSavedAt' in ccols:updates['LastSavedAt']=now
         con.execute('UPDATE Characters SET '+','.join(f'{k}=?' for k in updates)+' WHERE Id=?',(*updates.values(),character_id))
         item_codes=set(by['clothing'])|set(by['pets'])|set(by['game'])|set(by['furniture'])
-        for chunk in batched(item_codes):con.execute('DELETE FROM CharacterItems WHERE CharacterId=? AND ItemCode IN ('+','.join('?'*len(chunk))+')',(character_id,*chunk))
+        # Keep existing rows and their progression/durability/acquisition metadata.
+        retained=set(clothing)|set(pets)|{int(r['code']) for r in games}|{int(r['code']) for r in furniture}
+        for chunk in batched(item_codes-retained):con.execute('DELETE FROM CharacterItems WHERE CharacterId=? AND ItemCode IN ('+','.join('?'*len(chunk))+')',(character_id,*chunk))
         item_cols=table_columns(con,'CharacterItems')
         def add_item(code,qty,extra=None):
             vals={'CharacterId':character_id,'ItemCode':int(code),'Quantity':int(qty),'UpdatedAt':now};vals.update(extra or {});vals={k:v for k,v in vals.items() if k in item_cols}
-            con.execute('INSERT INTO CharacterItems('+','.join(vals)+') VALUES('+','.join('?'*len(vals))+')',tuple(vals.values()))
+            mutable=[k for k in vals if k not in ('CharacterId','ItemCode','UpdatedAt')]
+            con.execute('INSERT INTO CharacterItems('+','.join(vals)+') VALUES('+','.join('?'*len(vals))+') ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET '+','.join(f'{k}=excluded.{k}' for k in mutable),tuple(vals.values()))
         for code in clothing:add_item(code,1)
-        pet_map={int(r['code']):r for r in pets_in}
         for code in pets:
-            r=pet_map.get(code,{});g=list(r.get('gems',[0,0,0]))+[0,0,0]
-            add_item(code,1,{'PetCurrentStage':1 if int(r.get('upgrade_material',0)) else 0,'PetAccessory0':int(g[0]),'PetAccessory1':int(g[1]),'PetAccessory2':int(g[2])})
+            upgrade,g=pet_values[code]
+            extra={'PetAccessory0':g[0],'PetAccessory1':g[1],'PetAccessory2':g[2]}
+            if 'PetCurrentStage' in item_cols:
+                old=con.execute('SELECT PetCurrentStage FROM CharacterItems WHERE CharacterId=? AND ItemCode=?',(character_id,code)).fetchone()
+                stage=int(old[0]) if old else 0
+                # The checkbox only describes whether a material is installed; it
+                # must not reset an already evolved pet to stage 1 on every save.
+                required=int(by['pets'][code].get('upgrade_material',0))
+                was_upgrade=required if stage>0 else 0
+                extra['PetCurrentStage']=stage if upgrade==was_upgrade else (1 if upgrade else 0)
+            add_item(code,1,extra)
+        pet_progress={}
+        for col in ('PetLevel','PetExperience'):
+            if col in ccols:
+                row=con.execute(f'SELECT {col} FROM CharacterItems WHERE CharacterId=? AND ItemCode=?',(character_id,selected)).fetchone() if col in item_cols else None
+                pet_progress[col]=int(row[0] or 0) if row else 0
+        if pet_progress:con.execute('UPDATE Characters SET '+','.join(f'{k}=?' for k in pet_progress)+' WHERE Id=?',(*pet_progress.values(),character_id))
         for r in games:add_item(int(r['code']),int(r['count']))
         furn_counts={}
         for r in furniture:furn_counts[int(r['code'])]=furn_counts.get(int(r['code']),0)+1
@@ -310,6 +403,17 @@ def apartment_bytes(rows,furn_by):
 
 def apply(root,name_hex,state,character_id=None,*,copy_source=None):
     if character_id is not None:return db_apply(root,int(character_id),state)
+    if copy_source is None:
+        # A launcher window can outlive the first login/import of its sidecar.
+        # Resolve again here, even for old GUI processes without a CharacterId.
+        identity=bytes.fromhex(name_hex).decode('cp936')
+        rows=profiles(root)
+        accounts=[r for r in rows if r.get('account_id') is not None and str(r.get('username','')).casefold()==identity.casefold()]
+        matches=accounts or [r for r in rows if r.get('character_id') is not None and str(r.get('character_name','')).casefold()==identity.casefold()]
+        if len(matches)>1:raise ValueError('ambiguous database profile identity')
+        if matches:
+            if matches[0].get('character_id') is None:raise ValueError('selected account has no character yet')
+            return db_apply(root,int(matches[0]['character_id']),state)
     saved=local_profile_path(root,name_hex)
     _,by=catalogs(root);suffix=account_suffix(name_hex);shop_old=parse_shop(root)
     clothing=uniq(state.get('clothing',[]));pets_in=state.get('pets',[]);pets=uniq(r['code'] for r in pets_in)
@@ -403,7 +507,7 @@ def clone_profile(root,target_hex,state,source_name_hex,source_character_id=None
 
 def selftest(root):
     snap=snapshot(root,'504C41594552')
-    assert len(catalogs(root)[0]['clothing'])==3885 and len(catalogs(root)[0]['pets'])==868
+    assert len(catalogs(root)[0]['clothing'])==3885 and len(catalogs(root)[0]['pets'])==990
     assert len(catalogs(root)[0]['gems'])==18931 and len(catalogs(root)[0]['furniture'])==781 and len(catalogs(root)[0]['cards'])==420
     b=apartment_bytes(snap['furniture'],catalogs(root)[1]['furniture']);assert len(b)==4076
     print(json.dumps({'status':'INVENTORY_ADMIN_BACKEND_PASS','account_suffix':snap['account_suffix'],'counts':{k:len(snap[k]) for k in ['clothing','pets','game_items','furniture','cards']}},ensure_ascii=False))

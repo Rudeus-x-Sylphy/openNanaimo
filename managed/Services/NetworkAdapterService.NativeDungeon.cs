@@ -462,7 +462,9 @@ public sealed partial class NetworkAdapterService
         ReadOnlySpan<byte> response,
         out byte nextDungeon,
         out byte nextStage,
-        out byte nextLogicalDifficulty)
+        out byte nextLogicalDifficulty,
+        byte hdIndex = 0,
+        byte episode = 0)
     {
         nextDungeon = currentDungeon;
         nextStage = currentStage;
@@ -477,15 +479,18 @@ public sealed partial class NetworkAdapterService
         var mode = BinaryPrimitives.ReadUInt16LittleEndian(request.Slice(10, 2));
         var responseRealStage = response[0x28];
         var responseDungeon = BinaryPrimitives.ReadUInt16LittleEndian(response.Slice(0x2E, 2));
-        // Ordinary villages use dungeon 0..2; Lumineos uses 0..6 and its
-        // stage1 Super-BOSS is a legal continuation target.
-        if (responseRealStage > 1 || responseDungeon > 6)
+        // Wire domains are distinct; resource aliases must never authorize room transitions.
+        var lumineos = hdIndex == 0 && episode == DungeonTitleProgression.LumineosWireEpisode;
+        var maxDungeon = lumineos ? 7 : 2;
+        if (currentDungeon > maxDungeon || currentStage > 1 || currentLogicalDifficulty > 2
+            || responseRealStage > 1 || responseDungeon > maxDungeon
+            || (episode == DungeonTitleProgression.LumineosWireEpisode && !lumineos))
             return false;
 
         if (mode == 1
-            && (currentDungeon == 2 || currentDungeon == 6)
+            && (lumineos || currentDungeon == 2)
             && currentStage == 0
-            && requestedRealStage == 1
+            && (requestedRealStage == 1 || (lumineos && requestedRealStage == 0))
             && responseDungeon == currentDungeon
             && responseRealStage == 1)
         {
@@ -494,11 +499,20 @@ public sealed partial class NetworkAdapterService
         }
         if (mode == 1
             && (requestedRealStage == currentStage
-                || (currentDungeon == 2 && currentStage == 1 && requestedRealStage == 0))
+                || ((lumineos || currentDungeon == 2) && currentStage == 1 && requestedRealStage == 0))
             && responseDungeon == currentDungeon
             && responseRealStage == currentStage)
             return true;
+        if (mode == 2 && lumineos && currentDungeon < 7
+            && requestedRealStage == 0 && responseDungeon == currentDungeon + 1
+            && responseRealStage == 0)
+        {
+            nextDungeon = checked((byte)(currentDungeon + 1));
+            nextStage = 0;
+            return true;
+        }
         if (mode == 2
+            && !lumineos
             && currentStage == 0
             && currentDungeon < 2
             && requestedRealStage == 0
@@ -509,6 +523,7 @@ public sealed partial class NetworkAdapterService
             return true;
         }
         if (mode == 2
+            && !lumineos
             && currentDungeon == 2
             && currentStage == 1
             && requestedRealStage == 0
@@ -1017,7 +1032,8 @@ public sealed partial class NetworkAdapterService
                         response,
                         out var nextDungeon,
                         out var nextStage,
-                        out var nextLogicalDifficulty)
+                        out var nextLogicalDifficulty,
+                        session.NativeDungeonHdIndex, session.NativeDungeonEpisode)
                     || (deathRetryTransition
                         && (nextDungeon != session.NativeDungeonDungeon
                             || nextStage != session.NativeDungeonStage

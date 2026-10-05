@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location('inventory_admin_backend', ROOT / 'gui_launcher/inventory_admin_backend.py')
+SPEC = importlib.util.spec_from_file_location('inventory_admin_backend', ROOT / 'scripts/reference_inventory_backend.py')
 BACKEND = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BACKEND)
 
@@ -138,9 +138,9 @@ class CardPreservationTests(unittest.TestCase):
 
     def test_sidecar_save_keeps_unknown_cards_even_if_omitted(self):
         with self.fixture() as (root,db):
-            path=root/'card_inventory_p_416C706861.dat';path.write_text('version=1\n12000001=1\n60000000=1\n13000001=2\n',encoding='ascii')
-            snap=BACKEND.snapshot(root,'416C706861');snap['cards']=[]
-            BACKEND.apply(root,'416C706861',snap)
+            path=root/'card_inventory_p_4C6567616379.dat';path.write_text('version=1\n12000001=1\n60000000=1\n13000001=2\n',encoding='ascii')
+            snap=BACKEND.snapshot(root,'4C6567616379');snap['cards']=[]
+            BACKEND.apply(root,'4C6567616379',snap)
             self.assertEqual(BACKEND.parse_counts(path),[{'code':12000001,'count':1},{'code':60000000,'count':1}])
 
     def test_clone_preserves_all_editor_domains_without_touching_source_or_runtime(self):
@@ -239,9 +239,84 @@ class CardPreservationTests(unittest.TestCase):
 
     def test_new_sidecar_cannot_mint_unknown_card(self):
         with self.fixture() as (root,db):
-            snap=BACKEND.snapshot(root,'416C706861');snap['cards']=[{'code':60000000,'count':1}]
-            with self.assertRaisesRegex(ValueError,'read-only'):BACKEND.apply(root,'416C706861',snap)
-            self.assertFalse((root/'card_inventory_p_416C706861.dat').exists())
+            snap=BACKEND.snapshot(root,'4C6567616379');snap['cards']=[{'code':60000000,'count':1}]
+            with self.assertRaisesRegex(ValueError,'read-only'):BACKEND.apply(root,'4C6567616379',snap)
+            self.assertFalse((root/'card_inventory_p_4C6567616379.dat').exists())
+
+
+
+class ExistingProfileSaveTests(unittest.TestCase):
+    fixture=CardPreservationTests.fixture
+    read=CardPreservationTests.read
+    def test_existing_selection_writes_all_appearance_carriers_and_keeps_progress(self):
+        with self.fixture() as (root,db):
+            con=sqlite3.connect(db)
+            for col,kind in [('Experience','INTEGER DEFAULT 9876'),('Face','INTEGER DEFAULT 0'),
+                             ('PetLevel','INTEGER DEFAULT 0'),('PetExperience','INTEGER DEFAULT 0'),
+                             ('PetVariant','INTEGER DEFAULT 0')]:
+                con.execute(f'ALTER TABLE Characters ADD COLUMN {col} {kind}')
+            for col,kind in [('PetLevel','INTEGER DEFAULT 0'),('PetExperience','INTEGER DEFAULT 0'),
+                             ('PetDurability','INTEGER DEFAULT 100'),('PetCurrentStage','INTEGER DEFAULT 0'),
+                             ('PetAccessory0','INTEGER DEFAULT 0'),('PetAccessory1','INTEGER DEFAULT 0'),('PetAccessory2','INTEGER DEFAULT 0')]:
+                con.execute(f'ALTER TABLE CharacterItems ADD COLUMN {col} {kind}')
+            appearance=struct.pack('<9I',1,2,3,4,123456,5,6,0,0)
+            con.execute('UPDATE Characters SET Appearance=?,Face=7,PetVariant=3 WHERE Id=11',(appearance,))
+            con.execute("INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt,PetLevel,PetExperience,PetDurability,PetCurrentStage) VALUES(11,15009205,1,'old',23,4567,73,2)")
+            con.commit();con.close()
+            before_other=self.read(db,'SELECT * FROM Characters WHERE Id=22')
+            snap=BACKEND.db_snapshot(root,11)
+            snap['shop'].update(equipped=[10130337,10100028,10110337,10120352,10150103],effect=10160017,selected_pet=15009205)
+            snap['profile']['level']=99  # Editor snapshot is not progress authority.
+            BACKEND.apply(root,BACKEND.name_hex('Alpha'),snap,11)
+            restored=BACKEND.db_snapshot(root,11)
+            self.assertEqual(restored['shop']['equipped'],snap['shop']['equipped'])
+            self.assertEqual(restored['shop']['effect'],10160017)
+            self.assertEqual(restored['shop']['selected_pet'],15009205)
+            self.assertTrue(set(snap['shop']['equipped']+[10160017]).issubset(restored['clothing']))
+            row=self.read(db,'SELECT Appearance,Level,Experience,PetLevel,PetExperience FROM Characters WHERE Id=11')[0]
+            self.assertEqual(struct.unpack('<9I',row[0]),(10130337,10100028,10110337,10120352,123456,10150103,10160017,15009205,0))
+            self.assertEqual(row[1:],(5,9876,23,4567))
+            self.assertEqual(self.read(db,'SELECT Face,PetVariant FROM Characters WHERE Id=11'),[(7,3)])
+            self.assertEqual(self.read(db,'SELECT PetLevel,PetExperience,PetDurability,PetCurrentStage FROM CharacterItems WHERE CharacterId=11 AND ItemCode=15009205'),[(23,4567,73,2)])
+            self.assertEqual(self.read(db,'SELECT * FROM Characters WHERE Id=22'),before_other)
+
+    def test_selected_pet_is_granted_and_zero_selection_really_unequips(self):
+        with self.fixture() as (root,db):
+            snap=BACKEND.db_snapshot(root,11)
+            snap['shop']['selected_pet']=15009205
+            BACKEND.db_apply(root,11,snap)
+            restored=BACKEND.db_snapshot(root,11)
+            self.assertEqual(restored['shop']['selected_pet'],15009205)
+            self.assertTrue(any(p['code']==15009205 for p in restored['pets']))
+            restored['shop'].update(equipped=[0]*5,effect=0,selected_pet=0)
+            BACKEND.db_apply(root,11,restored)
+            self.assertEqual(BACKEND.db_snapshot(root,11)['shop']['selected_pet'],0)
+            self.assertEqual(self.read(db,'SELECT Appearance FROM Characters WHERE Id=11')[0][0][0:32],bytes(32))
+
+    def test_invalid_selection_rejected_without_partial_save(self):
+        for selection in ({'selected_pet':99999999},{'equipped':[10130337]}, {'equipped':[99999999,0,0,0,0]}, {'effect':99999999}):
+            with self.subTest(selection=selection),self.fixture() as (root,db):
+                snap=BACKEND.db_snapshot(root,11);snap['shop'].update(selection,coin=777)
+                before=db.read_bytes()
+                with self.assertRaises(ValueError):BACKEND.db_apply(root,11,snap)
+                self.assertEqual(db.read_bytes(),before)
+
+    def test_stale_sidecar_save_resolves_database_and_does_not_touch_files(self):
+        with self.fixture() as (root,db):
+            snap=BACKEND.db_snapshot(root,11);snap['shop']['coin']=777
+            snap['game_items']=[{'code':46000008,'count':3,'carrier':'cash'}]
+            result=BACKEND.apply(root,BACKEND.name_hex('alpha'),snap)
+            self.assertEqual((result['source'],result['character_id']),('database',11))
+            self.assertEqual(BACKEND.db_snapshot(root,11)['shop']['coin'],777)
+            self.assertEqual(self.read(db,'SELECT Quantity FROM CharacterItems WHERE CharacterId=11 AND ItemCode=46000008'),[(3,)])
+            self.assertFalse((root/'nanaimo_inventory_state_v1.dat').exists())
+            self.assertFalse(BACKEND.local_profile_path(root,BACKEND.name_hex('Alpha')).exists())
+
+    def test_stale_save_still_rejects_online_character(self):
+        with self.fixture() as (root,db):
+            snap=BACKEND.db_snapshot(root,11)
+            con=sqlite3.connect(db);con.execute('UPDATE Accounts SET IsOnline=1 WHERE Id=1');con.commit();con.close()
+            with self.assertRaisesRegex(ValueError,'online'):BACKEND.apply(root,BACKEND.name_hex('Alpha'),snap)
 
 if __name__ == '__main__':
     unittest.main()

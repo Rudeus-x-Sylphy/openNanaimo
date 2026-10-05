@@ -25,9 +25,9 @@ static int progression_dungeon_tuple_compare(const struct progression_dungeon_tu
 /* Canonical title policy.  A title is awarded only by stage1
    Super-BOSS completion; ordinary stage0 never awards.  Villages1..4 keep the
    selected wire episode0..15 with dungeon2 and map directly to grades1..16.
-   Lumineos keeps wire episode100/dungeon0..6 (resource ep16..22 aliases are
-   lookup-only) and maps to grades17..23.  Difficulty is not part of the award. */
-static int dungeon_progression_dungeon_grade_shipped_floor(const struct progression_dungeon_tuple*wire,struct progression_dungeon_tuple*canonical,unsigned*target){if(!wire||!canonical||!target)return 0;*canonical=*wire;*target=0u;if(wire->hd!=0u||wire->stage_index!=1u)return 0;if(wire->episode<=15u&&wire->dungeon==2u){*target=wire->episode+1u;return 1;}if(wire->episode==100u&&wire->dungeon<=6u){*target=17u+wire->dungeon;return 1;}return 0;}
+   Lumineos keeps wire episode100/dungeon0..7 (resource ep16..23 aliases are
+   lookup-only) and maps to grades17..24.  Difficulty is not part of the award. */
+static int dungeon_progression_dungeon_grade_shipped_floor(const struct progression_dungeon_tuple*wire,struct progression_dungeon_tuple*canonical,unsigned*target){if(!wire||!canonical||!target)return 0;*canonical=*wire;*target=0u;if(wire->hd!=0u||wire->stage_index!=1u)return 0;if(wire->episode<=15u&&wire->dungeon==2u){*target=wire->episode+1u;return 1;}if(wire->episode==100u&&wire->dungeon<=7u){*target=17u+wire->dungeon;return 1;}return 0;}
 /* The retired bug wrote grade23 from ep15/dg2 regardless of stage and then
    canonicalized stage1 to stage0.  A stage1 legacy row has a provable grade16;
    a stage0 row has no title proof in this file and is reset to bounded grade0
