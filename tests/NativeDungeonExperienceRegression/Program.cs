@@ -54,6 +54,24 @@ internal static class Program
             && stale.GainedLevels == 0,
             "post-settlement stale checkpoints cannot overwrite committed progression");
 
+        var boostedBytes = settlementBefore.Bytes.ToArray();
+        Put(boostedBytes, 16, 2500); Put(boostedBytes, 20, 2500);
+        Put(boostedBytes, 24, 350); Put(boostedBytes, 28, 350);
+        var boosted = DatabaseService.ResolveNativeDungeonCharacterProgression(
+            settlementBefore, new NativeDungeonState(boostedBytes), null,
+            storedLevel: 1, storedExperience: 90, vitality: 0, intelligence: 0,
+            storedMaxHp: 160, storedMaxMp: 100);
+        Check(boosted.MaxHp == 1440 && boosted.MaxMp == 100
+            && boosted.CurrentHp == 2500 && boosted.CurrentMp == 350,
+            "equipped-resource recovery persists full current HP/MP independently of base maxima");
+        Put(boostedBytes, 20, 9999); Put(boostedBytes, 28, 9999);
+        var capped = DatabaseService.ResolveNativeDungeonCharacterProgression(
+            settlementBefore, new NativeDungeonState(boostedBytes), null,
+            storedLevel: 1, storedExperience: 90, vitality: 0, intelligence: 0,
+            storedMaxHp: 160, storedMaxMp: 100);
+        Check(capped.CurrentHp == 2500 && capped.CurrentMp == 350,
+            "current resources remain bounded by effective maxima");
+
         var legacySettlement = settlement with { CharacterExperienceAward = null };
         var legacyAfterBytes = settlementBefore.Bytes.ToArray();
         Put(legacyAfterBytes, 12, 110);

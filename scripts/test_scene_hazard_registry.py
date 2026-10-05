@@ -33,8 +33,8 @@ class SceneHazardRegistryTests(unittest.TestCase):
         self.assertIn(
             "SCENE_HAZARD_CATALOG_PASS scopes=288 type4=44531 "
             "association_candidates=31788 exact_associated=29916 "
-            "broken_association=1887 standalone=12743 hazards=216 "
-            "unclassified=14399 policies=1 negative_samples=7",
+            "broken_association=1887 standalone=12743 hazards=471 "
+            "unclassified=14144 policies=6 negative_samples=7",
             result.stdout,
         )
 
@@ -52,7 +52,7 @@ class SceneHazardRegistryTests(unittest.TestCase):
         registry = json.loads(REGISTRY.read_text(encoding="ascii"))
         self.assertEqual(registry["schema"], 1)
         policy = registry["policies"]
-        self.assertEqual(policy, [{
+        self.assertEqual(policy[:1], [{
             "resource": "ep01_dg02_new_obj_meteor.mmo",
             "sha256": "80A21EE3F8175DCFEA21C2BF84B3F6DF9A0BC24B69951294F37D8C2178ADCB01",
             "mmo_record_count": 36,
@@ -70,10 +70,10 @@ class SceneHazardRegistryTests(unittest.TestCase):
         source = RUNTIME.read_text(encoding="utf-8")
         catalog = CATALOG.read_text(encoding="ascii")
         self.assertIn('#include "scene_hazard_catalog.inc"', source)
-        self.assertIn("target->association>=0", source)
+        self.assertIn("target->association==stage_damage_scene_hazard_policies[i].association", source)
         self.assertIn("target->raw_hp!=0", source)
         self.assertIn("target->nominal_hp!=0", source)
-        self.assertIn("target->basis!=0", source)
+        self.assertIn("target->basis==stage_damage_scene_hazard_policies[i].basis", source)
         self.assertIn("target->reward_kind!=0", source)
         self.assertIn("stage_damage_resource_name_equal(resource_def->sha256,policy->sha256)", source)
         self.assertIn("resource_def->record_count==policy->record_count", source)

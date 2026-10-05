@@ -76,6 +76,23 @@ static void pet_crafting_pet_sync_selected_age(void){unsigned price=0u,a=g_stabl
 static void pet_crafting_pet_effect_sums_for_gems(const unsigned*gems,unsigned*attack_flat,unsigned*attack_percent,unsigned*hp,unsigned*mp){unsigned i,j;*attack_flat=*attack_percent=*hp=*mp=0u;for(i=0u;i<3u;i++){const struct pet_crafting_pet_gem_effect_row*d=pet_crafting_pet_gem_find(gems[i]);if(!d)continue;for(j=0u;j<3u;j++){unsigned t=d->type[j],v=d->value[j],pct=d->percent[j];if(t==1u){if(*attack_flat>0xFFFFFFFFu-v)*attack_flat=0xFFFFFFFFu;else *attack_flat+=v;if(*attack_percent>0xFFFFFFFFu-pct)*attack_percent=0xFFFFFFFFu;else *attack_percent+=pct;}else if(t==2u){if(*hp>65535u-v)*hp=65535u;else *hp+=v;}else if(t==3u){if(*mp>65535u-v)*mp=65535u;else *mp+=v;}}}}
 static void pet_crafting_pet_effect_sums(unsigned*attack_flat,unsigned*attack_percent,unsigned*hp,unsigned*mp){int q;*attack_flat=*attack_percent=*hp=*mp=0u;pet_crafting_pet_state_load();q=pet_crafting_pet_row_index(g_stable_pet);if(q>=0)pet_crafting_pet_effect_sums_for_gems(g_pet_crafting_pet_items[q].gems,attack_flat,attack_percent,hp,mp);}
 
+/* Equipped slots contribute additive economy percentages. */
+static unsigned pet_crafting_pet_economy_percent_for_gems(const unsigned*gems,unsigned effect){
+    unsigned i,j,total=0u;
+    for(i=0u;i<3u;i++){
+        const struct pet_crafting_pet_gem_effect_row*d=pet_crafting_pet_gem_find(gems[i]);
+        if(!d)continue;
+        for(j=0u;j<3u;j++)if(d->flags[j]&&d->type[j]==effect){
+            unsigned pct=d->percent[j];total=pct>10000u-total?10000u:total+pct;
+        }
+    }
+    return total;
+}
+static unsigned pet_crafting_pet_economy_percent(unsigned effect){
+    int q;pet_crafting_pet_state_load();q=pet_crafting_pet_row_index(g_stable_pet);
+    return q<0?0u:pet_crafting_pet_economy_percent_for_gems(g_pet_crafting_pet_items[q].gems,effect);
+}
+
 static unsigned item_effects_items_selected_attack_bonus(void){unsigned a,p,h,m;pet_crafting_pet_effect_sums(&a,&p,&h,&m);return a;}
 static unsigned pet_crafting_pet_adjust_attack(unsigned base){unsigned flat,pct,h,m,out=base;pet_crafting_pet_effect_sums(&flat,&pct,&h,&m);if(out>0xFFFFFFFFu-flat)out=0xFFFFFFFFu;else out+=flat;if(pct){unsigned long long add=((unsigned long long)base*(unsigned long long)pct)/100ull;if(add>0xFFFFFFFFull-out)out=0xFFFFFFFFu;else out+=(unsigned)add;}return out;}
 static void pet_crafting_pet_effective_resources(unsigned*hp_max,unsigned*hp_current,unsigned*mp_max,unsigned*mp_current){

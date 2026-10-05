@@ -21,10 +21,17 @@ public sealed partial class NetworkAdapterService
         byte[] frame, ushort opcode, string channel, string remote, string? remoteIp,
         ConnectionSession session, CancellationToken token)
     {
+        if (channel == "WorldAdapter" && session.OnlineTracked && session.Character is { } noticeCharacter
+            && session.CardNoticeCharacterId != noticeCharacter.Id)
+        {
+            var initialCards = await _database.GetCharacterCardsAsync(noticeCharacter.Id, token);
+            session.InventoryAcquisitions.Seed(0xC3E8, CardNoticeCodes(initialCards));
+            session.CardNoticeCharacterId = noticeCharacter.Id;
+        }
         var synchronize = NativeDungeonEnabled && channel == "WorldAdapter"
             && session.OnlineTracked && session.Character is not null
             && session.NativeDungeon is not null && session.NativeCheckpoint is not null
-            && (IsNativeInventoryMutation(opcode) || opcode is 0xC378 or 0xC42F or 0xC44B or 0xC3CB);
+            && (IsNativeInventoryMutation(opcode) || opcode is 0xC378 or 0xC42F or 0xC44B or 0xC3CB or 0xC3E7);
         if (synchronize)
             await CommitNativeCheckpointAsync(session, null, token);
         var response = await HandleNativeFrameCoreAsync(frame, opcode, channel, remote, remoteIp, session, token);

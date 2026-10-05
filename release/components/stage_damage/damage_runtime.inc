@@ -179,9 +179,11 @@ static unsigned stage_damage_scene_hazard_lookup(const struct stage_damage_damag
     const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);const struct hp_sync_target_def *target;const struct hp_sync_resource_def *resource_def;const char *resource;unsigned i;
     if(!profile||selector>=(unsigned)profile->target_count)return 0u;
     target=&hp_sync_target_defs[profile->first_row+selector];
-    if((unsigned)target->selector!=selector||target->target_type!=4u||target->association>=0||target->raw_hp!=0||target->nominal_hp!=0||target->basis!=0||target->reward_kind!=0||target->resource_index>=HP_SYNC_RESOURCE_COUNT)return 0u;
+    if((unsigned)target->selector!=selector||target->target_type!=4u||target->raw_hp!=0||target->nominal_hp!=0||target->reward_kind!=0||target->resource_index>=HP_SYNC_RESOURCE_COUNT)return 0u;
     resource_def=&hp_sync_resources[target->resource_index];resource=resource_def->name;
-    for(i=0u;i<STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT;i++)if(stage_damage_scene_hazard_policy_matches(ctx,resource_def,resource,&stage_damage_scene_hazard_policies[i])){
+    for(i=0u;i<STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT;i++)if(stage_damage_scene_hazard_policy_matches(ctx,resource_def,resource,&stage_damage_scene_hazard_policies[i])&&
+        target->basis==stage_damage_scene_hazard_policies[i].basis&&target->association==stage_damage_scene_hazard_policies[i].association&&
+        (stage_damage_scene_hazard_policies[i].row<0||(unsigned)stage_damage_scene_hazard_policies[i].row==(unsigned)target->selector-(unsigned)target->placement_selector_start)){
         unsigned damage=stage_damage_scene_hazard_policies[i].damage;
         if(out){out->target_type=(unsigned)target->target_type;out->row_count=(unsigned)profile->target_count;out->base=damage;
             out->status=STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE;out->policy_damage=damage;out->resource=resource;}

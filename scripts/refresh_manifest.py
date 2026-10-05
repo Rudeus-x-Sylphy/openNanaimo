@@ -14,6 +14,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
+    'scripts/test_gameplay_bugfixes.py',
+    'scripts/generate_scene_hazard_catalog.py',
+    'release/components/stage_damage/scene_hazard_registry.json',
     'scripts/verify_client_baseline.py',
     'scripts/prepare_client_compatibility.py',
     'scripts/prepare_entertainment_resources.py',

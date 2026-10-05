@@ -745,8 +745,12 @@ public sealed partial class DatabaseService
         var gainedLevels = Math.Max(0, level - storedLevel);
         var maxHp = Math.Max(storedMaxHp, CharacterProgression.CalculateMaxHp(level, vitality));
         var maxMp = Math.Max(storedMaxMp, CharacterProgression.CalculateMaxMp(level, intelligence));
-        var currentHp = gainedLevels > 0 ? maxHp : Math.Min(checked((int)after.Get(20)), maxHp);
-        var currentMp = gainedLevels > 0 ? maxMp : Math.Min(checked((int)after.Get(28)), maxMp);
+        // Current resources include equipped bonuses; persisted maxima remain base stats.
+        var (snapshotHp, snapshotMp) = after.GetEffectiveResourceMaximums();
+        var effectiveHp = Math.Max(maxHp, snapshotHp);
+        var effectiveMp = Math.Max(maxMp, snapshotMp);
+        var currentHp = gainedLevels > 0 ? maxHp : (int)Math.Min(after.Get(20), (uint)effectiveHp);
+        var currentMp = gainedLevels > 0 ? maxMp : (int)Math.Min(after.Get(28), (uint)effectiveMp);
         return new NativeDungeonCharacterProgression(
             level, experience, gainedLevels, maxHp, maxMp, currentHp, currentMp, experienceDelta);
     }

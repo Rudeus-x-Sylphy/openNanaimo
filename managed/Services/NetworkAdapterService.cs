@@ -384,6 +384,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public bool ResponseTransportTagInitialized { get; set; }
         public InventoryIdentityMap GameInventoryIdentities { get; } = new();
         public InventoryAcquisitionTracker InventoryAcquisitions { get; } = new();
+        public long CardNoticeCharacterId { get; set; }
         public InventoryIdentityMap PetMaterialIdentities { get; } = new();
         public ShoppingCouponIdentityMap ShoppingCouponIdentities { get; } = new();
         public ushort? LastSkillSlotExpansionRequestControl { get; set; }
@@ -1932,7 +1933,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         if (string.Equals(channel, "WorldAdapter", StringComparison.Ordinal) && session.OnlineTracked)
             ObserveQuestRun(session, opcode, frame);
         if (opcode == 0xCF95)
-            return await HandleDungeonRevivalRetryAsync(frame, channel, remote, session, payload, token);
+            return await HandleDungeonSurrenderAsync(frame, channel, remote, session, payload, token);
         if (await RouteNativeDungeonAsync(frame, opcode, channel, session, token))
             return null;
         var requiredChannel = GetRequiredInboundChannel(opcode);
@@ -4095,6 +4096,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     ? await _database.GetCharacterSkillsAsync(session.Character.Id, token)
                     : [];
                 var cardList = BuildCardListPayload(payload, ownedCards, session.Character, learnedSkills);
+                if (payload[0] is 10 or 20 or 40 or 50)
+                    ApplyCardAcquisitionNotices(cardList, ownedCards, session);
                 if (BinaryPrimitives.ReadUInt16LittleEndian(payload) == 30)
                 {
                     var ownedLand = await _database.GetApartmentLandCardAsync(session.Character.Id, token);
@@ -7909,7 +7912,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return BuildNativeFrame(frame, 0xCF9A, [], session);
 
             case 0xCF95: // handled before native-dungeon routing
-                return await HandleDungeonRevivalRetryAsync(frame, channel, remote, session, payload, token);
+                return await HandleDungeonSurrenderAsync(frame, channel, remote, session, payload, token);
 
             case 0xD014:
                 return IsSkyArenaSession(channel, session) ? HandleArenaPvpEvent(frame, payload, session) : null;
@@ -15990,11 +15993,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             if (card.Category != category || card.Page != page || card.Slot >= pageSize)
                 continue;
 
-            // The common card-book renderer reads frame+12. The mode-40
-            // special-card branch additionally reads its ten counts at +52.
+            // Quantities start at frame+12; frame+32 and +52 carry acquisition notices.
             payload[4 + card.Slot] = card.Quantity;
-            if (mode == 40 && category == 3)
-                payload[44 + card.Slot] = card.Quantity;
         }
 
         if (mode == 40 && category == 3)
@@ -16731,7 +16731,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
-    private async Task<byte[]?> HandleDungeonRevivalRetryAsync(
+    private async Task<byte[]?> HandleDungeonSurrenderAsync(
         byte[] frame,
         string channel,
         string remote,
@@ -16745,90 +16745,27 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             || payload.Length != 0)
             return null;
 
+        // The client death dialog uses CF95 to surrender. Revival choices use CF83.
         if (session.NativeDungeon is not null && session.NativeCheckpoint is not null)
-            return await HandleNativeDungeonRetryAsync(frame, session, token);
+        {
+            var cycle = GetNativeRevivalCycle(session);
+            await cycle.Gate.WaitAsync(token);
+            try
+            {
+                lock (cycle.BoundaryGate)
+                {
+                    if (!session.NativeDungeonDeathLatched)
+                        return BuildNativeFrame(frame, 0xCF96, [], session);
+                    cycle.BattleStarted = false;
+                    cycle.BattleStartArmed = false;
+                    cycle.PendingPaidContinue = null;
+                }
+                return BuildNativeFrame(frame, 0xCF96, [], session);
+            }
+            finally { cycle.Gate.Release(); }
+        }
         if (GetDungeonRoom(session) is null) return null;
-
-        var nativeDeathLatched = false;
-        if (session.NativeDungeon is not null && session.NativeCheckpoint is not null)
-        {
-            await CommitNativeCheckpointAsync(session, null, token);
-            nativeDeathLatched = session.NativeCheckpoint?.Get(20) == 0;
-        }
-
-        DungeonBattleInstance? battle = null;
-        var managedDeathClaimed = false;
-        if (!nativeDeathLatched)
-        {
-            lock (_dungeonRoomGate)
-            {
-                var room = _dungeonRooms.GetValueOrDefault(session.DungeonRoomId);
-                battle = room?.Battle;
-                managedDeathClaimed = room is not null
-                    && battle is not null
-                    && battle.State == DungeonBattleState.Active
-                    && room.Members.ContainsKey(session.SessionId)
-                    && battle.DeadCharacters.Contains(session.Character.Id)
-                    && battle.ContinuingCharacters.Add(session.Character.Id);
-            }
-        }
-
-        var ack = BuildNativeFrame(frame, 0xCF96, [], session);
-        if (!nativeDeathLatched && !managedDeathClaimed)
-        {
-            _log($"{channel}:{remote} dungeon revival retry idempotent ack: room={session.DungeonRoomId} character={session.Character.Id}");
-            return ack;
-        }
-
-        var result = await _database.ConsumeRevivalRetryAsync(
-            session.AccountId,
-            session.Character.Id,
-            session.SessionId,
-            token);
-        if (!result.Success)
-        {
-            if (managedDeathClaimed && battle is not null)
-            {
-                lock (_dungeonRoomGate)
-                    battle.ContinuingCharacters.Remove(session.Character.Id);
-            }
-            _log($"{channel}:{remote} dungeon revival retry rejected: room={session.DungeonRoomId} character={session.Character.Id} error={result.Error}");
-            return ack;
-        }
-
-        if (managedDeathClaimed && battle is not null)
-        {
-            lock (_dungeonRoomGate)
-            {
-                battle.DeadCharacters.Remove(session.Character.Id);
-                battle.ContinuingCharacters.Remove(session.Character.Id);
-            }
-        }
-        session.Character.RevivalUseCount = result.RevivalUseCount;
-        session.Character.CurrentHp = result.CurrentHp;
-        session.Character.CurrentMp = result.CurrentMp;
-        if (session.NativeDungeon is not null && session.NativeCheckpoint is not null)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(session.NativeCheckpoint.Bytes.AsSpan(20, 4), checked((uint)result.CurrentHp));
-            BinaryPrimitives.WriteUInt32LittleEndian(session.NativeCheckpoint.Bytes.AsSpan(28, 4), checked((uint)result.CurrentMp));
-            BinaryPrimitives.WriteUInt32LittleEndian(session.NativeCheckpoint.Bytes.AsSpan(60, 4), result.RevivalUseCount);
-            session.NativeCheckpoint = await session.NativeDungeon.ExchangeAsync(null, session.NativeCheckpoint, token);
-        }
-
-        var revive = BuildNativeFrame(
-            frame,
-            0xCF84,
-            BuildRevivalApplyPayload(session.Character),
-            session);
-        session.DungeonRunRevived = true;
-        var revivalProgress = await _database.AdvanceQuestActionAsync(
-            session.AccountId, session.Character.Id, session.SessionId,
-            0, 0, revived: true, token);
-        if (revivalProgress.Changed)
-            BuildQuestProgressFrames(frame, revivalProgress.Tasks, session, revivalProgress.NewlyCompleted);
-        var refresh = BuildNativeFrame(frame, 0xCF72, BuildDungeonActorRefreshPayload(session.Character), session);
-        _log($"{channel}:{remote} dungeon revival retry completed: room={session.DungeonRoomId} character={session.Character.Id} hp={result.CurrentHp} uses={result.RevivalUseCount}");
-        return CombineNativeFrames(ack, revive, refresh);
+        return BuildNativeFrame(frame, 0xCF96, [], session);
     }
 
     internal static byte[] BuildRevivalApplyPayload(CharacterRecord character)
@@ -19237,7 +19174,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         0x05DC => "dungeon-peer-entity-state-6",
         0x0640 => "dungeon-peer-entity-state-5",
         0xCF8D => "dungeon-owner-kick",
-        0xCF95 => "dungeon-retry",
+        0xCF95 => "dungeon-surrender",
         0xCF99 => "dungeon-surrender-check",
         0xCF9B => "dungeon-skill-use",
         0xD00D => "dungeon-collision",

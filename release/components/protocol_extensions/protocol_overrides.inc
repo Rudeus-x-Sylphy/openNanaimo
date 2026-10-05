@@ -36,10 +36,12 @@ static void flush_pending_d00e_room_current(void){
 }
 #endif
 
+static unsigned pet_crafting_pet_economy_percent(unsigned effect);
+static unsigned combat_economy_coin_with_bonuses(unsigned base);
 #if TEAMPLAY_FEATURE_BOSS_FINAL_HANS
 static unsigned char g_teamplay_boss_final_hans_awarded[MULTI_MAX_PLAYERS];
 static void teamplay_boss_final_hans_reset_current(void){int idx=g_multi_current;if(idx>=0&&idx<MULTI_MAX_PLAYERS)g_teamplay_boss_final_hans_awarded[idx]=0u;}
-static unsigned teamplay_boss_final_hans_commit(unsigned monster_hp){int idx=g_multi_current;stable_u64 old;unsigned amount=combat_economy_coin_amount_for_hp(monster_hp);if(idx<0||idx>=MULTI_MAX_PLAYERS||g_teamplay_boss_final_hans_awarded[idx]||!amount)return 0u;if(g_profile_coin_hans>(stable_u64)(~(stable_u64)0)-amount)return 0u;old=g_profile_coin_hans;g_profile_coin_hans+=(stable_u64)amount;if(!shopping_state_save()){g_profile_coin_hans=old;return 0u;}g_teamplay_boss_final_hans_awarded[idx]=1u;printf("  [BOSS_ECONOMY] Hans committed boss_hp=%u divisor=%u amount=%u balance=%u:%u\n",monster_hp,(unsigned)COMBAT_ECONOMY_COIN_HP_DIVISOR,amount,(unsigned)(g_profile_coin_hans>>32),(unsigned)g_profile_coin_hans);fflush(0);return amount;}
+static unsigned teamplay_boss_final_hans_commit(unsigned monster_hp){int idx=g_multi_current;stable_u64 old;unsigned amount=combat_economy_coin_with_bonuses(combat_economy_coin_amount_for_hp(monster_hp));if(idx<0||idx>=MULTI_MAX_PLAYERS||g_teamplay_boss_final_hans_awarded[idx]||!amount)return 0u;if(g_profile_coin_hans>(stable_u64)(~(stable_u64)0)-amount)return 0u;old=g_profile_coin_hans;g_profile_coin_hans+=(stable_u64)amount;if(!shopping_state_save()){g_profile_coin_hans=old;return 0u;}g_teamplay_boss_final_hans_awarded[idx]=1u;printf("  [BOSS_ECONOMY] Hans committed boss_hp=%u divisor=%u amount=%u balance=%u:%u\n",monster_hp,(unsigned)COMBAT_ECONOMY_COIN_HP_DIVISOR,amount,(unsigned)(g_profile_coin_hans>>32),(unsigned)g_profile_coin_hans);fflush(0);return amount;}
 #else
 static void teamplay_boss_final_hans_reset_current(void){}
 static unsigned teamplay_boss_final_hans_commit(unsigned monster_hp){(void)monster_hp;return 0u;}

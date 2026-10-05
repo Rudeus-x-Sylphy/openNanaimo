@@ -29,8 +29,8 @@ static void send_c3e8_card_page(SOCKET c,unsigned type,unsigned family,unsigned 
         unsigned learned_omit=0u;
 #endif
         skill_progress_load();
-        for(slot=0;slot<8u;slot++)p[0x34+slot]=(char)ZX_SKILL_GRADE_MAX;
-        p[0x34+8]=0;p[0x34+9]=0;
+        /* Page notices are independent of learned grades and owned quantities. */
+        for(slot=0;slot<11u;slot++)p[0x34+slot]=0;
         stable_put32(p,0x4C,SKILL_SLOT_DATES_SKILL_SLOT_CURRENT_YYYYMMDDHH);
         stable_resource_put16(p,0x50,skill_progress_sp_for_page(page));
         c0=g_skill_progress_slots[0];c1=g_skill_progress_slots[1];

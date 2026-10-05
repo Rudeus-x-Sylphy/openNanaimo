@@ -33,6 +33,7 @@ internal static class RevivalBillingChecks
         await CheckContinuationResources();
         await CheckStaleSessionWalletRefresh();
         await CheckLiveBilling();
+        await CheckEquippedRecovery();
         await CheckNativeRetryDispatch();
         await CheckMemberStartContinue();
         await CheckCommittedPaymentRetry();
@@ -86,6 +87,20 @@ internal static class RevivalBillingChecks
         f.Recovered(60, 2000, 800);
     }
 
+    private static async Task CheckEquippedRecovery()
+    {
+        await using var f = await Fixture.Create(1000, 2, equipped: true);
+        await f.Start(); await f.Hp(0);
+        var resources = new BattleResourceSnapshot(0, 0, 0) { Epoch=7, HpAuthority=BattleHpAuthority.LocalDamage };
+        Set(f.Session, "NativeBattleResources", resources with { MaximumHp=2400, MaximumMp=860 });
+        await f.Revive(1, 0);
+        f.Recovered(60, 2400, 860);
+        var saved = (await f.Database.GetCharacterAsync(f.Character.AccountId))!;
+        Check(saved.CurrentHp == 2400 && saved.CurrentMp == 860 && saved.MaxHp == 2000 && saved.MaxMp == 800,
+            "equipped full resources reach both the revival display and persistent state");
+        await f.Balance(1000, 1, "equipped revival consumes exactly one use");
+    }
+
     private static async Task CheckNativeRetryDispatch()
     {
         await using var f = await Fixture.Create(1000, 2);
@@ -99,14 +114,18 @@ internal static class RevivalBillingChecks
             return (await (Task<byte[]?>)Method("HandleNativeFrameAsync").Invoke(f.Service,
                 [request, (ushort)0xCF95, "WorldAdapter", "local", "127.0.0.1", f.Session, f.Stop.Token])!)!;
         }
+        var hpBeforeExit = f.Character.CurrentHp;
         var reply = await Dispatch();
-        Check(U16(reply, 6) == 0xCF96 && !f.Dead && f.Character.CurrentHp > 0,
-            "native-only room acknowledges retry and clears the death gate");
-        await f.Balance(1000, 1, "native retry debits one egg and preserves coins");
+        Check(reply.Length == 8 && U16(reply, 6) == 0xCF96 && f.Dead && f.Character.CurrentHp == hpBeforeExit,
+            "native surrender acknowledges exit while preserving death resources");
+        await f.Balance(1000, 2, "surrender preserves eggs and coins");
         var again = await Dispatch();
         Check(again.Length == 8 && U16(again, 6) == 0xCF96,
             "repeated native retry is an acknowledgement without another restore");
-        await f.Balance(1000, 1, "duplicate native retry preserves the debit");
+        await f.Balance(1000, 2, "duplicate surrender preserves eggs and coins");
+        await f.Revive(1, 0);
+        await f.Balance(1000, 2, "late revival after surrender stays closed");
+        Check(f.Dead, "late revival cannot replace the exit action");
     }
 
     private static async Task CheckContinuationResources()
@@ -348,7 +367,7 @@ internal static class RevivalBillingChecks
         public CharacterRecord Character => (CharacterRecord)Get(Session, "Character")!;
         public bool Dead => (bool)Get(Session, "NativeDungeonDeathLatched")!;
 
-        public static async Task<Fixture> Create(long coins, int eggs, bool largeId = false)
+        public static async Task<Fixture> Create(long coins, int eggs, bool largeId = false, bool equipped = false)
         {
             var root = Path.Combine(Path.GetTempPath(), "nanaimo-revival-billing-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
@@ -374,6 +393,14 @@ internal static class RevivalBillingChecks
                 command.Parameters.AddWithValue("$eggs", eggs);
                 command.Parameters.AddWithValue("$id", id);
                 await command.ExecuteNonQueryAsync();
+            }
+            if (equipped)
+            {
+                await db.GrantInventoryItemToAccountAsync(account, 15009205u, 1);
+                await using var sql = new SqliteConnection($"Data Source={Path.Combine(root, "game.db")}");
+                await sql.OpenAsync(); await using var command = sql.CreateCommand();
+                command.CommandText = "UPDATE CharacterItems SET PetAccessory0=17000566,PetAccessory1=17000007 WHERE CharacterId=$id AND ItemCode=15009205; UPDATE Characters SET EquippedPetItemCode=15009205 WHERE Id=$id";
+                command.Parameters.AddWithValue("$id", id); await command.ExecuteNonQueryAsync();
             }
             var session = Activator.CreateInstance(SessionType, nonPublic: true)!;
             Check(await db.BeginWorldSessionAsync(account, id, (string)Get(session, "SessionId")!, 1, "127.0.0.1"), "test character owns its active session");

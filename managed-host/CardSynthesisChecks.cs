@@ -87,6 +87,23 @@ internal static class CardSynthesisChecks
         Check(BinaryPrimitives.ReadUInt32LittleEndian(cardList.AsSpan(124, 4)) == 0,
             "C3E8 does not invent permanent expansion from an imported X selection");
 
+        cardList = NetworkAdapterService.BuildCardListPayload([40, 0, 3, 1],
+            [new CharacterCardRecord { CardCode = 12000001, Category = 3, Page = 1, Slot = 0, Quantity = 17 }],
+            character, [], wireNow);
+        Check(cardList[4] == 17 && cardList.AsSpan(24, 31).ToArray().All(value => value == 0),
+            "existing special-card quantities leave slot and page acquisition notices clear");
+        Check(Enumerable.Range(0, 10000).Count(roll => DungeonDropPolicy.PassesNormalCardRoll(0, roll, 1000)) == 300
+            && Enumerable.Range(0, 10000).Count(roll => DungeonDropPolicy.PassesNormalCardRoll(27, roll, 1000)) == 381,
+            "ordinary card probability is 3 percent with additive relative equipment bonuses");
+        var cardNotices = new InventoryAcquisitionTracker();
+        cardNotices.Seed(0xC3E8, [12000001u]);
+        cardNotices.Track(0xC3E8, [12000001u,12000001u,13000001u]);
+        Check(cardNotices.PendingCodes(0xC3E8).SetEquals([12000001u,13000001u]), "card increases set exact pending codes");
+        cardNotices.Acknowledge(0xC3E8, [12000001u]);
+        Check(cardNotices.PendingCodes(0xC3E8).SetEquals([13000001u]), "reading one card page preserves other pages");
+        cardNotices.Track(0xC3E8, [12000001u,12000001u]);
+        Check(cardNotices.PendingCodes(0xC3E8).Count == 0, "consumed pending cards clear before display");
+
         var dataDirectory = Path.Combine(Path.GetTempPath(), "nanaimo-card-synthesis-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dataDirectory);
         using (File.Create(Path.Combine(dataDirectory, "game.db"))) { }

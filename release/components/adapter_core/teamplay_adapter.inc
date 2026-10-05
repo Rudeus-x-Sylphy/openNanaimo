@@ -12,9 +12,9 @@ static int terminal_item_drop_is_authored(const struct hp_sync_target_def*td,
     return lo<TERMINAL_ITEM_DROP_ROW_COUNT&&terminal_item_drop_rows[lo]==row;
 }
 #ifndef CARD_ORDINARY_DROP_PERCENT
-#define CARD_ORDINARY_DROP_PERCENT 30u
+#define CARD_ORDINARY_DROP_PERCENT 3u
 #endif
-#define CARD_DROP_BUILD_TAG 2026100501u
+#define CARD_DROP_BUILD_TAG 2026100502u
 /* COMBAT_ECONOMY private card roll. The roll uses CARD_ORDINARY_DROP_PERCENT and
    the card-only floor CARD_ORDINARY_DROP_MIN_HP; it must not reuse
    COMBAT_ECONOMY_REWARD_MIN_HP, which belongs to the Hans economy (max_hp/50 with
@@ -28,6 +28,10 @@ static int card_terminal_policy_card_denied_name(const char*name){
 }
 static int card_roll_card_roll_trace(unsigned pct,unsigned *roll){
     if(!roll)return 0;if(pct==0u){*roll=0u;return 0;}if(pct>=100u){*roll=0u;return 1;}*roll=card_rand_bounded(100u);return *roll<pct;
+}
+static unsigned card_ordinary_drop_basis_points(unsigned bonus){
+    unsigned long long threshold=(unsigned long long)CARD_ORDINARY_DROP_PERCENT*(100ull+bonus)*flight_items_flight_card_percent()/100ull;
+    return threshold>10000ull?10000u:(unsigned)threshold;
 }
 static int card_roll_basis_points(unsigned basis_points,unsigned *roll){
     if(!roll)return 0;if(!basis_points){*roll=0u;return 0;}if(basis_points>=10000u){*roll=0u;return 1;}
@@ -51,7 +55,7 @@ static void combat_economy_select_ordinary_terminal_reward(const struct hp_sync_
         if(card_cn_weight(pool,2u)&&card_roll_basis_points(CARD_SKILL_POINT_DROP_BASIS_POINTS,&roll)){
             *code=card_cn_drop_create(2u,selector,pool,2u);
         }
-        if(!*code&&card_cn_weight(pool,1u)&&card_roll_card_roll_trace(CARD_ORDINARY_DROP_PERCENT,&roll)){
+        if(!*code&&card_cn_weight(pool,1u)&&card_roll_basis_points(card_ordinary_drop_basis_points(pet_crafting_pet_economy_percent(7u)),&roll)){
             *code=card_cn_drop_create(2u,selector,pool,1u);
         }
         if(*code){*subtype=30u;card_won=1;g_card_terminal_policy_card_wins[ci]++;combat_economy_coin_note_card_replacement(monster_hp);}

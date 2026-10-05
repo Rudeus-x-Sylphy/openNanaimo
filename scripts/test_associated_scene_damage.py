@@ -49,8 +49,9 @@ int main(void){
                 CHECK(!strcmp(out.resource,hp_sync_resources[child->resource_index].name));mapped++;scope_mapped++;
             }else{const struct hp_sync_target_def *target=&hp_sync_target_defs[p->first_row+selector];const char *resource=target->resource_index<HP_SYNC_RESOURCE_COUNT?hp_sync_resources[target->resource_index].name:"";
                 if(actual){
-                    CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);CHECK(target->target_type==4u&&target->association<0);
-                    CHECK(target->raw_hp==0&&target->nominal_hp==0&&target->basis==0&&target->reward_kind==0);
+                    CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);CHECK(target->target_type==4u);
+                    if(target->association>=0){CHECK(target->association==8&&actual==300u);broken_association++;}
+                    CHECK(target->raw_hp==0&&target->nominal_hp==0&&(target->basis==0||target->basis==10)&&target->reward_kind==0);
                     CHECK(out.owner==selector&&out.source==2u&&out.target_type==4u&&out.associated_selector==0u);
                     CHECK(out.base==actual&&out.policy_damage==actual&&out.row_count==(unsigned)p->target_count);CHECK(!strcmp(out.resource,resource));hazards++;
                 }else{CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);unmapped++;
@@ -61,9 +62,9 @@ int main(void){
     }
     CHECK(scopes==288u);CHECK(mapped_scopes==267u);CHECK(type4_total==44531u);
     CHECK(association_candidates==31788u);CHECK(standalone==12743u);CHECK(broken_association==1887u);
-    CHECK(mapped==29916u);CHECK(hazards==STAGE_DAMAGE_SCENE_HAZARD_SELECTED_ROW_COUNT);CHECK(hazards==216u);
-    CHECK(unclassified_type4==14399u);CHECK(type4_total-mapped-hazards==unclassified_type4);CHECK(unmapped>mapped);
-    CHECK(STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT==1u);
+    CHECK(mapped==29916u);CHECK(hazards==STAGE_DAMAGE_SCENE_HAZARD_SELECTED_ROW_COUNT);CHECK(hazards==471u);
+    CHECK(unclassified_type4==14144u);CHECK(type4_total-mapped-hazards==unclassified_type4);CHECK(unmapped>mapped);
+    CHECK(STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT==38u);
     stage_damage_damage_begin(&ctx,0u,15u,2u,0u,2u,1u,1u);
     CHECK(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])==16u);
     for(i=0u;i<sizeof(ep15_selectors)/sizeof(ep15_selectors[0]);i++){
@@ -137,7 +138,7 @@ class AssociatedSceneDamageTests(unittest.TestCase):
             run_result = subprocess.run(
                 [str(binary)], cwd=directory, capture_output=True, text=True, errors="replace", timeout=60)
             self.assertEqual(run_result.returncode, 0, run_result.stdout + run_result.stderr)
-            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=288 mapped_scopes=267 type4=44531 association_candidates=31788 exact_associated=29916 broken_association=1887 standalone=12743 hazards=216 unclassified=14399", run_result.stdout)
+            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=288 mapped_scopes=267 type4=44531 association_candidates=31788 exact_associated=29916 broken_association=1887 standalone=12743 hazards=471 unclassified=14144", run_result.stdout)
 
     def test_dispatch_is_exact_not_global_kind60_damage(self):
         source = (ROOT / "release/components/game_session/gs_runtime.inc").read_text("utf-8")

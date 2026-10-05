@@ -240,44 +240,6 @@ public sealed partial class NetworkAdapterService
                 cycle.PendingPaidContinue = null;
     }
 
-    private async Task<byte[]?> HandleNativeDungeonRetryAsync(
-        byte[] frame, ConnectionSession session, CancellationToken token)
-    {
-        var cycle = GetNativeRevivalCycle(session);
-        await cycle.Gate.WaitAsync(token);
-        try
-        {
-            if (session.Character is null || session.NativeDungeon is null
-                || session.NativeCheckpoint is not { } previous) return null;
-            if (!session.NativeDungeonDeathLatched)
-                return BuildNativeFrame(frame, 0xCF96, [], session);
-            var exchange = await CommitNativeCheckpointCapturedAsync(session, frame, token);
-            var restored = previous.Get(60) > 0 && exchange.State.Get(60) == previous.Get(60) - 1
-                && exchange.State.Get(20) > 0;
-            if (restored)
-            {
-                session.NativeDungeonDeathLatched = false;
-                session.DungeonRunRevived = true;
-                var progress = await _database.AdvanceQuestActionAsync(session.AccountId,
-                    session.Character.Id, session.SessionId, 0, 0, revived: true, token);
-                if (progress.Changed)
-                    BuildQuestProgressFrames(frame, progress.Tasks, session, progress.NewlyCompleted);
-            }
-            var frames = new List<byte[]>();
-            foreach (var response in exchange.Frames)
-            {
-                var opcode = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6));
-                if (opcode == 0xCF96 || restored && opcode is 0xCF84 or 0xCF72)
-                    frames.Add(BuildNativeFrame(response, opcode, response[8..], session));
-                else
-                    await HandleNativeWorkerFrameAsync(session, response, session.NativeBattleEpoch, token);
-            }
-            return frames.Count == 0 ? BuildNativeFrame(frame, 0xCF96, [], session)
-                : CombineNativeFrames(frames.ToArray());
-        }
-        finally { cycle.Gate.Release(); }
-    }
-
     internal static BattleResourceSnapshot? ResetNativeDungeonDeathRetryResources(
         BattleResourceSnapshot? resources)
         => resources is null ? null : resources with

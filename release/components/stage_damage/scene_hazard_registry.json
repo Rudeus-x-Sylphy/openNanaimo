@@ -17,6 +17,323 @@
           "difficulty_mask": 7
         }
       ]
+    },
+    {
+      "resource": "obj_ep01_st11_obj01.mmo",
+      "sha256": "1F4205F3DA705CAE866B09927FFB23FC03530A6EC65EBF786F15EBC5916317D2",
+      "mmo_record_count": 1,
+      "damage": 300,
+      "expected_selected_rows": 9,
+      "evidence": "Authored mechanical obstacle contact damage.",
+      "scopes": [
+        {
+          "hd": 0,
+          "episode": 2,
+          "dungeon": 1,
+          "stage": 0,
+          "difficulty_mask": 7
+        }
+      ],
+      "rows": [
+        {
+          "row": 0,
+          "basis": 10,
+          "association": -1,
+          "damage": 300
+        }
+      ]
+    },
+    {
+      "resource": "obj_ep01_st11_obj02_01.mmo",
+      "sha256": "23DA1F12712F05B7A70C4E58DE8D5486FC1074D1AB185F466967AB00BE5B2041",
+      "mmo_record_count": 21,
+      "damage": 300,
+      "expected_selected_rows": 39,
+      "evidence": "Authored mechanical obstacle contact damage.",
+      "scopes": [
+        {
+          "hd": 0,
+          "episode": 2,
+          "dungeon": 1,
+          "stage": 0,
+          "difficulty_mask": 7
+        }
+      ],
+      "rows": [
+        {
+          "row": 0,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 9,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 10,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 11,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 12,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 13,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 14,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 15,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 16,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 17,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 18,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 19,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 20,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        }
+      ]
+    },
+    {
+      "resource": "obj_ep01_st12_01_00.mmo",
+      "sha256": "9DB6D2C5EF0CFC4E46922EE32946A8ED7865B909EFB7355AFD7C754BD2185F30",
+      "mmo_record_count": 10,
+      "damage": 300,
+      "expected_selected_rows": 108,
+      "evidence": "Authored mechanical obstacle contact damage.",
+      "scopes": [
+        {
+          "hd": 0,
+          "episode": 2,
+          "dungeon": 2,
+          "stage": 0,
+          "difficulty_mask": 7
+        }
+      ],
+      "rows": [
+        {
+          "row": 0,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 1,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 2,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 3,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 4,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 5,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 6,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 7,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 8,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        }
+      ]
+    },
+    {
+      "resource": "obj_ep01_st12_01_01.mmo",
+      "sha256": "B206EA148B89AA75392E3A2E2FD52AA187F5A3B0435BDC06A142F07B0A740A46",
+      "mmo_record_count": 12,
+      "damage": 300,
+      "expected_selected_rows": 54,
+      "evidence": "Authored mechanical obstacle contact damage.",
+      "scopes": [
+        {
+          "hd": 0,
+          "episode": 2,
+          "dungeon": 2,
+          "stage": 0,
+          "difficulty_mask": 7
+        }
+      ],
+      "rows": [
+        {
+          "row": 0,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 1,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 2,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 3,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 4,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 5,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 6,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 7,
+          "basis": 0,
+          "association": 8,
+          "damage": 300
+        },
+        {
+          "row": 8,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        }
+      ]
+    },
+    {
+      "resource": "obj_ep01_st12_02_00.mmo",
+      "sha256": "B6C4781CF91B9E36E88746E453FDAF43113F96800A3C4801D9720F13F4E9CD52",
+      "mmo_record_count": 7,
+      "damage": 300,
+      "expected_selected_rows": 45,
+      "evidence": "Authored mechanical obstacle contact damage.",
+      "scopes": [
+        {
+          "hd": 0,
+          "episode": 2,
+          "dungeon": 2,
+          "stage": 0,
+          "difficulty_mask": 7
+        }
+      ],
+      "rows": [
+        {
+          "row": 0,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 1,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 2,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 3,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        },
+        {
+          "row": 4,
+          "basis": 0,
+          "association": -1,
+          "damage": 300
+        }
+      ]
     }
   ],
   "negative_samples": [

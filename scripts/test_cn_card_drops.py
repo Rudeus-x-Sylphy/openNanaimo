@@ -113,6 +113,8 @@ static int flight_items_contains(const char*a,const char*b){return strstr(a,b)!=
 static int card_ordinary_drop_hp_eligible(unsigned hp){return hp>0u;}
 static void combat_economy_coin_note_card_replacement(unsigned hp){}
 static unsigned flight_items_coin_on_terminal(const struct hp_sync_target_def*t,const char*r,unsigned s,unsigned old,unsigned now,unsigned hp){return old&&!now&&hp>=200u?hp/50u:0u;}
+static unsigned pet_crafting_pet_economy_percent(unsigned effect){return 0u;}
+static unsigned flight_items_flight_card_percent(void){return 100u;}
 struct boss_hp_sync_result {unsigned stage,card_pool_hd,card_pool_key;};
 '''
         code += team + '\n' + boss
