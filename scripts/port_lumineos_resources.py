@@ -1,4 +1,4 @@
-"""Build/install a pinned, local-only L7-visual/L8 resource overlay.
+"""Build/install a pinned, local-only L7-visual-and-BGM/L8 resource overlay.
 
 This is resource deployment, not a claim of combat-catalog or client acceptance.
 No EXE, GS, account data, global progression, or adapter binaries are changed.
@@ -80,7 +80,7 @@ def atomic(path, data):
             os.unlink(name)
 
 
-def assert_not_running(root):
+def assert_not_running(root, *, allow_adapter=False):
     if os.name != 'nt':
         return
     command = ('[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); '
@@ -94,13 +94,18 @@ def assert_not_running(root):
         paths = [paths]
     for name in paths:
         path = Path(name)
+        # These servers consume published adapter catalogs, not client SSTG/audio.
+        # Keep them running; only game clients must close for this resource tool.
+        if allow_adapter and path.parent.name.lower() == 'adapter_runtime' and path.name.lower() in (
+                'nanaimo.adapter.exe', 'nanaimo_gameplay_bridge.exe'):
+            continue
         if path.name.lower().endswith('.exe') and ('game' in path.name.lower() or 'nanaimo' in path.name.lower()) and path.is_relative_to(root):
             raise ValueError('close the client before resource deployment: ' + str(path))
 
 
 @contextmanager
 def client_lock(root):
-    assert_not_running(root)
+    assert_not_running(root, allow_adapter=True)
     path = safe(root, '.openNanaimo-resource-port.lock')
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     try:
@@ -119,6 +124,10 @@ def validate_manifest(manifest):
     if digest(encoded(identity)) != identifier:
         raise ValueError('resource manifest identity mismatch')
     recipe = load(RECIPE)
+    # Exact old marker identities remain valid for verification and rollback.
+    # They are not arbitrary old recipe revisions or mutable coverage exemptions.
+    if identifier in recipe.get('upgrade_from_manifest_ids', []):
+        return
     # Metadata-only recipe revisions retain exact file and baseline validation.
     accepted_recipes = {digest(RECIPE.read_bytes()), *recipe.get('compatible_recipe_sha256s', [])}
     if manifest['recipe_sha256'] not in accepted_recipes:
@@ -152,7 +161,7 @@ def build(source, client, output, recipe_path=RECIPE):
     # not replaced just because KR ciphertext or artwork differs.
     for row in recipe['files']:
         rel = row['path']
-        raw = safe(source, rel).read_bytes()
+        raw = safe(source, row.get('source_path', rel)).read_bytes()
         if digest(raw) != row['source_sha256']:
             raise ValueError('unrecognized KR source: ' + rel)
         current = safe(client, rel)
@@ -174,6 +183,11 @@ def build(source, client, output, recipe_path=RECIPE):
             data, _ = codec.convert_mmo(raw, source)
         elif transform == 'pon106':
             data, _ = codec.convert_pon(raw, source)
+        elif transform == 'sstg-l7-bgm':
+            name = codec.sstg(raw)['bgm']
+            if name != row['bgm']:
+                raise ValueError('unexpected KR L7 BGM')
+            data, _ = codec.patch_sstg_bgm(current.read_bytes(), name)
         elif transform == 'sstg-l8':
             model = codec.sstg(raw)
             stage = 0 if rel.endswith('st00.sstg') else 1
@@ -204,7 +218,7 @@ def build(source, client, output, recipe_path=RECIPE):
         if file_hash(safe(client, row['path'])) != row['sha256']:
             raise ValueError('L7 combat baseline changed: ' + row['path'])
     manifest = dict(schema=SCHEMA, recipe_sha256=digest(Path(recipe_path).read_bytes()),
-                    scope='L7 visuals only; L8 resource content; gameplay catalog integration and original-client acceptance pending',
+                    scope='L7 visuals and BGM only; L8 resource content; original-client acceptance pending',
                     runtime_accepted=False, files=[], preserve_l7_combat=recipe['preserve_l7_combat'])
     output.mkdir(parents=True)
     for rel, before, data, transform in staged:
@@ -279,27 +293,37 @@ def apply(bundle, client):
                 if load(old).get('status') == 'applying':
                     raise ValueError('unfinished deployment; rollback first: ' + str(old.relative_to(client)))
         marker = safe(client, MARKER)
+        installed_hashes = {}
+        marker_before = file_hash(marker)
         if marker.exists():
             installed = load(marker)
             validate_manifest(installed)
-            if installed != manifest:
+            if installed == manifest:
+                return dict(status='already-installed', **verify(client, manifest))
+            if installed['id'] not in load(RECIPE).get('upgrade_from_manifest_ids', []):
                 raise ValueError('different overlay already installed; rollback first')
-            return dict(status='already-installed', **verify(client, manifest))
+            verify(client, installed)  # Check every old resource before upgrading.
+            installed_hashes = {r['path']: r['sha256'] for r in
+                                installed['files'] + installed['preserve_l7_combat']}
+            new_paths = {r['path'] for r in manifest['files'] + manifest['preserve_l7_combat']}
+            if not set(installed_hashes).issubset(new_paths):
+                raise ValueError('upgrade would discard tracked resources')
         work = []
         for row in manifest['files']:
             target = safe(client, row['path'])
             payload = safe(bundle / 'payload', row['path']).read_bytes()
             if digest(payload) != row['sha256'] or len(payload) != row['size']:
                 raise ValueError('bundle payload mismatch: ' + row['path'])
-            if file_hash(target) != row['before_sha256']:
+            before = installed_hashes.get(row['path'], row['before_sha256'])
+            if file_hash(target) != before:
                 raise ValueError('install conflict: ' + row['path'])
-            if row['before_sha256'] != row['sha256']:
-                work.append((row, payload))
+            if before != row['sha256']:
+                work.append((dict(row, before_sha256=before), payload))
         for row in manifest['preserve_l7_combat']:
             if file_hash(safe(client, row['path'])) != row['sha256']:
                 raise ValueError('L7 combat conflict: ' + row['path'])
         marker_data = encoded(manifest)
-        work.append((dict(path=MARKER, before_sha256=None, sha256=digest(marker_data)), marker_data))
+        work.append((dict(path=MARKER, before_sha256=marker_before, sha256=digest(marker_data)), marker_data))
         prefix = '.openNanaimo-resource-backups/' + manifest['id'][:16] + '-' + uuid.uuid4().hex
         receipt = prefix + '/receipt.json'
         journal = dict(schema=SCHEMA, client=str(client), id=manifest['id'], status='applying', files=[])

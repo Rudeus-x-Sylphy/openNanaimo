@@ -1,280 +1,19 @@
 {
   "schema": "openNanaimo.lumineos-port-recipe.v1",
-  "scope": "L7 CN combat preserved, native pages18/19; L8 named family plus explicit dependency graph and UI",
+  "scope": "L7 visuals and BGM-only SSTG field completion; preserve all other CN L7 combat bytes; L8 resources",
   "native_reader_caveat": "Validation scope: fixed-record BMO references and resource conversion; CRS geometry and GPU behavior require separate client acceptance",
   "compatible_recipe_sha256s": [
     "c0f2712f93b94ba28192f1ab92bc9dc0fc54b64a715c56047a41e649503656a1"
   ],
   "files": [
     {
-      "path": "effs/game/shootinggamebasic/ani_guide_mon_d_00.eff",
-      "source_sha256": "9e1df5dcfce60d307620d4c8ee51df245f5c83d959098755ef8ffd4aae126e9f",
-      "source_size": 576,
-      "baseline_sha256": "9e1df5dcfce60d307620d4c8ee51df245f5c83d959098755ef8ffd4aae126e9f",
-      "transform": "retain-cn",
-      "output_sha256": "9e1df5dcfce60d307620d4c8ee51df245f5c83d959098755ef8ffd4aae126e9f",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ani_guide_mon_d_01.eff",
-      "source_sha256": "5b16baef512d3c63ab4593cdf6289f75c0e6f6268e51f1dc33d7e35d33538724",
-      "source_size": 576,
-      "baseline_sha256": "5b16baef512d3c63ab4593cdf6289f75c0e6f6268e51f1dc33d7e35d33538724",
-      "transform": "retain-cn",
-      "output_sha256": "5b16baef512d3c63ab4593cdf6289f75c0e6f6268e51f1dc33d7e35d33538724",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ani_guide_mon_d_02.eff",
-      "source_sha256": "e979c014b6547c2751f398d1d7d705b016e234b16d56c44ea174cea93728d0bc",
-      "source_size": 576,
-      "baseline_sha256": "e979c014b6547c2751f398d1d7d705b016e234b16d56c44ea174cea93728d0bc",
-      "transform": "retain-cn",
-      "output_sha256": "e979c014b6547c2751f398d1d7d705b016e234b16d56c44ea174cea93728d0bc",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ani_guide_mon_d_03.eff",
-      "source_sha256": "431e541bb427016aed8dcbfde96da90b30b0bc60cabc9b37f01196983294be38",
-      "source_size": 576,
-      "baseline_sha256": "431e541bb427016aed8dcbfde96da90b30b0bc60cabc9b37f01196983294be38",
-      "transform": "retain-cn",
-      "output_sha256": "431e541bb427016aed8dcbfde96da90b30b0bc60cabc9b37f01196983294be38",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ani_mon_d_01_03_up.eff",
-      "source_sha256": "55d0cd274c71a523871a7fe0be339cfcb923f69cf7b239ccb79910a72cf833ac",
-      "source_size": 4440,
-      "baseline_sha256": "55d0cd274c71a523871a7fe0be339cfcb923f69cf7b239ccb79910a72cf833ac",
-      "transform": "retain-cn",
-      "output_sha256": "55d0cd274c71a523871a7fe0be339cfcb923f69cf7b239ccb79910a72cf833ac",
-      "output_size": 4440
-    },
-    {
-      "path": "effs/game/shootinggamebasic/bigmon_move_point.im3",
-      "source_sha256": "008fb2854e6c954f0c15afc1be94e2a0fa80e95e22ff11e44ca742062a4f107d",
-      "source_size": 236,
-      "baseline_sha256": "008fb2854e6c954f0c15afc1be94e2a0fa80e95e22ff11e44ca742062a4f107d",
-      "transform": "retain-cn",
-      "output_sha256": "008fb2854e6c954f0c15afc1be94e2a0fa80e95e22ff11e44ca742062a4f107d",
-      "output_size": 236
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_d_b.im3",
-      "source_sha256": "a23e854f84fc6da3dc47c1e4c544a38301c7e0719ef475219740a776198b1265",
-      "source_size": 22968,
-      "baseline_sha256": "a23e854f84fc6da3dc47c1e4c544a38301c7e0719ef475219740a776198b1265",
-      "transform": "retain-cn",
-      "output_sha256": "a23e854f84fc6da3dc47c1e4c544a38301c7e0719ef475219740a776198b1265",
-      "output_size": 22968
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_d_ef_01.im3",
-      "source_sha256": "5c4d8aacdfb770bc7755ccc6c3b930ef1772abbb581819afcd9ffa58acabffdc",
-      "source_size": 204862,
-      "baseline_sha256": "5c4d8aacdfb770bc7755ccc6c3b930ef1772abbb581819afcd9ffa58acabffdc",
-      "transform": "retain-cn",
-      "output_sha256": "5c4d8aacdfb770bc7755ccc6c3b930ef1772abbb581819afcd9ffa58acabffdc",
-      "output_size": 204862
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_d_ef_02.im3",
-      "source_sha256": "2dd59404fd1d1719414193efcf624ea6d6577e2d0ea4ab98171e30f6d6d46dee",
-      "source_size": 103180,
-      "baseline_sha256": "2dd59404fd1d1719414193efcf624ea6d6577e2d0ea4ab98171e30f6d6d46dee",
-      "transform": "retain-cn",
-      "output_sha256": "2dd59404fd1d1719414193efcf624ea6d6577e2d0ea4ab98171e30f6d6d46dee",
-      "output_size": 103180
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_d_r.eff",
-      "source_sha256": "57e0d1d16eaee7d3c3ee226f58c8eb2731f91cbec0e4378a908d07fb46a04e6c",
-      "source_size": 1784,
-      "baseline_sha256": "57e0d1d16eaee7d3c3ee226f58c8eb2731f91cbec0e4378a908d07fb46a04e6c",
-      "transform": "retain-cn",
-      "output_sha256": "57e0d1d16eaee7d3c3ee226f58c8eb2731f91cbec0e4378a908d07fb46a04e6c",
-      "output_size": 1784
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_d_r.im3",
-      "source_sha256": "64882ee0e431518276675a12e76759dd36b80f9bfd7dc3ea5ee328cd6f25e7b8",
-      "source_size": 22948,
-      "baseline_sha256": "64882ee0e431518276675a12e76759dd36b80f9bfd7dc3ea5ee328cd6f25e7b8",
-      "transform": "retain-cn",
-      "output_sha256": "64882ee0e431518276675a12e76759dd36b80f9bfd7dc3ea5ee328cd6f25e7b8",
-      "output_size": 22948
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_ef.im3",
-      "source_sha256": "09c34402d2a58cfca151ec80d4ba5ebdb025fad9bcf20737cb5d6d1e69bc3e23",
-      "source_size": 162572,
-      "baseline_sha256": "09c34402d2a58cfca151ec80d4ba5ebdb025fad9bcf20737cb5d6d1e69bc3e23",
-      "transform": "retain-cn",
-      "output_sha256": "09c34402d2a58cfca151ec80d4ba5ebdb025fad9bcf20737cb5d6d1e69bc3e23",
-      "output_size": 162572
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_ef01.im3",
-      "source_sha256": "b4be2ec0fe26b3d74739518582b9e20777554afc79cd5134bcbeb44a65aae7ae",
-      "source_size": 2898,
-      "baseline_sha256": "b4be2ec0fe26b3d74739518582b9e20777554afc79cd5134bcbeb44a65aae7ae",
-      "transform": "retain-cn",
-      "output_sha256": "b4be2ec0fe26b3d74739518582b9e20777554afc79cd5134bcbeb44a65aae7ae",
-      "output_size": 2898
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_ef02r.im3",
-      "source_sha256": "f53d5ad63f6d5ed99da13bd03380009e7e32a780f4a0d8817f846ab9c76a4cc4",
-      "source_size": 64780,
-      "baseline_sha256": "f53d5ad63f6d5ed99da13bd03380009e7e32a780f4a0d8817f846ab9c76a4cc4",
-      "transform": "retain-cn",
-      "output_sha256": "f53d5ad63f6d5ed99da13bd03380009e7e32a780f4a0d8817f846ab9c76a4cc4",
-      "output_size": 64780
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_m_b.eff",
-      "source_sha256": "e004b41d1de8f73c7719601267a99c51bf885f78c6ff405a3de0ee70650c74a6",
-      "source_size": 15660,
-      "baseline_sha256": "e004b41d1de8f73c7719601267a99c51bf885f78c6ff405a3de0ee70650c74a6",
-      "transform": "retain-cn",
-      "output_sha256": "e004b41d1de8f73c7719601267a99c51bf885f78c6ff405a3de0ee70650c74a6",
-      "output_size": 15660
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_m_r.eff",
-      "source_sha256": "24e927b8a81c12332b6431d4b083ee11eef86bf5942a610be970533f33773763",
-      "source_size": 15660,
-      "baseline_sha256": "24e927b8a81c12332b6431d4b083ee11eef86bf5942a610be970533f33773763",
-      "transform": "retain-cn",
-      "output_sha256": "24e927b8a81c12332b6431d4b083ee11eef86bf5942a610be970533f33773763",
-      "output_size": 15660
-    },
-    {
-      "path": "effs/game/shootinggamebasic/burst_mon_mb_ef_00.im3",
-      "source_sha256": "fbf5bb5e16df77d2c4d45df67dd06a3af4e2fa72cfedfe8a3e99f2ccd5f3502f",
-      "source_size": 16292,
-      "baseline_sha256": "fbf5bb5e16df77d2c4d45df67dd06a3af4e2fa72cfedfe8a3e99f2ccd5f3502f",
-      "transform": "retain-cn",
-      "output_sha256": "fbf5bb5e16df77d2c4d45df67dd06a3af4e2fa72cfedfe8a3e99f2ccd5f3502f",
-      "output_size": 16292
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_popcon_b.eff",
-      "source_sha256": "794ec6a15428618394ab5335ef3b34bad1ffd23d0ab7541826db21f4be87cc8c",
-      "source_size": 576,
-      "baseline_sha256": "794ec6a15428618394ab5335ef3b34bad1ffd23d0ab7541826db21f4be87cc8c",
-      "transform": "retain-cn",
-      "output_sha256": "794ec6a15428618394ab5335ef3b34bad1ffd23d0ab7541826db21f4be87cc8c",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_popcon_g.eff",
-      "source_sha256": "4cf79999e80307ad97188cb213b32952dc4ad2a9d7fe5cc4fa381ca930c482b9",
-      "source_size": 576,
-      "baseline_sha256": "4cf79999e80307ad97188cb213b32952dc4ad2a9d7fe5cc4fa381ca930c482b9",
-      "transform": "retain-cn",
-      "output_sha256": "4cf79999e80307ad97188cb213b32952dc4ad2a9d7fe5cc4fa381ca930c482b9",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_popcon_grey.eff",
-      "source_sha256": "d0760dd1938300bc4b1aa282c5b9d08c4c9623af70bee9d6c3468447df93c477",
-      "source_size": 576,
-      "baseline_sha256": "d0760dd1938300bc4b1aa282c5b9d08c4c9623af70bee9d6c3468447df93c477",
-      "transform": "retain-cn",
-      "output_sha256": "d0760dd1938300bc4b1aa282c5b9d08c4c9623af70bee9d6c3468447df93c477",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_popcon_p.eff",
-      "source_sha256": "a5701516a8298663f0d7eef0c26afae9ee30ee1f0ee6c5c07dc5d8e5e5d7fb97",
-      "source_size": 576,
-      "baseline_sha256": "a5701516a8298663f0d7eef0c26afae9ee30ee1f0ee6c5c07dc5d8e5e5d7fb97",
-      "transform": "retain-cn",
-      "output_sha256": "a5701516a8298663f0d7eef0c26afae9ee30ee1f0ee6c5c07dc5d8e5e5d7fb97",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_popcon_r.eff",
-      "source_sha256": "60940148dfc0937c356a2f1743bfdaaf0f1d940c1694d4206275a221e728b190",
-      "source_size": 576,
-      "baseline_sha256": "60940148dfc0937c356a2f1743bfdaaf0f1d940c1694d4206275a221e728b190",
-      "transform": "retain-cn",
-      "output_sha256": "60940148dfc0937c356a2f1743bfdaaf0f1d940c1694d4206275a221e728b190",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_popcon_y.eff",
-      "source_sha256": "c153a741659476a71f631d141da7db2ea288907f5ba5b7e9e30150a15cf06f74",
-      "source_size": 576,
-      "baseline_sha256": "c153a741659476a71f631d141da7db2ea288907f5ba5b7e9e30150a15cf06f74",
-      "transform": "retain-cn",
-      "output_sha256": "c153a741659476a71f631d141da7db2ea288907f5ba5b7e9e30150a15cf06f74",
-      "output_size": 576
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_post_mis_power_b.im3",
-      "source_sha256": "171ced2696c65c040b864b72336625c2d28d14413d37e1909ef8df6c842cc16c",
-      "source_size": 137228,
-      "baseline_sha256": "171ced2696c65c040b864b72336625c2d28d14413d37e1909ef8df6c842cc16c",
-      "transform": "retain-cn",
-      "output_sha256": "171ced2696c65c040b864b72336625c2d28d14413d37e1909ef8df6c842cc16c",
-      "output_size": 137228
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_post_mis_power_b_01.im3",
-      "source_sha256": "3a0153294936ba11b32744e25c9e780972a6739fd8d5fa1497a036752aff35cf",
-      "source_size": 176386,
-      "baseline_sha256": "3a0153294936ba11b32744e25c9e780972a6739fd8d5fa1497a036752aff35cf",
-      "transform": "retain-cn",
-      "output_sha256": "3a0153294936ba11b32744e25c9e780972a6739fd8d5fa1497a036752aff35cf",
-      "output_size": 176386
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_post_mis_power_energy.im3",
-      "source_sha256": "da0f8f521e278e6c58238617f23cf68abe1c68e1761ac34711f47e7a44dc3604",
-      "source_size": 222772,
-      "baseline_sha256": "da0f8f521e278e6c58238617f23cf68abe1c68e1761ac34711f47e7a44dc3604",
-      "transform": "retain-cn",
-      "output_sha256": "da0f8f521e278e6c58238617f23cf68abe1c68e1761ac34711f47e7a44dc3604",
-      "output_size": 222772
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_post_mis_power_r.im3",
-      "source_sha256": "78b5b2b8838bed6889a4444014b57dc5ba538ce1badcd20253853e17aaa33a43",
-      "source_size": 137228,
-      "baseline_sha256": "78b5b2b8838bed6889a4444014b57dc5ba538ce1badcd20253853e17aaa33a43",
-      "transform": "retain-cn",
-      "output_sha256": "78b5b2b8838bed6889a4444014b57dc5ba538ce1badcd20253853e17aaa33a43",
-      "output_size": 137228
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_post_mis_power_r_01.im3",
-      "source_sha256": "08baca21b5035d21a9041c0934abdd7a1b479a6fd6a53eef8bcd9c98428096c7",
-      "source_size": 176386,
-      "baseline_sha256": "08baca21b5035d21a9041c0934abdd7a1b479a6fd6a53eef8bcd9c98428096c7",
-      "transform": "retain-cn",
-      "output_sha256": "08baca21b5035d21a9041c0934abdd7a1b479a6fd6a53eef8bcd9c98428096c7",
-      "output_size": 176386
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_post_mis_power_y.im3",
-      "source_sha256": "f6990415d2656dc7815f1a6418b595e9d6c3a48784d7898505f8f2b66fe2236e",
-      "source_size": 137228,
-      "baseline_sha256": "f6990415d2656dc7815f1a6418b595e9d6c3a48784d7898505f8f2b66fe2236e",
-      "transform": "retain-cn",
-      "output_sha256": "f6990415d2656dc7815f1a6418b595e9d6c3a48784d7898505f8f2b66fe2236e",
-      "output_size": 137228
-    },
-    {
-      "path": "effs/game/shootinggamebasic/ef_post_mis_power_y_01.im3",
-      "source_sha256": "208723ae971830a18939f3fa567a35f71a0150e2e1d827f335c8e718087683de",
-      "source_size": 176386,
-      "baseline_sha256": "208723ae971830a18939f3fa567a35f71a0150e2e1d827f335c8e718087683de",
-      "transform": "retain-cn",
-      "output_sha256": "208723ae971830a18939f3fa567a35f71a0150e2e1d827f335c8e718087683de",
-      "output_size": 176386
+      "path": "Village_map_image/Village_map_image.pack",
+      "source_sha256": "69c23523781a52dd55d04ff2e269dadd6de6e4fd6b51aae8b5f8786ced352688",
+      "source_size": 17033949,
+      "baseline_sha256": "ba506120e0058ce7466bd8a17c423a443f8a155feefc1fd802d17c35446d1f29",
+      "transform": "village-pages",
+      "output_sha256": "91ab1b56b667cfcadca09728e3ef84a00768ae238591eea28109cf4eab89eee3",
+      "output_size": 17028285
     },
     {
       "path": "effs/game/shootinggamebasic/Ending_Event/black_bg_ef.eff",
@@ -617,6 +356,276 @@
       "transform": "retain-cn",
       "output_sha256": "c55b77bb21daab965501185a15097e9fbe8a7bf55102f6df00aed55356a0c642",
       "output_size": 11248
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ani_guide_mon_d_00.eff",
+      "source_sha256": "9e1df5dcfce60d307620d4c8ee51df245f5c83d959098755ef8ffd4aae126e9f",
+      "source_size": 576,
+      "baseline_sha256": "9e1df5dcfce60d307620d4c8ee51df245f5c83d959098755ef8ffd4aae126e9f",
+      "transform": "retain-cn",
+      "output_sha256": "9e1df5dcfce60d307620d4c8ee51df245f5c83d959098755ef8ffd4aae126e9f",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ani_guide_mon_d_01.eff",
+      "source_sha256": "5b16baef512d3c63ab4593cdf6289f75c0e6f6268e51f1dc33d7e35d33538724",
+      "source_size": 576,
+      "baseline_sha256": "5b16baef512d3c63ab4593cdf6289f75c0e6f6268e51f1dc33d7e35d33538724",
+      "transform": "retain-cn",
+      "output_sha256": "5b16baef512d3c63ab4593cdf6289f75c0e6f6268e51f1dc33d7e35d33538724",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ani_guide_mon_d_02.eff",
+      "source_sha256": "e979c014b6547c2751f398d1d7d705b016e234b16d56c44ea174cea93728d0bc",
+      "source_size": 576,
+      "baseline_sha256": "e979c014b6547c2751f398d1d7d705b016e234b16d56c44ea174cea93728d0bc",
+      "transform": "retain-cn",
+      "output_sha256": "e979c014b6547c2751f398d1d7d705b016e234b16d56c44ea174cea93728d0bc",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ani_guide_mon_d_03.eff",
+      "source_sha256": "431e541bb427016aed8dcbfde96da90b30b0bc60cabc9b37f01196983294be38",
+      "source_size": 576,
+      "baseline_sha256": "431e541bb427016aed8dcbfde96da90b30b0bc60cabc9b37f01196983294be38",
+      "transform": "retain-cn",
+      "output_sha256": "431e541bb427016aed8dcbfde96da90b30b0bc60cabc9b37f01196983294be38",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ani_mon_d_01_03_up.eff",
+      "source_sha256": "55d0cd274c71a523871a7fe0be339cfcb923f69cf7b239ccb79910a72cf833ac",
+      "source_size": 4440,
+      "baseline_sha256": "55d0cd274c71a523871a7fe0be339cfcb923f69cf7b239ccb79910a72cf833ac",
+      "transform": "retain-cn",
+      "output_sha256": "55d0cd274c71a523871a7fe0be339cfcb923f69cf7b239ccb79910a72cf833ac",
+      "output_size": 4440
+    },
+    {
+      "path": "effs/game/shootinggamebasic/bigmon_move_point.im3",
+      "source_sha256": "008fb2854e6c954f0c15afc1be94e2a0fa80e95e22ff11e44ca742062a4f107d",
+      "source_size": 236,
+      "baseline_sha256": "008fb2854e6c954f0c15afc1be94e2a0fa80e95e22ff11e44ca742062a4f107d",
+      "transform": "retain-cn",
+      "output_sha256": "008fb2854e6c954f0c15afc1be94e2a0fa80e95e22ff11e44ca742062a4f107d",
+      "output_size": 236
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_d_b.im3",
+      "source_sha256": "a23e854f84fc6da3dc47c1e4c544a38301c7e0719ef475219740a776198b1265",
+      "source_size": 22968,
+      "baseline_sha256": "a23e854f84fc6da3dc47c1e4c544a38301c7e0719ef475219740a776198b1265",
+      "transform": "retain-cn",
+      "output_sha256": "a23e854f84fc6da3dc47c1e4c544a38301c7e0719ef475219740a776198b1265",
+      "output_size": 22968
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_d_ef_01.im3",
+      "source_sha256": "5c4d8aacdfb770bc7755ccc6c3b930ef1772abbb581819afcd9ffa58acabffdc",
+      "source_size": 204862,
+      "baseline_sha256": "5c4d8aacdfb770bc7755ccc6c3b930ef1772abbb581819afcd9ffa58acabffdc",
+      "transform": "retain-cn",
+      "output_sha256": "5c4d8aacdfb770bc7755ccc6c3b930ef1772abbb581819afcd9ffa58acabffdc",
+      "output_size": 204862
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_d_ef_02.im3",
+      "source_sha256": "2dd59404fd1d1719414193efcf624ea6d6577e2d0ea4ab98171e30f6d6d46dee",
+      "source_size": 103180,
+      "baseline_sha256": "2dd59404fd1d1719414193efcf624ea6d6577e2d0ea4ab98171e30f6d6d46dee",
+      "transform": "retain-cn",
+      "output_sha256": "2dd59404fd1d1719414193efcf624ea6d6577e2d0ea4ab98171e30f6d6d46dee",
+      "output_size": 103180
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_d_r.eff",
+      "source_sha256": "57e0d1d16eaee7d3c3ee226f58c8eb2731f91cbec0e4378a908d07fb46a04e6c",
+      "source_size": 1784,
+      "baseline_sha256": "57e0d1d16eaee7d3c3ee226f58c8eb2731f91cbec0e4378a908d07fb46a04e6c",
+      "transform": "retain-cn",
+      "output_sha256": "57e0d1d16eaee7d3c3ee226f58c8eb2731f91cbec0e4378a908d07fb46a04e6c",
+      "output_size": 1784
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_d_r.im3",
+      "source_sha256": "64882ee0e431518276675a12e76759dd36b80f9bfd7dc3ea5ee328cd6f25e7b8",
+      "source_size": 22948,
+      "baseline_sha256": "64882ee0e431518276675a12e76759dd36b80f9bfd7dc3ea5ee328cd6f25e7b8",
+      "transform": "retain-cn",
+      "output_sha256": "64882ee0e431518276675a12e76759dd36b80f9bfd7dc3ea5ee328cd6f25e7b8",
+      "output_size": 22948
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_ef.im3",
+      "source_sha256": "09c34402d2a58cfca151ec80d4ba5ebdb025fad9bcf20737cb5d6d1e69bc3e23",
+      "source_size": 162572,
+      "baseline_sha256": "09c34402d2a58cfca151ec80d4ba5ebdb025fad9bcf20737cb5d6d1e69bc3e23",
+      "transform": "retain-cn",
+      "output_sha256": "09c34402d2a58cfca151ec80d4ba5ebdb025fad9bcf20737cb5d6d1e69bc3e23",
+      "output_size": 162572
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_ef01.im3",
+      "source_sha256": "b4be2ec0fe26b3d74739518582b9e20777554afc79cd5134bcbeb44a65aae7ae",
+      "source_size": 2898,
+      "baseline_sha256": "b4be2ec0fe26b3d74739518582b9e20777554afc79cd5134bcbeb44a65aae7ae",
+      "transform": "retain-cn",
+      "output_sha256": "b4be2ec0fe26b3d74739518582b9e20777554afc79cd5134bcbeb44a65aae7ae",
+      "output_size": 2898
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_ef02r.im3",
+      "source_sha256": "f53d5ad63f6d5ed99da13bd03380009e7e32a780f4a0d8817f846ab9c76a4cc4",
+      "source_size": 64780,
+      "baseline_sha256": "f53d5ad63f6d5ed99da13bd03380009e7e32a780f4a0d8817f846ab9c76a4cc4",
+      "transform": "retain-cn",
+      "output_sha256": "f53d5ad63f6d5ed99da13bd03380009e7e32a780f4a0d8817f846ab9c76a4cc4",
+      "output_size": 64780
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_m_b.eff",
+      "source_sha256": "e004b41d1de8f73c7719601267a99c51bf885f78c6ff405a3de0ee70650c74a6",
+      "source_size": 15660,
+      "baseline_sha256": "e004b41d1de8f73c7719601267a99c51bf885f78c6ff405a3de0ee70650c74a6",
+      "transform": "retain-cn",
+      "output_sha256": "e004b41d1de8f73c7719601267a99c51bf885f78c6ff405a3de0ee70650c74a6",
+      "output_size": 15660
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_m_r.eff",
+      "source_sha256": "24e927b8a81c12332b6431d4b083ee11eef86bf5942a610be970533f33773763",
+      "source_size": 15660,
+      "baseline_sha256": "24e927b8a81c12332b6431d4b083ee11eef86bf5942a610be970533f33773763",
+      "transform": "retain-cn",
+      "output_sha256": "24e927b8a81c12332b6431d4b083ee11eef86bf5942a610be970533f33773763",
+      "output_size": 15660
+    },
+    {
+      "path": "effs/game/shootinggamebasic/burst_mon_mb_ef_00.im3",
+      "source_sha256": "fbf5bb5e16df77d2c4d45df67dd06a3af4e2fa72cfedfe8a3e99f2ccd5f3502f",
+      "source_size": 16292,
+      "baseline_sha256": "fbf5bb5e16df77d2c4d45df67dd06a3af4e2fa72cfedfe8a3e99f2ccd5f3502f",
+      "transform": "retain-cn",
+      "output_sha256": "fbf5bb5e16df77d2c4d45df67dd06a3af4e2fa72cfedfe8a3e99f2ccd5f3502f",
+      "output_size": 16292
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_popcon_b.eff",
+      "source_sha256": "794ec6a15428618394ab5335ef3b34bad1ffd23d0ab7541826db21f4be87cc8c",
+      "source_size": 576,
+      "baseline_sha256": "794ec6a15428618394ab5335ef3b34bad1ffd23d0ab7541826db21f4be87cc8c",
+      "transform": "retain-cn",
+      "output_sha256": "794ec6a15428618394ab5335ef3b34bad1ffd23d0ab7541826db21f4be87cc8c",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_popcon_g.eff",
+      "source_sha256": "4cf79999e80307ad97188cb213b32952dc4ad2a9d7fe5cc4fa381ca930c482b9",
+      "source_size": 576,
+      "baseline_sha256": "4cf79999e80307ad97188cb213b32952dc4ad2a9d7fe5cc4fa381ca930c482b9",
+      "transform": "retain-cn",
+      "output_sha256": "4cf79999e80307ad97188cb213b32952dc4ad2a9d7fe5cc4fa381ca930c482b9",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_popcon_grey.eff",
+      "source_sha256": "d0760dd1938300bc4b1aa282c5b9d08c4c9623af70bee9d6c3468447df93c477",
+      "source_size": 576,
+      "baseline_sha256": "d0760dd1938300bc4b1aa282c5b9d08c4c9623af70bee9d6c3468447df93c477",
+      "transform": "retain-cn",
+      "output_sha256": "d0760dd1938300bc4b1aa282c5b9d08c4c9623af70bee9d6c3468447df93c477",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_popcon_p.eff",
+      "source_sha256": "a5701516a8298663f0d7eef0c26afae9ee30ee1f0ee6c5c07dc5d8e5e5d7fb97",
+      "source_size": 576,
+      "baseline_sha256": "a5701516a8298663f0d7eef0c26afae9ee30ee1f0ee6c5c07dc5d8e5e5d7fb97",
+      "transform": "retain-cn",
+      "output_sha256": "a5701516a8298663f0d7eef0c26afae9ee30ee1f0ee6c5c07dc5d8e5e5d7fb97",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_popcon_r.eff",
+      "source_sha256": "60940148dfc0937c356a2f1743bfdaaf0f1d940c1694d4206275a221e728b190",
+      "source_size": 576,
+      "baseline_sha256": "60940148dfc0937c356a2f1743bfdaaf0f1d940c1694d4206275a221e728b190",
+      "transform": "retain-cn",
+      "output_sha256": "60940148dfc0937c356a2f1743bfdaaf0f1d940c1694d4206275a221e728b190",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_popcon_y.eff",
+      "source_sha256": "c153a741659476a71f631d141da7db2ea288907f5ba5b7e9e30150a15cf06f74",
+      "source_size": 576,
+      "baseline_sha256": "c153a741659476a71f631d141da7db2ea288907f5ba5b7e9e30150a15cf06f74",
+      "transform": "retain-cn",
+      "output_sha256": "c153a741659476a71f631d141da7db2ea288907f5ba5b7e9e30150a15cf06f74",
+      "output_size": 576
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_b.im3",
+      "source_sha256": "171ced2696c65c040b864b72336625c2d28d14413d37e1909ef8df6c842cc16c",
+      "source_size": 137228,
+      "baseline_sha256": "171ced2696c65c040b864b72336625c2d28d14413d37e1909ef8df6c842cc16c",
+      "transform": "retain-cn",
+      "output_sha256": "171ced2696c65c040b864b72336625c2d28d14413d37e1909ef8df6c842cc16c",
+      "output_size": 137228
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_b_01.im3",
+      "source_sha256": "3a0153294936ba11b32744e25c9e780972a6739fd8d5fa1497a036752aff35cf",
+      "source_size": 176386,
+      "baseline_sha256": "3a0153294936ba11b32744e25c9e780972a6739fd8d5fa1497a036752aff35cf",
+      "transform": "retain-cn",
+      "output_sha256": "3a0153294936ba11b32744e25c9e780972a6739fd8d5fa1497a036752aff35cf",
+      "output_size": 176386
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_energy.im3",
+      "source_sha256": "da0f8f521e278e6c58238617f23cf68abe1c68e1761ac34711f47e7a44dc3604",
+      "source_size": 222772,
+      "baseline_sha256": "da0f8f521e278e6c58238617f23cf68abe1c68e1761ac34711f47e7a44dc3604",
+      "transform": "retain-cn",
+      "output_sha256": "da0f8f521e278e6c58238617f23cf68abe1c68e1761ac34711f47e7a44dc3604",
+      "output_size": 222772
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_r.im3",
+      "source_sha256": "78b5b2b8838bed6889a4444014b57dc5ba538ce1badcd20253853e17aaa33a43",
+      "source_size": 137228,
+      "baseline_sha256": "78b5b2b8838bed6889a4444014b57dc5ba538ce1badcd20253853e17aaa33a43",
+      "transform": "retain-cn",
+      "output_sha256": "78b5b2b8838bed6889a4444014b57dc5ba538ce1badcd20253853e17aaa33a43",
+      "output_size": 137228
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_r_01.im3",
+      "source_sha256": "08baca21b5035d21a9041c0934abdd7a1b479a6fd6a53eef8bcd9c98428096c7",
+      "source_size": 176386,
+      "baseline_sha256": "08baca21b5035d21a9041c0934abdd7a1b479a6fd6a53eef8bcd9c98428096c7",
+      "transform": "retain-cn",
+      "output_sha256": "08baca21b5035d21a9041c0934abdd7a1b479a6fd6a53eef8bcd9c98428096c7",
+      "output_size": 176386
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_y.im3",
+      "source_sha256": "f6990415d2656dc7815f1a6418b595e9d6c3a48784d7898505f8f2b66fe2236e",
+      "source_size": 137228,
+      "baseline_sha256": "f6990415d2656dc7815f1a6418b595e9d6c3a48784d7898505f8f2b66fe2236e",
+      "transform": "retain-cn",
+      "output_sha256": "f6990415d2656dc7815f1a6418b595e9d6c3a48784d7898505f8f2b66fe2236e",
+      "output_size": 137228
+    },
+    {
+      "path": "effs/game/shootinggamebasic/ef_post_mis_power_y_01.im3",
+      "source_sha256": "208723ae971830a18939f3fa567a35f71a0150e2e1d827f335c8e718087683de",
+      "source_size": 176386,
+      "baseline_sha256": "208723ae971830a18939f3fa567a35f71a0150e2e1d827f335c8e718087683de",
+      "transform": "retain-cn",
+      "output_sha256": "208723ae971830a18939f3fa567a35f71a0150e2e1d827f335c8e718087683de",
+      "output_size": 176386
     },
     {
       "path": "effs/game/shootinggamebasic/ep09_dg02_smoke.im3",
@@ -4210,6 +4219,37 @@
       "output_size": 5220
     },
     {
+      "path": "flying/hd0_ep22_dg00_st00.sstg",
+      "source_sha256": "fd7da606393df5d4d33242a94036b4804e0c8f0186c94c9b944ec270581ea123",
+      "source_size": 59956,
+      "baseline_sha256": "55856f49b3a7e9f64de117bd0d962c5d351840414cd84491768d5ee367dd7285",
+      "transform": "sstg-l7-bgm",
+      "output_sha256": "f75d61cdc022c0d57dc7b73c661dc6995755958dedcfa5e5203229af7f44ca55",
+      "output_size": 70852,
+      "bgm": "23_ssky_game_bgm.ogg"
+    },
+    {
+      "path": "flying/hd0_ep22_dg00_st01.sstg",
+      "source_sha256": "0f50b551670dd401480e56e9ddfa6d9cd9220193ce942eb8e9a89709051612a4",
+      "source_size": 98444,
+      "baseline_sha256": "899b1820ec0f49e032589aeaaa582086d5471c4bb1982efb104e96fec74d6d27",
+      "transform": "sstg-l7-bgm",
+      "output_sha256": "157ca8302836a1fe0aad56a6b8728b129588147d35bc249e3268a9198dab5c5b",
+      "output_size": 103124,
+      "bgm": "23_ssky_game_bgm.ogg"
+    },
+    {
+      "path": "flying/hd0_ep22_dg01_st01.sstg",
+      "source_sha256": "0f50b551670dd401480e56e9ddfa6d9cd9220193ce942eb8e9a89709051612a4",
+      "source_size": 98444,
+      "baseline_sha256": "899b1820ec0f49e032589aeaaa582086d5471c4bb1982efb104e96fec74d6d27",
+      "transform": "sstg-l7-bgm",
+      "output_sha256": "157ca8302836a1fe0aad56a6b8728b129588147d35bc249e3268a9198dab5c5b",
+      "output_size": 103124,
+      "bgm": "23_ssky_game_bgm.ogg",
+      "source_path": "flying/hd0_ep22_dg00_st01.sstg"
+    },
+    {
       "path": "flying/hd0_ep23_dg00_st00.sstg",
       "source_sha256": "43421ecc4dedc561855b99338ade6bd3c17c1bd46fe6d71494857fc81e562bcf",
       "source_size": 37080,
@@ -6001,6 +6041,411 @@
       "output_size": 23120
     },
     {
+      "path": "images/Village_images/nanaimo_vill_guidemessage_ru7.im3",
+      "source_sha256": "19d1cf302f9873f8a1374ec02e1136680313bf3b5b7270eff536a0e1aa87e04c",
+      "source_size": 27098,
+      "baseline_sha256": null,
+      "transform": "copy",
+      "output_sha256": "19d1cf302f9873f8a1374ec02e1136680313bf3b5b7270eff536a0e1aa87e04c",
+      "output_size": 27098
+    },
+    {
+      "path": "images/Village_images/nanaimo_vill_guidemessage_ru8.im3",
+      "source_sha256": "e445f5a8e2850b313d0e950f20d0c017058443e8497d48fbcea8ab295148e3bf",
+      "source_size": 28458,
+      "baseline_sha256": null,
+      "transform": "copy",
+      "output_sha256": "e445f5a8e2850b313d0e950f20d0c017058443e8497d48fbcea8ab295148e3bf",
+      "output_size": 28458
+    },
+    {
+      "path": "images/Village_images/qz_village_arrow_02.im3",
+      "source_sha256": "0a3275255f4244a2fdb7a72c8506a13959a328f7f303afc2b728ed2b1819c6d6",
+      "source_size": 27544,
+      "baseline_sha256": "0a3275255f4244a2fdb7a72c8506a13959a328f7f303afc2b728ed2b1819c6d6",
+      "transform": "retain-cn",
+      "output_sha256": "0a3275255f4244a2fdb7a72c8506a13959a328f7f303afc2b728ed2b1819c6d6",
+      "output_size": 27544
+    },
+    {
+      "path": "images/Village_images/vill05_barricade01_h.im3",
+      "source_sha256": "a2a4c3dcdbb1a3da1a3c5433930d094ca9f8b1245fc2d34e670a6e97db238484",
+      "source_size": 7238,
+      "baseline_sha256": "a2a4c3dcdbb1a3da1a3c5433930d094ca9f8b1245fc2d34e670a6e97db238484",
+      "transform": "retain-cn",
+      "output_sha256": "a2a4c3dcdbb1a3da1a3c5433930d094ca9f8b1245fc2d34e670a6e97db238484",
+      "output_size": 7238
+    },
+    {
+      "path": "images/Village_images/vill05_barricade01_w.im3",
+      "source_sha256": "67d63a5af078ea8fd79ecd18348b6a1fb0a920bb86d521c966fa1199cda7f92f",
+      "source_size": 8364,
+      "baseline_sha256": "67d63a5af078ea8fd79ecd18348b6a1fb0a920bb86d521c966fa1199cda7f92f",
+      "transform": "retain-cn",
+      "output_sha256": "67d63a5af078ea8fd79ecd18348b6a1fb0a920bb86d521c966fa1199cda7f92f",
+      "output_size": 8364
+    },
+    {
+      "path": "images/Village_images/vill05_construc_bridge01.im3",
+      "source_sha256": "6a2917d6357803418eb5c087f715e1bfb9a63ca6f26f47d764326ccee6cf7da8",
+      "source_size": 8520,
+      "baseline_sha256": "6a2917d6357803418eb5c087f715e1bfb9a63ca6f26f47d764326ccee6cf7da8",
+      "transform": "retain-cn",
+      "output_sha256": "6a2917d6357803418eb5c087f715e1bfb9a63ca6f26f47d764326ccee6cf7da8",
+      "output_size": 8520
+    },
+    {
+      "path": "images/Village_images/vill05_construc_bridge02.im3",
+      "source_sha256": "c38d24f3c6f90d073a80c8873584313a2f90f015c078bd899aa79c7472550619",
+      "source_size": 8050,
+      "baseline_sha256": "c38d24f3c6f90d073a80c8873584313a2f90f015c078bd899aa79c7472550619",
+      "transform": "retain-cn",
+      "output_sha256": "c38d24f3c6f90d073a80c8873584313a2f90f015c078bd899aa79c7472550619",
+      "output_size": 8050
+    },
+    {
+      "path": "images/Village_images/vill05_construc_bridge02_1.im3",
+      "source_sha256": "46f7e4e0e27be49d0dc34d540bdbe63b286add1c5963e0953e6fdf8cb01e0294",
+      "source_size": 8050,
+      "baseline_sha256": "46f7e4e0e27be49d0dc34d540bdbe63b286add1c5963e0953e6fdf8cb01e0294",
+      "transform": "retain-cn",
+      "output_sha256": "46f7e4e0e27be49d0dc34d540bdbe63b286add1c5963e0953e6fdf8cb01e0294",
+      "output_size": 8050
+    },
+    {
+      "path": "images/Village_images/vill05_flatform01.im3",
+      "source_sha256": "548baad4aecce7d771d3997456e13de7251aa34e82986d36641e79cd0ebc32bc",
+      "source_size": 65290,
+      "baseline_sha256": "548baad4aecce7d771d3997456e13de7251aa34e82986d36641e79cd0ebc32bc",
+      "transform": "retain-cn",
+      "output_sha256": "548baad4aecce7d771d3997456e13de7251aa34e82986d36641e79cd0ebc32bc",
+      "output_size": 65290
+    },
+    {
+      "path": "images/Village_images/vill05_floor_center01.im3",
+      "source_sha256": "b94c45d46c0a9a9329f4dfdf5a184e1fc51c0aab4cf3e619fdcf8964bbf1b650",
+      "source_size": 112428,
+      "baseline_sha256": "b94c45d46c0a9a9329f4dfdf5a184e1fc51c0aab4cf3e619fdcf8964bbf1b650",
+      "transform": "retain-cn",
+      "output_sha256": "b94c45d46c0a9a9329f4dfdf5a184e1fc51c0aab4cf3e619fdcf8964bbf1b650",
+      "output_size": 112428
+    },
+    {
+      "path": "images/Village_images/vill05_floor_center01_mark01.im3",
+      "source_sha256": "2a25289e8313b2125c9912cbd7f9650437bae26d155ddc4e54b2ceef91e4fc4d",
+      "source_size": 58244,
+      "baseline_sha256": "2a25289e8313b2125c9912cbd7f9650437bae26d155ddc4e54b2ceef91e4fc4d",
+      "transform": "retain-cn",
+      "output_sha256": "2a25289e8313b2125c9912cbd7f9650437bae26d155ddc4e54b2ceef91e4fc4d",
+      "output_size": 58244
+    },
+    {
+      "path": "images/Village_images/vill05_floor_center01_mark02.im3",
+      "source_sha256": "914cfcfb6a42a986a28261ff104de3df934057f1c3e0050d9409b407784e9908",
+      "source_size": 51892,
+      "baseline_sha256": "914cfcfb6a42a986a28261ff104de3df934057f1c3e0050d9409b407784e9908",
+      "transform": "retain-cn",
+      "output_sha256": "914cfcfb6a42a986a28261ff104de3df934057f1c3e0050d9409b407784e9908",
+      "output_size": 51892
+    },
+    {
+      "path": "images/Village_images/vill05_gate_ep06_1.im3",
+      "source_sha256": "2661be14e3916df003a9aead8922524914f8d641b8b2385499d9d8835953efea",
+      "source_size": 11276,
+      "baseline_sha256": "2661be14e3916df003a9aead8922524914f8d641b8b2385499d9d8835953efea",
+      "transform": "retain-cn",
+      "output_sha256": "2661be14e3916df003a9aead8922524914f8d641b8b2385499d9d8835953efea",
+      "output_size": 11276
+    },
+    {
+      "path": "images/Village_images/vill05_gate_ep07.im3",
+      "source_sha256": "e0ec600b5e8ffae4d3da59f57866cc7abeee12643b8811a866f3cebb7f573a9e",
+      "source_size": 92432,
+      "baseline_sha256": null,
+      "transform": "copy",
+      "output_sha256": "e0ec600b5e8ffae4d3da59f57866cc7abeee12643b8811a866f3cebb7f573a9e",
+      "output_size": 92432
+    },
+    {
+      "path": "images/Village_images/vill05_gate_ep07_1.im3",
+      "source_sha256": "5c538c83dbfdaa5a224eccd178faed87055f5e79d080dbd55b083efbeb712b23",
+      "source_size": 11020,
+      "baseline_sha256": null,
+      "transform": "copy",
+      "output_sha256": "5c538c83dbfdaa5a224eccd178faed87055f5e79d080dbd55b083efbeb712b23",
+      "output_size": 11020
+    },
+    {
+      "path": "images/Village_images/vill05_gate_ep07_2.im3",
+      "source_sha256": "7744ca4a3a320898c9e21ec4c7e5ef5e73ccd1ec5a84aad561b3894fdaa59800",
+      "source_size": 21896,
+      "baseline_sha256": null,
+      "transform": "copy",
+      "output_sha256": "7744ca4a3a320898c9e21ec4c7e5ef5e73ccd1ec5a84aad561b3894fdaa59800",
+      "output_size": 21896
+    },
+    {
+      "path": "images/Village_images/vill05_gate_ep08.im3",
+      "source_sha256": "6d2f9a4f134a6dfe6459c5f8ce9308f5c5d7565cf839ff48e9c3bc444beb5e07",
+      "source_size": 194618,
+      "baseline_sha256": null,
+      "transform": "copy",
+      "output_sha256": "6d2f9a4f134a6dfe6459c5f8ce9308f5c5d7565cf839ff48e9c3bc444beb5e07",
+      "output_size": 194618
+    },
+    {
+      "path": "images/Village_images/vill05_obj_flag01.im3",
+      "source_sha256": "6b8ce2784a4b66fda6a248c998f44a2e9a8f4699dd6e579efc6edb51f3550cdc",
+      "source_size": 5114,
+      "baseline_sha256": "6b8ce2784a4b66fda6a248c998f44a2e9a8f4699dd6e579efc6edb51f3550cdc",
+      "transform": "retain-cn",
+      "output_sha256": "6b8ce2784a4b66fda6a248c998f44a2e9a8f4699dd6e579efc6edb51f3550cdc",
+      "output_size": 5114
+    },
+    {
+      "path": "images/Village_images/vill05_obj_post01.im3",
+      "source_sha256": "7fcbaf638898bf1ec5adfb357a34353b4c03391cadeca8ecef177cdabe0b7efa",
+      "source_size": 19230,
+      "baseline_sha256": "7fcbaf638898bf1ec5adfb357a34353b4c03391cadeca8ecef177cdabe0b7efa",
+      "transform": "retain-cn",
+      "output_sha256": "7fcbaf638898bf1ec5adfb357a34353b4c03391cadeca8ecef177cdabe0b7efa",
+      "output_size": 19230
+    },
+    {
+      "path": "images/Village_images/vill05_obj_stone01.im3",
+      "source_sha256": "cb6521a9b4ddd2f36684e3ebbf82f1bda23d897c1655a7d38889c1eebb70d012",
+      "source_size": 49716,
+      "baseline_sha256": "cb6521a9b4ddd2f36684e3ebbf82f1bda23d897c1655a7d38889c1eebb70d012",
+      "transform": "retain-cn",
+      "output_sha256": "cb6521a9b4ddd2f36684e3ebbf82f1bda23d897c1655a7d38889c1eebb70d012",
+      "output_size": 49716
+    },
+    {
+      "path": "images/Village_images/vill05_obj_tree01.im3",
+      "source_sha256": "4698f8103ce008acfcf5e14f7e33e7797985b1d32ceb31e1de3e4c7c4b1015fb",
+      "source_size": 100582,
+      "baseline_sha256": "4698f8103ce008acfcf5e14f7e33e7797985b1d32ceb31e1de3e4c7c4b1015fb",
+      "transform": "retain-cn",
+      "output_sha256": "4698f8103ce008acfcf5e14f7e33e7797985b1d32ceb31e1de3e4c7c4b1015fb",
+      "output_size": 100582
+    },
+    {
+      "path": "images/Village_images/vill05_step_hl01.im3",
+      "source_sha256": "b357a5f888fd7a4098b5e640e8d115489ddc8a9788e3c84bc1913f15cafc7072",
+      "source_size": 2732,
+      "baseline_sha256": "b357a5f888fd7a4098b5e640e8d115489ddc8a9788e3c84bc1913f15cafc7072",
+      "transform": "retain-cn",
+      "output_sha256": "b357a5f888fd7a4098b5e640e8d115489ddc8a9788e3c84bc1913f15cafc7072",
+      "output_size": 2732
+    },
+    {
+      "path": "images/Village_images/vill05_step_hl02.im3",
+      "source_sha256": "50cce123e5beb6fb3ca39c1ff55cafa4c5c1cce735401b8b31337d42d03df536",
+      "source_size": 2732,
+      "baseline_sha256": "50cce123e5beb6fb3ca39c1ff55cafa4c5c1cce735401b8b31337d42d03df536",
+      "transform": "retain-cn",
+      "output_sha256": "50cce123e5beb6fb3ca39c1ff55cafa4c5c1cce735401b8b31337d42d03df536",
+      "output_size": 2732
+    },
+    {
+      "path": "images/Village_images/vill05_step_hr01.im3",
+      "source_sha256": "6d9ed4c5079c2e610ba48a92c7ac0f348e0e5415798a844c06e05c43b15ed54f",
+      "source_size": 2732,
+      "baseline_sha256": "6d9ed4c5079c2e610ba48a92c7ac0f348e0e5415798a844c06e05c43b15ed54f",
+      "transform": "retain-cn",
+      "output_sha256": "6d9ed4c5079c2e610ba48a92c7ac0f348e0e5415798a844c06e05c43b15ed54f",
+      "output_size": 2732
+    },
+    {
+      "path": "images/Village_images/vill05_step_hr02.im3",
+      "source_sha256": "6ae7aa2066dd8e3e6676dce7b9234a875cd7c1fcd58b8aba2b495d6e1a387b28",
+      "source_size": 2732,
+      "baseline_sha256": "6ae7aa2066dd8e3e6676dce7b9234a875cd7c1fcd58b8aba2b495d6e1a387b28",
+      "transform": "retain-cn",
+      "output_sha256": "6ae7aa2066dd8e3e6676dce7b9234a875cd7c1fcd58b8aba2b495d6e1a387b28",
+      "output_size": 2732
+    },
+    {
+      "path": "images/Village_images/vill05_step_rl01.im3",
+      "source_sha256": "6966845117687d33538deb16560f5d4b9afcf34bc34d27f2bc77a947155892e4",
+      "source_size": 5120,
+      "baseline_sha256": "6966845117687d33538deb16560f5d4b9afcf34bc34d27f2bc77a947155892e4",
+      "transform": "retain-cn",
+      "output_sha256": "6966845117687d33538deb16560f5d4b9afcf34bc34d27f2bc77a947155892e4",
+      "output_size": 5120
+    },
+    {
+      "path": "images/Village_images/vill05_step_rl02.im3",
+      "source_sha256": "d8dcf5af1af5d91e84d8d0b248f022b697263c1877ad77e01c83eecdb0e94629",
+      "source_size": 8420,
+      "baseline_sha256": "d8dcf5af1af5d91e84d8d0b248f022b697263c1877ad77e01c83eecdb0e94629",
+      "transform": "retain-cn",
+      "output_sha256": "d8dcf5af1af5d91e84d8d0b248f022b697263c1877ad77e01c83eecdb0e94629",
+      "output_size": 8420
+    },
+    {
+      "path": "images/Village_images/vill05_step_rr01.im3",
+      "source_sha256": "c76194b273e8c6d3630b943063d445da5983ebb01c058ddc3382b16ce03e4b45",
+      "source_size": 4816,
+      "baseline_sha256": "c76194b273e8c6d3630b943063d445da5983ebb01c058ddc3382b16ce03e4b45",
+      "transform": "retain-cn",
+      "output_sha256": "c76194b273e8c6d3630b943063d445da5983ebb01c058ddc3382b16ce03e4b45",
+      "output_size": 4816
+    },
+    {
+      "path": "images/Village_images/vill05_step_rr02.im3",
+      "source_sha256": "789597e4e555fd97332c33bbfd574494a3f721ad4f0f9f9a00e970c40ada1f70",
+      "source_size": 8562,
+      "baseline_sha256": "789597e4e555fd97332c33bbfd574494a3f721ad4f0f9f9a00e970c40ada1f70",
+      "transform": "retain-cn",
+      "output_sha256": "789597e4e555fd97332c33bbfd574494a3f721ad4f0f9f9a00e970c40ada1f70",
+      "output_size": 8562
+    },
+    {
+      "path": "images/Village_images/vill05_step_w01.im3",
+      "source_sha256": "579454779ca4a4480a1834a610012c3ceeaac7ce48faa6a021c4268ee6d09b55",
+      "source_size": 4416,
+      "baseline_sha256": "579454779ca4a4480a1834a610012c3ceeaac7ce48faa6a021c4268ee6d09b55",
+      "transform": "retain-cn",
+      "output_sha256": "579454779ca4a4480a1834a610012c3ceeaac7ce48faa6a021c4268ee6d09b55",
+      "output_size": 4416
+    },
+    {
+      "path": "images/Village_images/vill05_step_w02.im3",
+      "source_sha256": "de19cd3805d0f38c13cb9866aec032397965a374f184263601a86f1c58b75e48",
+      "source_size": 4416,
+      "baseline_sha256": "de19cd3805d0f38c13cb9866aec032397965a374f184263601a86f1c58b75e48",
+      "transform": "retain-cn",
+      "output_sha256": "de19cd3805d0f38c13cb9866aec032397965a374f184263601a86f1c58b75e48",
+      "output_size": 4416
+    },
+    {
+      "path": "images/Village_images/vill05_step_w03.im3",
+      "source_sha256": "49e75600b594a0e76d5782b096bf0c19c71d4a951a9a609e52fc2b6033bacf42",
+      "source_size": 4248,
+      "baseline_sha256": "49e75600b594a0e76d5782b096bf0c19c71d4a951a9a609e52fc2b6033bacf42",
+      "transform": "retain-cn",
+      "output_sha256": "49e75600b594a0e76d5782b096bf0c19c71d4a951a9a609e52fc2b6033bacf42",
+      "output_size": 4248
+    },
+    {
+      "path": "images/Village_images/vill05_step_w04.im3",
+      "source_sha256": "31961b7793a325895103a5df6e3807034d7db1bc740a8ed39da956e88f5b9704",
+      "source_size": 4248,
+      "baseline_sha256": "31961b7793a325895103a5df6e3807034d7db1bc740a8ed39da956e88f5b9704",
+      "transform": "retain-cn",
+      "output_sha256": "31961b7793a325895103a5df6e3807034d7db1bc740a8ed39da956e88f5b9704",
+      "output_size": 4248
+    },
+    {
+      "path": "images/Village_images/vill05_tile00.im3",
+      "source_sha256": "749a458b25ee5a3e0f4a7cb7985dcc8c2c516b4802c6b437250b8f2a5e7ed84d",
+      "source_size": 133164,
+      "baseline_sha256": "749a458b25ee5a3e0f4a7cb7985dcc8c2c516b4802c6b437250b8f2a5e7ed84d",
+      "transform": "retain-cn",
+      "output_sha256": "749a458b25ee5a3e0f4a7cb7985dcc8c2c516b4802c6b437250b8f2a5e7ed84d",
+      "output_size": 133164
+    },
+    {
+      "path": "images/Village_images/vill05_tile01.im3",
+      "source_sha256": "c0bd81fff1c92eb7426cc3e205d66d9f4ac80cb10a518848efdeaf12c2a78764",
+      "source_size": 33836,
+      "baseline_sha256": "c0bd81fff1c92eb7426cc3e205d66d9f4ac80cb10a518848efdeaf12c2a78764",
+      "transform": "retain-cn",
+      "output_sha256": "c0bd81fff1c92eb7426cc3e205d66d9f4ac80cb10a518848efdeaf12c2a78764",
+      "output_size": 33836
+    },
+    {
+      "path": "images/Village_images/vill05_tile02.im3",
+      "source_sha256": "844b9436d24d41d1d23d9b725bac9188d59d6543382c5b778d734c61c37bc7b3",
+      "source_size": 33836,
+      "baseline_sha256": "844b9436d24d41d1d23d9b725bac9188d59d6543382c5b778d734c61c37bc7b3",
+      "transform": "retain-cn",
+      "output_sha256": "844b9436d24d41d1d23d9b725bac9188d59d6543382c5b778d734c61c37bc7b3",
+      "output_size": 33836
+    },
+    {
+      "path": "images/Village_images/vill05_wall01_01.im3",
+      "source_sha256": "dbb697893ba0e5d2bcabd86c5bfdf33986bd520479085347f536906107cb7be2",
+      "source_size": 5212,
+      "baseline_sha256": "dbb697893ba0e5d2bcabd86c5bfdf33986bd520479085347f536906107cb7be2",
+      "transform": "retain-cn",
+      "output_sha256": "dbb697893ba0e5d2bcabd86c5bfdf33986bd520479085347f536906107cb7be2",
+      "output_size": 5212
+    },
+    {
+      "path": "images/Village_images/vill05_wall01_02L.im3",
+      "source_sha256": "1b5e8fab826d599ea29beb5627748b8fc550303c8f4aa8c53f9c49753ae23f41",
+      "source_size": 2816,
+      "baseline_sha256": "1b5e8fab826d599ea29beb5627748b8fc550303c8f4aa8c53f9c49753ae23f41",
+      "transform": "retain-cn",
+      "output_sha256": "1b5e8fab826d599ea29beb5627748b8fc550303c8f4aa8c53f9c49753ae23f41",
+      "output_size": 2816
+    },
+    {
+      "path": "images/Village_images/vill05_wall01_02R.im3",
+      "source_sha256": "e617388f2b48dd629f27cd90ebd4f422f3317eeab0d6eb3018c4ac35abad9dea",
+      "source_size": 2522,
+      "baseline_sha256": "e617388f2b48dd629f27cd90ebd4f422f3317eeab0d6eb3018c4ac35abad9dea",
+      "transform": "retain-cn",
+      "output_sha256": "e617388f2b48dd629f27cd90ebd4f422f3317eeab0d6eb3018c4ac35abad9dea",
+      "output_size": 2522
+    },
+    {
+      "path": "images/Village_images/vill05_wall01_03L.im3",
+      "source_sha256": "4c61226eb2fa547e1aec3620b5c8bc61b419614cad5f19502705e68a7697fe82",
+      "source_size": 2982,
+      "baseline_sha256": "4c61226eb2fa547e1aec3620b5c8bc61b419614cad5f19502705e68a7697fe82",
+      "transform": "retain-cn",
+      "output_sha256": "4c61226eb2fa547e1aec3620b5c8bc61b419614cad5f19502705e68a7697fe82",
+      "output_size": 2982
+    },
+    {
+      "path": "images/Village_images/vill05_wall01_03R.im3",
+      "source_sha256": "b82e80c8fa2faff73da033e66f54151a69093ed487f4a4c466f1a0a913f6ec25",
+      "source_size": 3060,
+      "baseline_sha256": "b82e80c8fa2faff73da033e66f54151a69093ed487f4a4c466f1a0a913f6ec25",
+      "transform": "retain-cn",
+      "output_sha256": "b82e80c8fa2faff73da033e66f54151a69093ed487f4a4c466f1a0a913f6ec25",
+      "output_size": 3060
+    },
+    {
+      "path": "images/Village_images/vill05_wall01_04L.im3",
+      "source_sha256": "1790232d3b2ddba4d4da559876df0c2d3187ef07393a96fac6821603fc51d2d0",
+      "source_size": 18738,
+      "baseline_sha256": "1790232d3b2ddba4d4da559876df0c2d3187ef07393a96fac6821603fc51d2d0",
+      "transform": "retain-cn",
+      "output_sha256": "1790232d3b2ddba4d4da559876df0c2d3187ef07393a96fac6821603fc51d2d0",
+      "output_size": 18738
+    },
+    {
+      "path": "images/Village_images/vill05_wall01_04R.im3",
+      "source_sha256": "7fa8c9feac1876bd620f51fc3fb74adf134c019e793b289818a4a662674f1d59",
+      "source_size": 19742,
+      "baseline_sha256": "7fa8c9feac1876bd620f51fc3fb74adf134c019e793b289818a4a662674f1d59",
+      "transform": "retain-cn",
+      "output_sha256": "7fa8c9feac1876bd620f51fc3fb74adf134c019e793b289818a4a662674f1d59",
+      "output_size": 19742
+    },
+    {
+      "path": "images/Village_images/vill05_wall01_deco01.im3",
+      "source_sha256": "7232cc90335e1f32646144145eb8894156dd43ff00cbef07b8f12c02692d48fa",
+      "source_size": 32302,
+      "baseline_sha256": "7232cc90335e1f32646144145eb8894156dd43ff00cbef07b8f12c02692d48fa",
+      "transform": "retain-cn",
+      "output_sha256": "7232cc90335e1f32646144145eb8894156dd43ff00cbef07b8f12c02692d48fa",
+      "output_size": 32302
+    },
+    {
+      "path": "images/Village_images/vill05_wall01_deco02.im3",
+      "source_sha256": "9e31d2a927a8399107693422c9352463264f4fc96e559e35b735ff5839543833",
+      "source_size": 19422,
+      "baseline_sha256": "9e31d2a927a8399107693422c9352463264f4fc96e559e35b735ff5839543833",
+      "transform": "retain-cn",
+      "output_sha256": "9e31d2a927a8399107693422c9352463264f4fc96e559e35b735ff5839543833",
+      "output_size": 19422
+    },
+    {
       "path": "images/game_images/shootinggamebasic/coll/clash_item_block.crs",
       "source_sha256": "9a8c3015f68e8f130053943baccc1fd5202c285cf5539bab038d488bd5c4e896",
       "source_size": 520,
@@ -7432,409 +7877,13 @@
       "output_size": 42768
     },
     {
-      "path": "images/Village_images/nanaimo_vill_guidemessage_ru7.im3",
-      "source_sha256": "19d1cf302f9873f8a1374ec02e1136680313bf3b5b7270eff536a0e1aa87e04c",
-      "source_size": 27098,
-      "baseline_sha256": null,
-      "transform": "copy",
-      "output_sha256": "19d1cf302f9873f8a1374ec02e1136680313bf3b5b7270eff536a0e1aa87e04c",
-      "output_size": 27098
-    },
-    {
-      "path": "images/Village_images/nanaimo_vill_guidemessage_ru8.im3",
-      "source_sha256": "e445f5a8e2850b313d0e950f20d0c017058443e8497d48fbcea8ab295148e3bf",
-      "source_size": 28458,
-      "baseline_sha256": null,
-      "transform": "copy",
-      "output_sha256": "e445f5a8e2850b313d0e950f20d0c017058443e8497d48fbcea8ab295148e3bf",
-      "output_size": 28458
-    },
-    {
-      "path": "images/Village_images/qz_village_arrow_02.im3",
-      "source_sha256": "0a3275255f4244a2fdb7a72c8506a13959a328f7f303afc2b728ed2b1819c6d6",
-      "source_size": 27544,
-      "baseline_sha256": "0a3275255f4244a2fdb7a72c8506a13959a328f7f303afc2b728ed2b1819c6d6",
+      "path": "sounds/23_ssky_game_bgm.ogg",
+      "source_sha256": "c203ec59221acb93480cc0dc0654126137b2e086210181971bd0d84733556909",
+      "source_size": 951778,
+      "baseline_sha256": "c203ec59221acb93480cc0dc0654126137b2e086210181971bd0d84733556909",
       "transform": "retain-cn",
-      "output_sha256": "0a3275255f4244a2fdb7a72c8506a13959a328f7f303afc2b728ed2b1819c6d6",
-      "output_size": 27544
-    },
-    {
-      "path": "images/Village_images/vill05_barricade01_h.im3",
-      "source_sha256": "a2a4c3dcdbb1a3da1a3c5433930d094ca9f8b1245fc2d34e670a6e97db238484",
-      "source_size": 7238,
-      "baseline_sha256": "a2a4c3dcdbb1a3da1a3c5433930d094ca9f8b1245fc2d34e670a6e97db238484",
-      "transform": "retain-cn",
-      "output_sha256": "a2a4c3dcdbb1a3da1a3c5433930d094ca9f8b1245fc2d34e670a6e97db238484",
-      "output_size": 7238
-    },
-    {
-      "path": "images/Village_images/vill05_barricade01_w.im3",
-      "source_sha256": "67d63a5af078ea8fd79ecd18348b6a1fb0a920bb86d521c966fa1199cda7f92f",
-      "source_size": 8364,
-      "baseline_sha256": "67d63a5af078ea8fd79ecd18348b6a1fb0a920bb86d521c966fa1199cda7f92f",
-      "transform": "retain-cn",
-      "output_sha256": "67d63a5af078ea8fd79ecd18348b6a1fb0a920bb86d521c966fa1199cda7f92f",
-      "output_size": 8364
-    },
-    {
-      "path": "images/Village_images/vill05_construc_bridge01.im3",
-      "source_sha256": "6a2917d6357803418eb5c087f715e1bfb9a63ca6f26f47d764326ccee6cf7da8",
-      "source_size": 8520,
-      "baseline_sha256": "6a2917d6357803418eb5c087f715e1bfb9a63ca6f26f47d764326ccee6cf7da8",
-      "transform": "retain-cn",
-      "output_sha256": "6a2917d6357803418eb5c087f715e1bfb9a63ca6f26f47d764326ccee6cf7da8",
-      "output_size": 8520
-    },
-    {
-      "path": "images/Village_images/vill05_construc_bridge02.im3",
-      "source_sha256": "c38d24f3c6f90d073a80c8873584313a2f90f015c078bd899aa79c7472550619",
-      "source_size": 8050,
-      "baseline_sha256": "c38d24f3c6f90d073a80c8873584313a2f90f015c078bd899aa79c7472550619",
-      "transform": "retain-cn",
-      "output_sha256": "c38d24f3c6f90d073a80c8873584313a2f90f015c078bd899aa79c7472550619",
-      "output_size": 8050
-    },
-    {
-      "path": "images/Village_images/vill05_construc_bridge02_1.im3",
-      "source_sha256": "46f7e4e0e27be49d0dc34d540bdbe63b286add1c5963e0953e6fdf8cb01e0294",
-      "source_size": 8050,
-      "baseline_sha256": "46f7e4e0e27be49d0dc34d540bdbe63b286add1c5963e0953e6fdf8cb01e0294",
-      "transform": "retain-cn",
-      "output_sha256": "46f7e4e0e27be49d0dc34d540bdbe63b286add1c5963e0953e6fdf8cb01e0294",
-      "output_size": 8050
-    },
-    {
-      "path": "images/Village_images/vill05_flatform01.im3",
-      "source_sha256": "548baad4aecce7d771d3997456e13de7251aa34e82986d36641e79cd0ebc32bc",
-      "source_size": 65290,
-      "baseline_sha256": "548baad4aecce7d771d3997456e13de7251aa34e82986d36641e79cd0ebc32bc",
-      "transform": "retain-cn",
-      "output_sha256": "548baad4aecce7d771d3997456e13de7251aa34e82986d36641e79cd0ebc32bc",
-      "output_size": 65290
-    },
-    {
-      "path": "images/Village_images/vill05_floor_center01.im3",
-      "source_sha256": "b94c45d46c0a9a9329f4dfdf5a184e1fc51c0aab4cf3e619fdcf8964bbf1b650",
-      "source_size": 112428,
-      "baseline_sha256": "b94c45d46c0a9a9329f4dfdf5a184e1fc51c0aab4cf3e619fdcf8964bbf1b650",
-      "transform": "retain-cn",
-      "output_sha256": "b94c45d46c0a9a9329f4dfdf5a184e1fc51c0aab4cf3e619fdcf8964bbf1b650",
-      "output_size": 112428
-    },
-    {
-      "path": "images/Village_images/vill05_floor_center01_mark01.im3",
-      "source_sha256": "2a25289e8313b2125c9912cbd7f9650437bae26d155ddc4e54b2ceef91e4fc4d",
-      "source_size": 58244,
-      "baseline_sha256": "2a25289e8313b2125c9912cbd7f9650437bae26d155ddc4e54b2ceef91e4fc4d",
-      "transform": "retain-cn",
-      "output_sha256": "2a25289e8313b2125c9912cbd7f9650437bae26d155ddc4e54b2ceef91e4fc4d",
-      "output_size": 58244
-    },
-    {
-      "path": "images/Village_images/vill05_floor_center01_mark02.im3",
-      "source_sha256": "914cfcfb6a42a986a28261ff104de3df934057f1c3e0050d9409b407784e9908",
-      "source_size": 51892,
-      "baseline_sha256": "914cfcfb6a42a986a28261ff104de3df934057f1c3e0050d9409b407784e9908",
-      "transform": "retain-cn",
-      "output_sha256": "914cfcfb6a42a986a28261ff104de3df934057f1c3e0050d9409b407784e9908",
-      "output_size": 51892
-    },
-    {
-      "path": "images/Village_images/vill05_gate_ep06_1.im3",
-      "source_sha256": "2661be14e3916df003a9aead8922524914f8d641b8b2385499d9d8835953efea",
-      "source_size": 11276,
-      "baseline_sha256": "2661be14e3916df003a9aead8922524914f8d641b8b2385499d9d8835953efea",
-      "transform": "retain-cn",
-      "output_sha256": "2661be14e3916df003a9aead8922524914f8d641b8b2385499d9d8835953efea",
-      "output_size": 11276
-    },
-    {
-      "path": "images/Village_images/vill05_gate_ep07.im3",
-      "source_sha256": "e0ec600b5e8ffae4d3da59f57866cc7abeee12643b8811a866f3cebb7f573a9e",
-      "source_size": 92432,
-      "baseline_sha256": null,
-      "transform": "copy",
-      "output_sha256": "e0ec600b5e8ffae4d3da59f57866cc7abeee12643b8811a866f3cebb7f573a9e",
-      "output_size": 92432
-    },
-    {
-      "path": "images/Village_images/vill05_gate_ep07_1.im3",
-      "source_sha256": "5c538c83dbfdaa5a224eccd178faed87055f5e79d080dbd55b083efbeb712b23",
-      "source_size": 11020,
-      "baseline_sha256": null,
-      "transform": "copy",
-      "output_sha256": "5c538c83dbfdaa5a224eccd178faed87055f5e79d080dbd55b083efbeb712b23",
-      "output_size": 11020
-    },
-    {
-      "path": "images/Village_images/vill05_gate_ep07_2.im3",
-      "source_sha256": "7744ca4a3a320898c9e21ec4c7e5ef5e73ccd1ec5a84aad561b3894fdaa59800",
-      "source_size": 21896,
-      "baseline_sha256": null,
-      "transform": "copy",
-      "output_sha256": "7744ca4a3a320898c9e21ec4c7e5ef5e73ccd1ec5a84aad561b3894fdaa59800",
-      "output_size": 21896
-    },
-    {
-      "path": "images/Village_images/vill05_gate_ep08.im3",
-      "source_sha256": "6d2f9a4f134a6dfe6459c5f8ce9308f5c5d7565cf839ff48e9c3bc444beb5e07",
-      "source_size": 194618,
-      "baseline_sha256": null,
-      "transform": "copy",
-      "output_sha256": "6d2f9a4f134a6dfe6459c5f8ce9308f5c5d7565cf839ff48e9c3bc444beb5e07",
-      "output_size": 194618
-    },
-    {
-      "path": "images/Village_images/vill05_obj_flag01.im3",
-      "source_sha256": "6b8ce2784a4b66fda6a248c998f44a2e9a8f4699dd6e579efc6edb51f3550cdc",
-      "source_size": 5114,
-      "baseline_sha256": "6b8ce2784a4b66fda6a248c998f44a2e9a8f4699dd6e579efc6edb51f3550cdc",
-      "transform": "retain-cn",
-      "output_sha256": "6b8ce2784a4b66fda6a248c998f44a2e9a8f4699dd6e579efc6edb51f3550cdc",
-      "output_size": 5114
-    },
-    {
-      "path": "images/Village_images/vill05_obj_post01.im3",
-      "source_sha256": "7fcbaf638898bf1ec5adfb357a34353b4c03391cadeca8ecef177cdabe0b7efa",
-      "source_size": 19230,
-      "baseline_sha256": "7fcbaf638898bf1ec5adfb357a34353b4c03391cadeca8ecef177cdabe0b7efa",
-      "transform": "retain-cn",
-      "output_sha256": "7fcbaf638898bf1ec5adfb357a34353b4c03391cadeca8ecef177cdabe0b7efa",
-      "output_size": 19230
-    },
-    {
-      "path": "images/Village_images/vill05_obj_stone01.im3",
-      "source_sha256": "cb6521a9b4ddd2f36684e3ebbf82f1bda23d897c1655a7d38889c1eebb70d012",
-      "source_size": 49716,
-      "baseline_sha256": "cb6521a9b4ddd2f36684e3ebbf82f1bda23d897c1655a7d38889c1eebb70d012",
-      "transform": "retain-cn",
-      "output_sha256": "cb6521a9b4ddd2f36684e3ebbf82f1bda23d897c1655a7d38889c1eebb70d012",
-      "output_size": 49716
-    },
-    {
-      "path": "images/Village_images/vill05_obj_tree01.im3",
-      "source_sha256": "4698f8103ce008acfcf5e14f7e33e7797985b1d32ceb31e1de3e4c7c4b1015fb",
-      "source_size": 100582,
-      "baseline_sha256": "4698f8103ce008acfcf5e14f7e33e7797985b1d32ceb31e1de3e4c7c4b1015fb",
-      "transform": "retain-cn",
-      "output_sha256": "4698f8103ce008acfcf5e14f7e33e7797985b1d32ceb31e1de3e4c7c4b1015fb",
-      "output_size": 100582
-    },
-    {
-      "path": "images/Village_images/vill05_step_hl01.im3",
-      "source_sha256": "b357a5f888fd7a4098b5e640e8d115489ddc8a9788e3c84bc1913f15cafc7072",
-      "source_size": 2732,
-      "baseline_sha256": "b357a5f888fd7a4098b5e640e8d115489ddc8a9788e3c84bc1913f15cafc7072",
-      "transform": "retain-cn",
-      "output_sha256": "b357a5f888fd7a4098b5e640e8d115489ddc8a9788e3c84bc1913f15cafc7072",
-      "output_size": 2732
-    },
-    {
-      "path": "images/Village_images/vill05_step_hl02.im3",
-      "source_sha256": "50cce123e5beb6fb3ca39c1ff55cafa4c5c1cce735401b8b31337d42d03df536",
-      "source_size": 2732,
-      "baseline_sha256": "50cce123e5beb6fb3ca39c1ff55cafa4c5c1cce735401b8b31337d42d03df536",
-      "transform": "retain-cn",
-      "output_sha256": "50cce123e5beb6fb3ca39c1ff55cafa4c5c1cce735401b8b31337d42d03df536",
-      "output_size": 2732
-    },
-    {
-      "path": "images/Village_images/vill05_step_hr01.im3",
-      "source_sha256": "6d9ed4c5079c2e610ba48a92c7ac0f348e0e5415798a844c06e05c43b15ed54f",
-      "source_size": 2732,
-      "baseline_sha256": "6d9ed4c5079c2e610ba48a92c7ac0f348e0e5415798a844c06e05c43b15ed54f",
-      "transform": "retain-cn",
-      "output_sha256": "6d9ed4c5079c2e610ba48a92c7ac0f348e0e5415798a844c06e05c43b15ed54f",
-      "output_size": 2732
-    },
-    {
-      "path": "images/Village_images/vill05_step_hr02.im3",
-      "source_sha256": "6ae7aa2066dd8e3e6676dce7b9234a875cd7c1fcd58b8aba2b495d6e1a387b28",
-      "source_size": 2732,
-      "baseline_sha256": "6ae7aa2066dd8e3e6676dce7b9234a875cd7c1fcd58b8aba2b495d6e1a387b28",
-      "transform": "retain-cn",
-      "output_sha256": "6ae7aa2066dd8e3e6676dce7b9234a875cd7c1fcd58b8aba2b495d6e1a387b28",
-      "output_size": 2732
-    },
-    {
-      "path": "images/Village_images/vill05_step_rl01.im3",
-      "source_sha256": "6966845117687d33538deb16560f5d4b9afcf34bc34d27f2bc77a947155892e4",
-      "source_size": 5120,
-      "baseline_sha256": "6966845117687d33538deb16560f5d4b9afcf34bc34d27f2bc77a947155892e4",
-      "transform": "retain-cn",
-      "output_sha256": "6966845117687d33538deb16560f5d4b9afcf34bc34d27f2bc77a947155892e4",
-      "output_size": 5120
-    },
-    {
-      "path": "images/Village_images/vill05_step_rl02.im3",
-      "source_sha256": "d8dcf5af1af5d91e84d8d0b248f022b697263c1877ad77e01c83eecdb0e94629",
-      "source_size": 8420,
-      "baseline_sha256": "d8dcf5af1af5d91e84d8d0b248f022b697263c1877ad77e01c83eecdb0e94629",
-      "transform": "retain-cn",
-      "output_sha256": "d8dcf5af1af5d91e84d8d0b248f022b697263c1877ad77e01c83eecdb0e94629",
-      "output_size": 8420
-    },
-    {
-      "path": "images/Village_images/vill05_step_rr01.im3",
-      "source_sha256": "c76194b273e8c6d3630b943063d445da5983ebb01c058ddc3382b16ce03e4b45",
-      "source_size": 4816,
-      "baseline_sha256": "c76194b273e8c6d3630b943063d445da5983ebb01c058ddc3382b16ce03e4b45",
-      "transform": "retain-cn",
-      "output_sha256": "c76194b273e8c6d3630b943063d445da5983ebb01c058ddc3382b16ce03e4b45",
-      "output_size": 4816
-    },
-    {
-      "path": "images/Village_images/vill05_step_rr02.im3",
-      "source_sha256": "789597e4e555fd97332c33bbfd574494a3f721ad4f0f9f9a00e970c40ada1f70",
-      "source_size": 8562,
-      "baseline_sha256": "789597e4e555fd97332c33bbfd574494a3f721ad4f0f9f9a00e970c40ada1f70",
-      "transform": "retain-cn",
-      "output_sha256": "789597e4e555fd97332c33bbfd574494a3f721ad4f0f9f9a00e970c40ada1f70",
-      "output_size": 8562
-    },
-    {
-      "path": "images/Village_images/vill05_step_w01.im3",
-      "source_sha256": "579454779ca4a4480a1834a610012c3ceeaac7ce48faa6a021c4268ee6d09b55",
-      "source_size": 4416,
-      "baseline_sha256": "579454779ca4a4480a1834a610012c3ceeaac7ce48faa6a021c4268ee6d09b55",
-      "transform": "retain-cn",
-      "output_sha256": "579454779ca4a4480a1834a610012c3ceeaac7ce48faa6a021c4268ee6d09b55",
-      "output_size": 4416
-    },
-    {
-      "path": "images/Village_images/vill05_step_w02.im3",
-      "source_sha256": "de19cd3805d0f38c13cb9866aec032397965a374f184263601a86f1c58b75e48",
-      "source_size": 4416,
-      "baseline_sha256": "de19cd3805d0f38c13cb9866aec032397965a374f184263601a86f1c58b75e48",
-      "transform": "retain-cn",
-      "output_sha256": "de19cd3805d0f38c13cb9866aec032397965a374f184263601a86f1c58b75e48",
-      "output_size": 4416
-    },
-    {
-      "path": "images/Village_images/vill05_step_w03.im3",
-      "source_sha256": "49e75600b594a0e76d5782b096bf0c19c71d4a951a9a609e52fc2b6033bacf42",
-      "source_size": 4248,
-      "baseline_sha256": "49e75600b594a0e76d5782b096bf0c19c71d4a951a9a609e52fc2b6033bacf42",
-      "transform": "retain-cn",
-      "output_sha256": "49e75600b594a0e76d5782b096bf0c19c71d4a951a9a609e52fc2b6033bacf42",
-      "output_size": 4248
-    },
-    {
-      "path": "images/Village_images/vill05_step_w04.im3",
-      "source_sha256": "31961b7793a325895103a5df6e3807034d7db1bc740a8ed39da956e88f5b9704",
-      "source_size": 4248,
-      "baseline_sha256": "31961b7793a325895103a5df6e3807034d7db1bc740a8ed39da956e88f5b9704",
-      "transform": "retain-cn",
-      "output_sha256": "31961b7793a325895103a5df6e3807034d7db1bc740a8ed39da956e88f5b9704",
-      "output_size": 4248
-    },
-    {
-      "path": "images/Village_images/vill05_tile00.im3",
-      "source_sha256": "749a458b25ee5a3e0f4a7cb7985dcc8c2c516b4802c6b437250b8f2a5e7ed84d",
-      "source_size": 133164,
-      "baseline_sha256": "749a458b25ee5a3e0f4a7cb7985dcc8c2c516b4802c6b437250b8f2a5e7ed84d",
-      "transform": "retain-cn",
-      "output_sha256": "749a458b25ee5a3e0f4a7cb7985dcc8c2c516b4802c6b437250b8f2a5e7ed84d",
-      "output_size": 133164
-    },
-    {
-      "path": "images/Village_images/vill05_tile01.im3",
-      "source_sha256": "c0bd81fff1c92eb7426cc3e205d66d9f4ac80cb10a518848efdeaf12c2a78764",
-      "source_size": 33836,
-      "baseline_sha256": "c0bd81fff1c92eb7426cc3e205d66d9f4ac80cb10a518848efdeaf12c2a78764",
-      "transform": "retain-cn",
-      "output_sha256": "c0bd81fff1c92eb7426cc3e205d66d9f4ac80cb10a518848efdeaf12c2a78764",
-      "output_size": 33836
-    },
-    {
-      "path": "images/Village_images/vill05_tile02.im3",
-      "source_sha256": "844b9436d24d41d1d23d9b725bac9188d59d6543382c5b778d734c61c37bc7b3",
-      "source_size": 33836,
-      "baseline_sha256": "844b9436d24d41d1d23d9b725bac9188d59d6543382c5b778d734c61c37bc7b3",
-      "transform": "retain-cn",
-      "output_sha256": "844b9436d24d41d1d23d9b725bac9188d59d6543382c5b778d734c61c37bc7b3",
-      "output_size": 33836
-    },
-    {
-      "path": "images/Village_images/vill05_wall01_01.im3",
-      "source_sha256": "dbb697893ba0e5d2bcabd86c5bfdf33986bd520479085347f536906107cb7be2",
-      "source_size": 5212,
-      "baseline_sha256": "dbb697893ba0e5d2bcabd86c5bfdf33986bd520479085347f536906107cb7be2",
-      "transform": "retain-cn",
-      "output_sha256": "dbb697893ba0e5d2bcabd86c5bfdf33986bd520479085347f536906107cb7be2",
-      "output_size": 5212
-    },
-    {
-      "path": "images/Village_images/vill05_wall01_02L.im3",
-      "source_sha256": "1b5e8fab826d599ea29beb5627748b8fc550303c8f4aa8c53f9c49753ae23f41",
-      "source_size": 2816,
-      "baseline_sha256": "1b5e8fab826d599ea29beb5627748b8fc550303c8f4aa8c53f9c49753ae23f41",
-      "transform": "retain-cn",
-      "output_sha256": "1b5e8fab826d599ea29beb5627748b8fc550303c8f4aa8c53f9c49753ae23f41",
-      "output_size": 2816
-    },
-    {
-      "path": "images/Village_images/vill05_wall01_02R.im3",
-      "source_sha256": "e617388f2b48dd629f27cd90ebd4f422f3317eeab0d6eb3018c4ac35abad9dea",
-      "source_size": 2522,
-      "baseline_sha256": "e617388f2b48dd629f27cd90ebd4f422f3317eeab0d6eb3018c4ac35abad9dea",
-      "transform": "retain-cn",
-      "output_sha256": "e617388f2b48dd629f27cd90ebd4f422f3317eeab0d6eb3018c4ac35abad9dea",
-      "output_size": 2522
-    },
-    {
-      "path": "images/Village_images/vill05_wall01_03L.im3",
-      "source_sha256": "4c61226eb2fa547e1aec3620b5c8bc61b419614cad5f19502705e68a7697fe82",
-      "source_size": 2982,
-      "baseline_sha256": "4c61226eb2fa547e1aec3620b5c8bc61b419614cad5f19502705e68a7697fe82",
-      "transform": "retain-cn",
-      "output_sha256": "4c61226eb2fa547e1aec3620b5c8bc61b419614cad5f19502705e68a7697fe82",
-      "output_size": 2982
-    },
-    {
-      "path": "images/Village_images/vill05_wall01_03R.im3",
-      "source_sha256": "b82e80c8fa2faff73da033e66f54151a69093ed487f4a4c466f1a0a913f6ec25",
-      "source_size": 3060,
-      "baseline_sha256": "b82e80c8fa2faff73da033e66f54151a69093ed487f4a4c466f1a0a913f6ec25",
-      "transform": "retain-cn",
-      "output_sha256": "b82e80c8fa2faff73da033e66f54151a69093ed487f4a4c466f1a0a913f6ec25",
-      "output_size": 3060
-    },
-    {
-      "path": "images/Village_images/vill05_wall01_04L.im3",
-      "source_sha256": "1790232d3b2ddba4d4da559876df0c2d3187ef07393a96fac6821603fc51d2d0",
-      "source_size": 18738,
-      "baseline_sha256": "1790232d3b2ddba4d4da559876df0c2d3187ef07393a96fac6821603fc51d2d0",
-      "transform": "retain-cn",
-      "output_sha256": "1790232d3b2ddba4d4da559876df0c2d3187ef07393a96fac6821603fc51d2d0",
-      "output_size": 18738
-    },
-    {
-      "path": "images/Village_images/vill05_wall01_04R.im3",
-      "source_sha256": "7fa8c9feac1876bd620f51fc3fb74adf134c019e793b289818a4a662674f1d59",
-      "source_size": 19742,
-      "baseline_sha256": "7fa8c9feac1876bd620f51fc3fb74adf134c019e793b289818a4a662674f1d59",
-      "transform": "retain-cn",
-      "output_sha256": "7fa8c9feac1876bd620f51fc3fb74adf134c019e793b289818a4a662674f1d59",
-      "output_size": 19742
-    },
-    {
-      "path": "images/Village_images/vill05_wall01_deco01.im3",
-      "source_sha256": "7232cc90335e1f32646144145eb8894156dd43ff00cbef07b8f12c02692d48fa",
-      "source_size": 32302,
-      "baseline_sha256": "7232cc90335e1f32646144145eb8894156dd43ff00cbef07b8f12c02692d48fa",
-      "transform": "retain-cn",
-      "output_sha256": "7232cc90335e1f32646144145eb8894156dd43ff00cbef07b8f12c02692d48fa",
-      "output_size": 32302
-    },
-    {
-      "path": "images/Village_images/vill05_wall01_deco02.im3",
-      "source_sha256": "9e31d2a927a8399107693422c9352463264f4fc96e559e35b735ff5839543833",
-      "source_size": 19422,
-      "baseline_sha256": "9e31d2a927a8399107693422c9352463264f4fc96e559e35b735ff5839543833",
-      "transform": "retain-cn",
-      "output_sha256": "9e31d2a927a8399107693422c9352463264f4fc96e559e35b735ff5839543833",
-      "output_size": 19422
+      "output_sha256": "c203ec59221acb93480cc0dc0654126137b2e086210181971bd0d84733556909",
+      "output_size": 951778
     },
     {
       "path": "sounds/35_ssky_game_bgm.ogg",
@@ -7898,22 +7947,9 @@
       "transform": "retain-cn",
       "output_sha256": "cd0ee57189607ff0aedc34214e5ddc046e1686321e5f0c053dbca59c679a122c",
       "output_size": 184033
-    },
-    {
-      "path": "Village_map_image/Village_map_image.pack",
-      "source_sha256": "69c23523781a52dd55d04ff2e269dadd6de6e4fd6b51aae8b5f8786ced352688",
-      "source_size": 17033949,
-      "baseline_sha256": "ba506120e0058ce7466bd8a17c423a443f8a155feefc1fd802d17c35446d1f29",
-      "transform": "village-pages",
-      "output_sha256": "91ab1b56b667cfcadca09728e3ef84a00768ae238591eea28109cf4eab89eee3",
-      "output_size": 17028285
     }
   ],
   "preserve_l7_combat": [
-    {
-      "path": "flying/hd0_ep22_dg00_st00.sstg",
-      "sha256": "55856f49b3a7e9f64de117bd0d962c5d351840414cd84491768d5ee367dd7285"
-    },
     {
       "path": "flying/hd0_ep22_dg00_st00_H_00.smmo",
       "sha256": "e3fcf0180b7c4071d5cabbc58dede1ac953f7386fb6edcbdc19b215237dfc9d6"
@@ -7949,14 +7985,6 @@
     {
       "path": "flying/hd0_ep22_dg00_st00_M_02.smmo",
       "sha256": "4de688fe26fcee634657d11925d8982beaccc4e659e337aeba9960746338e2a9"
-    },
-    {
-      "path": "flying/hd0_ep22_dg00_st01.sstg",
-      "sha256": "899b1820ec0f49e032589aeaaa582086d5471c4bb1982efb104e96fec74d6d27"
-    },
-    {
-      "path": "flying/hd0_ep22_dg01_st01.sstg",
-      "sha256": "899b1820ec0f49e032589aeaaa582086d5471c4bb1982efb104e96fec74d6d27"
     },
     {
       "path": "flying/hd0_ep22_dg01_st01_H_00.smmo",
@@ -9818,5 +9846,8 @@
       "path": "effs/game/shootinggamebasic/mis_ep22_ending_blade.im3",
       "sha256": "edd158130cc2a6d36e4c3bee0d03235f56b04c2ccc0d67c1cf64b1477f1fdcd7"
     }
+  ],
+  "upgrade_from_manifest_ids": [
+    "f521d83657889da7545c3e1967ee59fea2588aaa9bea5553d7f65cfd58020a19"
   ]
 }

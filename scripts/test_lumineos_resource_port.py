@@ -115,6 +115,69 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual((self.client / 'flying/old.mmo').read_bytes(), b'old')
         self.assertFalse((self.client / 'images/new.im3').exists())
 
+    def prepare_upgrade(self):
+        self.install()
+        old = copy.deepcopy(self.manifest)
+        self.recipe['upgrade_from_manifest_ids'] = [old['id']]
+        row = self.recipe['preserve_l7_combat'].pop()
+        self.manifest['preserve_l7_combat'] = []
+        data = b'keep CN L7 with BGM'
+        rel = row['path']
+        self.recipe['files'].append(dict(path=rel, baseline_sha256=row['sha256'],
+            output_sha256=port.digest(data), output_size=len(data), transform='copy'))
+        self.manifest['files'].append(dict(path=rel, before_sha256=row['sha256'],
+            sha256=port.digest(data), size=len(data), transform='copy'))
+        port.atomic(self.bundle / 'payload' / rel, data)
+        self.recipe_path.write_bytes(port.encoded(self.recipe))
+        self.manifest['recipe_sha256'] = port.digest(self.recipe_path.read_bytes())
+        self.manifest.pop('id')
+        self.manifest['id'] = port.digest(port.encoded(self.manifest))
+        (self.bundle / 'manifest.json').write_bytes(port.encoded(self.manifest))
+        return old
+
+    def test_exact_upgrade_idempotent_and_rollback(self):
+        old = self.prepare_upgrade()
+        result = self.install()
+        self.assertEqual(result['changed'], 1)
+        self.assertEqual(self.install()['status'], 'already-installed')
+        self.assertEqual(port.verify(self.client)['preserved_l7_combat'], 0)
+        port.rollback(self.client, result['receipt'])
+        self.assertEqual(port.load(self.client / port.MARKER), old)
+        self.assertEqual((self.client / 'flying/l7.mmo').read_bytes(), b'keep CN L7')
+        port.verify(self.client)
+        self.assertEqual(self.install()['changed'], 1)
+
+    def test_upgrade_rejects_changed_old_content(self):
+        self.prepare_upgrade()
+        (self.client / 'flying/old.mmo').write_bytes(b'later user edit')
+        with self.assertRaisesRegex(ValueError, 'installed resource mismatch'):
+            self.install()
+        self.assertEqual((self.client / 'flying/l7.mmo').read_bytes(), b'keep CN L7')
+
+    def test_upgrade_rolls_back_on_marker_write_failure(self):
+        old = self.prepare_upgrade()
+        real_atomic = port.atomic
+        def fail_marker(path, data):
+            if path == self.client / port.MARKER:
+                raise OSError('injected marker write failure')
+            real_atomic(path, data)
+        with mock.patch.object(port, 'atomic', side_effect=fail_marker):
+            with self.assertRaisesRegex(OSError, 'injected marker'):
+                self.install()
+        self.assertEqual(port.load(self.client / port.MARKER), old)
+        self.assertEqual((self.client / 'flying/l7.mmo').read_bytes(), b'keep CN L7')
+        port.verify(self.client)
+
+    def test_upgrade_rejects_tampered_old_marker(self):
+        self.prepare_upgrade()
+        old = port.load(self.client / port.MARKER)
+        old['scope'] = 'tampered'
+        old.pop('id'); old['id'] = port.digest(port.encoded(old))
+        port.atomic(self.client / port.MARKER, port.encoded(old))
+        with self.assertRaises(ValueError):
+            self.install()
+        self.assertEqual((self.client / 'flying/l7.mmo').read_bytes(), b'keep CN L7')
+
     def test_preserved_l7_conflict_refuses_apply(self):
         (self.client / 'flying/l7.mmo').write_bytes(b'changed')
         with self.assertRaisesRegex(ValueError, 'L7 combat conflict'):
@@ -289,7 +352,55 @@ class SceneTests(unittest.TestCase):
                 if stage:
                     self.assertTrue(all('dg01_st00_' in slot[0] for slot in model['slots']))
         self.assertEqual(converted, 153)
-        self.assertEqual(len(manifest['preserve_l7_combat']), 477)
+        self.assertEqual(len(manifest['preserve_l7_combat']), 474)
+
+
+class BgmFieldTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == 'nt', 'Windows process inventory')
+    def test_servers_may_remain_but_client_blocks_install(self):
+        import json
+        from types import SimpleNamespace
+        root = Path(tempfile.gettempdir()) / 'resource-process-fixture'
+        servers = [str(root / 'adapter_runtime/Nanaimo.Adapter.exe'),
+                   str(root / 'adapter_runtime/nanaimo_gameplay_bridge.exe')]
+        with mock.patch.object(port.subprocess, 'run', return_value=SimpleNamespace(stdout=json.dumps(servers))):
+            port.assert_not_running(root, allow_adapter=True)
+            with self.assertRaisesRegex(ValueError, 'close the client'):
+                port.assert_not_running(root)  # Full code deployment still blocks servers.
+        for exe in ('game.exe', 'NanaimoClient.exe', '.openNanaimo-social/slot/game.exe'):
+            with mock.patch.object(port.subprocess, 'run', return_value=SimpleNamespace(stdout=json.dumps(servers + [str(root / exe)]))):
+                with self.assertRaisesRegex(ValueError, 'close the client'):
+                    port.assert_not_running(root, allow_adapter=True)
+
+    def minimal_sstg(self):
+        import lumineos_codec as codec
+        u32 = lambda x: struct.pack('<I', x)
+        name = bytes(260)
+        plain = (u32(6) + u32(1234) + u32(0) + name * 2 + u32(0) + u32(0)
+                 + name * 2 + u32(0) + (name + u32(0) + name) * 9
+                 + name + u32(0) + u32(0) * 9 + struct.pack('<4I', 0, 100, 6, 1))
+        return codec.xor(plain, 40)
+
+    def test_only_bgm_field_changes_and_idempotent(self):
+        import lumineos_codec as codec
+        original = self.minimal_sstg()
+        patched, offset = codec.patch_sstg_bgm(original, '23_ssky_game_bgm.ogg')
+        self.assertEqual(original[:offset], patched[:offset])
+        self.assertEqual(original[offset+260:], patched[offset+260:])
+        self.assertEqual(len(original), len(patched))
+        self.assertEqual(codec.sstg(patched)['identity'], (0, 100, 6, 1))
+        self.assertEqual(codec.sstg(patched)['bgm'], '23_ssky_game_bgm.ogg')
+        self.assertEqual(codec.patch_sstg_bgm(patched, '23_ssky_game_bgm.ogg')[0], patched)
+        with self.assertRaisesRegex(ValueError, 'unexpected existing'):
+            codec.patch_sstg_bgm(patched, '35_ssky_game_bgm.ogg')
+
+    def test_bad_filename_or_truncated_record_refused(self):
+        import lumineos_codec as codec
+        for name in ('', '../bad.ogg', 'bad/track.ogg', 'x' * 260 + '.ogg', 'bad.wav'):
+            with self.assertRaises(ValueError):
+                codec.patch_sstg_bgm(self.minimal_sstg(), name)
+        with self.assertRaises(AssertionError):
+            codec.patch_sstg_bgm(self.minimal_sstg()[:-1], '23_ssky_game_bgm.ogg')
 
 
 if __name__ == '__main__':

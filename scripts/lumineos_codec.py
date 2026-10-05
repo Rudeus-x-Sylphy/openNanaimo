@@ -112,6 +112,27 @@ def sstg(b):
  identity=struct.unpack('<4I',r.read(16));r.end()
  return dict(version=version,endframe=endframe,layers=layers,special=special,layers2=layers2,bgm=bgm,boss=boss,monsters=monsters,slots=slots,extra=extra,identity=identity,refs=refs)
 
+def patch_sstg_bgm(b, name):
+ """Change only the v6 260-byte BGM field; never import KR combat data."""
+ sstg(b)  # Validate the complete record before calculating a field boundary.
+ encoded=name.encode('ascii')
+ if not encoded or len(encoded)>=260 or any(x in name for x in ('/', '\\', ':', '\0')) or not name.lower().endswith('.ogg'):
+  raise ValueError('invalid SSTG BGM filename')
+ plain=bytearray(xor(b,40));r=Reader(plain)
+ r.read(8)
+ r.read(r.u32()*524)
+ r.read(524)
+ r.read(r.u32()*524)
+ offset=r.p
+ plain[offset:offset+260]=padded(encoded,260)
+ result=xor(plain,40)
+ before=sstg(b);after=sstg(result)
+ if before['bgm'] not in ('',name):raise ValueError('unexpected existing SSTG BGM')
+ assert result[:offset]==b[:offset] and result[offset+260:]==b[offset+260:]
+ assert {k:v for k,v in before.items() if k not in ('bgm','refs')}=={k:v for k,v in after.items() if k not in ('bgm','refs')}
+ assert after['bgm']==name
+ return result,offset
+
 # EFF2 schema closed in KR 96CB50 -> 96E6B0 (native row count at +16).
 def eff2(b):
  r=Reader(b);assert r.u32()==2;compression=r.u32();r.u32();duration=r.u32();count=r.u32();assert compression==0

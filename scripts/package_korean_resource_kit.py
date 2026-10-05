@@ -17,6 +17,8 @@ TOOLS = ('package_korean_resource_kit.py', 'port_lumineos_resources.py',
          'dungeon_experience_compat.py', 'prepare_hero_dragon.py', 'prepare_korean_pets.py')
 RECIPES = ('hero_dragon_resources.json', 'korean_pet_resources.json', 'lumineos_resource_port.json')
 GUIDE = 'docs/韩服L7-L8与宠物资源说明.md'
+EXTRA_DOCS = (GUIDE, 'docs/韩服宠物佩戴等级下放方案.md',
+              'docs/完整适配器与客户端兼容说明.md')
 SCHEMA = 'openNanaimo.korean-resource-kit.v1'
 
 
@@ -37,7 +39,7 @@ def source_plan(root=ROOT):
     for row in hero['resources'] + pets['source_resources']:
         add(row['path'], row['size'], row['sha256'])
     for row in level['files']:
-        add(row['path'], row['source_size'], row['source_sha256'])
+        add(row.get('source_path', row['path']), row['source_size'], row['source_sha256'])
     for row in port.load(root / 'manifest/korean_resource_kit.json')['source_resources']:
         add(row['path'], row['size'], row['sha256'])
     return plan
@@ -125,6 +127,8 @@ def build(source, bundle, output):
         add('manifest/' + name, port.safe(ROOT / 'manifest', name))
     add('README.md', port.safe(ROOT, GUIDE))
     add('docs/L7-L8资源移植.md', port.safe(ROOT, 'docs/L7-L8资源移植.md'))
+    for name in EXTRA_DOCS:
+        add(name, port.safe(ROOT, name))
     generated = {'resource-inventory.tsv': inventory(),
                  'requirements.txt': b'pycryptodome\n'}
     rows = [dict(path=n, **v[1]) for n, v in sorted(entries.items())]
