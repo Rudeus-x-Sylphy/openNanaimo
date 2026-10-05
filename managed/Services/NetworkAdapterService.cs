@@ -414,6 +414,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte VillageShopCode { get; set; }
         public int TradeRoomId { get; set; }
         public int PartyId { get; set; }
+        public byte[]? PublishedPartyStatus { get; set; }
+        public int PublishedPartyId { get; set; }
         public byte[] DungeonSlotStates { get; } = [1, 1, 1];
         public int DungeonRoomId { get; set; }
         public byte DungeonSlotIndex { get; set; }
@@ -1946,6 +1948,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         if (string.Equals(channel, "WorldAdapter", StringComparison.Ordinal) && IsTrackedWorldSession(session))
             ObserveCardExchangeRequest(frame, opcode, session);
 
+        if (opcode == 0xC57A)
+            return await HandleNativeMentorshipReleaseAsync(frame, payload, session, token);
+        if (opcode is 0xC576 or 0xC577)
+            return await HandleNativeMentorshipNegotiationAsync(frame, opcode, payload, session, token);
         if (MentorProtocol.IsSupportedMentorshipOpcode(opcode))
             return await HandleMentorshipFrameAsync(frame, opcode, payload, session, token);
         if (opcode == 0xCB25 && TryReadMentorshipPrivateCommand(payload, out var privateMentorshipCommand, out var privateMentorshipPeer))
@@ -13425,6 +13431,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         ConnectionSession source,
         CancellationToken token)
     {
+        await ReleaseReadyNativePartyMapsAsync(token);
+        QueuePartyStatusUpdate(source);
         var pending = source.PendingBroadcasts.ToArray();
         source.PendingBroadcasts.Clear();
         await SendNativeBroadcastBatchAsync(pending, token);
@@ -18278,13 +18286,42 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     private static byte[] NormalizePartyMetadata(CharacterRecord character, byte[] metadata)
     {
-        var normalized = metadata.Length == 4 ? metadata.ToArray() : new byte[4];
-        normalized[2] = (byte)Math.Clamp(character.Level, 1, byte.MaxValue);
-        return normalized;
+        // Invitation fields and union fields have different layouts.
+        return BuildDefaultPartyMetadata(character);
     }
 
     private static byte[] BuildDefaultPartyMetadata(CharacterRecord? character)
-        => [0, 0, (byte)Math.Clamp(character?.Level ?? 1, 1, byte.MaxValue), 0];
+        => [(byte)Math.Clamp(character?.Level ?? 1, 1, byte.MaxValue),
+            character is null ? (byte)0 : CharacterTitleState.GetGrade(character),
+            (byte)Math.Clamp(character?.CurrentMapId ?? 0, 0, byte.MaxValue),
+            (byte)Math.Clamp(character?.CurrentTownPage ?? 0, 0, byte.MaxValue)];
+
+    private void QueuePartyStatusUpdate(ConnectionSession source)
+    {
+        if (source.Character is not { } character || !IsTrackedWorldSession(source)) return;
+        lock (_partyGate)
+        {
+            if (!_parties.TryGetValue(source.PartyId, out var party) || !party.Members.ContainsKey(source.SessionId))
+            {
+                source.PublishedPartyStatus = null;
+                source.PublishedPartyId = 0;
+                return;
+            }
+            var metadata = BuildDefaultPartyMetadata(character);
+            var status = new byte[8];
+            BinaryPrimitives.WriteUInt16LittleEndian(status, GetSceneEntityId(character));
+            status[2] = metadata[2]; status[3] = metadata[3];
+            status[6] = metadata[0]; status[7] = metadata[1];
+            if (source.PublishedPartyId == party.Id && source.PublishedPartyStatus is { } previous
+                && status.AsSpan().SequenceEqual(previous)) return;
+            source.PublishedPartyId = party.Id;
+            source.PublishedPartyStatus = status;
+            foreach (var member in party.Members.Values)
+                if (member.Session != source && _activeWorldSessions.TryGetValue(member.Session.SessionId, out var peer)
+                    && IsTrackedWorldSession(peer.Session))
+                    source.PendingBroadcasts.Add(new PendingNativeBroadcast(peer, 0xC4E9, status, "party status"));
+        }
+    }
 
     private static byte[] BuildPartyLeavePayload(
         ushort partyState,
@@ -19048,7 +19085,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         0x2713 or 0x2717 or 0x2719 or 0x271B or 0x2725 or 0x2730 or 0x2732 => "GameAdapter",
         0xCF0B or 0xCF0D or 0xCF11 or 0xCF13 or 0xCF17 or 0xCF19
             or 0xCF79 or 0xCF85 or 0xCF89 or 0xCF97 or 0xCFE5 or 0xD014 or 0xD036 => "ArenaAdapter",
-        0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640 or 0xC351 or 0xC353 or 0xC354 or 0xC358 or 0xC365 or 0xC367 or 0xC369 or 0xC36C or 0xC376 or 0xC387 or 0xC388 or 0xC578 or 0xC57D or 0xC57F or 0xC581 or 0xC583 or 0xC584 or 0xC585 or 0xC586 or 0xC587 or 0xCB21 or 0xCB22 or 0xCB23 or 0xCF09 or 0xCF0F or 0xCF15 or 0xCF1D or 0xCF6C or 0xCF6E or 0xCF70 or 0xCF73 or 0xCF75 or 0xCF77 or 0xCF7B or 0xCF7D or 0xCF7F or 0xCF87 or 0xCF8B or 0xCF8D or 0xCF93 or 0xCF95 or 0xCF99 or 0xCF9B or 0xD00D or 0xD00F or 0xD011 or 0xD034
+        0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640 or 0xC351 or 0xC353 or 0xC354 or 0xC358 or 0xC365 or 0xC367 or 0xC369 or 0xC36C or 0xC376 or 0xC387 or 0xC388 or 0xC576 or 0xC577 or 0xC578 or 0xC57A or 0xC57D or 0xC57F or 0xC581 or 0xC583 or 0xC584 or 0xC585 or 0xC586 or 0xC587 or 0xCB21 or 0xCB22 or 0xCB23 or 0xCF09 or 0xCF0F or 0xCF15 or 0xCF1D or 0xCF6C or 0xCF6E or 0xCF70 or 0xCF73 or 0xCF75 or 0xCF77 or 0xCF7B or 0xCF7D or 0xCF7F or 0xCF87 or 0xCF8B or 0xCF8D or 0xCF93 or 0xCF95 or 0xCF99 or 0xCF9B or 0xD00D or 0xD00F or 0xD011 or 0xD034
             or 0xCFD1 or 0xCFD3 or 0xCFD5 or 0xCFD9 or 0xCFEB
             or 0xC378 or 0xC37A or 0xC3CB or 0xC3CD or 0xC3CF or 0xC3D1 or 0xC3D4 or 0xC3D6 or 0xC3D8 or 0xC3E7 or 0xC3E9 or 0xC3ED or 0xC3EF or 0xC3F3 or 0xC3FB or 0xC3FF or 0xC401 or 0xC431 or 0xC433 or 0xC469 or 0xC46B or 0xC46D or 0xC46F or 0xC47A or 0xC480 or 0xC491
             or 0xC36E or 0xC370 or 0xC396 or 0xC407 or 0xC40D or 0xC414 or 0xC425 or 0xC38D or 0xC38F or 0xC392 or 0xC398 or 0xC3AB or 0xC3AD or 0xC405 or 0xC409 or 0xC40B or 0xC40F or 0xC411 or 0xC417 or 0xC419 or 0xC41B or 0xC423 or 0xC42D or 0xC437 or 0xC439 or 0xC43B or 0xC42F or 0xC44B or 0xC44D or 0xC44F or 0xC451 or 0xC453 or 0xC473 or 0xC475 or 0xC47D or 0xC4AF or 0xC4B1 or 0xC4B3 or 0xC4B7 or 0xC4B8 or 0xC4BA or 0xC4BC or 0xC4BE or 0xC4BF or 0xC4E0 or 0xC4E1 or 0xC4E3 or 0xC4E5 or 0xC4E7 or 0xC4EA or 0xC595 or 0xC597 or 0xC599 or 0xC59B or 0xC59E or 0xC5AA or 0xC5B0 or 0xC5B2 or 0xC5B4 or 0xC5B6 or 0xC5BC

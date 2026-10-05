@@ -227,6 +227,24 @@ internal static class Program
                     "each continued member battle commits one fresh award");
                 Set(member, "NativeBattleResources", ((BattleResourceSnapshot)Get(member, "NativeBattleResources")!) with { SettlementFrozen = true });
             }
+            var viewer = await Session("DefeatedViewer");
+            try
+            {
+                Set(viewer, "NativeDungeonDeathLatched", true);
+                Set(viewer, "NativeDungeonSettlementAwaitingAction", false);
+                Set(viewer, "NativeBattleResources", ((BattleResourceSnapshot)Get(viewer, "NativeBattleResources")!)
+                    with { SettlementFrozen = false, CurrentHp = 0 });
+                var failure = Result(owner, viewer, 0, 0);
+                Put32(failure, 24, 0); Put32(failure, 76, 0);
+                await Call<Task>(service, "HandleNativeWorkerFrameAsync", viewer, failure, 1L, Token);
+                Check(Drain(viewer).Any(f => U16(f, 6) == 0xCF88), "last participant failure reaches the dead viewer without another request");
+                Check((bool)Get(viewer, "NativeDungeonSettlementAwaitingAction")!
+                    && ((BattleResourceSnapshot)Get(viewer, "NativeBattleResources")!).SettlementFrozen,
+                    "dead viewer enters the frozen failure result boundary");
+                Check(!NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(true, false, false, true, 0xCF1D),
+                    "dead viewer exit is accepted directly from the failure screen");
+            }
+            finally { Set(viewer, "NativeDungeon", null); Set(viewer, "NativeLease", null); }
             Console.WriteLine($"NATIVE_PARTY_SETTLEMENT_PASS checks={checks}");
         }
         finally

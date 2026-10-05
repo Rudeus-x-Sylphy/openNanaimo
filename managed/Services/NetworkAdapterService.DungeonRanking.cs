@@ -56,7 +56,7 @@ public sealed partial class NetworkAdapterService
             || BinaryPrimitives.ReadUInt16LittleEndian(request.AsSpan(4, 2)) != request.Length
             || BinaryPrimitives.ReadUInt16LittleEndian(request.AsSpan(6, 2)) != 0xCF15
             || BinaryPrimitives.ReadUInt16LittleEndian(request.AsSpan(8, 2)) != DungeonEpisodeCount
-            || BinaryPrimitives.ReadUInt16LittleEndian(request.AsSpan(10, 2)) >= DungeonDifficultyCount
+            || !IsDungeonStageRecordsSelectorValid(request[10], request[11], lumineosTuple)
             || (!standardTuple && !lumineosTuple)
             || difficulty >= DungeonDifficultyCount)
             return null;
@@ -66,6 +66,11 @@ public sealed partial class NetworkAdapterService
         _log($"Dungeon stage leaderboard returned: selectors={hd}/{episode}/{dungeon}/{stage}/{difficulty} records={records.Count}");
         return BuildNativeFrame(request, 0xCF16, payload, session);
     }
+
+    // The request carries a display dungeon selector, while the room owns
+    // difficulty and stage. Lumineos has eight dungeon selectors.
+    internal static bool IsDungeonStageRecordsSelectorValid(byte selector, byte reserved, bool lumineos)
+        => reserved == 0 && selector < (lumineos ? 8 : 3);
 
     private static string NativeDungeonSettlementId(ConnectionSession session)
         => $"{session.NativeBattleEpoch}:{session.NativeSettlementCycle}";

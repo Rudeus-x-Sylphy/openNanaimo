@@ -189,6 +189,7 @@ public sealed partial class DatabaseService
         MentorshipPolicy policy, long excludedRequestId, CancellationToken token)
     {
         if (teacher.Id == student.Id || teacher.AccountId == student.AccountId
+            || (policy.GraduationMinimumLevel is int graduation && student.Level >= graduation)
             || teacher.Level < policy.MinimumTeacherLevel
             || (long)teacher.Level - student.Level < policy.MinimumLevelGap) return false;
         var roleConflicts = await MentorshipScalarAsync(connection, transaction, """
@@ -220,7 +221,8 @@ public sealed partial class DatabaseService
                  + (SELECT COUNT(*) FROM MentorshipRequests WHERE StudentCharacterId = $id AND State = 0)
             """, token, ("$id", actor.CharacterId)) > 0;
         var canTeach = !isStudent && character.Level >= policy.MinimumTeacherLevel && students + reservations < policy.MaximumStudents;
-        var canStudy = !isStudent && students + reservations == 0;
+        var canStudy = !isStudent && students + reservations == 0
+            && (policy.GraduationMinimumLevel is not int graduation || character.Level < graduation);
         var canGraduate = false;
         using (var query = MentorshipCommand(connection, transaction,
             "SELECT Id FROM MentorshipRelations WHERE StudentCharacterId = $id AND State = 0", ("$id", actor.CharacterId)))

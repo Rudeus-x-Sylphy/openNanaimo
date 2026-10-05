@@ -82,6 +82,7 @@ def payload_policy(value: str, layer: str) -> None:
     if layer == "runtime":
         good = value in {
             "start_nanaimo_launcher.bat", "gui_launcher/nanaimo_launcher.ps1",
+            "gui_launcher/projectile_browser.ps1",
             "gui_launcher/start_social_client.ps1",
             "gui_launcher/lumineos_resource_identity.ps1",
             "gui_launcher/korean_pet_resource_identity.ps1",
@@ -102,7 +103,8 @@ def payload_policy(value: str, layer: str) -> None:
         }
         good = ((parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"})
                 or (parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"})
-                or value == "managed-host/Resources/client-compatibility.json"
+                or value in {"managed-host/Resources/client-compatibility.json",
+                             "gui_launcher/projectile_resources.cs", "manifest/projectile_diy_patch.json"}
                 or (parts[0] == "scripts" and p.suffix in {".py", ".ps1"})
                 or value in DUNGEON7_ARTWORK
                 or value in card_generation_sources

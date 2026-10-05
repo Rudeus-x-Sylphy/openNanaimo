@@ -72,6 +72,53 @@ SETTLEMENT_MEMBER_TOWN_SITES = (
     ('settlement_member_town_render', 0x007653DF,
      bytes.fromhex('83780800750E'), bytes.fromhex('837808009090')),
 )
+# CF72 recreates quickbar objects during actor refresh. Match the native
+# 66CAC0 layout gate: only manager BYTE+3 == 0 in active state DWORD+10F0
+# == 4 selects the compact HUD. Preserve constructor layout before loading and
+# in the full-size mode; never shrink normal/pre-battle refreshes.
+QUICKBAR_REFRESH_CAVE_VA = 0x006E3100
+QUICKBAR_REFRESH_CAVE_SPAN = 64
+QUICKBAR_REFRESH_CALLS = (0x006F5B1E, 0x006F5B68)
+# Exact previously published unconditional wrapper, accepted only for migration.
+QUICKBAR_REFRESH_LEGACY = bytes.fromhex(
+    '558BEC51FF751CFF7518FF7514FF7510FF750CFF7508E8359EFFFF508B4DFC'
+    'E8EC9BFFFF588BE55DC21800').ljust(QUICKBAR_REFRESH_CAVE_SPAN, b'\xCC')
+
+
+def quickbar_refresh_sites():
+    def relative(opcode, source, target):
+        return bytes([opcode]) + struct.pack('<i', target - source - 5)
+    # thiscall wrapper: preserve actor, forward six args, preserve result,
+    # conditionally apply native compact layout; retain the ret24 contract.
+    code = bytearray(bytes.fromhex('558BEC51'))
+    for offset in (28, 24, 20, 16, 12, 8):
+        code += bytes((0xFF, 0x75, offset))
+    code += relative(0xE8, QUICKBAR_REFRESH_CAVE_VA + len(code), 0x006DCF50)
+    code += bytes.fromhex('50')  # save constructor result across both getters
+    code += relative(0xE8, QUICKBAR_REFRESH_CAVE_VA + len(code), 0x006658E0)
+    # Same mode and active-state boundary as native 66CAC0 initialization.
+    code += bytes.fromhex('80780300751183B8F01000000475088B4DFC')
+    code += relative(0xE8, QUICKBAR_REFRESH_CAVE_VA + len(code), 0x006DCD10)
+    code += bytes.fromhex('588BE55DC21800')
+    assert len(code) <= QUICKBAR_REFRESH_CAVE_SPAN
+    code = bytes(code).ljust(QUICKBAR_REFRESH_CAVE_SPAN, b'\xCC')
+    return [('quickbar_refresh_layout', QUICKBAR_REFRESH_CAVE_VA,
+             b'\xCC' * QUICKBAR_REFRESH_CAVE_SPAN, code)] + [
+        (f'quickbar_refresh_call_{va:08x}', va,
+         relative(0xE8, va, 0x0041F28A),
+         relative(0xE8, va, QUICKBAR_REFRESH_CAVE_VA))
+        for va in QUICKBAR_REFRESH_CALLS]
+
+
+def patch_quickbar_refresh(data: bytes) -> tuple[bytes, dict]:
+    results = {}
+    for name, va, old, new in quickbar_refresh_sites():
+        known = (old, QUICKBAR_REFRESH_LEGACY) if va == QUICKBAR_REFRESH_CAVE_VA else (old,)
+        data, results[name] = _migrate_site(data, va, new, known, name,
+            'the actor quickbar refresh layout differs')
+    return data, _migration_report('patch_quickbar_refresh', **results)
+
+
 POWER_RESTORE_HOOK_VA = 0x006F096A
 POWER_RESTORE_HOOK_OLD = bytes.fromhex('C78590F9FFFF00000000')
 POWER_RESTORE_CAVE_VA = 0x0041FB54
@@ -563,9 +610,10 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     data, power = restore_native_power(data)
     data, experience = dungeon_experience_compat.patch_experience_preview(data, _patch_site)
     data, boss_health = patch_boss_health_display(data)
+    data, quickbar = patch_quickbar_refresh(data)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
         other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power,
-        settlement_experience=experience, boss_health=boss_health,
+        settlement_experience=experience, boss_health=boss_health, quickbar=quickbar,
         member_town=_migration_report('patch_settlement_member_town', **member_town))
 
 
@@ -1017,6 +1065,7 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
         expected_sites.extend((name, va, new)
                               for name, va, _, new in dungeon_experience_compat.patch_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in BOSS_HEALTH_DISPLAY_SITES)
+        expected_sites.extend((name, va, new) for name, va, _, new in quickbar_refresh_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in SETTLEMENT_MEMBER_TOWN_SITES)
     for name, va, expected in expected_sites:
         offset = _va_offset(data, va, len(expected))

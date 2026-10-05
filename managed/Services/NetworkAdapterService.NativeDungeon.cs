@@ -120,6 +120,7 @@ public sealed partial class NetworkAdapterService
             session.NonCombatResourceSnapshot = null;
             session.NativeDungeonDeathLatched = false;
             session.NativeDungeonSelectionValid = false;
+            session.NativeContinuationRosterRequested = false;
             session.NativeCoupleStartRequested = false;
             session.NativeCoupleIdentityPublished = false;
             session.HasReportedDungeonPosition = false;
@@ -159,6 +160,7 @@ public sealed partial class NetworkAdapterService
             return true;
         }
         if (session.NativeDungeon is null) return false;
+        if (opcode == 0xCFEB && DeferNativePartyMap(session, frame)) return true;
         if (opcode == 0xCF70 && frame.Length == 12
             && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4, 2)) == 12)
             session.NativeContinuationRosterRequested = true;
@@ -338,6 +340,7 @@ public sealed partial class NetworkAdapterService
             else if (IsNativeDungeonContinuationProfileRequest(session, frame))
                 await HandleNativeDungeonContinuationProfileAsync(session, frame, token);
             else await session.NativeDungeon.SendAsync(frame, token);
+            if (opcode == 0xCF70) await ReleaseNativePartyMapAsync(session, token);
             if (ShouldAcknowledgeExplicitNativeDungeonTownLeave(
                     session.NativeDungeonTownTransitionAuthorized,
                     opcode)
@@ -572,6 +575,7 @@ public sealed partial class NetworkAdapterService
         => awaitingAction
             && !nextTransitionAuthorized
             && !townTransitionAuthorized
+            && !deathLatched
             && opcode == 0xCF1D;
 
     // CF73 is shared by explicit town leave and the CF8B/CF8C -> CF73/CF1D
@@ -1246,7 +1250,13 @@ public sealed partial class NetworkAdapterService
                 out var actorCurrentHp,
                 out var actorCurrentMp))
         {
-            session.NativeBattleResources = ObserveInventoryActorVitals(actorCharacter, actorResources);
+            session.NativeBattleResources = responseOpcode == 0xCF72 && IsNativeDungeonRecoveryActive(session)
+                ? actorResources with
+                {
+                    CurrentHp = (ushort)Math.Min(actorResources.MaximumHp, actorCurrentHp),
+                    CurrentMp = (ushort)Math.Min(actorResources.MaximumMp, actorCurrentMp)
+                }
+                : ObserveInventoryActorVitals(actorCharacter, actorResources);
         }
         if (session.NativeBattleResources is { } resources
             && session.Character is { } resourceCharacter)
@@ -1321,6 +1331,18 @@ public sealed partial class NetworkAdapterService
         if (!session.NativeForwarding) return;
         if (responseOpcode == 0xCF88)
         {
+            if (session.NativeDungeonDeathLatched && !session.NativeDungeonSettlementAwaitingAction
+                && session.NativeBattleResources is { SettlementFrozen: false }
+                && response.Length >= 12 && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8)) is >= 2 and <= 3
+                && response.Length == 12 + 52 * BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8))
+                && Enumerable.Range(0, BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8)))
+                    .All(i => response[12 + 52 * i + 11] == 0))
+            {
+                session.NativeDungeonSettlementAwaitingAction = true;
+                session.NativeDungeonNextTransitionAuthorized = false;
+                session.NativeDungeonTownTransitionAuthorized = false;
+                session.NativeBattleResources = session.NativeBattleResources with { SettlementFrozen = true, CurrentHp = 0 };
+            }
             if (!session.NativeDungeonSettlementAwaitingAction || session.NativeCheckpoint is null
                 || !TryReadNativeDungeonSettlementFrame(response, checked((ushort)session.NativeCheckpoint.Get(4)),
                     out _, out _, out _)) return;
@@ -1622,6 +1644,7 @@ public sealed partial class NetworkAdapterService
 
     private async Task CloseNativeDungeonAsync(ConnectionSession session, BattleResourceBoundary boundary = BattleResourceBoundary.ConnectionClose)
     {
+        ClearNativePartyLoad(session);
         if (session.NativeDungeon is null)
         {
             ClearNativePartyContinuation(session);

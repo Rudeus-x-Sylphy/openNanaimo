@@ -3,6 +3,7 @@ param(
     [string]$TccPath,
     [string]$DotnetPath,
     [string]$ResourceDataRoot,
+    [string]$PetRecipePath,
     [string]$TargetFramework,
     [switch]$SelfTest
 )
@@ -11,7 +12,7 @@ $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $output = [IO.Path]::GetFullPath($OutputRoot)
 # Reject stale PET resource roots before building or writing any output. The
 # current recipe pins the GBK-safe catalog, not merely its row count.
-$petRecipePath = Join-Path $root 'manifest\korean_pet_resources.json'
+$petRecipePath = if ($PetRecipePath) { [IO.Path]::GetFullPath($PetRecipePath) } else { Join-Path $root 'manifest\korean_pet_resources.json' }
 if (Test-Path -LiteralPath $petRecipePath -PathType Leaf) {
     $petContainer = [string][char]0x8D44 + [char]0x6E90
     $petData = [string][char]0x6570 + [char]0x636E

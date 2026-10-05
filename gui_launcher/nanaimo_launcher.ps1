@@ -1,4 +1,4 @@
-﻿param([switch]$ValidateOnly,[switch]$PreviewOnly,[switch]$SelfTestProfileIO,[switch]$SelfTestInventoryIO,[switch]$SelfTestLaunchModes,[switch]$SelfTestPureNewPlayer,[switch]$SelfTestAdapterManifest,[switch]$SelfTestLayout,[switch]$SelfTestSkillProfile,[switch]$SelfTestCatalogPreview,[switch]$SelfTestHeroDragon,[switch]$SelfTestKoreanPets,[switch]$SelfTestSocialMode,[switch]$SelfTestLocalEntry,[switch]$SelfTestTitleIO,[string]$ProfileIniOverride,[string]$ProfileJsonOverride)
+﻿param([switch]$ValidateOnly,[switch]$PreviewOnly,[switch]$SelfTestProfileIO,[switch]$SelfTestInventoryIO,[switch]$SelfTestLaunchModes,[switch]$SelfTestPureNewPlayer,[switch]$SelfTestAdapterManifest,[switch]$SelfTestLayout,[switch]$SelfTestSkillProfile,[switch]$SelfTestCatalogPreview,[switch]$SelfTestProjectile,[switch]$SelfTestHeroDragon,[switch]$SelfTestKoreanPets,[switch]$SelfTestSocialMode,[switch]$SelfTestLocalEntry,[switch]$SelfTestTitleIO,[string]$ProfileIniOverride,[string]$ProfileJsonOverride)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -6,6 +6,7 @@ Add-Type -AssemblyName System.Drawing
 
 $Root=Split-Path $PSScriptRoot -Parent
 $Client=Join-Path $Root 'game.exe'
+. (Join-Path $PSScriptRoot 'projectile_browser.ps1')
 $AdapterRuntimeRoot=Join-Path $Root 'adapter_runtime'
 $Adapter=Join-Path $AdapterRuntimeRoot 'Nanaimo.Adapter.exe'
 $AdapterBridge=Join-Path $AdapterRuntimeRoot 'nanaimo_gameplay_bridge.exe'
@@ -425,7 +426,7 @@ $socialMultiNote=New-Object Windows.Forms.Label;$socialMultiNote.Text='同机测
 $socialStatus=New-Object Windows.Forms.Label;$socialStatus.Location=New-Object Drawing.Point(80,635);$socialStatus.Size=New-Object Drawing.Size(900,100);$socialStatus.ForeColor=[Drawing.Color]::DarkBlue;$tabSocial.Controls.Add($socialStatus)
 
 $resourceTitle=New-Object Windows.Forms.Label;$resourceTitle.Text='人物数值、账户货币与卡册道具';$resourceTitle.Font=New-Object Drawing.Font('Microsoft YaHei UI',15,[Drawing.FontStyle]::Bold);$resourceTitle.AutoSize=$true;$resourceTitle.Location=New-Object Drawing.Point(28,24);$tabResources.Controls.Add($resourceTitle)
-$resourceHint=New-Object Windows.Forms.Label;$resourceHint.Text='左侧含HP/MP、攻击加算、防御平减与货币；右侧为C3E8卡册钥匙。攻击写CFEC原生槽并由协议适配器镜像；防御使用本地平减规则。';$resourceHint.AutoSize=$true;$resourceHint.Location=New-Object Drawing.Point(30,62);$tabResources.Controls.Add($resourceHint)
+$resourceHint=New-Object Windows.Forms.Label;$resourceHint.Text='左侧含HP/MP、攻击加算、固定减伤与货币；右侧为卡册钥匙。固定减伤适用于普通怪物与BOSS，正伤害最低为1。';$resourceHint.AutoSize=$true;$resourceHint.Location=New-Object Drawing.Point(30,62);$tabResources.Controls.Add($resourceHint)
 function New-ResourceNumeric($parent,[string]$label,[int]$x,[int]$y,[decimal]$min,[decimal]$max,[decimal]$value,[int]$width=260){
     Add-Label $parent $label $x $y 190|Out-Null;$n=New-Object Windows.Forms.NumericUpDown;$n.Location=New-Object Drawing.Point(($x+205),($y-4));$n.Size=New-Object Drawing.Size($width,30);$n.Minimum=$min;$n.Maximum=$max;$n.DecimalPlaces=0;$n.ThousandsSeparator=$true;$n.Value=$value;$parent.Controls.Add($n);return $n
 }
@@ -433,7 +434,7 @@ $u64Max=[decimal]::Parse('18446744073709551615',[Globalization.CultureInfo]::Inv
 $hpMaxBox=New-ResourceNumeric $tabResources '最大HP  hp_max' 45 125 1 65535 ([decimal]$defaultHpMax)
 $mpMaxBox=New-ResourceNumeric $tabResources '最大MP  mp_max' 45 175 1 65535 ([decimal]$defaultMpMax)
 $attackBox=New-ResourceNumeric $tabResources '攻击加算  attack（CFEC）' 45 225 0 1000000 ([decimal]$defaultAttack)
-$defenseBox=New-ResourceNumeric $tabResources '防御平减  defense（本地）' 45 275 0 65535 ([decimal]$defaultDefense)
+$defenseBox=New-ResourceNumeric $tabResources '固定减伤  defense（每次）' 45 275 0 65535 ([decimal]$defaultDefense)
 $coinBox=New-ResourceNumeric $tabResources '金币  coin' 45 355 0 $u64Max ([decimal]$defaultCoin) 260
 $nanaPointBox=New-ResourceNumeric $tabResources 'NANA点  nana_point' 45 405 0 $u64Max ([decimal]$defaultNanaPoint) 260
 $apartmentPointsBox=New-ResourceNumeric $tabResources '公寓推荐点数' 45 455 0 4294967295 ([decimal]$defaultApartmentPoints) 260
@@ -448,7 +449,7 @@ $skillSlotExpiryBox=New-ResourceNumeric $tabResources 'Z/X槽期限（0=未启�
 $skillSlotExpiryApplyBox=New-Object Windows.Forms.CheckBox;$skillSlotExpiryApplyBox.Text='写入Z/X槽期限（未勾选=保留角色数据库现值）';$skillSlotExpiryApplyBox.Location=New-Object Drawing.Point(555,540);$skillSlotExpiryApplyBox.Size=New-Object Drawing.Size(500,28);$skillSlotExpiryApplyBox.Checked=$skillSlotExpiryConfigured;$tabResources.Controls.Add($skillSlotExpiryApplyBox);$skillSlotExpiryBox.Enabled=$skillSlotExpiryApplyBox.Checked
 $expansionExpiryNote=New-Object Windows.Forms.Label;$expansionExpiryNote.Text='未来期限表示扩容已生效，原客户端会阻止再次使用对应扩容券；要测试期限券请先明确设为0或过期值。';$expansionExpiryNote.Location=New-Object Drawing.Point(555,570);$expansionExpiryNote.Size=New-Object Drawing.Size(500,42);$expansionExpiryNote.ForeColor=[Drawing.Color]::DarkOrange;$tabResources.Controls.Add($expansionExpiryNote)
 $freeMagicKeyNote=New-Object Windows.Forms.Label;$freeMagicKeyNote.Text='自由钥匙物品：44000010/44000011；C3E8 +0x88启用；真实背包链 C473(mode1)→C474。';$freeMagicKeyNote.Location=New-Object Drawing.Point(555,405);$freeMagicKeyNote.Size=New-Object Drawing.Size(500,45);$freeMagicKeyNote.ForeColor=[Drawing.Color]::DarkGreen;$tabResources.Controls.Add($freeMagicKeyNote)
-$resourceBoundary=New-Object Windows.Forms.Label;$resourceBoundary.Text='Attack is a u32 additive CFEC modifier (0..1000000). Defense uses the local rule max(1, raw-defense) before D010/D015; this is not a recovered original formula. HP/MP use u16, currencies use u64, and card counts use u8. Selected-PET type1 gems are not automatically added again.';$resourceBoundary.Location=New-Object Drawing.Point(45,620);$resourceBoundary.Size=New-Object Drawing.Size(980,72);$resourceBoundary.ForeColor=[Drawing.Color]::DarkOrange;$tabResources.Controls.Add($resourceBoundary)
+$resourceBoundary=New-Object Windows.Forms.Label;$resourceBoundary.Text='攻击加算范围：0～1000000；固定减伤范围：0～65535。每次正伤害按 max(1, 基础伤害－固定减伤) 结算，普通怪物、BOSS及超级BOSS使用同一规则。例如L8超级BOSS部分攻击基础伤害为20000，固定减伤9999时受到10001点伤害；设为20000时受到1点伤害。';$resourceBoundary.Location=New-Object Drawing.Point(45,620);$resourceBoundary.Size=New-Object Drawing.Size(980,72);$resourceBoundary.ForeColor=[Drawing.Color]::DarkOrange;$tabResources.Controls.Add($resourceBoundary)
 $tabResources.AutoScroll=$true;$tabResources.AutoScrollMinSize=New-Object Drawing.Size(1080,1180)
 $skillWarning=New-Object Windows.Forms.Label;$skillWarning.Location=New-Object Drawing.Point(45,700);$skillWarning.Size=New-Object Drawing.Size(1000,34);$skillWarning.Font=New-Object Drawing.Font('Microsoft YaHei UI',9,[Drawing.FontStyle]::Bold);$tabResources.Controls.Add($skillWarning)
 function New-SkillGradeControl($parent,[int]$idx,[int]$x,[int]$y){$d=$SkillDefs[$idx];Add-Label $parent ("{0} [{1}]"-f$d.Name,$d.Code) $x $y 185|Out-Null;$n=New-Object Windows.Forms.NumericUpDown;$n.Location=New-Object Drawing.Point(($x+188),($y-3));$n.Size=New-Object Drawing.Size(46,25);$n.Minimum=0;$n.Maximum=5;$n.Value=[decimal]$defaultSkillGrades[$idx];$n.Tag=$idx;$parent.Controls.Add($n);return $n}
@@ -696,6 +697,8 @@ function Ensure-ClientCompatibility {
     if(-not(Test-Path -LiteralPath $ClientCompatibilityReport -PathType Leaf)){throw 'Client compatibility report was not generated.'}
     $report=Get-Content -LiteralPath $ClientCompatibilityReport -Raw -Encoding UTF8|ConvertFrom-Json
     if(-not$report.verification.all_pass){throw 'Client compatibility post-apply verification failed.'}
+    $projectileSettings=Read-ProjectileSettings (Join-Path $Root 'nanaimo_projectile.ini')
+    if($projectileSettings.enabled-eq1){& (Join-Path $Root 'scripts\prepare_projectile_diy.ps1') -ClientRoot $Root -Apply | Out-Null}
     return $report
 }
 function Send-LocalLaunchRegistration([string]$ip,[byte[]]$bytes,[string]$description){
@@ -1042,6 +1045,17 @@ $applyFurnitureFilter={ $conds=New-Object Collections.Generic.List[string];$q=Es
 $furnitureSearchBtn.add_Click($applyFurnitureFilter);$furnitureClearBtn.add_Click({$furnitureSearch.Clear();$furnitureTypeFilter.SelectedIndex=0;$furnitureView.RowFilter='';if($furnitureGrid.Rows.Count){$furnitureGrid.Rows[0].Selected=$true;Update-CatalogGridPreview 'furniture' $furnitureGrid $furniturePreviewPane}})
 $furnitureGrid.add_SelectionChanged({Update-CatalogGridPreview 'furniture' $furnitureGrid $furniturePreviewPane})
 $layoutFurnitureCatalog={Set-CatalogSplitLayout $tabFurniture $furnitureSplit $furniturePreviewPane}.GetNewClosure();$tabFurniture.add_Resize($layoutFurnitureCatalog);&$layoutFurnitureCatalog
+Initialize-ProjectileBrowser $tabs $Root $ProfileStateRoot
+if($SelfTestProjectile){
+    if($script:DIY.Catalog.Count-ne2996-or-not$script:DIY.ByFile.ContainsKey('nanaimo_basketball.pon')){throw 'projectile catalog'}
+    Show-ProjectilePreview $script:DIY.ByFile['nanaimo_basketball.pon']
+    if(-not$script:DIY.Picture.Image-or$script:DIY.Picture.Image.Width-ne48){throw 'basketball preview'}
+    $tmp=Join-Path ([IO.Path]::GetTempPath()) ('nanaimo-projectile-'+[Guid]::NewGuid().ToString('N')+'.ini')
+    try{foreach($enabled in 0,1){foreach($reverse in 0,1){$a=@{enabled=$enabled;resource='nanaimo_basketball.pon';reverse_direction=$reverse};Write-ProjectileSettings $tmp $a;$b=Read-ProjectileSettings $tmp;if($b.enabled-ne$enabled-or$b.reverse_direction-ne$reverse-or$b.resource-ne$a.resource){throw 'projectile config roundtrip'}}}}finally{if(Test-Path -LiteralPath $tmp){Remove-Item -LiteralPath $tmp -Force}}
+    Show-ProjectilePreview $script:DIY.ByFile['mis_ep15_bbm_c_00.pon'];if(-not$script:DIY.Picture.Image){throw 'animated preview'}
+    Write-Output 'PROJECTILE_GUI_SELFTEST_PASS catalog=2996 basketball=48x48 config=4 gif=true runtime_acceptance=false'
+    $form.Close();$form.Dispose();exit 0
+}
 $form.add_FormClosed({if($petPreviewPane.Picture.Image){$petPreviewPane.Picture.Image.Dispose()};if($equipPreviewPane.Picture.Image){$equipPreviewPane.Picture.Image.Dispose()};if($furniturePreviewPane.Picture.Image){$furniturePreviewPane.Picture.Image.Dispose()};if($script:petPreviewAtlas){$script:petPreviewAtlas.Dispose()};if($script:equipPreviewAtlas){$script:equipPreviewAtlas.Dispose()};if($script:furniturePreviewAtlas){$script:furniturePreviewAtlas.Dispose()}})
 if($petGrid.Rows.Count){Update-CatalogGridPreview 'pet' $petGrid $petPreviewPane};if($equipGrid.Rows.Count){Update-CatalogGridPreview 'equip' $equipGrid $equipPreviewPane};if($furnitureGrid.Rows.Count){Update-CatalogGridPreview 'furniture' $furnitureGrid $furniturePreviewPane}
 function Assert-NoVisibleConnectionText([Windows.Forms.Control]$control){
@@ -1187,13 +1201,13 @@ if($SelfTestHeroDragon){
     if(-not(Select-ComboId $petCombo 15003361)){throw 'Hero Dragon is missing from the selector.'}
     Update-PetAgeOptions 1
     $hero=Get-SelectedData $petCombo
-    if([uint32]$hero.id-ne15003361-or[int]$hero.level_requirement-ne99-or[int]$levelBox.Value-ne1){throw 'Hero Dragon direct selection changed player level.'}
+    if([uint32]$hero.id-ne15003361-or[int]$hero.level_requirement-ne95-or[int]$levelBox.Value-ne1){throw 'Hero Dragon direct selection changed player level.'}
     if((Selected-PetAge)-ne3-or$petAgeCombo.Items.Count-ne1){throw 'Hero Dragon offers unsupported model stages.'}
     $icon=@($petPreviewRows|Where-Object id -eq 15003361)
     if($icon.Count-ne1-or-not$icon[0].available){throw 'Hero Dragon icon is missing.'}
     if($attackByPet[[uint32]15003361].initial_owner_key-ne1422){throw 'Hero Dragon attack mapping is missing.'}
     if($petDetail.Text-notmatch 'GUI直接指定不受等级限制'){throw 'Hero Dragon direct-assignment hint missing.'}
-    Write-Output 'HERO_DRAGON_GUI_SELFTEST_PASS level=1 requirement=99 pet=15003361 stage=3 icon=PASS attack=1422'
+    Write-Output 'HERO_DRAGON_GUI_SELFTEST_PASS level=1 requirement=95 pet=15003361 stage=3 icon=PASS attack=1422'
     $form.Dispose();exit 0
 }
 

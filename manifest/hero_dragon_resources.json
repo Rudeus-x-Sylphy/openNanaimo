@@ -2,7 +2,7 @@
   "schema": "openNanaimo.hero-dragon.v1",
   "item_code": 15003361,
   "family": 9157,
-  "required_level": 99,
+  "required_level": 95,
   "model_stage": 3,
   "source_pet_sha256": "0ef547a8b5cc5c9a2b383657c30da3700c9599b0f737609e8572596845d3c038",
   "resources": [
@@ -348,7 +348,7 @@
         1
       ],
       "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
-      "after_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+      "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
     },
     {
       "before": {
@@ -359,7 +359,7 @@
         1
       ],
       "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
-      "after_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+      "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
     },
     {
       "before": {
@@ -370,7 +370,18 @@
         1
       ],
       "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
-      "after_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+      "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
+    },
+    {
+      "before": {
+        "size": 483696,
+        "sha256": "da0b62ec561f1ba1cc51bf5d9924801faad6febf4bdc8bc5b62e1d961b59d313"
+      },
+      "allowed_fields": [
+        1
+      ],
+      "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+      "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
     }
   ]
 }

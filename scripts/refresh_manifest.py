@@ -42,6 +42,20 @@ REPOSITORY_FILES = [
     'gui_launcher/lumineos_resource_identity.ps1',
     'gui_launcher/korean_pet_resource_identity.ps1',
     'scripts/dungeon_experience_compat.py',
+    'gui_launcher/projectile_browser.ps1',
+    'gui_launcher/projectile_resources.cs',
+    'gui_launcher/data/projectiles.json',
+    'gui_launcher/data/projectile_aliases.json',
+    'gui_launcher/data/previews/projectile_frames.json',
+    'gui_launcher/data/previews/projectile_frames.png',
+    'gui_launcher/data/previews/basketball.png',
+    'gui_launcher/data/previews/basketball_spin.gif',
+    'scripts/assets/projectile/basketball_spin.png',
+    'scripts/assets/projectile/basketball_animation.json',
+    'scripts/prepare_projectile_diy.ps1',
+    'scripts/assets/projectile/basketball.im3',
+    'scripts/assets/projectile/basketball.png',
+    'manifest/projectile_diy_patch.json',
     'gui_launcher/nanaimo_launcher.ps1',
     'gui_launcher/start_social_client.ps1',
     'gui_launcher/client_connect.ps1',
@@ -51,6 +65,11 @@ REPOSITORY_FILES = [
     'manifest/patch_runtime_requirements.json',
     'start_nanaimo_launcher.bat',
 ]
+
+# Only files explicitly referenced by the preview index enter the runtime contract.
+_projectile_previews = json.loads((ROOT / 'gui_launcher/data/previews/projectile_frames.json').read_text('utf-8-sig'))
+REPOSITORY_FILES += sorted({'gui_launcher/data/previews/projectiles/' + r['gif']
+                           for r in _projectile_previews if r.get('animated') and r.get('gif')})
 
 def sha(path: Path) -> str:
     h = hashlib.sha256()
@@ -145,6 +164,13 @@ def main() -> None:
                 'combat_manifest': 'manifest/lumineos_combat.json',
                 'runtime_acceptance': False,
             },
+        },
+        'optional_projectile_diy': {
+            'installer': 'scripts/prepare_projectile_diy.ps1',
+            'recipe': 'manifest/projectile_diy_patch.json',
+            'config': 'nanaimo_projectile.ini',
+            'default_enabled': False,
+            'runtime_acceptance': False,
         },
         'runtime_contract': {
             'root': RUNTIME_ROOT,

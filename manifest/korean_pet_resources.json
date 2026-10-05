@@ -3,7 +3,7 @@
   "runtime_acceptance": false,
   "baseline_catalog": {
     "size": 483696,
-    "sha256": "da0b62ec561f1ba1cc51bf5d9924801faad6febf4bdc8bc5b62e1d961b59d313"
+    "sha256": "42bae689c46f5f654b24d2059b95db51d3cefe59fba59701ab43c65843586cc8"
   },
   "source_catalog": {
     "size": 568144,
@@ -704,13 +704,13 @@
       ],
       "boo_key": 100152,
       "localized_fields": {
-        "1": "99",
+        "1": "81",
         "2": "直升机5号",
-        "16": "角色99级可装备；三阶外观。",
+        "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
         "18": "数值基础攻击:723 槽:3 耐久:-1"
       },
-      "localized_row_sha256": "5e2ef4205ba9a062abc4cbfc8f31974c947a76b587c853f739253b6ecf97f3ef",
+      "localized_row_sha256": "86067536f8fdc39aedc5f5ee97de90991fdaceda3a80c04937465fd7c066abe9",
       "name_is_local_translation": true,
       "source_required_level": 99
     },
@@ -2262,13 +2262,13 @@
       ],
       "boo_key": 100153,
       "localized_fields": {
-        "1": "96",
+        "1": "90",
         "2": "战斗龙",
-        "16": "角色96级可装备；三阶外观。",
+        "16": "角色90级可装备；三阶外观。",
         "17": "成长:3岁",
         "18": "数值基础攻击:915 槽:3 耐久:100"
       },
-      "localized_row_sha256": "76d5f20f4a1b970a6e17c7d29abffe30dd015c48aaeedaf3df322363bc1af9ae",
+      "localized_row_sha256": "8ec73c7b88345a252d879e43d467519f1bdf93e28ff8da266ba99e92c112ffed",
       "name_is_local_translation": true,
       "source_required_level": 110
     },
@@ -2281,13 +2281,13 @@
       ],
       "boo_key": 100154,
       "localized_fields": {
-        "1": "96",
+        "1": "90",
         "2": "斗战龙",
-        "16": "角色96级可装备；三阶外观。",
+        "16": "角色90级可装备；三阶外观。",
         "17": "成长:3岁",
         "18": "数值基础攻击:915 槽:3 耐久:100"
       },
-      "localized_row_sha256": "1f062d5f4c3445892317dd53ff011b482dc4556efc9c95081368fb45359b09b6",
+      "localized_row_sha256": "d5084a4440b85180b26823426465c44233c0dc7482a7cdd4c451cb6569576e96",
       "name_is_local_translation": true,
       "source_required_level": 110
     },
@@ -2300,13 +2300,13 @@
       ],
       "boo_key": 100155,
       "localized_fields": {
-        "1": "96",
+        "1": "90",
         "2": "冠军龙",
-        "16": "角色96级可装备；三阶外观。",
+        "16": "角色90级可装备；三阶外观。",
         "17": "成长:3岁",
         "18": "数值基础攻击:915 槽:3 耐久:100"
       },
-      "localized_row_sha256": "a50d6fe32026eb1887006fe9eb9186342fd05986c67f26c1e747b71244ee22e6",
+      "localized_row_sha256": "843915a7ac587616f2563c158875ceb3f65fb5fa00445bdf5872b0e4d9deb64f",
       "name_is_local_translation": true,
       "source_required_level": 110
     }
@@ -14522,10 +14522,10 @@
       "matches": []
     }
   ],
-  "policy": "Preserve the original 868 CN rows, growth, attacks, BOO and shared assets. Localize all 122 added PET names; only item IDs 15003358/359/360 change 110 to 96 and 15003361 changes 120 to 99. Source Korean names/requirements remain metadata. Existing catalogs migrate only by exact reviewed catalog/row identities.",
+  "policy": "Preserve the original 868 CN rows, growth, attacks, BOO and shared assets. Localize all 122 added PET names; only item IDs 15003358/359/360 change 110 to 90, 15003366 changes 99 to 81, and 15003361 changes 120 to 95. Source Korean names/requirements remain metadata. Existing catalogs migrate only by exact reviewed catalog/row identities.",
   "installed_catalog": {
     "size": 550320,
-    "sha256": "6497cd2e6c0351b5fc859ced8817955e4e3fde829f8b6c6dc365fb7c61d32372"
+    "sha256": "514580cc90959b9194a53317870d5d5a7ea0814ead9ca67c379491d5a000598e"
   },
   "catalog_migrations": [
     {
@@ -14541,7 +14541,7 @@
             1
           ],
           "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
-          "after_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+          "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
         },
         {
           "code": 15003340,
@@ -14852,11 +14852,12 @@
         {
           "code": 15003366,
           "allowed_fields": [
+            1,
             2,
             16
           ],
           "before_row_sha256": "97d860bfc379f3c08812a35360dfc45d080f3d689ec92707d454f1e1fccabba9",
-          "after_row_sha256": "5e2ef4205ba9a062abc4cbfc8f31974c947a76b587c853f739253b6ecf97f3ef"
+          "after_row_sha256": "86067536f8fdc39aedc5f5ee97de90991fdaceda3a80c04937465fd7c066abe9"
         },
         {
           "code": 15009351,
@@ -15595,7 +15596,7 @@
             16
           ],
           "before_row_sha256": "85243f7d5b69b235c57f67424d689a81eee0f8911bbaf3ade14583e6552bb5ab",
-          "after_row_sha256": "76d5f20f4a1b970a6e17c7d29abffe30dd015c48aaeedaf3df322363bc1af9ae"
+          "after_row_sha256": "8ec73c7b88345a252d879e43d467519f1bdf93e28ff8da266ba99e92c112ffed"
         },
         {
           "code": 15003359,
@@ -15605,7 +15606,7 @@
             16
           ],
           "before_row_sha256": "9e609bd76d9c8d0e2562dce1a2b92fb2be248ed29a60b5dc05f115b278d541eb",
-          "after_row_sha256": "1f062d5f4c3445892317dd53ff011b482dc4556efc9c95081368fb45359b09b6"
+          "after_row_sha256": "d5084a4440b85180b26823426465c44233c0dc7482a7cdd4c451cb6569576e96"
         },
         {
           "code": 15003360,
@@ -15615,7 +15616,7 @@
             16
           ],
           "before_row_sha256": "0c3da8fa846d5063ffad31743988670627ccafedbedf9b1171ef9a431c6216aa",
-          "after_row_sha256": "a50d6fe32026eb1887006fe9eb9186342fd05986c67f26c1e747b71244ee22e6"
+          "after_row_sha256": "843915a7ac587616f2563c158875ceb3f65fb5fa00445bdf5872b0e4d9deb64f"
         }
       ],
       "receipt_recipe_sha256": "1cb2e1e0b6a75a35a6df38cb888978a54d2a23a5712d6c344771d80fdbd2edd5"
@@ -15936,11 +15937,12 @@
         {
           "code": 15003366,
           "allowed_fields": [
+            1,
             2,
             16
           ],
           "before_row_sha256": "97d860bfc379f3c08812a35360dfc45d080f3d689ec92707d454f1e1fccabba9",
-          "after_row_sha256": "5e2ef4205ba9a062abc4cbfc8f31974c947a76b587c853f739253b6ecf97f3ef"
+          "after_row_sha256": "86067536f8fdc39aedc5f5ee97de90991fdaceda3a80c04937465fd7c066abe9"
         },
         {
           "code": 15009351,
@@ -16679,7 +16681,7 @@
             16
           ],
           "before_row_sha256": "85243f7d5b69b235c57f67424d689a81eee0f8911bbaf3ade14583e6552bb5ab",
-          "after_row_sha256": "76d5f20f4a1b970a6e17c7d29abffe30dd015c48aaeedaf3df322363bc1af9ae"
+          "after_row_sha256": "8ec73c7b88345a252d879e43d467519f1bdf93e28ff8da266ba99e92c112ffed"
         },
         {
           "code": 15003359,
@@ -16689,7 +16691,7 @@
             16
           ],
           "before_row_sha256": "9e609bd76d9c8d0e2562dce1a2b92fb2be248ed29a60b5dc05f115b278d541eb",
-          "after_row_sha256": "1f062d5f4c3445892317dd53ff011b482dc4556efc9c95081368fb45359b09b6"
+          "after_row_sha256": "d5084a4440b85180b26823426465c44233c0dc7482a7cdd4c451cb6569576e96"
         },
         {
           "code": 15003360,
@@ -16699,7 +16701,15 @@
             16
           ],
           "before_row_sha256": "0c3da8fa846d5063ffad31743988670627ccafedbedf9b1171ef9a431c6216aa",
-          "after_row_sha256": "a50d6fe32026eb1887006fe9eb9186342fd05986c67f26c1e747b71244ee22e6"
+          "after_row_sha256": "843915a7ac587616f2563c158875ceb3f65fb5fa00445bdf5872b0e4d9deb64f"
+        },
+        {
+          "code": 15003361,
+          "allowed_fields": [
+            1
+          ],
+          "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+          "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
         }
       ],
       "receipt_recipe_sha256": "1cb2e1e0b6a75a35a6df38cb888978a54d2a23a5712d6c344771d80fdbd2edd5"
@@ -16717,7 +16727,7 @@
             1
           ],
           "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
-          "after_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+          "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
         }
       ],
       "receipt_recipe_sha256": null
@@ -16735,7 +16745,7 @@
             1
           ],
           "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
-          "after_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+          "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
         },
         {
           "code": 15003340,
@@ -17064,11 +17074,12 @@
         {
           "code": 15003366,
           "allowed_fields": [
+            1,
             2,
             16
           ],
           "before_row_sha256": "97d860bfc379f3c08812a35360dfc45d080f3d689ec92707d454f1e1fccabba9",
-          "after_row_sha256": "5e2ef4205ba9a062abc4cbfc8f31974c947a76b587c853f739253b6ecf97f3ef"
+          "after_row_sha256": "86067536f8fdc39aedc5f5ee97de90991fdaceda3a80c04937465fd7c066abe9"
         },
         {
           "code": 15009351,
@@ -17807,7 +17818,7 @@
             16
           ],
           "before_row_sha256": "85243f7d5b69b235c57f67424d689a81eee0f8911bbaf3ade14583e6552bb5ab",
-          "after_row_sha256": "76d5f20f4a1b970a6e17c7d29abffe30dd015c48aaeedaf3df322363bc1af9ae"
+          "after_row_sha256": "8ec73c7b88345a252d879e43d467519f1bdf93e28ff8da266ba99e92c112ffed"
         },
         {
           "code": 15003359,
@@ -17817,7 +17828,7 @@
             16
           ],
           "before_row_sha256": "9e609bd76d9c8d0e2562dce1a2b92fb2be248ed29a60b5dc05f115b278d541eb",
-          "after_row_sha256": "1f062d5f4c3445892317dd53ff011b482dc4556efc9c95081368fb45359b09b6"
+          "after_row_sha256": "d5084a4440b85180b26823426465c44233c0dc7482a7cdd4c451cb6569576e96"
         },
         {
           "code": 15003360,
@@ -17827,7 +17838,7 @@
             16
           ],
           "before_row_sha256": "0c3da8fa846d5063ffad31743988670627ccafedbedf9b1171ef9a431c6216aa",
-          "after_row_sha256": "a50d6fe32026eb1887006fe9eb9186342fd05986c67f26c1e747b71244ee22e6"
+          "after_row_sha256": "843915a7ac587616f2563c158875ceb3f65fb5fa00445bdf5872b0e4d9deb64f"
         }
       ],
       "receipt_recipe_sha256": "36f999fa19b3f4e9b185462741867eb0be903570ff4b09e7225bdb13bf0127c2"
@@ -18166,11 +18177,12 @@
         {
           "code": 15003366,
           "allowed_fields": [
+            1,
             2,
             16
           ],
           "before_row_sha256": "97d860bfc379f3c08812a35360dfc45d080f3d689ec92707d454f1e1fccabba9",
-          "after_row_sha256": "5e2ef4205ba9a062abc4cbfc8f31974c947a76b587c853f739253b6ecf97f3ef"
+          "after_row_sha256": "86067536f8fdc39aedc5f5ee97de90991fdaceda3a80c04937465fd7c066abe9"
         },
         {
           "code": 15009351,
@@ -18909,7 +18921,7 @@
             16
           ],
           "before_row_sha256": "85243f7d5b69b235c57f67424d689a81eee0f8911bbaf3ade14583e6552bb5ab",
-          "after_row_sha256": "76d5f20f4a1b970a6e17c7d29abffe30dd015c48aaeedaf3df322363bc1af9ae"
+          "after_row_sha256": "8ec73c7b88345a252d879e43d467519f1bdf93e28ff8da266ba99e92c112ffed"
         },
         {
           "code": 15003359,
@@ -18919,7 +18931,7 @@
             16
           ],
           "before_row_sha256": "9e609bd76d9c8d0e2562dce1a2b92fb2be248ed29a60b5dc05f115b278d541eb",
-          "after_row_sha256": "1f062d5f4c3445892317dd53ff011b482dc4556efc9c95081368fb45359b09b6"
+          "after_row_sha256": "d5084a4440b85180b26823426465c44233c0dc7482a7cdd4c451cb6569576e96"
         },
         {
           "code": 15003360,
@@ -18929,10 +18941,108 @@
             16
           ],
           "before_row_sha256": "0c3da8fa846d5063ffad31743988670627ccafedbedf9b1171ef9a431c6216aa",
-          "after_row_sha256": "a50d6fe32026eb1887006fe9eb9186342fd05986c67f26c1e747b71244ee22e6"
+          "after_row_sha256": "843915a7ac587616f2563c158875ceb3f65fb5fa00445bdf5872b0e4d9deb64f"
+        },
+        {
+          "code": 15003361,
+          "allowed_fields": [
+            1
+          ],
+          "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+          "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
         }
       ],
       "receipt_recipe_sha256": "36f999fa19b3f4e9b185462741867eb0be903570ff4b09e7225bdb13bf0127c2"
+    },
+    {
+      "reason": "Localized catalog level policy: helicopter 5 permanent=81, three dragons=90; hero=95",
+      "before": {
+        "size": 550320,
+        "sha256": "6497cd2e6c0351b5fc859ced8817955e4e3fde829f8b6c6dc365fb7c61d32372"
+      },
+      "receipt_recipe_sha256": "1f5bb7332dbb015d217cd7f44d36aa203cc8ead47794e6559df8f904be368a84",
+      "row_replacements": [
+        {
+          "code": 15003366,
+          "allowed_fields": [
+            1,
+            16
+          ],
+          "before_row_sha256": "5e2ef4205ba9a062abc4cbfc8f31974c947a76b587c853f739253b6ecf97f3ef",
+          "after_row_sha256": "86067536f8fdc39aedc5f5ee97de90991fdaceda3a80c04937465fd7c066abe9"
+        },
+        {
+          "code": 15003358,
+          "allowed_fields": [
+            1,
+            16
+          ],
+          "before_row_sha256": "76d5f20f4a1b970a6e17c7d29abffe30dd015c48aaeedaf3df322363bc1af9ae",
+          "after_row_sha256": "8ec73c7b88345a252d879e43d467519f1bdf93e28ff8da266ba99e92c112ffed"
+        },
+        {
+          "code": 15003359,
+          "allowed_fields": [
+            1,
+            16
+          ],
+          "before_row_sha256": "1f062d5f4c3445892317dd53ff011b482dc4556efc9c95081368fb45359b09b6",
+          "after_row_sha256": "d5084a4440b85180b26823426465c44233c0dc7482a7cdd4c451cb6569576e96"
+        },
+        {
+          "code": 15003360,
+          "allowed_fields": [
+            1,
+            16
+          ],
+          "before_row_sha256": "a50d6fe32026eb1887006fe9eb9186342fd05986c67f26c1e747b71244ee22e6",
+          "after_row_sha256": "843915a7ac587616f2563c158875ceb3f65fb5fa00445bdf5872b0e4d9deb64f"
+        },
+        {
+          "code": 15003361,
+          "allowed_fields": [
+            1
+          ],
+          "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+          "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
+        }
+      ]
+    },
+    {
+      "reason": "previous localized 81/90/99 target to hero95; exact reviewed catalog only",
+      "before": {
+        "size": 550320,
+        "sha256": "0ea61f5a54d29abc3c3a0b251d70ed70212b7264a837eb8b7e05aee636b211e0"
+      },
+      "receipt_recipe_sha256": "af3042ed3ed19bdcdca69c72ff017d51cd14a9e361f5e830bcab23cd88b331ad",
+      "row_replacements": [
+        {
+          "code": 15003361,
+          "allowed_fields": [
+            1
+          ],
+          "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+          "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
+        }
+      ]
+    },
+    {
+      "reason": "previous standalone hero99 baseline to hero95; exact reviewed catalog only",
+      "before": {
+        "size": 483696,
+        "sha256": "da0b62ec561f1ba1cc51bf5d9924801faad6febf4bdc8bc5b62e1d961b59d313"
+      },
+      "receipt_recipe_sha256": null,
+      "row_replacements": [
+        {
+          "code": 15003361,
+          "allowed_fields": [
+            1
+          ],
+          "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+          "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
+        }
+      ]
     }
   ],
   "client_string_capacities_including_nul": {
@@ -18955,13 +19065,13 @@
       "code": 15003361,
       "source_required_level": 120,
       "localized_fields": {
-        "1": "99",
+        "1": "95",
         "2": "英雄龙",
         "16": "成长到3岁的英雄龙",
         "17": "成长:3岁",
         "18": "初攻:922(火焰) 槽:3 寿命:20"
       },
-      "localized_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a"
+      "localized_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
     }
   ]
 }

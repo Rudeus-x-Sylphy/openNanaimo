@@ -9,7 +9,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Program.cs;ProductionChecks.cs;GameplayReviewChecks.cs" />
+    <Compile Include="Program.cs;ProductionChecks.cs;GameplayReviewChecks.cs;NativeGameplayChecks.cs" />
     <ProjectReference Include="../../managed/Nanaimo.Gameplay.csproj" />
     <Content Include="../../adapter_runtime/资源/数据/**/*" Link="资源/数据/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

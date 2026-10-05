@@ -61606,7 +61606,7 @@
   {
     "id": 15003361,
     "name": "英雄龙",
-    "level_requirement": 99,
+    "level_requirement": 95,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100156_boo_9157.boo",
     "image": "images\\Village_images\\pet_images\\pet_9157_3.im3",
@@ -64417,7 +64417,7 @@
   {
     "id": 15003366,
     "name": "直升机5号",
-    "level_requirement": 99,
+    "level_requirement": 81,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100152_boo_9153.boo",
     "image": "images\\Village_images\\pet_images\\pet_9153_3.im3",
@@ -70649,7 +70649,7 @@
   {
     "id": 15003358,
     "name": "战斗龙",
-    "level_requirement": 96,
+    "level_requirement": 90,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100153_boo_9154.boo",
     "image": "images\\Village_images\\pet_images\\pet_9154_3.im3",
@@ -70725,7 +70725,7 @@
   {
     "id": 15003359,
     "name": "斗战龙",
-    "level_requirement": 96,
+    "level_requirement": 90,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100154_boo_9155.boo",
     "image": "images\\Village_images\\pet_images\\pet_9155_3.im3",
@@ -70801,7 +70801,7 @@
   {
     "id": 15003360,
     "name": "冠军龙",
-    "level_requirement": 96,
+    "level_requirement": 90,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100155_boo_9156.boo",
     "image": "images\\Village_images\\pet_images\\pet_9156_3.im3",

@@ -17,7 +17,7 @@ class PetLocalizationPolicyTests(unittest.TestCase):
         targets={p['code']:p for p in recipe['pets']+recipe['preserved_pets']}
         self.assertEqual(len(pets),990);self.assertEqual(len(targets),122)
         self.assertEqual({p['id'] for p in pets[868:]},set(targets))
-        expected={15003358:(110,96),15003359:(110,96),15003360:(110,96),15003361:(120,99)}
+        expected={15003366:(99,81),15003358:(110,90),15003359:(110,90),15003360:(110,90),15003361:(120,95)}
         changed={}
         for p in pets[868:]:
             code=p['id'];self.assertNotIn('韩服',p['name']);self.assertNotRegex(p['name'],r'(宠物|潘系)\d{4}')
@@ -31,8 +31,8 @@ class PetLocalizationPolicyTests(unittest.TestCase):
             if p['level_requirement']!=p['source_level_requirement']:
                 changed[code]=(p['source_level_requirement'],p['level_requirement'])
         self.assertEqual(changed,expected)
-        self.assertEqual((hero['source_required_level'],hero['required_level']),(120,99))
-        self.assertEqual(inv[15003366]['level_requirement'],99)
+        self.assertEqual((hero['source_required_level'],hero['required_level']),(120,95))
+        self.assertEqual(inv[15003366]['level_requirement'],81)
 
     def test_published_pet_catalog_matches_display_and_recipe(self):
         path=ROOT/'adapter_runtime/资源/数据/pi._D7';data=path.read_bytes()

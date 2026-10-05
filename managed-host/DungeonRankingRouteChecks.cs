@@ -186,6 +186,54 @@ internal static class DungeonRankingRouteChecks
                 Check(SettlementState(session) == before, $"ranking {index} preserves all settlement state gates");
             }
             await NoWorkerRequest();
+            // Eight Lumineos display selectors, two stages and three logical
+            // difficulties must remain distinct through the production route.
+            await database.GetDungeonStageLeaderboardAsync(0, 100, 0, 0, 0);
+            await using (var sql = new SqliteConnection($"Data Source={Path.Combine(root, "game.db")}"))
+            {
+                await sql.OpenAsync(token);
+                for (byte dungeon = 0; dungeon < 8; dungeon++)
+                for (byte stage = 0; stage < 2; stage++)
+                for (byte difficulty = 0; difficulty < 3; difficulty++)
+                {
+                    var score = 10000 + dungeon * 100 + stage * 10 + difficulty;
+                    await using var command = sql.CreateCommand();
+                    command.CommandText = """
+                        INSERT INTO LumineosStagePerformance
+                        (CharacterId,Episode,Difficulty,ArchiveSlot,BestRating,BestScore,ClearedAt,UpdatedAt)
+                        VALUES($id,100,$difficulty,$slot,5,$score,$now,$now)
+                        """;
+                    command.Parameters.AddWithValue("$id", character.Id);
+                    command.Parameters.AddWithValue("$difficulty", difficulty);
+                    command.Parameters.AddWithValue("$slot", dungeon * 2 + stage);
+                    command.Parameters.AddWithValue("$score", score);
+                    command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+                    await command.ExecuteNonQueryAsync(token);
+                    Set(session, "NativeDungeonHdIndex", (byte)0);
+                    Set(session, "NativeDungeonEpisode", (byte)100);
+                    Set(session, "NativeDungeonDungeon", dungeon);
+                    Set(session, "NativeDungeonStage", stage);
+                    Set(session, "NativeDungeonLogicalDifficulty", difficulty);
+                    var before = SettlementState(session);
+                    var selector = new byte[] { 20, 0, dungeon, 0 };
+                    await Send(NativeDungeonClient.Frame(0xCF15, selector));
+                    var delivered = await ReadFrame(clientStream, token);
+                    Check(delivered.Length == 252 && U16(delivered, 6) == 0xCF16
+                        && delivered.AsSpan(8, 4).SequenceEqual(selector)
+                        && BinaryPrimitives.ReadUInt32LittleEndian(delivered.AsSpan(28)) == score
+                        && delivered.AsSpan(36).ToArray().All(value => value == 0),
+                        $"L{dungeon + 1} stage{stage} difficulty{difficulty}: exact persistent score and selector echo");
+                    Check(SettlementState(session) == before && ValidChecksum(delivered),
+                        "Lumineos ranking preserves settlement identity and transport integrity");
+                }
+            }
+            await Send(NativeDungeonClient.Frame(0xCF15, [20, 0, 8, 0]));
+            await Send(NativeDungeonClient.Frame(0xCF15, [20, 0, 7, 1]));
+            await NoWorkerRequest();
+            Set(session, "NativeDungeonEpisode", (byte)2);
+            Set(session, "NativeDungeonDungeon", (byte)1);
+            Set(session, "NativeDungeonStage", (byte)0);
+            Set(session, "NativeDungeonLogicalDifficulty", (byte)0);
             // Query rejection is also owned by managed handling, with no sample
             // fallback for malformed, offline, unselected or out-of-domain input.
             foreach (var payload in new byte[][] { [], [20, 0], [19, 0, 0, 0], [20, 0, 3, 0], [20, 0, 0, 0, 0] })

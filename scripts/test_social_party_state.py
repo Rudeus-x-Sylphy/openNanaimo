@@ -36,7 +36,7 @@ def drain(connection):
 
 
 @contextlib.contextmanager
-def party(dungeon=2, difficulty=2, episode=0, stage=0, quick_entry=False, show_stage=0):
+def party(dungeon=2, difficulty=2, episode=0, stage=0, quick_entry=False, show_stage=0, late_roster=False):
     port = None
     for candidate in range(60000, 61800, 10):
         reserved = []
@@ -98,13 +98,17 @@ def party(dungeon=2, difficulty=2, episode=0, stage=0, quick_entry=False, show_s
                     else:
                         connection.sendall(frame(0xCF09))
                         receive(connection, 0xCF0A)
-                for connection in clients:
+                for index, connection in enumerate(clients):
+                    if late_roster and index == 1:
+                        continue
                     connection.sendall(frame(0xC587))
                     receive(connection, 0xC588)
                     connection.sendall(frame(0xCF70))
                     receive(connection, 0xCF71)
                 clients[0].sendall(frame(0xCFEB, struct.pack("<HH", stage, show_stage)))
                 receive(clients[0], 0xCFEC)
+                if late_roster:
+                    clients[1].sendall(frame(0xCF70))
                 preload = drain(clients[1])
                 operations = [struct.unpack_from('<H', item, 6)[0] for item in preload]
                 assert 0xCFEC in operations and 0xCF80 not in operations
@@ -247,6 +251,29 @@ class PartyStateTests(unittest.TestCase):
                     drain(connection)
                     connection.sendall(frame(0xCF87, bytes(4)))
                     self.assertNotIn(0xCF88, [struct.unpack_from('<H', x, 6)[0] for x in drain(connection)])
+
+    def test_late_roster_receives_pending_map_and_starts(self):
+        with party(late_roster=True) as clients:
+            self.start(clients, 0)
+            self.assertEqual(self.injure(clients[1], clients[0], 12), 1900)
+
+    def test_last_failure_finishes_dead_viewer_once(self):
+        with party() as clients:
+            self.start(clients, 1)
+            for actor, viewer, uid in [(clients[1], clients[0], 12), (clients[0], clients[1], 11)]:
+                for index in range(20):
+                    self.assertEqual(self.injure(actor, viewer, uid), 1900 - index * 100)
+            for connection in clients:
+                drain(connection)
+            clients[0].sendall(frame(0xCF87, bytes(4)))
+            for connection in clients:
+                result = receive(connection, 0xCF88)
+                self.assertEqual(result[23], 0)
+                self.assertEqual(result[75], 0)
+                connection.sendall(frame(0xCF87, bytes(4)))
+                self.assertNotIn(0xCF88, [struct.unpack_from('<H', item, 6)[0] for item in drain(connection)])
+            clients[1].sendall(frame(0xCF8B, struct.pack('<HH', 0, 2)))
+            self.assertNotIn(0xCF8C, [struct.unpack_from('<H', item, 6)[0] for item in drain(clients[1])])
 
     def test_death_settlement_is_requested_per_member(self):
         with party() as clients:

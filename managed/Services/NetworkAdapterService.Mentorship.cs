@@ -69,12 +69,21 @@ public sealed partial class NetworkAdapterService
                     item.CharacterId == character.Id && item.AccountId == character.AccountId
                     && item.ChannelId == actor.ChannelId && TryGetMentorshipPresence(item.SessionId, out _)))
                 .Take(MentorProtocol.ListPageSize * (MentorProtocol.MaximumListPage + 1)).ToArray();
+            var graduates = new Dictionary<long, ushort>();
+            foreach (var character in active)
+            {
+                var owner = _activeWorldSessions.Values.FirstOrDefault(p => p.CharacterId == character.Id
+                    && TryGetMentorshipPresence(p.SessionId, out _));
+                if (owner is null) continue;
+                var history = await _database.GetMentorshipRelationsAsync(CreateMentorshipActor(owner.Session), true, token);
+                graduates[character.Id] = (ushort)Math.Min(ushort.MaxValue,
+                    history.Count(r => r.TeacherCharacterId == character.Id && r.State == MentorshipRelationState.Graduated));
+            }
             return BuildNativeFrame(frame, MentorProtocol.ListResponseOpcode,
-                MentorProtocol.BuildListResult(BinaryPrimitives.ReadUInt32LittleEndian(payload), active), session);
+                MentorProtocol.BuildListResult(BinaryPrimitives.ReadUInt32LittleEndian(payload), active, graduates), session);
         }
-        var qualification = await _database.GetMentorshipQualificationAsync(actor, MentorshipRules, token);
-        return qualification.CanTeach ? BuildNativeFrame(frame, MentorProtocol.CreateSchoolingRoomResponseOpcode,
-            new byte[2], session) : null;
+        return BuildNativeFrame(frame, MentorProtocol.CreateSchoolingRoomResponseOpcode,
+            await BuildNativeMentorshipProfileAsync(session, token), session);
     }
 
     internal async Task<MentorshipResult> RequestMentorshipAsync(string requesterSessionId, long targetCharacterId,
@@ -168,6 +177,14 @@ public sealed partial class NetworkAdapterService
             relationId, MentorshipRules, token);
         if (result.Success && result.Relation is { } relation)
         {
+            if (relation.GraduationRewardGranted)
+            {
+                var savedStudent = await _database.GetCharacterByIdAsync(relation.StudentCharacterId, token);
+                if (savedStudent is not null)
+                    foreach (var student in _activeWorldSessions.Values.Where(p => p.CharacterId == relation.StudentCharacterId
+                        && TryGetMentorshipPresence(p.SessionId, out _)))
+                        student.Session.Character!.Items = savedStudent.Items;
+            }
             DeliverMentorshipCounterpart(teacher.CharacterId, relation, "graduate", result);
             MentorStateChanged?.Invoke();
         }
@@ -406,6 +423,10 @@ public sealed partial class NetworkAdapterService
 
     private async Task CleanupMentorshipConnectionAsync(ConnectionSession session)
     {
+        lock (_mentorGate)
+            foreach (var key in _nativeMentorshipRequests.Where(p => p.Key == session.SessionId
+                || p.Value.Requester.SessionId == session.SessionId).Select(p => p.Key).ToArray())
+                _nativeMentorshipRequests.Remove(key);
         if (session.Character is null) return;
         var actor = CreateMentorshipActor(session);
         var abandoned = await _database.CleanupMentorshipSessionAsync(actor);

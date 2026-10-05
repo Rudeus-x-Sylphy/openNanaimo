@@ -222,6 +222,37 @@
       "known_hashes": []
     },
     {
+      "group": "dungeon-state",
+      "va": 7221504,
+      "target": "558bec51ff751cff7518ff7514ff7510ff750cff7508e8359effff50e8bf27f8ff80780300751183b8f01000000475088b4dfce8d89bffff588be55dc21800cc",
+      "known": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "558bec51ff751cff7518ff7514ff7510ff750cff7508e8359effff508b4dfce8ec9bffff588be55dc21800cccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "quickbar_refresh_layout",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7297822,
+      "target": "e8ddd5feff",
+      "known": [
+        "e86797d2ff"
+      ],
+      "operation": "quickbar_refresh_call_006f5b1e",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7297896,
+      "target": "e893d5feff",
+      "known": [
+        "e81d97d2ff"
+      ],
+      "operation": "quickbar_refresh_call_006f5b68",
+      "known_hashes": []
+    },
+    {
       "group": "inventory-gift-display",
       "va": 8573472,
       "target": "538b1dd469d800ffb3dc0f0000e83e8bbeff8f83dc0f00005bc3cccccccccccc",

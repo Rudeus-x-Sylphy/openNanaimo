@@ -78,8 +78,9 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         # The apartment room resource guard lives in the client's B4D0xx CRT
         # helper. Keep a synthetic backing section for the exact-site tests.
         (0x740000, 0x10000, 0x149400),
+        (0x2F4000, 0x10000, 0x159400),
     ]
-    data = bytearray(0x159400)
+    data = bytearray(0x169400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -95,6 +96,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         offset = compat._va_offset(data, va, len(blob))
         data[offset:offset + len(blob)] = blob
         return offset
+    for _, va, old, _ in compat.quickbar_refresh_sites():
+        put(va, old)
     put(compat.dungeon7_visuals.MINIMAP_VA, compat.dungeon7_visuals.MINIMAP_OLD)
     put(compat.dungeon_experience_compat.SETTER_VA, compat.dungeon_experience_compat.SETTER_OLD)
     for _, va, old, _ in compat.BOSS_HEALTH_DISPLAY_SITES:

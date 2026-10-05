@@ -41,6 +41,13 @@
       "runtime_acceptance": false
     }
   },
+  "optional_projectile_diy": {
+    "installer": "scripts/prepare_projectile_diy.ps1",
+    "recipe": "manifest/projectile_diy_patch.json",
+    "config": "nanaimo_projectile.ini",
+    "default_enabled": false,
+    "runtime_acceptance": false
+  },
   "runtime_contract": {
     "root": "adapter_runtime",
     "manifest": "adapter_runtime/adapter_manifest.json",
@@ -79,28 +86,28 @@
         "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
       },
       "adapter_runtime/Nanaimo.Adapter.dll": {
-        "size": 1453056,
-        "sha256": "F33265B2FF132B7538A45DFA846B6F11EAB31B65D3A35B1D174DCB3AA792CF33"
+        "size": 1457664,
+        "sha256": "9EADA52BD1E909C7C22E0861D07F071C08A74B365718F64B117163F2F0A9AAEB"
       },
       "adapter_runtime/Nanaimo.Adapter.exe": {
         "size": 151552,
-        "sha256": "64C83F7A5EA6C690D1E0FC11987CF5085B1CE7561F08E338680FFFF80CEC8C54"
+        "sha256": "991F6B25FC27135F5343AB1124CA72521B903839AC287B6B7C2271958CFC14B9"
       },
       "adapter_runtime/Nanaimo.Adapter.pdb": {
-        "size": 211264,
-        "sha256": "801063C6144E3FB06A80F48A6F932B6DEABFDDD993F98B79BE408D69BD616AA9"
+        "size": 211756,
+        "sha256": "83D9AB69C6EF58FFB5994439C5FC73A04DC85E84E859A7DBED31CB223B89DAA9"
       },
       "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
         "size": 372,
         "sha256": "D7A0BECA53834E0A387B9E5083BD1DADF5BEE565B48595A9D4CB457D15726C78"
       },
       "adapter_runtime/Nanaimo.Gameplay.dll": {
-        "size": 5157376,
-        "sha256": "A33387C6CD385F02587818082B1E84EAB08DFA150874EC6CE96E4CA35BB0BF82"
+        "size": 5178368,
+        "sha256": "CA1338D92AFA3BE5B97A4617C94F08CD4F84544DB43C4EDDCC6EF5C36A369885"
       },
       "adapter_runtime/Nanaimo.Gameplay.pdb": {
-        "size": 515228,
-        "sha256": "3DF5CF0ED28A3B4E5DEF8BCFD2D462224D92E24BC30F01A2194DF9151CA70858"
+        "size": 519300,
+        "sha256": "6A2E75759A7130F8AA486DD7A537CE903642A489336DC0840FB8951721ED9D80"
       },
       "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
         "size": 5120,
@@ -764,7 +771,7 @@
       },
       "adapter_runtime/adapter_manifest.json": {
         "size": 52662,
-        "sha256": "8AB3125FB2C9B1E036F0B21E2BEE9C7CC48496B2405EE6E2B142D4CC81489C83"
+        "sha256": "AA02D36B67500142E8FC29A329E03DD19FDCD79BE8632A741BF1DF04E47B1D51"
       },
       "adapter_runtime/clretwrc.dll": {
         "size": 310568,
@@ -823,8 +830,8 @@
         "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
       },
       "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-        "size": 20424704,
-        "sha256": "904381AC7260DEC1793F2C3270CA01208C4975BEBCD8D02A6F834DADFE30D9F9"
+        "size": 20426752,
+        "sha256": "D1289EF42740EDAA846A3ABEA03E85A1B8C92C4875869C7DBAE950931B3B2C99"
       },
       "adapter_runtime/netstandard.dll": {
         "size": 100648,
@@ -916,7 +923,7 @@
       },
       "adapter_runtime/资源/数据/pi._D7": {
         "size": 550320,
-        "sha256": "6497CD2E6C0351B5FC859CED8817955E4E3FDE829F8B6C6DC365FB7C61D32372"
+        "sha256": "514580CC90959B9194A53317870D5D5A7EA0814EAD9CA67C379491D5A000598E"
       }
     },
     "delivery": "release-archive-required",
@@ -933,7 +940,7 @@
     },
     "gui_launcher/data/inventory_pets.json": {
       "size": 2896066,
-      "sha256": "3CA9B97481A0AD8D7251D8482B63BB3CAA1561317E23ACCD56358F5971C7164F"
+      "sha256": "1762787BA549C8ADBCAB501C69B151A7714F1E4A4E4916ECD434668143239CA9"
     },
     "gui_launcher/data/pet_attack_modes.json": {
       "size": 1541562,
@@ -941,7 +948,15 @@
     },
     "gui_launcher/data/pets.json": {
       "size": 2838847,
-      "sha256": "37618FAC9D09A11F746600228E3DDD910627E3104FCC09ED45DA3EAF5369EB82"
+      "sha256": "4A4417C132FA88091B113DF60B00068FD7FFDDEAAB96C895C341A3A2B23BC9EB"
+    },
+    "gui_launcher/data/previews/basketball.png": {
+      "size": 2162,
+      "sha256": "3D70FDF43F54819A979EB096E3186B2E15B91338DA825C0C4A8EA976EBE8C38E"
+    },
+    "gui_launcher/data/previews/basketball_spin.gif": {
+      "size": 36579,
+      "sha256": "2E441A28CDB4A21503D71DFC76E86329A8E351D3CD3AC0254A2356AFEE79D57C"
     },
     "gui_launcher/data/previews/pet_icons.json": {
       "size": 165955,
@@ -954,6 +969,2058 @@
     "gui_launcher/data/previews/preview_summary.json": {
       "size": 744,
       "sha256": "D7AC0E071120553B9AA0110FB1BD701EBC7FA925F632F626B75D9EA149EFCC25"
+    },
+    "gui_launcher/data/previews/projectile_frames.json": {
+      "size": 953416,
+      "sha256": "0658E425543D13E2C01D4A5970C62C0C968924F174844F9568EC96E403780BA3"
+    },
+    "gui_launcher/data/previews/projectile_frames.png": {
+      "size": 3572241,
+      "sha256": "A6EE1EF07FD627FDE1C749DECD98F7BEC066DF02DB19E4D2837E95AF9B27E27C"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_001_87959c0c210d.gif": {
+      "size": 4753,
+      "sha256": "2C9C31D58FF8052F3AD97124E498EA6FF5B627BEEC2F2C42AA5EACB8FC657CF8"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_002_a0da307d1293.gif": {
+      "size": 6374,
+      "sha256": "8E99CBFC189B34FB9D82FE045E944118D2675C9783E5CFAC87C6D63FD74B68E1"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_003_8265d0b26350.gif": {
+      "size": 7020,
+      "sha256": "72173EEB8CB507B02BAD93000D85DA1D27660B3892E8E5087AF9261CDB897524"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_004_c247a182fef0.gif": {
+      "size": 4416,
+      "sha256": "CF75A11E135B7F70BB5DA66B93C5BE8F2EEDEDAF3A24A63F670828490087DDC9"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_005_d3a94a4b4771.gif": {
+      "size": 4265,
+      "sha256": "3EE97528DA6F7728542D5B01FCE5817DA5A975674DED1F3A1CF427A9D4331997"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_006_3666199fa770.gif": {
+      "size": 4553,
+      "sha256": "1157328E9D78A380E43885B0A46536F0FE99693ECEF19F7D05E93EB9F5FB5321"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_007_8ce6a1cedc72.gif": {
+      "size": 4466,
+      "sha256": "20798146C0DF6CDF2121B712DC635CCAA103E65C6B57E143DADC954E124706A7"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_008_27e32c295537.gif": {
+      "size": 4887,
+      "sha256": "EAA52E8F6156C0B79AAFB2C84C843ADE4CAB862F40E120764532212A8EE3505B"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_009_819923d05c03.gif": {
+      "size": 4522,
+      "sha256": "D17F1409ECD9612BD2F749508EB302EBECDEDBE53AB19D6D905CF524D42C3688"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_010_8b10cc5df3ce.gif": {
+      "size": 4919,
+      "sha256": "2512FF6BAD0A39F21712594CCCDFEA53F86A06FF9134C584FDE503A2528DE63B"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_011_1cec8383da9d.gif": {
+      "size": 3690,
+      "sha256": "86CB8F17F50703C1FC364AB69B6F26589ABCB5FB01681AE535D3435D4676E45D"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_013_2d304d453b8f.gif": {
+      "size": 3452,
+      "sha256": "D44A4F540EC779549AB42D31E548F9197D66F4168DB22B8BE3D222D0CC127769"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_016_47b2c39da88a.gif": {
+      "size": 4323,
+      "sha256": "1B78C15CDC14B948290836419BDBE043CB48FE7F85BF329820F3C2C1F0E807CB"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_017_d7b5af337b68.gif": {
+      "size": 3861,
+      "sha256": "01FB99655F03BDBDBB497FB542D25A809FD7083284494415FB4DB8D31D6590D3"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_020_09d44284ff33.gif": {
+      "size": 4451,
+      "sha256": "FA4EFB8FE940960067791FBCF965B9AB1F882FBAA930C5986E0732B2DBEDB382"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_021_2d8d6012b7dd.gif": {
+      "size": 4304,
+      "sha256": "0F64E4E64266C46AAB579F7592232DE1408F174C1C08F304DE4D00FC2766935B"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_022_a4474934a714.gif": {
+      "size": 5205,
+      "sha256": "78F082CFEFB1D3AAE0A8648A83F5538DBE4FD0F00B5EC3C0CDF69CBF938459A8"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_024_dd063160be71.gif": {
+      "size": 4513,
+      "sha256": "62021215F49B7611A757FF1AE758701B46D05641F2408123817AEF0A65C08029"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_026_96f01612048b.gif": {
+      "size": 4834,
+      "sha256": "8DB01A8608AB51CC1D955FA77656FC49842951959D07F8F6FDBA496960576749"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_028_8376abd9f6fa.gif": {
+      "size": 4712,
+      "sha256": "1EECE212EE511B12B9C21EA9563E4AD987F9F06B5B6A4B0547015659AEE199F7"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_029_fc3d90a6b713.gif": {
+      "size": 4460,
+      "sha256": "FD75387CB4CDF8CFD943C271D066DF7113CC51238B250D9F3FA53C47BEE38CF5"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_031_3fc786ea22df.gif": {
+      "size": 5809,
+      "sha256": "674E9F0D5636AB2C01FAAAEF56072F5DC68B0483D24779E329A59E19423CD24F"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_033_c9c209766252.gif": {
+      "size": 5096,
+      "sha256": "661E3B26D946A380DE702AF0C793BE744641EAC9B3D73F28C12D081D15A2756A"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_034_99c66760062a.gif": {
+      "size": 4847,
+      "sha256": "B354B4565DD06AE44E3A847C0E3CCE3E7940791119340C8E0163C411787CBAD1"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_036_b89142de32c8.gif": {
+      "size": 5269,
+      "sha256": "ACC244987EDE1F429D26E5EFE1C6788E52D37F5FBCA1C2742104A7327443E72A"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_038_b110b1c6c4c5.gif": {
+      "size": 4551,
+      "sha256": "36B6D5588752E492E1CCC7BFEF53D2CA6E182BA0B0A6444FBE2A731AB887D98D"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_039_650c9a257d5a.gif": {
+      "size": 4740,
+      "sha256": "A14A59EBA899B45898CCFA38853F145E96493A4FA2A13803E9085FBBA06E71A3"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_043_191fc6a21482.gif": {
+      "size": 5018,
+      "sha256": "ABC05CD74689144C15B70995C384D054D3E7EC9900C0C5590A2AFAFA4509111D"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_045_16eba273987e.gif": {
+      "size": 4881,
+      "sha256": "39C2FE7B5FDA97DC04323EF6094F941DF22706B9AE6BD341066788396B03185E"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_046_784051ce5814.gif": {
+      "size": 4335,
+      "sha256": "9FD2FF7FE0E04328A804EAAB27BF614CFE480DE15A675FDF9726C08FBEA54C50"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_048_2b0060a4de6f.gif": {
+      "size": 6542,
+      "sha256": "F4A1F614A8C36E3A916C5BC9EC99534626A0B85C55DE72642AD5CD39DEECA6D2"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_050_509ca1e3afab.gif": {
+      "size": 4743,
+      "sha256": "7D1861EE981A86D1D9B92981D78E73D06A3FA07936C28BD5925F64DD3A01DD3B"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_051_74d16e2a0d9c.gif": {
+      "size": 4885,
+      "sha256": "161589DB396320175147BB90A87844151A3B64C2A0BE3F060E41DEA4CEBD401C"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_053_8bdf9f9a42f5.gif": {
+      "size": 4026,
+      "sha256": "249E88CA37CB066EF1D9B57015FEFD31EFACB306311D06C2652B561A783EC58F"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_055_c2ba1b041db0.gif": {
+      "size": 6331,
+      "sha256": "AE0C99B14BE5F6BDC26B245B8B038BE995AEE9DEE5E85306EF16425792DB3F2C"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_056_c1593705c930.gif": {
+      "size": 4356,
+      "sha256": "CDAFE50F30DE0BFBF15BE8BF2E77E564157B1EFD12AC4535881FE1A4DC323576"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_058_b4132691d8f8.gif": {
+      "size": 4885,
+      "sha256": "E9EF918984A61D694C9BCD764D6182D03EF189DD792D21CD43923D2DEC6C888E"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_060_2c3f44b493da.gif": {
+      "size": 4738,
+      "sha256": "90BBFF72FA0DED6E88475B426AA5D65CD33BD469046E2E336ADA2AA217DCE4BF"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_061_4205a133b396.gif": {
+      "size": 4343,
+      "sha256": "075EC20E83851DDBA53CB0768E6100340DC3D1EBD450A2AE8EC6259E2AB48F74"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_063_671f923f48b1.gif": {
+      "size": 6483,
+      "sha256": "7245FF553F8A4AD92C9EE6E79CF23FA70F62C7370BBF236C2ADC44BBDBAE96EC"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_065_14ce5d6d11fb.gif": {
+      "size": 5775,
+      "sha256": "B4D92487C53E43C1904CBF04DFB2C9BE2A831EB04626B1790CBEAB8AB3DAA1C6"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_066_5d1d8d3c20ea.gif": {
+      "size": 4234,
+      "sha256": "0A0D4E7676BF43CFE10370C6F5BEF7E11BD6DAD13C00F9B9A0DD89E635203983"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_068_46115d4cfde1.gif": {
+      "size": 5022,
+      "sha256": "689D369B04E52EE1C195AD180684BA031F5BAA440263A54962CD347E4C41BECD"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_070_454dccfed77e.gif": {
+      "size": 4295,
+      "sha256": "511510A36B344A01504839E243AFFB6C82116283F758014F3DD47D1E03937DD6"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_071_b6c3e80cdae1.gif": {
+      "size": 4567,
+      "sha256": "5893EF30CFB47D9264CB222EFD3292BB65340B7961AEAF480EA734C0ECCF43A2"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_073_42b56ef21f81.gif": {
+      "size": 4212,
+      "sha256": "AACF6393E6037021CFACF5CD060B04619AB0A5CA6579B8A303278C92FC7C7CE4"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_075_4253f691e2cf.gif": {
+      "size": 4515,
+      "sha256": "3343313D023EE6002F16CEE2C12F05F2042126F55C0BD71146F6C96EFD25CB6B"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_076_7468d68e05cd.gif": {
+      "size": 4791,
+      "sha256": "035D171F4B21BB25FB73F3D61743931D6AE4A703F1D38CFDB158E24E754C9911"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_078_f212ac27c734.gif": {
+      "size": 5670,
+      "sha256": "76BFFD70732015B63A4BF18ABA4DF2859810DC619C9D83203E1BDC184DFD5354"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_080_e468c3f7b025.gif": {
+      "size": 8535,
+      "sha256": "904F0D33C1B773C9EBB06DE9F7000E46371C1FEE4367968255A7257A09CEEC3A"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_081_4033326f4f7c.gif": {
+      "size": 7640,
+      "sha256": "82ADEDDBA6AA0B6EEAE54FB10BDD2EFF173B0B0217365DC4CB161564CB63B172"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_083_d9827fdf57d5.gif": {
+      "size": 6156,
+      "sha256": "305E60E6E9506AF3669146CAD55BDC0EBB5EF2ED06FF9F8544E96CF0B8A13E69"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_085_a9ffaac2afa3.gif": {
+      "size": 4418,
+      "sha256": "665563B090D3D0C3C165A8193CCD39717A7432DB1789CE5CDB780C47B06B4FEA"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_086_a66018b5fcd2.gif": {
+      "size": 4992,
+      "sha256": "99644B156AE27661352A186285916932026E304927AF5AE2AD4A5235865506DA"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_088_fcc40c129a57.gif": {
+      "size": 4624,
+      "sha256": "36D61EFC522D46038C9458622D16D0ACE1454018603F4E7028E436C722A9DC2E"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9001_c5e17fb7adeb.gif": {
+      "size": 17362,
+      "sha256": "009D3F89190592B22116FD93523534B3993CA48F9FEFA4E1246F046BE517E80D"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9002_9d3311587241.gif": {
+      "size": 4834,
+      "sha256": "9805AD53B731ECD35EABF298F7E781AFCAB009627852BCA12B474E03E0425709"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9003_681d492ddfc8.gif": {
+      "size": 5555,
+      "sha256": "2834A4D6CD66D10EE4C5FB802CA1AB7E90E96D8B6C4E3CD549117103389019FB"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9004_e8942160020f.gif": {
+      "size": 5753,
+      "sha256": "3C50ECE31431D7B51DE8E4206E700B9DD0B50400A738BBE25B552AC483CD9EFC"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9005_1e90e78c3e48.gif": {
+      "size": 6313,
+      "sha256": "B455D8AEEC79381FDEF5D50DCCA7010F947174B0AA21641D563AEDEB90D6CDA8"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9006_2d1d5557cd01.gif": {
+      "size": 5707,
+      "sha256": "884C35C54F94088B75F4E55D62B369CF487D053CB40FEB2B7F74193DBBA451D3"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9007_494d529b77a8.gif": {
+      "size": 4994,
+      "sha256": "6BDA74882C33D5281D3F3B2B45718ECF64F9A6AFC6EADC9BB4039DEFEB94938E"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9008_5e0f226afda5.gif": {
+      "size": 5726,
+      "sha256": "46D67C416426675BA16A9FA287D94F7288C18C90B30FA9AAD403195AC67131C4"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9009_4c6a15e8c576.gif": {
+      "size": 5913,
+      "sha256": "C3F0764FD077A744C637ADF3BE6CEFB13A95564C9F0A502B6167B66E3F0C1938"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9010_c924e610362c.gif": {
+      "size": 5954,
+      "sha256": "0BC30932BA38A6B3BC89F3120263A1FC2EE27C2E07A0D6B5E33ECF1E078F2EE4"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9011_ca2c7dcba3f1.gif": {
+      "size": 6768,
+      "sha256": "B758B91EF2D70F80B5022AE5F68A41D9206AEFC1F1D22B86E505B7C6D8E7580B"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9012_b8aad073433f.gif": {
+      "size": 5447,
+      "sha256": "21EA71A4FAD4E19F8BF30575F2B8AB4DFB042EF3D7EADB473583C102DE3DD156"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9013_3ab1d75a7b50.gif": {
+      "size": 4060,
+      "sha256": "1A3C9DB0F499C83B2DE9722E1A3E6C0FE71CEB685FAC5941B138C47685801E01"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9014_3f95b44f1f57.gif": {
+      "size": 6090,
+      "sha256": "3D22525CC63FCBB19F330A0A104C1D13B141A3D539D6074EC92440B7642C782B"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9015_71c2a01269c4.gif": {
+      "size": 4138,
+      "sha256": "647B78506A021D52DE0AEAB516825A7620DA1CE8F5FF42B13611BD9DB4B80EB4"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9016_b55682330a33.gif": {
+      "size": 5754,
+      "sha256": "AB44DC9BDA682A5C87083483F09765B162B8A2349B10CCC2C0DFC3E863CD039E"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9017_d3eb8e2eb085.gif": {
+      "size": 6246,
+      "sha256": "C391DBFF66BF5018F991A778060F42D7C2B5BEF2914DD317888AC3B985779320"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9018_1df2cfbc72b7.gif": {
+      "size": 8877,
+      "sha256": "28FA88C51FA0BD20F3239BE9EAEF34C89C3F506FA585F9DFEEAA6D1E46D76C4A"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9019_43c8cedbc26e.gif": {
+      "size": 6122,
+      "sha256": "199BF6173E34A0C59E25F096BE970118372D2AC5FCED9A72D26CA3BE86A64BDD"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9020_3fb679413831.gif": {
+      "size": 8684,
+      "sha256": "4D11BC522B9AC4D130B5126FF519AD088DEC2046802DC93AF2A9806E2094938D"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9021_dbe177932a42.gif": {
+      "size": 7115,
+      "sha256": "C5093CD70F6EF2C13D1507ADD8E17FF35909CF7632F28D992FB53978B04B7693"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9022_c54432455fc2.gif": {
+      "size": 5482,
+      "sha256": "00C50D06A237619B0C8C47B133F6E894415AD8500518E2696885CB44E0A7E0D4"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9023_61081b5ea616.gif": {
+      "size": 6756,
+      "sha256": "BF955479C4CCE8DAB08D4EF43D2D0C3864DD0C088B051187ED6DE81626307653"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9024_8ef15721e65c.gif": {
+      "size": 6390,
+      "sha256": "CB72C2BA0E271CE50EF527387DC2E783CD3E622EDF4659F011B56CBD91899AB6"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9025_7771da9ae7ff.gif": {
+      "size": 4782,
+      "sha256": "FB434D91053F9F251EACEEE9FCD0B7D41B5AD33838FAE60507873AFD99C7C8BA"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9026_2aee6262d565.gif": {
+      "size": 9003,
+      "sha256": "E202E817E615D3622558FEEE8930EA54AAF948842B3DD59921D3120E9827A0DD"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9027_d17810e425f2.gif": {
+      "size": 9024,
+      "sha256": "7C6A1A3D0E4DBC5CF832EC212030FBEDD317B5D874941559DD73BAFFF2D1F1A1"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9028_b68639eaccd7.gif": {
+      "size": 6009,
+      "sha256": "078FFF445A1870CC4524DCA36BE486731B4B540CAFAF658D20347C93BDC1DFE5"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9029_95abc0882dd5.gif": {
+      "size": 5627,
+      "sha256": "5B33D47DB6FA006F0017C801A750ACA86D1AF4F1F234F42DD350AB0FAC63DC0A"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9030_2ce538da6113.gif": {
+      "size": 5718,
+      "sha256": "EA0C47C2FD5330DE99F39A8C00AC7BFB6CA61B54FDA9427BCBBDAC2CE55974CF"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9031_3b7b91db2477.gif": {
+      "size": 5191,
+      "sha256": "44823D3B899AC0F082E5E173B2673425EFAF324614F74CC3235E1270EE044844"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9032_8c025ca4e294.gif": {
+      "size": 6776,
+      "sha256": "9A4762778ABF8A693B0EB8013482D210FBF458251ABB0BD17478FF99E2AFB7F0"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9033_0d7a3f86587e.gif": {
+      "size": 8887,
+      "sha256": "4A17B116BB9069D74412E9EB69E6D25A6B0EF507A9A4894A679CC8C6A2A65DD3"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9034_2dab8bcce855.gif": {
+      "size": 7718,
+      "sha256": "35D43FCC7B539B11EB1F23AC96B6659668608405A9F6907D62BAF7D2B3B5BF7C"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9035_59e97cf22a53.gif": {
+      "size": 5795,
+      "sha256": "63DCCE004E223595A04795A20D3D6BF7888B3171ACCBAD492746AEC10E423124"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9036_9f2221e64c97.gif": {
+      "size": 8685,
+      "sha256": "38FDCDB9A8EB948041125E0F74E06CB9BB370E1EAFC5EFF2D662F1BF365C8541"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9037_549c847b2728.gif": {
+      "size": 5626,
+      "sha256": "86D0979638A63C48DB93C5A285CCB38D97C727DE1D151134897CD08BFC21FB45"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9038_1a1f083490a5.gif": {
+      "size": 6604,
+      "sha256": "C678E75ACE65EB2E19F4804206CF15322C588FB8A1C6299ACBF221B969806BC5"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9039_f56adf04c968.gif": {
+      "size": 8589,
+      "sha256": "AC47899F68FDF5E3D7804291A8D62823479D813C190DB9FFC58D779A3771A22A"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9040_8f09d2ec8d64.gif": {
+      "size": 9601,
+      "sha256": "F710333969DCEEB0D2E71DE443BEB21CD96CC9D82E743E303DB348870C74921B"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9041_50d08edd4d93.gif": {
+      "size": 7141,
+      "sha256": "1907258614FE0D31F59D36E13415CC8D708BABB62DD00FE60826733EF80A2DA9"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9042_ae71d600a842.gif": {
+      "size": 7081,
+      "sha256": "1546C36896BC50976C2AE991E6D3CFE84028D1EA6BFB335FEA96024382A3FCCD"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9043_d4098cdbdc56.gif": {
+      "size": 7034,
+      "sha256": "9431E42338ED04BE9F6FA6BD6C9265CACBF369ABCE4FF2897BF8B969C2F34D1E"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9044_f18c5bf101ba.gif": {
+      "size": 6460,
+      "sha256": "072845564445EC4731AF3387AE145B5584B92BFC554B36B82A2C55D80F30265F"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9045_3c003e4844ac.gif": {
+      "size": 6417,
+      "sha256": "B873106B961F6E9FA70C0E01605FA02CE91C610299CC413B3EFC6E2CA9ED39BD"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9053_ddc5fad962f1.gif": {
+      "size": 4418,
+      "sha256": "8B48C6633904A61CDFE4D3E4CB19ECE3786E8B4472348A2530506F5717735F89"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9054_a3b7143ad25e.gif": {
+      "size": 9635,
+      "sha256": "5F6EE7CD10E7BBF209C2EF4D8F4DA9A1A320B8C3785E3140E9EB13A50341D098"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9055_73b90a6fca30.gif": {
+      "size": 10736,
+      "sha256": "975FB0FABE2DB58564595CEEC80D47765C13204CF8186A3A72F17E86A55500DC"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9056_e4d10ad3f827.gif": {
+      "size": 10390,
+      "sha256": "C4B993A305116AC31108F4F2871D8AB07AEA1B99849D14C87C4A9647268BBD1C"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9057_b010366623ff.gif": {
+      "size": 6200,
+      "sha256": "F67CBEBAF6D5CC5E4D3413E496A7332375251FE0A5CFE6A7FB866190343BB29D"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9058_07df6b1488e9.gif": {
+      "size": 4593,
+      "sha256": "2CB2BAFED035FC456F6C2685A1B40BF96454E53FED905B29D3FB1629BE46CCB1"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9059_8c9b6cbee279.gif": {
+      "size": 6361,
+      "sha256": "340FE0D260D67AE82BBCFC104E0F54881CAA13E666FE7E5B38AC049230FFD8AA"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9060_932c0091df0a.gif": {
+      "size": 3417,
+      "sha256": "5FB396FFFA56ECAA616E0315C77843F3D9967CE226C41131E23E8390F82E269A"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9061_79519dc2d118.gif": {
+      "size": 4841,
+      "sha256": "1DEDE618B608215626C44B79157B47E8203156A634140093391CAF3A4080F704"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9062_1c7323972ecd.gif": {
+      "size": 6382,
+      "sha256": "C33681ACA96E55B515E5BAA59A7CC6F5DA9F61D82B9592741423F93866CBA9D9"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9071_de01851c6125.gif": {
+      "size": 7179,
+      "sha256": "4D70B10C889404AB816E93D062815126637BEEB9C9C3D66C28FF2D52A6D31139"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9080_b3bbf57b7f74.gif": {
+      "size": 7625,
+      "sha256": "706072B9ACBB9618F0B6D0ED2AA39BB3BD9B80B7F793573E5FE6C30694D3B4C2"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9081_316bdfc3c90a.gif": {
+      "size": 6319,
+      "sha256": "7FD46BB43C0C88C651216BF2EECA69A8254F24379E29BC43A7C036092A3F3860"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9083_68de78f3c703.gif": {
+      "size": 3827,
+      "sha256": "A97D6230BFF9E70DF2DE3C29D21E7C7A5DD49F18D0682DA8938B813D57BE4878"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9084_c3a0119e9c8a.gif": {
+      "size": 7178,
+      "sha256": "03FC41C1A726B4468540EEA8A9F47890ACB6B99659720D79E6A5A419DEA0177B"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9085_fcc22beb7520.gif": {
+      "size": 6291,
+      "sha256": "D0A652907D5DBD16E022E096849EB02B574DEA4BF845639156C65F006EDEAE77"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9086_505d835d89f4.gif": {
+      "size": 9080,
+      "sha256": "F45420A989A21FEC1F978025CEB323EEA70DF2D8E020791B42B1FF8E1F04F865"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9087_6e1881632ebd.gif": {
+      "size": 7209,
+      "sha256": "902D23F9174E28DCDD7A5649688461746C941472B41462478AC860D95A85CF0E"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9088_4d00c2810277.gif": {
+      "size": 4117,
+      "sha256": "3EEC2308B9AF1EFF3BE0DC5B274FC326AB6D498677478ED292D0507B4AA9DC77"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9089_71add6e665fa.gif": {
+      "size": 9656,
+      "sha256": "E16DED5C56BF26BCC2369803D9872969DD6990FD86576D239D9013A5E5924840"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9090_2129a434ea38.gif": {
+      "size": 14442,
+      "sha256": "AA3B38E5660BB047FC0C47E9B710726F74FD6A941C49F74732C48BDFBC036BEB"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9091_50f69798294b.gif": {
+      "size": 16171,
+      "sha256": "696939FA378C1F6707E6D3D9FEE4B7A90D9F57DC288DE00A99FE348F66206D1F"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9092_418b9f149472.gif": {
+      "size": 12074,
+      "sha256": "D67EDA9EBE3B6FF6C8668AA5E018FB9BC38CBD662C25FD2E83B06EB69025E510"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9093_ac12eafb9f02.gif": {
+      "size": 13358,
+      "sha256": "BCB823E1E6F430627379BE1C1EF54C81A55A94FF90A0923C18D900C014DC0632"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9094_1b9dfe53820b.gif": {
+      "size": 8008,
+      "sha256": "48C316F040039305B17D2ED77202D66B8ED13D897C13D1CF5BFD200C19AAD87F"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9099_aac1ac40dcca.gif": {
+      "size": 8083,
+      "sha256": "CEA976113CEA292924AF6BE9BE630F3C10DC7FFE72510A23E29C955291857CB7"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9100_0ab274d24a65.gif": {
+      "size": 8957,
+      "sha256": "C017772D6E79252201666C69643286DA2B99E4FD5C000C672AD3A328FC8E2BC3"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9101_de9d1496f99f.gif": {
+      "size": 9684,
+      "sha256": "C4157993D9F52A458EB2ECFDCDE060FB856B4D7F521958ED7EE19760419471B4"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9102_48630f289564.gif": {
+      "size": 10526,
+      "sha256": "AD6AC47AA135E4D2AA3CAA5EBFF84F76A4EFD9BFF29C9A5DDD1B3E5B79C9001E"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9111_5f7e7e4936dc.gif": {
+      "size": 10883,
+      "sha256": "C74E3550378C342578C9CA4B3EB22E71AB9054049A30C739E61E1C47BDE2C465"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9120_6e9d6383e50d.gif": {
+      "size": 14892,
+      "sha256": "25A48A5497A23D866E331095146333EA8A3A62433D9D14F8C4128DB37590AFDA"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9121_4f0240bdb41a.gif": {
+      "size": 10482,
+      "sha256": "2350073BB27FB46AD2A07D2B71C3E75E88AC6B11D2DB58640E7BA7694706F38A"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9122_a20d012689e8.gif": {
+      "size": 11776,
+      "sha256": "22A82D0FDD354BDD4F97605943D9B96E32AA00BAD291AC52402256F3669FD6DB"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9123_0182ce8c31fc.gif": {
+      "size": 10269,
+      "sha256": "C38B04CF114A63DB40EA15BCDF886AEB01DB65CA3B1B5F743CFBBA5761D0229D"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9124_e35d87b5306e.gif": {
+      "size": 10157,
+      "sha256": "C586FA4B254725D51319A060751F5B1A70F9FE640D25094A726891C04DCB91A7"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9125_39c687a8c6dd.gif": {
+      "size": 12275,
+      "sha256": "495A1A742A0828F8EEEA9C538291D3433F1BD9431DADB3ECD629C69300DAFAF7"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9126_62894e8d584f.gif": {
+      "size": 10465,
+      "sha256": "EF75D6CCE2F05CB78182AD623C1DE8AFE1D1C653CF5E348F780C880D821B5685"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9127_fa8375164702.gif": {
+      "size": 9129,
+      "sha256": "ECA4CF164E3261E696A195918420F7910F6ADD88743C1D48416E6785A39B09AA"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9128_fb7048e418a4.gif": {
+      "size": 11073,
+      "sha256": "5F886DA135A1D090913C2F91E0A4573EF8F5F00C1E9D717502A62E4B4FAEA707"
+    },
+    "gui_launcher/data/previews/projectiles/boo_homm_9129_2cbae4ad4da1.gif": {
+      "size": 10757,
+      "sha256": "AE4110541D01E34B361E15C4F2FCE4EE074F5DF09B931EC1D42C6B32D5E28715"
+    },
+    "gui_launcher/data/previews/projectiles/burst_mon_d_ef_01_ccd7cce92489.gif": {
+      "size": 84724,
+      "sha256": "8C0B8CCEBB8D20A9AFFF99EEF029F0C7067D7E6C050351D2C202520FA18D80D8"
+    },
+    "gui_launcher/data/previews/projectiles/burst_mon_d_ef_02_502ac00b7752.gif": {
+      "size": 58161,
+      "sha256": "E92D93C61E742EABB75E4E6E868FCA05E918EF652131C7137BEF0953317835D6"
+    },
+    "gui_launcher/data/previews/projectiles/burst_mon_ef_2c4399c51227.gif": {
+      "size": 58998,
+      "sha256": "C796AC1F190191E862302C4A9BE75B616BABA25B88260D6D6FD38CCD90EBDC27"
+    },
+    "gui_launcher/data/previews/projectiles/ef_mis_ep01_hd_bbm09_00_cc2446d8250d.gif": {
+      "size": 1820,
+      "sha256": "CDC63433B7ADBC7624AD213FA8DA22E1A1C222FD2E94E65CD6EA82BE2FDDAEC9"
+    },
+    "gui_launcher/data/previews/projectiles/ef_mis_ep01_hd_bbm09_01_2e307c4d0942.gif": {
+      "size": 2430,
+      "sha256": "3DE2D58D9C0CB8C019B4FE6FF469C7D4A2832EF305BED811549F052E55C1B634"
+    },
+    "gui_launcher/data/previews/projectiles/ef_mis_ep13_dg02_mb_135_01_23e11ea5f73f.gif": {
+      "size": 50272,
+      "sha256": "AA5822A360932F60BBDD74DE8EF86FE370BBCC729B2EAFD529D899567AFA60DA"
+    },
+    "gui_launcher/data/previews/projectiles/ef_mis_ep13_ending00_lm01_c408d05acfbf.gif": {
+      "size": 31981,
+      "sha256": "C28C9ACB3E8ACB4942DA085C4C12489B8694F7148B321C030600EFC38368C08D"
+    },
+    "gui_launcher/data/previews/projectiles/ef_mis_ep15_dg00_m_147_e121b31c9aa7.gif": {
+      "size": 11660,
+      "sha256": "80793FBC6D611EFBBAFD391ADD7DC6BC6952B2FDA341A0A76F4444135D18B603"
+    },
+    "gui_launcher/data/previews/projectiles/ef_mis_ep15_dg00_mb_147_01_3c70c340b33a.gif": {
+      "size": 23855,
+      "sha256": "3BC0804D4CB50AD301D02767D95A370094D0269A40084CE6519C1559E6DA81F9"
+    },
+    "gui_launcher/data/previews/projectiles/ef_mis_ep15_dg00_mb_148_00_fe743beb806f.gif": {
+      "size": 7687,
+      "sha256": "329F34E63B1DB37E169C9E35562A8CB1FC28C9069D7566CA4FCDA77814C57BA0"
+    },
+    "gui_launcher/data/previews/projectiles/ef_post_mis_power_b_01_ad724f4a3283.gif": {
+      "size": 89418,
+      "sha256": "9E40606873C3A496303C95ECC23AAA9E393ECC7D6FD9F26884ECA0D034F4682A"
+    },
+    "gui_launcher/data/previews/projectiles/ef_post_mis_power_b_de3c8317392d.gif": {
+      "size": 48554,
+      "sha256": "EBD02BFFD39E7460C3E23FF0BA361A708FDC5996AD7EEA641B4E259E8B7C11B8"
+    },
+    "gui_launcher/data/previews/projectiles/ef_post_mis_power_g_3f7bcbc93f8c.gif": {
+      "size": 32440,
+      "sha256": "FFEBAE8AD24DF7F3D996B4174300A7F166D1AAC838FA9D3D35EDCC39E9CD1DF2"
+    },
+    "gui_launcher/data/previews/projectiles/ef_post_mis_power_r_01_a5b10e415376.gif": {
+      "size": 63155,
+      "sha256": "ED67636ABF9FFF750D97C969E62EA28DD0D057137FFB30201459067AF9716A69"
+    },
+    "gui_launcher/data/previews/projectiles/ef_post_mis_power_r_cad2fb217c17.gif": {
+      "size": 58456,
+      "sha256": "F8334E9BB9ADD76C3A026280C8001B17EB9CD14C53951F6743F8B1478A791241"
+    },
+    "gui_launcher/data/previews/projectiles/ef_post_mis_power_v_f19acc29f743.gif": {
+      "size": 57485,
+      "sha256": "F30D173DF0C7F6CF1F2C2B7D3D020F8693ED64983A36501EFF64FA9CD980C095"
+    },
+    "gui_launcher/data/previews/projectiles/ef_post_mis_power_y_01_18b31098b63f.gif": {
+      "size": 63850,
+      "sha256": "F7A0E16524986231C83163839FCF6677EDD7AD682818FFA620CE8A0456FBD02E"
+    },
+    "gui_launcher/data/previews/projectiles/ef_post_mis_power_y_f3f6abad45f2.gif": {
+      "size": 45408,
+      "sha256": "55CD1D4DC2864B80E67DA96939723105C9D435AF807C8C5508BDC0671391E3A4"
+    },
+    "gui_launcher/data/previews/projectiles/ep03_bbm_mon_01_09c98acaff26.gif": {
+      "size": 19481,
+      "sha256": "F7BE7D1401C683A0A4821E710ECD6543F7309D8DFED1A555E7EC1176F73D1AC4"
+    },
+    "gui_launcher/data/previews/projectiles/ep05_dg01_m_43_d7230cb49355.gif": {
+      "size": 15955,
+      "sha256": "71A2FDC5E6C4ADBCF64553ED6E74A4890F21FA33B0F28EAA6057367F9393EF8A"
+    },
+    "gui_launcher/data/previews/projectiles/ep07_ending02_obj_00_effect_9219f459220c.gif": {
+      "size": 4200,
+      "sha256": "CA9A4E43E1CBA424C9119C15D628CA07ECE8F21FDE7BE8E639A63D0EC174DEF5"
+    },
+    "gui_launcher/data/previews/projectiles/ep09_bbm_d_00_ee1b34cbe2ca.gif": {
+      "size": 8533,
+      "sha256": "335454146AF85833885B96B00DABEA837A16CBC2270495930DE4D61B08AB27CC"
+    },
+    "gui_launcher/data/previews/projectiles/ep09_dg02_smoke_e53370489583.gif": {
+      "size": 74841,
+      "sha256": "2BB84E32F732D89D6446F15DFD253286DC52ED330597ACA6B5A55250D58F14E3"
+    },
+    "gui_launcher/data/previews/projectiles/ep10_common_fetters_01_13d76c13f1ba.gif": {
+      "size": 4383,
+      "sha256": "4E382CA9DE7E892FF3F7B527A6565FA10A9AD4C62ED1ED84C8D66CA3F7C9FBBF"
+    },
+    "gui_launcher/data/previews/projectiles/ep11_dg00_d_f_bat_5a99ae319677.gif": {
+      "size": 9173,
+      "sha256": "0FC38578ABA0E57783FB34702B4631C56412C89B958AD7248FC457915E84DFA2"
+    },
+    "gui_launcher/data/previews/projectiles/ep12_bbm_light_a039d698d929.gif": {
+      "size": 21627,
+      "sha256": "95FA324C0FC5F3D05FD67019EC7FF95695A978DFF6FE9DD547C792BE81A15174"
+    },
+    "gui_launcher/data/previews/projectiles/ep12_bbm_light_back_6aee2a0a306b.gif": {
+      "size": 12734,
+      "sha256": "7BB2918C1283689A92169344F4BEDC9F3A0FEB28A237194026829963BB876F0D"
+    },
+    "gui_launcher/data/previews/projectiles/ep15_dg00_obj00_00_eeef0d4cefc3.gif": {
+      "size": 5184,
+      "sha256": "8E368721B483BB25EBA2CD9A41E0D9A950BB53F7F040B5E54238BAF4914D510D"
+    },
+    "gui_launcher/data/previews/projectiles/ep15_dg00_obj01_ef_c758e0f805fe.gif": {
+      "size": 35903,
+      "sha256": "3384315CD946115EC4FBB9A0910D0624F28D361323C4DF83105B6572A8423EE7"
+    },
+    "gui_launcher/data/previews/projectiles/ep15_dg02_obj_fire_c7fe6525d99c.gif": {
+      "size": 83326,
+      "sha256": "568ADA137F00C0ACC0163BAFBC39847328B80C49DD8FCFB1C9EC2B90C91BE1AB"
+    },
+    "gui_launcher/data/previews/projectiles/ep16_bbm_ef_01_c23e1e276de6.gif": {
+      "size": 168074,
+      "sha256": "33342FA4D98E41B456E8541A8F58E4BB4DA6AB9100CD07BC8F71F23346973365"
+    },
+    "gui_launcher/data/previews/projectiles/ep17_dg00_mb_163_01_f0f3e0cc329a.gif": {
+      "size": 42029,
+      "sha256": "9E4C3ADEA6BE4AB9117894FD6543950AD38C7A16B46CDA06F52EBFD7C6B72109"
+    },
+    "gui_launcher/data/previews/projectiles/ep21_dg00_mb_186_eff_a711b8cda16b.gif": {
+      "size": 22519,
+      "sha256": "746E3254F74FEE67FAD8A189BDD4633425D7BB17B8089AA2E072657B28D5825A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_arena_triple_id_b_5c1e43e13750.gif": {
+      "size": 26831,
+      "sha256": "102C403A52A975C48587FF2A4ED23F22016A196DF75DDA458A4F2B930A5D4ABD"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_002_ai_01_aabf33fb72ee.gif": {
+      "size": 3114,
+      "sha256": "6C20BFA27FBCFE5B8C237FAAA1C260220023C991674C9BBAFFA43BEF8D97FAD8"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_003_ai_01_f721f754bad4.gif": {
+      "size": 4153,
+      "sha256": "60C52C7F3B8145104DBA4A374B87718B942BCEAF3946C93E1490157AC7A3503D"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_003_bs_01_2d02dfff4ec3.gif": {
+      "size": 3383,
+      "sha256": "731FC338904DCF925D0E827DB977371602CBA6D096DE5F8EADA133C9D756A5E9"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_003_bs_02_ef5b8fdb2ab8.gif": {
+      "size": 4226,
+      "sha256": "AEEB78732A35C2BAF6B0B9060EE2EE59293E20B20C5622077022183672DBC3C1"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_003_bs_03_57b6c77f1d18.gif": {
+      "size": 7296,
+      "sha256": "778A2E1719AC9E937AE73CFB45DCD2CDF7A8BEAF1F8376F8A9E8E24B2F52D77A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_003_bs_04_52dc48e1c704.gif": {
+      "size": 5090,
+      "sha256": "71314D43A97E615CCDB817DFB90BAA595C4CC523871AD7A7E9DFAE39DC94875C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_003_pw_01_790b5d825601.gif": {
+      "size": 9037,
+      "sha256": "6F43284410F90898DBC97C86C5C04DBADFC83520F6C81D9C210F5B8D120EF3D6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_005_ai_01_4613d9b844d4.gif": {
+      "size": 5154,
+      "sha256": "670F990139019F25FFC481696F0A8C4E8290757D853481E9ADAAD8D66EBB7A66"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_005_bs_01_dc18d11661d6.gif": {
+      "size": 3289,
+      "sha256": "DC1E9DEF71F1CC4E57521BA6A5DC39A5CA7E6E138D4C19C1C92EDA8BD15C20F6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_005_bs_02_2565b345c4e3.gif": {
+      "size": 3289,
+      "sha256": "DC1E9DEF71F1CC4E57521BA6A5DC39A5CA7E6E138D4C19C1C92EDA8BD15C20F6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_005_bs_03_14afa9912cba.gif": {
+      "size": 6591,
+      "sha256": "F60EF82D058C1964284455C328090D293B297B9C5817CD194E39F72208749BA0"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_005_bs_04_deead3ae6dda.gif": {
+      "size": 6663,
+      "sha256": "5E60E8820AED4C6A16AFF47E37DEF56B6D9DFEDE8E1E590F8D20207ADDDFEB1A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_005_pw_01_639f36fd1013.gif": {
+      "size": 12710,
+      "sha256": "2FC0BFDE49CB3CB07C36473B5EC4413471F8954E3B19889B7DBB459CAA11CB01"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_006_ai_01_4a93deb96497.gif": {
+      "size": 6235,
+      "sha256": "782314F467E137EA90D8B0829DB9985388E632478140FC60EF41B41CA9B48307"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_006_bs_01_a056730fd60d.gif": {
+      "size": 6092,
+      "sha256": "050F8E871C0881DE84DF3D6C790B1EF3777F5633D090098D3CA77238069E4558"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_006_bs_02_f580b3f2ad07.gif": {
+      "size": 6092,
+      "sha256": "050F8E871C0881DE84DF3D6C790B1EF3777F5633D090098D3CA77238069E4558"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_006_bs_03_cb073b85f489.gif": {
+      "size": 7981,
+      "sha256": "C7C707D49A7B8DF63229BEAE7B6DBC2E1AA1A131CD047F735FAF5B66B2739796"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_006_bs_04_f28efa6ab384.gif": {
+      "size": 7762,
+      "sha256": "4FADB1B7087371EED10D31DC0F82AFCFB0BE34DD4FAA668EF454E0391A574FE6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_007_ai_01_164af608c50a.gif": {
+      "size": 11565,
+      "sha256": "5B0DC2A168793B80B618FAA952F71F27D63821BA63E37B6FBB80C929B5656C29"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_007_pw_01_4fc58b31ef40.gif": {
+      "size": 19153,
+      "sha256": "14686097344C17DBC5F19A34DFA7EB3701B23EFDC42DCB395C712D3D253ED163"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_008_pw_01_a53f2c77a2d6.gif": {
+      "size": 11430,
+      "sha256": "D492C31B0E158CA707B79B12409E4C8AE2564A638729A3CFBCCFEEEF95D6C5EE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_009_ai_01_4f31a9288864.gif": {
+      "size": 15082,
+      "sha256": "1EB96923F9FBECE00AA72A51976C30ABEA394EF13A86709EF1B159F1BEB148E5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_009_bs_01_7a685bad5e89.gif": {
+      "size": 14626,
+      "sha256": "1BBD514E254BD2FBA66AFF893DF312187C878334C8DC8F89D82FE3A142A69D6F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_009_bs_02_4fcb80d84c2f.gif": {
+      "size": 14626,
+      "sha256": "1BBD514E254BD2FBA66AFF893DF312187C878334C8DC8F89D82FE3A142A69D6F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_010_ai_01_ddb1123ee1e4.gif": {
+      "size": 7657,
+      "sha256": "D41DFE2764FE1ED740D45ECCEBE67FD7C67E6F1D44F323BBDB53F57DE129153B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_010_bs_01_9523e31f4cb7.gif": {
+      "size": 5514,
+      "sha256": "8EDD3E17C3EE5627A790590438045141572F8F3B78A03D4BF883473BA0AFC5B5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_010_bs_02_542745d1c19e.gif": {
+      "size": 6560,
+      "sha256": "D20E578ADE3623881314AB41339993AEA7CE6B4FF3841D2D66A6DF3A98CA211F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_010_bs_03_ce706318ebad.gif": {
+      "size": 8914,
+      "sha256": "E384DF612493A33FE6E5337E14881D5D6350A59CE2B0CB948BEF7E2E1946D245"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_010_bs_04_4823e4a83558.gif": {
+      "size": 8876,
+      "sha256": "CCC79F1F8B18FC06DE38EEDA7AE78E320B1A35A3BEC7F69006D7708EFEFDACFB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_011_ai_01_f9803bc09179.gif": {
+      "size": 10222,
+      "sha256": "E805B78F5BF333F8BB8BE6D137A5FDBDF3874B5E34152C8F5DAA032DB3B6AC4A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_011_bs_02_93f7820515f9.gif": {
+      "size": 5959,
+      "sha256": "1522B55102CD76ADBB0BC9E1C757F43D5185ADDCE16AF83310FD727DDED021FF"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_021_ai_01_9f1134a40142.gif": {
+      "size": 9839,
+      "sha256": "9AB46827CFF52077A9077AE385FC408AEE2E69534AFEF04239DF2CB17043808B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_021_bs_01_594a47df1dc6.gif": {
+      "size": 7159,
+      "sha256": "0FE4CFE8980C6DD77EE42314C377D40A8DF7A30E29A382A247180667CF82C7C6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_021_bs_02_9bdbcbe9e653.gif": {
+      "size": 7159,
+      "sha256": "0FE4CFE8980C6DD77EE42314C377D40A8DF7A30E29A382A247180667CF82C7C6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_021_bs_03_b9ffdde5ddff.gif": {
+      "size": 10910,
+      "sha256": "0CBD46C8030EC2EF732210977C4572E99FBAC9AE1E5A22F670DDC9A3D50BA795"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_021_bs_04_287acc6fba0a.gif": {
+      "size": 11666,
+      "sha256": "3559A4EE48383783B879FBFF017D0F9FE0465BD809F5FBA7C3AC704E15437715"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_022_ai_01_53078e54f286.gif": {
+      "size": 14763,
+      "sha256": "572185416F0FD0C7230C5EF7F556A6F87C9F01E25EC56F858A1C3A479A78E298"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_022_pw_01_beedbce4ca48.gif": {
+      "size": 10920,
+      "sha256": "0FD8C20ED67F0DDE2990710C451A71676CD502D599C6A652D9C116484178FC2A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_026_ai_01_1823dc27fa84.gif": {
+      "size": 7966,
+      "sha256": "73483912B283E5DFB019449E0E341C0C6DA3A9F99C25BA1CA6A6A9EC30EE3A28"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_026_bs_01_84d66dd99527.gif": {
+      "size": 4560,
+      "sha256": "ECE700E71395F0D42B143A346E9CB9B892AB77C61EF64D209CF5BE66B1F90226"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_026_bs_02_c215b7f01301.gif": {
+      "size": 4560,
+      "sha256": "ECE700E71395F0D42B143A346E9CB9B892AB77C61EF64D209CF5BE66B1F90226"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_026_bs_03_e2b14d6bc764.gif": {
+      "size": 5055,
+      "sha256": "E44D9E73B413D143B5C405960C2F2079ED9A3DD6FF2242E080C10AFC91A379EC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_026_bs_04_805354780632.gif": {
+      "size": 5329,
+      "sha256": "7A5074E518A0A2ADFD4EC1EA11A38FE74FBB02B992043784C086018C77247412"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_029_pw_01_2845f6601d0a.gif": {
+      "size": 21298,
+      "sha256": "70FD828163951BA7A9A72CA56A7F902858D379BB1C455B1580B2284B97F3E5C0"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_031_ai_01_4c5d0cdd6059.gif": {
+      "size": 6509,
+      "sha256": "44F3A092234D0860D6815F4FF23182A076E8575966C08D9D69924E31FB451736"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_031_bs_01_dd2e9738957a.gif": {
+      "size": 5172,
+      "sha256": "A08630E2CF2B48D54D8B51C2A42496D67D2ECA886F80AD3EBF3C50BAB7A8A9CB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_031_bs_02_0c37444d4db9.gif": {
+      "size": 5172,
+      "sha256": "A08630E2CF2B48D54D8B51C2A42496D67D2ECA886F80AD3EBF3C50BAB7A8A9CB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_031_bs_03_b0612ebb281a.gif": {
+      "size": 6161,
+      "sha256": "A07C68D21B0E4CB29BE4D7C5C6E71A8BE768B83288FA180C72D809BFE19A1362"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_031_bs_04_9266468813bb.gif": {
+      "size": 6175,
+      "sha256": "9B2EA89DCA7494E3C468639AC1FC7052052D5F40140397E9F1965C83B86F2C05"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_034_ai_01_0759d5d8157a.gif": {
+      "size": 9274,
+      "sha256": "9B9D7473F0FB05907ABB18C4615855B5288F2C5CF85B4246FCE5BD6B3EFFC3C1"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_034_bs_01_1bbc9abba86b.gif": {
+      "size": 6052,
+      "sha256": "EE432C2EB79106A27E476C53C5DC193BC52425B7542BB0365C9898F0E61C8F7C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_034_bs_02_7bc2495ad3d4.gif": {
+      "size": 6052,
+      "sha256": "EE432C2EB79106A27E476C53C5DC193BC52425B7542BB0365C9898F0E61C8F7C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_034_bs_03_92f8b3491efc.gif": {
+      "size": 11671,
+      "sha256": "8F37A137CE55B483EB4F900FDE6B22720AE979E6FD7777D52B51FBB99F3E4953"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_034_bs_04_42559935ad3c.gif": {
+      "size": 10637,
+      "sha256": "BB132BECBBBCFD658769A249E638FE2978672DA60F7CF4BCA3DBF1B3171EDA1D"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_034_pw_01_8e20e2e6871f.gif": {
+      "size": 30540,
+      "sha256": "847897912CD83F6599657708A647B743FE73CB25AA3CA60892F6B0FDEEB4E69D"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_036_ai_01_8d0d4957d273.gif": {
+      "size": 7105,
+      "sha256": "B049A55285CF5B35239FFBA0B18E8B442F29714751B499EDCFEB4303E9D6AB8D"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_036_bs_01_bdbee2545086.gif": {
+      "size": 6790,
+      "sha256": "E41D585C77BC4C7962A30AE00F9E1D09EA74CA05E9D70DC4BF28472688984AE1"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_036_bs_02_1cd85a446648.gif": {
+      "size": 6790,
+      "sha256": "E41D585C77BC4C7962A30AE00F9E1D09EA74CA05E9D70DC4BF28472688984AE1"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_036_bs_03_37f188dd369f.gif": {
+      "size": 8640,
+      "sha256": "4FB1D021EAE9C3AA109C451F239F0F83872B3B684307BC0B0CBB426F14807475"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_036_bs_04_53f9f3c23e0b.gif": {
+      "size": 8646,
+      "sha256": "B84550C079B6CAB28F0E83A1BA25538EDA06F9C1769668BA6FA34A6C714D51EE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_036_pw_01_215448bae3de.gif": {
+      "size": 11489,
+      "sha256": "2D4835E5AFE5BCB071441D1A6FEA502A2928147B6E780853EB8197247202C344"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_038_bs_01_016364b858f6.gif": {
+      "size": 6800,
+      "sha256": "A378B892471EC1187A1C30957C2C05A00A30C0E550E6027CA972E318D24FAB4B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_038_bs_02_6ed33cd5f391.gif": {
+      "size": 6800,
+      "sha256": "A378B892471EC1187A1C30957C2C05A00A30C0E550E6027CA972E318D24FAB4B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_038_bs_03_1a57b60a30eb.gif": {
+      "size": 8358,
+      "sha256": "030F6802D4CCBE0D1117EA871AD6F05001020A9FB4DB86A3E45AE53906D8488A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_038_bs_04_6ba9e79db332.gif": {
+      "size": 8394,
+      "sha256": "EECD915F1FA035E9ADDC6A433E8C4F16DB42A1B4CF0A4D4C2C33E12951F1EBCB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_039_ai_01_28cdf668171e.gif": {
+      "size": 7893,
+      "sha256": "BC441CD8BDA46D7578630CD8607540EB6DC19F9FD83F73841D93170910065144"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_039_bs_01_38e083fb753b.gif": {
+      "size": 5446,
+      "sha256": "79B154B4F66989D07D9523B511DDAA93503ECFBD93C2043F5545C738ACB02D2C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_039_bs_02_7b884a133653.gif": {
+      "size": 5446,
+      "sha256": "79B154B4F66989D07D9523B511DDAA93503ECFBD93C2043F5545C738ACB02D2C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_039_bs_03_9e9d464877f8.gif": {
+      "size": 9207,
+      "sha256": "A1C1933542125B9A40454C715EEDD56DD767A7E33BCF735C2565F4CC0A553903"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_039_bs_04_8ecc70564bea.gif": {
+      "size": 9024,
+      "sha256": "3654DE2E5FE069CF1923810C2C1B0E21BB307A8F3CD6215B800575FCDF20F53D"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_039_pw_01_b46a4890d76a.gif": {
+      "size": 14766,
+      "sha256": "CDE29E90397DD7DFBBB361898EB509698829E1056A73CBBC20B0CAB2C9ED8267"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_043_ai_01_0e2dfaea8501.gif": {
+      "size": 9457,
+      "sha256": "717460C9492B4E143F6CED0B2A41E5AEA902E036E62249B64C49E906413AE641"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_043_bs_01_9a69559958d5.gif": {
+      "size": 5203,
+      "sha256": "97999CCEF02889B41D5A5B66286E3FE6D83BE5911CECF072F3ECFE6BA5A1DE3F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_043_bs_02_3a83e0fc2416.gif": {
+      "size": 5203,
+      "sha256": "97999CCEF02889B41D5A5B66286E3FE6D83BE5911CECF072F3ECFE6BA5A1DE3F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_043_bs_03_1ec8e69139d8.gif": {
+      "size": 7509,
+      "sha256": "ED6A3D481C10973EA448C2B0B9D3D93BC88A049150A9925D630FF9258E9EA3D6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_043_bs_04_b5de762ff24f.gif": {
+      "size": 7551,
+      "sha256": "009BA3A62E786081A7176275E12F09D77E6919FD9C20ECC61822B683360C77D4"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_045_ai_01_b43e78f32637.gif": {
+      "size": 6636,
+      "sha256": "B7068762FEFE221B197501BEA4C8A2D8EC9E1311C7FE0F31E08C9C13165F0FC5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_045_bs_01_1335c897dca4.gif": {
+      "size": 5589,
+      "sha256": "644458472C7FE822C68570AE8A87C76AA3A8058B18BDE73E1444F510092C15C7"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_045_bs_02_93046ab86557.gif": {
+      "size": 5589,
+      "sha256": "644458472C7FE822C68570AE8A87C76AA3A8058B18BDE73E1444F510092C15C7"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_045_bs_03_45719e02e6b7.gif": {
+      "size": 8274,
+      "sha256": "D154225F2E4B5CE1A9E5439424C611D5E76A5596DE35B710DA5510F757CDA33E"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_045_bs_04_ee665966b15d.gif": {
+      "size": 9638,
+      "sha256": "8607A58FD5E788DF20C8E223A16DABF4F3C896B258B13B3CA3AC0AAC6185B18B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_046_ai_01_aea31eac78df.gif": {
+      "size": 10709,
+      "sha256": "65F241E23A03A538D67AE77CBAE97ECFE19F24CDC3A908894F6C80F057B2F0A6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_046_bs_01_43a3c71fc934.gif": {
+      "size": 5944,
+      "sha256": "00CBC156F24A9DACE0DCC81351E78C0824C2C2133AD5DAAB98AC7C47287A7C6F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_046_bs_02_da19911ba6e4.gif": {
+      "size": 5944,
+      "sha256": "00CBC156F24A9DACE0DCC81351E78C0824C2C2133AD5DAAB98AC7C47287A7C6F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_046_bs_03_31e31271dd04.gif": {
+      "size": 8847,
+      "sha256": "444CB23AA7BF9ABD93FC1FD515C32D4515DA80810858DF193C748C3FA49B139A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_046_bs_04_5c38df3201a6.gif": {
+      "size": 9107,
+      "sha256": "A3DD8C96EC1D9318C384F2B474FA830A77C41D49102DD869001FDE581122E473"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_048_pw_01_7f3075685d38.gif": {
+      "size": 25287,
+      "sha256": "06A2F79BA9A1027BCB9B8BF3F0FF643A641FD23B9F5A8ECDED5E71C9BD362E1B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_050_pw_01_e3cd4a3d1c3f.gif": {
+      "size": 32027,
+      "sha256": "58B3B2CA2C3D0ABAE0BDFE02F32BA13B3B95E0E56180FEA3820E5A849A67DFB9"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_051_pw_01_55e439426f24.gif": {
+      "size": 19890,
+      "sha256": "879A701EE4138EFB0821D6FB18DC6276AA02DD62DB811F75951EF33E2E5DFE39"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_058_ai_01_67c6a7901bc8.gif": {
+      "size": 6781,
+      "sha256": "3CEBECD90411E3DF331B153F0F4CECF1EFA6E54E9749982253237F0E459009D7"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_058_bs_01_8341da2bad0d.gif": {
+      "size": 3677,
+      "sha256": "4CE2F46923DD85B2AF1DFB1C74D579752AD7893A572562D4AB5D7AA432EB9799"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_058_bs_02_663329c9d9f9.gif": {
+      "size": 3677,
+      "sha256": "4CE2F46923DD85B2AF1DFB1C74D579752AD7893A572562D4AB5D7AA432EB9799"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_058_bs_03_efa519501d62.gif": {
+      "size": 6703,
+      "sha256": "C91800BA89A67192C12F85D10BE7DF554844FFD2C9DCA7521412CF043A285BDE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_058_bs_04_c12a593744ec.gif": {
+      "size": 7317,
+      "sha256": "D4AE3AA0A20193B973F7C3881142916998DB1BA68F6ED6A567F982DBEE1ABBDE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_058_pw_01_ed057079da56.gif": {
+      "size": 19592,
+      "sha256": "95F9834369409C30535FF25F7FCC44725BBFA61D00658A5CAB111CD7448D1C57"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_063_pw_01_caa6a814e22c.gif": {
+      "size": 11094,
+      "sha256": "F8C5C9DCC8EB517B6B65D3AF80FBCBFBB65CD0FAC7278C31475C6E886B43E277"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_066_pw_01_1d9385c6070e.gif": {
+      "size": 9529,
+      "sha256": "2CB7BC9788A3043BCAD63EF0AA8D5378B62D6835EDACA9CF1633CF649321934E"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_068_pw_01_96485966aace.gif": {
+      "size": 17251,
+      "sha256": "7966C6811098C83773F2508935C74D60773F40FE974547DB1AB10B138D77C8C1"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_070_ai_01_f35a9c0f695f.gif": {
+      "size": 3989,
+      "sha256": "0E89F4C5B56613DEF263B10B2D2DEB78B8EE4A6E85DCEC5609FBEBDE1B6B6F6C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_070_bs_01_f87f343c34c5.gif": {
+      "size": 2749,
+      "sha256": "953052D4591EE7C6A178F69E3BC04877E062591C22ED97C610CB724FAF740E5F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_070_bs_02_4c6a3a7cb207.gif": {
+      "size": 2749,
+      "sha256": "953052D4591EE7C6A178F69E3BC04877E062591C22ED97C610CB724FAF740E5F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_070_bs_03_bdb04fe0ec83.gif": {
+      "size": 4813,
+      "sha256": "00D5FF3B0A4BF9F092A54EDE8B9D8721865B1225380FE1866E4378717A36BE7C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_070_bs_04_9a161db15fd4.gif": {
+      "size": 4782,
+      "sha256": "EC3FAC84B8B78AFBA9301A54925FB8B2AA566841B7333B839B9B9FBC8719864A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_070_pw_01_2e23fd7e0fc5.gif": {
+      "size": 10196,
+      "sha256": "DC0952E955D1DD8E887230D8BDCEF7E9264DA5D0526B97DB76BD5A063A950923"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_078_ai_01_915f20760877.gif": {
+      "size": 11743,
+      "sha256": "55ABB466228183166D8A990FB7BF08A99A2A400F3C711E97EC1BF5D148EA76A4"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_080_ai_01_95640d054bf0.gif": {
+      "size": 6398,
+      "sha256": "BE63E365AB76ADEA453FB56344E49A954FFCB18A56702B8F2099CA2BF315FC2A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_080_bs_01_73e555cb7aa6.gif": {
+      "size": 5535,
+      "sha256": "CE14BF2CC89E4DC7E5A58DF91B18F9C1FF125EA5BA85BC096D730194CE217F1E"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_080_bs_02_072e1449252a.gif": {
+      "size": 5535,
+      "sha256": "CE14BF2CC89E4DC7E5A58DF91B18F9C1FF125EA5BA85BC096D730194CE217F1E"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_080_bs_03_03aabf162f9b.gif": {
+      "size": 9645,
+      "sha256": "DC8D9D075A4AFD963C182110C7859DD62DA478B29C23070F224BC245749ECF4A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_080_bs_04_a282840b8406.gif": {
+      "size": 9093,
+      "sha256": "5A55F8607417C6EA8A151A3E9D2A5FF84ABE22B793A926B9D522FE72F21A8D67"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_086_pw_01_f0879956c37e.gif": {
+      "size": 26532,
+      "sha256": "BF86F76A0BD4E6CEE7BCE1E464C79A40A0C35EEB977C4FBA7CEBF8AE836B99C5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_088_ai_01_0443ebf31fce.gif": {
+      "size": 5041,
+      "sha256": "597FFB29AF7340AAAA165F0ECEE1ED5ECADAD0BBB304F88D70DB35935C6387CC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9001_ai_01_7bb7f9450211.gif": {
+      "size": 11580,
+      "sha256": "362DBD1D1FE5E55BE2C13643D57C98EB43576280FEFCF6027F70EB596A826618"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9001_bs_01_8395f75b8cc4.gif": {
+      "size": 8996,
+      "sha256": "1D325E8DC0785E84C9CE10817AF7E0C81DC4C2F389E5016C5F91D6E0136F2722"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9001_bs_03_44a4cc8ae2fe.gif": {
+      "size": 12554,
+      "sha256": "0AABA78FAFBDAD7EE498FD33E5EB67A3D765AE30DDB26657791DEDD4B8E88B3F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9001_bs_04_cc436272398e.gif": {
+      "size": 11460,
+      "sha256": "D33309C2D31D6747D465F5DC4D84C3001DEC92B8A6B314F6C77E1A5D8A94D4BB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9001_pw_02_470ed8247cb6.gif": {
+      "size": 31726,
+      "sha256": "A7659C3311D45FB51D2198C797F83F70A1CF1768697569CA1AAD03A84C463219"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9007_pw_01_3d781f376f10.gif": {
+      "size": 6924,
+      "sha256": "444DD8AD854052FE93E14492722A57ABD833154EE49E80A9A2CBED06D5F418AC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9012_ai_01_6da3ff135675.gif": {
+      "size": 5705,
+      "sha256": "0E0D3AF6D74392F71C00DFF6384A8AFD4CE752AFEED60E8854A1C5A01168FF84"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9012_bs_01_cbcdb6eb8196.gif": {
+      "size": 3267,
+      "sha256": "696B6916E724357D94E1B5E9C7B9264EE384824010192F7FAD5385E2083F566C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9012_bs_03_ed95206b2d32.gif": {
+      "size": 5049,
+      "sha256": "96B3B525EBD0B1AD84F7DAF53864099B4518DC7AD48E6138D4A37CA191929D35"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9012_bs_04_f46ec02b519c.gif": {
+      "size": 5083,
+      "sha256": "858EBADA8085A212E1B4BA9469DDF5403EB43BE8F6DCE5823F7D1C7668937989"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9015_pw_33eaaedd5b42.gif": {
+      "size": 29407,
+      "sha256": "8520FD83E75F160410A840A1E2AD0A1B71071C814912616860EE57366B9BBE6C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9016_ai_01_4bfbc7d55e7c.gif": {
+      "size": 6622,
+      "sha256": "E8A3116C696149314FA1E5269F01E88919F1EDD67571AA67FDF9285376DF7173"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9016_pw_01_0d37dd695d09.gif": {
+      "size": 34755,
+      "sha256": "7D9184F2C8659529C5493D1FF50D27066C641FA2370B003F1CC3F02A936F2651"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9018_ai_01_59f19ba9837a.gif": {
+      "size": 8652,
+      "sha256": "B092E4F74B46F80142FD9141E30F5347481B2D154A9DDD434BB9BCD9B4073C08"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9018_bs_01_efc17512b84b.gif": {
+      "size": 8742,
+      "sha256": "41D5159FA749B041E249A7013E80B517330DBB34C24C27A12110A11B75904E1C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9018_bs_03_76a6de260ed8.gif": {
+      "size": 11297,
+      "sha256": "1E10FC0DC6BC897D14472CF6410009325014C69DF97D266F754A7D08A0310BA4"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9018_bs_04_3ee7619dd326.gif": {
+      "size": 10910,
+      "sha256": "DC1FB2CF5D08D548631AC123D0606FA1DDAABA03FA25AF72B5F1E227C977F571"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9018_pw_02_d3b2bf55d55f.gif": {
+      "size": 6845,
+      "sha256": "42B226BA14B88D9AF1560BC3D607C138301D313301B0FB2A827E19005E95A239"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9020_ai_01_ae69e4ac61b3.gif": {
+      "size": 5575,
+      "sha256": "875FDDF4EFEDA8CA8862C664C72AA4AF29033816B120C2A882876A72588AC897"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9020_bs_01_58b46fa3ba4c.gif": {
+      "size": 5549,
+      "sha256": "BF14D13FE09E8C74685FCCF146F85EABB840B1F5C966E3B425151F6B059BA6CB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9020_bs_03_4d1ecf1029de.gif": {
+      "size": 7715,
+      "sha256": "7BD80FA7FDE267D51B05B22FB68C32B8973AF6C5A8A3911C0F72A23687BC9076"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9020_bs_04_765c1cf1d5eb.gif": {
+      "size": 7254,
+      "sha256": "8F4F2C6F28BE3A7C8D13A32AA90528C5FD078F63CA7901DD19A5711D0B257CFF"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9026_ai_01_28cc4c8f31d0.gif": {
+      "size": 13368,
+      "sha256": "1B6AF4D8E30014B7D22C0F2C3F3F080B814506B7366C87CC326B6898A3885F6C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9027_ai_01_f4f965a2f29f.gif": {
+      "size": 2422,
+      "sha256": "5920EDEF142B90BC1A386D40BC45204FF46BE48CD96BB3603B8D040914CD0E17"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9030_ai_01_6bd68a8eb733.gif": {
+      "size": 3245,
+      "sha256": "1FC33023BD0AF87A5D1F0BBCB22258D663E805DAD7432772D3E3965DCAAF6ADC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9030_bs_01_1da0c570cf6e.gif": {
+      "size": 2384,
+      "sha256": "C69A5ED6780EA1E8A8CF5F4E9B51D9700CD69A82063574E53A2B4D512C076D30"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9030_bs_03_c2aeb1cbe8d6.gif": {
+      "size": 3241,
+      "sha256": "A4EE41442ABAB9DCF880172504BCF69AE8A84E64823ECCE5B2BF11DAE894CCEC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9030_bs_04_d56f35054767.gif": {
+      "size": 3093,
+      "sha256": "86399483BA5A16E9DB41078952F2F1CD8EDC6DA76E5D6C6126D374E22217754C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9030_pw_01_a78f04f0ff46.gif": {
+      "size": 24809,
+      "sha256": "C72A2F7F0BC5EAD6F6DDEE961C30F308A6EE55D3D3C490380267AE5703FF1647"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9036_pw_01_7828482bf888.gif": {
+      "size": 26655,
+      "sha256": "22DE7B9A31C8D959A3551FA40867870914AA6B32D89A92D608894F2AAE934488"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9037_ai_01_fa821691fe88.gif": {
+      "size": 9098,
+      "sha256": "9DE8196A8018BADF06B5002A25D15955028028C69F6AD4C8BB54CA4E00DCBFC9"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9037_pw_01_b3962e46b883.gif": {
+      "size": 36407,
+      "sha256": "21AE07C6EB20C9C14CEA3786316AE7ADA5C114571A67B52ED4C60D3824A0FE59"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9038_ai_01_38f4542e2d45.gif": {
+      "size": 3944,
+      "sha256": "172628E5478E1AD826BD9EE25C518DD4BFFCB011CCC9CA516D08E9366ECC44D5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9040_pw_01_0bae3a9a573f.gif": {
+      "size": 40748,
+      "sha256": "79FED2836287603B52A8BF07D4DC564F239D9B8D041EDA53D222BE08CC98E4A5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9041_ai_01_1beea70901b7.gif": {
+      "size": 12394,
+      "sha256": "BF91F854EE6AA169980FC2B01BA363980DF86C152BA56E5CC0038389BA12E609"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9043_ai_01_0e54dfeb0ea5.gif": {
+      "size": 4518,
+      "sha256": "B1370ED6F9C41E07F8FD3E5B244A24CD289FB367EE1593C86FD8F83B82CC323B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9043_bs_01_50f41b7249e0.gif": {
+      "size": 5195,
+      "sha256": "65337F607401B3B72FCB918104B099A70CB5CD4FA92ADC587E51BCF33EABE9AC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9043_bs_03_545f54f36703.gif": {
+      "size": 6721,
+      "sha256": "89C2BA9EAA18F0A165DF7770AD9AD714AE320FB01C34680665E107B02FD0D1F0"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9043_bs_04_6b204d302f8c.gif": {
+      "size": 6389,
+      "sha256": "7B36EAA2A8A6EE63E0862AB544AE9E83249BDD1C4585EC7A4956B58204DFD879"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9043_pw_01_4e92c491505e.gif": {
+      "size": 14678,
+      "sha256": "E5D533C3736987317A71059F67E36869591196E76DFD2EBD9AB4B05E32369D30"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9044_pw_01_59488d33dc32.gif": {
+      "size": 9097,
+      "sha256": "CEFF32C0B7F78BF930E5A4D3780371AB5273F2299B3306E233936570AD4181A6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9045_pw_01_35a10b98cbbd.gif": {
+      "size": 8209,
+      "sha256": "470574714ACF2FDA4DCE1F2D4E4A5D1588AE99632BC46BCBAD3F2D721D7929A7"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9057_ai_02_ce67daf3e2dc.gif": {
+      "size": 6477,
+      "sha256": "F7432272AE06E3818A32E324BF8C70AE1C3F86224569457E66414E2A733D0753"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9057_bs_ef_1_5a14c764a257.gif": {
+      "size": 28814,
+      "sha256": "C0B64671BAA33816490C1B951DA8425F0C883C8CE63830B6E90A21330A825B12"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9057_bs_ef_cfa58cbb6b0c.gif": {
+      "size": 28173,
+      "sha256": "276E46B1A377A5BC7AC57566AD3B014C7347CF7D2086844CFAC032F0B95364DD"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9057_pw_01_5c721afe345d.gif": {
+      "size": 14205,
+      "sha256": "E88C7EA5B654D8B8F16EFEFAA853A47F4CDE7190D111B0EF1447E8C491887D12"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9058_ai_01_2a4c1567ac5e.gif": {
+      "size": 5553,
+      "sha256": "77153D3F02E9F2D86EFD86EB6A22DC7B91E069C087FFB53B56C2273F87011876"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9058_bs_01_aaba7f355ca0.gif": {
+      "size": 3808,
+      "sha256": "C7D615767442969FE18E9EF0EE1512452F9A3CCB718172FA7F506E0544375A27"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9058_bs_03_ce9b5cdd416a.gif": {
+      "size": 6547,
+      "sha256": "A64D99A0D9E2E072F0E7E5BA5B2A36BE683CE36814303613244C3D378C3B6DD9"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9058_bs_04_d3347f5cc4b0.gif": {
+      "size": 6481,
+      "sha256": "031405623A593B521A6707C0E7B173FB8AC42D3840F2A5AE548FA27926EC16A6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9060_ai_01_957d0319a0c3.gif": {
+      "size": 3110,
+      "sha256": "7700DF0ECADBF5D0758749BC35D8CDCFB18CEAB44D5AF4BF2FFEFBF79FBFFB6B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9060_bs_01_cda58bf30e31.gif": {
+      "size": 3196,
+      "sha256": "1E19A8854B1D0AE1D1AD5F39569E9EC9F22A68799A7C249EA1B04BF564534F68"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9060_bs_03_a4bced6e39cd.gif": {
+      "size": 3904,
+      "sha256": "C5E165074A4A4E7A41CA3B636C0FF704AAC4B81777689C8DB3B17807F379B0CB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9060_bs_04_7ffa3c7e0373.gif": {
+      "size": 4898,
+      "sha256": "69A2217658518448335FA096A9BD9B51DBCB1048A84658853BD38DEE72DFAE65"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9061_ai_01_fff552dd44a0.gif": {
+      "size": 15839,
+      "sha256": "2C77EBB15B66DC128357A32A28C360916AC9B0FDAD0DBD533EDDC81D62B189AB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9081_ai_01_61352be0c53a.gif": {
+      "size": 5425,
+      "sha256": "252168929C8E60245B42D1919C534C33D4B06D4E2B03A469A3BFB5C4323332EF"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9082_pw_03_5ee71f9b2e32.gif": {
+      "size": 13113,
+      "sha256": "F582BEE5E779A2E95A5602F44DBD103DDE7388D7A499B5F773A48569C48D6742"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9088_pw_01_042bb7b73df1.gif": {
+      "size": 16980,
+      "sha256": "301E2413F71ADC22876E3790B3EDBA389A9CF56A2A0DC4D2E850188E8B4AF3DF"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9094_ai_02_5343c6b56da1.gif": {
+      "size": 7819,
+      "sha256": "7475F6BDBA3F6B66321D06156542EF881B04EEDB677C9E2AD669DBDA966B0B7D"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9099_ai_02_9b6960b28531.gif": {
+      "size": 6246,
+      "sha256": "617D50E5AC248D5C1D6F7695B4AE7AED91B1DC6A2CFD6F551C5045FA064C1599"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9099_pw_01_1187b17d73c9.gif": {
+      "size": 25240,
+      "sha256": "A708B8DE63BC346A3198441C6F4A2C3F5F380A34E4F7AABA234F1B3367164B8B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9100_ai_02_1cc8baaaacd2.gif": {
+      "size": 8791,
+      "sha256": "A3D1A0C222AEB79A268A5548666A6B695396069FF42C340AB4AE1742B247A085"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9100_pw_01_5d534da06b7f.gif": {
+      "size": 21232,
+      "sha256": "7FB746BA1723FB639BE346DCFD20F7A6DA59C9E965B8ED8C54463D6A9C3B04FB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9101_ai_02_29a5baed6c56.gif": {
+      "size": 8385,
+      "sha256": "A0675FE0017126497AFC5F6D4E22AE9026A43289A448F75C6673FC8BE4AFC726"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9101_pw_01_3ed794614cc6.gif": {
+      "size": 30047,
+      "sha256": "13C3D039CC28DD9A77FDA589B5F81E028982760751EC0913DA4080F391785877"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9102_pw_02_fc31dd046850.gif": {
+      "size": 18351,
+      "sha256": "914FB6B6F160CD51EA42DECD36C9A05B523E323E2369989ABA3CE5B1E49F5464"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9120_ai_01_f0263842e929.gif": {
+      "size": 20851,
+      "sha256": "4802D0D1C509EA73FD825DEF4E729BF8CD98F51E0E30B25CEB2F89469D618A99"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9122_ai_01_2d915f490e5c.gif": {
+      "size": 8731,
+      "sha256": "7B8D657522763FEB23FC38DCB7A02D35B077C34081A10462950E12CBC6DF8307"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9123_ai_01_d87ac68099e7.gif": {
+      "size": 24256,
+      "sha256": "CCC1DA2DE60EE95DD6C5010085EA7BB5C79C7EADF24187FD2314EE71D2046207"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9124_ai_01_eb6b0b9c844a.gif": {
+      "size": 9381,
+      "sha256": "87CAAA1497BF47761E02548CCEEC0E5FF506DAE1D25F649CC498333E4522B015"
+    },
+    "gui_launcher/data/previews/projectiles/mis_boo_9126_ai_01_b67e0e96e714.gif": {
+      "size": 14127,
+      "sha256": "14D6403684C6634F61CBC78F66046D42544BD6CF1D78A8F888F8CB8C0AFB27D4"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep02_hd_bbm_07_00_09baf15c3b2a.gif": {
+      "size": 34003,
+      "sha256": "F415770FA801E790714712F60BD0AAA6435482E29FC4C72CF78E66A348B06444"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep02_hd_dg00_end_00_00_f2d6fd5eaa39.gif": {
+      "size": 26338,
+      "sha256": "B9A5563F637122ABB785358B439E760E409609FC39775015D82F8780168B7B2F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep03_02_e_gate_000_99cea1adbb1b.gif": {
+      "size": 20358,
+      "sha256": "53CC2B2A6AF7F4B601C120EE0403E5378E825CAE43A495B3D3791B41E67DFE90"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep03_dg02_00_301f9583b32d.gif": {
+      "size": 22234,
+      "sha256": "B1F89CBE0304FB7AF3D7B8601B7F49AEB6E10345EE2E5C6C816DB97FA00D4095"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep03_dg02_00_ef_3e598e1dabf5.gif": {
+      "size": 54001,
+      "sha256": "A02B9EB3F643C010A340D292D2F99BA946EF6541C15B5ECABA088896F39607FE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep03_hd_dg00_end_01_01_3455874a7325.gif": {
+      "size": 25214,
+      "sha256": "9105764302EA5D0FFCEDFFF19059E6B3E9196A14DB4DB97C29CC39A27156F24A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep03_hd_dg00_end_01_02_y_accc43c05919.gif": {
+      "size": 4392,
+      "sha256": "26A6E50681491A510A243989B148BDFBA4C16D4A4E62D4248114F76E691557BA"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep03_hd_end_00_a3_d8a3c76a859d.gif": {
+      "size": 6762,
+      "sha256": "F9B0C39F2357878D0D53AC4783821CE6CB9C12A8778580BC90250C73AEDEEB09"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep03_st03_target_00_82c55d4a360c.gif": {
+      "size": 12683,
+      "sha256": "7BE2130AA054018205BDD4747187B30C59E3B1DFF79A4A6CFC4C56313ADB6524"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep03_st03_target_73f2cdb88c7e.gif": {
+      "size": 12586,
+      "sha256": "3D58549C5A203E9DD7EBCA7D96030FA3FDCD30BAE7404AC4818E1CBFD592E761"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep04_st02_obj_03_laser_e00f5fd9a66a.gif": {
+      "size": 27909,
+      "sha256": "706A41686CF54C38CE942077333CEDA2E97E27B66D729BDEABA3309DE8E7B517"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep05_bbm_general_fire_mis_3205addb07fc.gif": {
+      "size": 9459,
+      "sha256": "D0C96A32485EDBCB5F9E4373DFA1B76CB11F6083DF32AB9434B4FBDFFD7FECB1"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep05_bbm_general_flash_a509a9b6a335.gif": {
+      "size": 21961,
+      "sha256": "4D5874AEDB8B2DA92DBE11F7353D1F83F2808A38900BB2E2666601EE08ADA694"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep05_bbm_general_lighting_b5003658c044.gif": {
+      "size": 18011,
+      "sha256": "BB8FA34B7B9D9F4FC0A975DDA3A4A17EF707669EB3F3875B64B51C0D574D2246"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep05_bbm_general_udo_spear_efbd56da4795.gif": {
+      "size": 17307,
+      "sha256": "788E030D0ECA2C9AA82D98B3A683069E2C49AD06D0D861F2D196B6B8819DF358"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep05_bbm_horse_cornu_ce6b88dd30e9.gif": {
+      "size": 9055,
+      "sha256": "A34F2D9500AD0665FCC4F5FD2E7A68A3347A6D906EC1B38F1527D47E45B36047"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep05_ending01_beam_c4f3a5bb1684.gif": {
+      "size": 26300,
+      "sha256": "E0BBAFAE1F909F4CAE97B5D0A00372A065C97BE6AC98A67E99E3FEBE6CF0C165"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep06_bbm_00_udo_9861bc7c8e2c.gif": {
+      "size": 8908,
+      "sha256": "D76CDD0026E7F309C4E9A7B06724CE00799F8403B77BE4DE13C9AB9E3212D019"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep06_bbm_01_54361a48f4c1.gif": {
+      "size": 6044,
+      "sha256": "E258956F1570EF7D1F7979CA0CBD9692110CB65B0611E8B52F4B67347DCB62BC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep06_dg00_mb_50_636ec91bc9a7.gif": {
+      "size": 20590,
+      "sha256": "CF38C6A804355555DE0F59966CA923D6D9217712ECC33B90EAEE14F491501FCF"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep06_dg01_mb_54_l_f84bbf224874.gif": {
+      "size": 3474,
+      "sha256": "226897575FBF486F9F5BEDF601B23732543B7C065EDB7E0DD1F40CE00C41B621"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep06_dg01_mb_54_r_ec6aad761d2b.gif": {
+      "size": 6625,
+      "sha256": "6C08B7EADDD54E0EA892E98AA77C2770974BBE719AF3AE427CAC72E70FD5332C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep06_dg01_mb_55_bdf2bb4197de.gif": {
+      "size": 28466,
+      "sha256": "204F646E3C0015A0F56BFCA9DAFA1064454E567281097AF1262422DAA0C36BF2"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep06_dg02_mb_57_7ef0bff9b950.gif": {
+      "size": 9566,
+      "sha256": "6BF2A475226608C2CAC587DDF565CE0DA5FDBE190B60E2B658DB46FC4146C389"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep06_dg02_mb_59_f838d0f866a9.gif": {
+      "size": 6267,
+      "sha256": "23E42F944E8F0CADC2CEC215D9536048286402F2C8F8860157EA69E20992089D"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep06_dg02_obj_02_00_d59421dc9365.gif": {
+      "size": 3471,
+      "sha256": "C600456A861E59AA51F6E41BF8F6040960BD114B6A52483BEFEFC94F1EAF2DA0"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep07_dg00_m_60_924d3543c474.gif": {
+      "size": 5349,
+      "sha256": "705F99E2C2C82D1A6B8AA6F6E1DA0396EC08007CA9026DB1148CC3179A763328"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep07_dg01_mb_66_f62d79bd097a.gif": {
+      "size": 4265,
+      "sha256": "A58B5DFBCA498DA5C7BAAD37C5AD059D75DBEBF371FD3BCF5464C3ECCFC26843"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep07_dg02_mb_68_8190645fc89e.gif": {
+      "size": 4383,
+      "sha256": "0CAFA205428D8183FD94A9B14B998FAF373CD6AAD70835076D175724CFBBD9F7"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep08_dg00_mb_72_3e3fe227930a.gif": {
+      "size": 4509,
+      "sha256": "FEDE4DCD026389A9B342C426AEB80223AA5B53DBBC40CA40DE39DFE2C987C6B2"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep08_dg00_mb_74_ffc724f91110.gif": {
+      "size": 4439,
+      "sha256": "7435AA12C0C489B8BF209527BD6B1DEB3252EFC15E808B4A42F2928261C611A6"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep09_dg02_mb_94_3e78522a4aa2.gif": {
+      "size": 5683,
+      "sha256": "F17F9EDE5A48E3BDC2F71DF9A540C25A5ECD38C7375C5B9D5508B91A93E30311"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep09_ending00_sub_1bfa857a917f.gif": {
+      "size": 7325,
+      "sha256": "535D454F633D0B39AC6CDEA2279D3D0B457DF51D1B97DEC47C792F2A543C9594"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep09_ending02_bm_ff12405de465.gif": {
+      "size": 22234,
+      "sha256": "B1F89CBE0304FB7AF3D7B8601B7F49AEB6E10345EE2E5C6C816DB97FA00D4095"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep10_dg00_m_96_d03b6432d72e.gif": {
+      "size": 3189,
+      "sha256": "2E3406DC3C85781B875578287576A3977D3024DE98AE44572455E0B5FE7FB93B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep10_dg00_m_97_0628fb72bc7d.gif": {
+      "size": 2511,
+      "sha256": "37AF3147B608D41C482D867E37763E10EE12F8146F8AECA3AAE08C3C91920DE1"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep10_dg01_m_102_a2f7640e0bd8.gif": {
+      "size": 6433,
+      "sha256": "61960F604DA9B6CF1820D41BF8EA9FAEEB526FB2B9F9382FD521F85C1A5ECC91"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep10_dg02_m_105_b35d53be41c3.gif": {
+      "size": 4797,
+      "sha256": "DF62C04CFCC2AA3608AF6269353186076C9C7137AD9E37487FEA39EB8DAE06E1"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_bbm_00_00_72cdfd93ae2f.gif": {
+      "size": 19235,
+      "sha256": "636EEED8DBE109BA415B58B80957A4219A9C28E69CB856A7BA0402FBCEE18C5D"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_bbm_02_00_b058657f200f.gif": {
+      "size": 28205,
+      "sha256": "0A5F5D70E64E0CB02272AEB266D17728D6900448F9380B19BB23878CFD04E056"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_dg00_mb_108_1a663631f9e6.gif": {
+      "size": 14995,
+      "sha256": "B26FB6537CC56D781648A7936ABE5E9DB8ED7DD80C05366EAE82E3E3DAB45366"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_dg00_mb_109_01_403dc9a7fa63.gif": {
+      "size": 4898,
+      "sha256": "FCFC6B27D661C507B0EE65A086B2F8A9421995F78DDE496DAADD80E2FDB4883A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_dg00_mb_111_892aa1e78fb2.gif": {
+      "size": 10415,
+      "sha256": "60DAE71FC63C1C150D91164BFDC2D28DD98EA06EB20D4C8B1E4C6F01B2F92C28"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_dg01_mb_115_a07b083cc413.gif": {
+      "size": 37183,
+      "sha256": "8DBA37365EFE5A44B8CD37B0EE16AC4C0743B2A402AC932B22AB7001D73CF82C"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_dg02_mb_118_686e3d60a8f8.gif": {
+      "size": 4895,
+      "sha256": "4A4E4CB76F7DDE3C37E0BFDE2AA4377CD7A641C06EDE2EED07912E0F2FDF30E5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_dg02_mb_119_81950a2d8432.gif": {
+      "size": 15148,
+      "sha256": "EDC22A8C3995E22DD357DB0A474778ADF24002124FD7DD4F7DC4373BA445A100"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_ending00_00_59fc171f1fcb.gif": {
+      "size": 43887,
+      "sha256": "70042A562765BCA8FB4945CCAA6D4A3203AF3D8FA20FB91C1A02BDE65F4EF976"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep11_ending01_u00_123535a594be.gif": {
+      "size": 6562,
+      "sha256": "529A3E1DDD43356D42D9C4D1F1FB99B6C696231DFCB8DF4854402B914B134DEE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep12_dg01_m_123_1494b1ecb6a2.gif": {
+      "size": 5795,
+      "sha256": "FD0096F61BDE6036A1966C1AEEE492105216175E2A98CE981E820E3CAEF5E9EC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep12_dg01_m_123_s_a18d3c109eb5.gif": {
+      "size": 1886,
+      "sha256": "C968C7B892A6E17CACD7E2A98AAEF25329D46707364005E591D66DD827977E63"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep12_dg02_mb_127_522e69864b63.gif": {
+      "size": 8686,
+      "sha256": "09B0A5017906C5863AF41A134DDFD6DAFE7D9600E1AFF1492CB6E684B2ACC7EB"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep12_ending01_f_peller_6d0a446f4c95.gif": {
+      "size": 3399,
+      "sha256": "C5D3591B81290403C36823633597408C82DB1CFF3F2FDD5AD761E25FA1DDFF6B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep12_ending01_r_peller_1a42ad9b8711.gif": {
+      "size": 12778,
+      "sha256": "C666AE8DE6B7BC3CAA1F54BB620177D7792D2FD38A0310CA58DC2EF3DFF9740E"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep12_ending01_torpedo_bbffe02c4815.gif": {
+      "size": 3513,
+      "sha256": "39863ABEBAEFE5BE823D0015DC84BDA2A7C3B2DC1610FA43DB1A08050D263148"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep13_dg00_m_130_3699d5e04c33.gif": {
+      "size": 4965,
+      "sha256": "8C66F05FBF2BD5035B99C3D68830A332F23B4D14EC5F4DC06BFF80347B40CEC2"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep13_dg01_m_132_af4912f6fdf3.gif": {
+      "size": 12158,
+      "sha256": "9FC4FDF9AC2784C2B6066C9DD83EDAE7A86AF41074F72C20E2AC02FBB59F6D2A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep13_dg01_mb_133_00_df41a37aeaf8.gif": {
+      "size": 33456,
+      "sha256": "B06E81FA49515F44CDBE7068EA9BB9EBE1BC4075D2FA014EA7097E4541153E44"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep13_dg01_mb_134_00_3d741fd0caed.gif": {
+      "size": 39888,
+      "sha256": "242E47A890F94193B8FAA670AA096AFB129312C44A635094A5311849FD55ACFF"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep13_dg01_mb_134_01_380301bd172b.gif": {
+      "size": 6254,
+      "sha256": "D845443B5B40F1DA9C7A32E19A591CF4C21EA7A081D1E878195FD8568F2DF842"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep13_ending00_lm01_f_dbf372f5d81e.gif": {
+      "size": 43954,
+      "sha256": "4A05817C195B9BB815BD39CD74485184D2A688690763BB66F02014D1EBB1AAEA"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep13_ending02_bmb_b57b279a4282.gif": {
+      "size": 5298,
+      "sha256": "5AC02D03A7A811D02218F436C69F6DCEB836F91F3610F841C76DAC3BEEBB4ECC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep14_dg01_mb_141_534214ed03db.gif": {
+      "size": 2248,
+      "sha256": "0F7F6E4C00CAC5929E4451ED24A2970AD6D723F2A7BC1F5673DAB052ED4ED83F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep14_dg01_mb_143_01_9e9d1d69eb6d.gif": {
+      "size": 6085,
+      "sha256": "CAD066E2A940FA5A67B6E872059DA8AE1A02C44B65736D442DB1A78EB5B0E7EC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep14_ending01_f40_9b3291ea3304.gif": {
+      "size": 10970,
+      "sha256": "9645499E15E16CAE7EC3402F8911A388B6AB39A21352346CBD8ED3C03C00157A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep15_bbm_a_01_540d52a425ff.gif": {
+      "size": 6217,
+      "sha256": "05B0C8753AF35175DE2FDAB5E3589C8DACD14A806EB99E967836C91F58985D16"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep15_bbm_b_00_510cd69131e1.gif": {
+      "size": 24605,
+      "sha256": "4A7C34889CD70BCB3EA58708A8CB3D4698CC7F083BB50AA330C1768A1AC5B307"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep15_dg00_mb_148_00_0a9b11eb3c32.gif": {
+      "size": 16379,
+      "sha256": "FEC855FEE61566D6915E57B7D42305A380BBC61146C7162DB34FAB54EB2474DD"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep15_dg00_mb_149_01_2c182f11586f.gif": {
+      "size": 27582,
+      "sha256": "2C62F0FF338D0833E1EF74D3417048536370680CA3BEFD9D10FCE2FB44527D33"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep15_dg01_mb_151_01_b61fce01f2a0.gif": {
+      "size": 16192,
+      "sha256": "6E96D6C3C924B78C76749008A1236848DE0E1FF71E59F838954FDA70D46D59BE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep16_bbm_bl01_6f27f828b2b2.gif": {
+      "size": 15067,
+      "sha256": "1E82CC981DC3EF37F11F968570F9B43153C512DDF146B9EC423D4533784DEFE4"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep16_bbm_dr_64_4afd93a3ae27.gif": {
+      "size": 8196,
+      "sha256": "8F1FC7EE9F952D309647D4048A310433D3C76EE54B510B51BEA3CAC24CC10364"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep16_bbm_pl01_0a8b0f8c9bd4.gif": {
+      "size": 13765,
+      "sha256": "F9D5143CEA53A7755DA523434522DAD66950D9F242564851317C3A7DA9830227"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep16_dg00_mb_157boom_8869c978015c.gif": {
+      "size": 1239,
+      "sha256": "A5BCD48627470033FE29EE8972FEC6B29873B1314132BF7D1B89994BD9469850"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep16_dg00_mb_158_00ef_46212751f85b.gif": {
+      "size": 70210,
+      "sha256": "35C3BF338A35079C25205F29E291E47AE07FD92BB132A238838D4CC902F4D049"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep16_dg01_m_159_01ef_b23191aa750a.gif": {
+      "size": 30598,
+      "sha256": "F711F06D12F3F2E30A42B1DC2061F4D05900EA817AB440CA2F239AF263FCE5FE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep16_dg01_mb_161_00_93974534504b.gif": {
+      "size": 39842,
+      "sha256": "FAA467C05CDF656872812DBE97F95785076C853C8EB60474240E00FBA2F15E20"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep16_dg01_mb_161_01ef_8df71707bd23.gif": {
+      "size": 42136,
+      "sha256": "1B0E8DE5600A228A99E9210EADF0A22F9E21DDD8BF80AA6E1CAB3354FCEBCA8A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep16_ending_back_659de952aa54.gif": {
+      "size": 8111,
+      "sha256": "FEF6B7E95D24082E07289E1AC380A6A84A9C2135868FB5F3060D2944B537BAE4"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep17_dg00_mb_163_01ef_7629e6f45770.gif": {
+      "size": 10274,
+      "sha256": "02792D860EC085C6B48881208405C5863539AEF05428D8D550A331BCC855A9E5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep17_dg00_mb_163_01efbm_d88043f87ddd.gif": {
+      "size": 5741,
+      "sha256": "C813D43F3A13238B8B9B39CD5D773EDA31CCCDA259ECB631F24F7C38E52BB756"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep17_dg01_mb_165_01_c4f76ec8237f.gif": {
+      "size": 15156,
+      "sha256": "6C5F8525961CDD151AB226568A43A8269C4AA0C8793D2B23E2E89D9A7AF9CC2B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep17_dg01_mb_166_00smo_8fe1aec73eee.gif": {
+      "size": 100885,
+      "sha256": "A911DA74F62CF641294E6BFE75BD0F4826F3A057B7DFCA174F9E47213AC89A92"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep17_dg01_mb_167_01ef_9f5b6f80f7c4.gif": {
+      "size": 18843,
+      "sha256": "46BB3C80600A39F84042D464F3A5BB8E2B90F2ECA40BB8BAD6D2B881B7AC8502"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep18_bbm01_fairy_80_fbf555598b24.gif": {
+      "size": 16105,
+      "sha256": "B93E9F125D4EF83715F816D3BA14DEE2CEBF7526A2C6360F096CC11F2AD1BDE4"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep18_dg00_m_169_00_08c6116df07f.gif": {
+      "size": 7544,
+      "sha256": "696175FA3AACA56AB5FE1B1F39BFDCE11A94DD254BF91EB03C86403A79B1D447"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep18_dg00_mb_168_00_bb92392bbe04.gif": {
+      "size": 12976,
+      "sha256": "97E967A17EE8755FD775ED83D7E277F75C47D98AAFC4A3584551A93BB872CC4A"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep18_dg00_mb_170_00_76cc398c5e89.gif": {
+      "size": 2261,
+      "sha256": "8BA182121901747229225F484FB5FDBB0F0A5F8E0F7179B449281A78092BDC5F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep18_dg00_mb_170_00pu_bb2ec253495b.gif": {
+      "size": 246751,
+      "sha256": "8C8943D111903F3E519C26D7DCD56D962371771CFB85BE6B035EBE0A8D810CE5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep18_dg01_m_172_00_1b1cdf1979a2.gif": {
+      "size": 13114,
+      "sha256": "89739E6C5E4782E7E56167CDBB413355D656A80F8526F815A54D3C4AC4CEE40F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep19_bbm_bm_rot_b_327eaf948fb0.gif": {
+      "size": 6031,
+      "sha256": "A1B85827785DB245495D2C2280A4EA42D8D8AD8CD77F07BDE0FDE809C825A030"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep19_dg00_mb_174_01_d5732414feb4.gif": {
+      "size": 3672,
+      "sha256": "1649033640DEB0B087CA2FA172019C176D7603D23D6A7FE03994040F1421B3FF"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep19_dg00_mb_175_02ef_3a9c8c02aaec.gif": {
+      "size": 14228,
+      "sha256": "12DCCA033A64E929EA0682D600D6C1664F82200919CB57A92467FEDE4C523783"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep19_dg01_mb_177_00ef_775c7a0b7f59.gif": {
+      "size": 23999,
+      "sha256": "303C46A8D92BF470136D77D72B61CED1D3D0798D358E990B354F9F13B09E22EE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep19_dg01_mb_177_01_6dcf1f874cc1.gif": {
+      "size": 3742,
+      "sha256": "2AC8E8BC7ACA9BAB8BBA618D491D5BE15233215C8D99FEB6B0759E585B9810D5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep20_dg00_m_182_d302c91c020d.gif": {
+      "size": 2857,
+      "sha256": "451CFBF4D91DACA977A9640AFCC7589489642D309F033F1A24CF968CB7937DFE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep20_dg00_mb_180_00_e5c2d966f38a.gif": {
+      "size": 61527,
+      "sha256": "625EDD7FD7FECF16FA96C8490804C961B7E67064DE884CAD99B6E7CDDF514AAC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep20_dg00_mb_181_00_d6b52155116d.gif": {
+      "size": 29596,
+      "sha256": "E665DA5B2251002305A87D4929CA6FDDD47A920BAB203CE106223D1B889EDBDE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep21_dg01_mb_189_ef_01116d8f8bea.gif": {
+      "size": 14037,
+      "sha256": "EE1520E2767B8348393546D88D545DA62286A5948501058EB99CAEEF121BD763"
+    },
+    "gui_launcher/data/previews/projectiles/mis_ep22_bbm_04_03ef_b1756c2f4530.gif": {
+      "size": 146048,
+      "sha256": "16693C529D4A9CBDFACEF4B6B82DF35197C8C9FFF8B1E738482BD674DA12E53E"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mb_41_e03898f94227.gif": {
+      "size": 3736,
+      "sha256": "9E3F6DE7058A70AC61A5621B93DB2D3DEC85E9F4FB4BFC863D967C6FEFD82451"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mb_46_42f1b0dbfb3b.gif": {
+      "size": 9790,
+      "sha256": "B883BAC99153A5611A88BDBD24EFC3901B4BBD1F723EDF6EC0851C9CE1817168"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_bbm_03_00_a839c68284cf.gif": {
+      "size": 28573,
+      "sha256": "2F32728B9D5AC9A65DFC5A36AB37E89B67A9F4951DE09792D6189CCFAA040DF0"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_bbm_03_01_f42c19248dc2.gif": {
+      "size": 4412,
+      "sha256": "80163946B821BD2856C340F31359FD907BC7AEBAF842B0C260E11B6C2DD0E2A8"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_m_09_1_170dcca0db6c.gif": {
+      "size": 4097,
+      "sha256": "901DB5D321D28ED5B817789FBC59508F1A6EA01C03DD7E2A743806A1E2D93BE9"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_m_13_01_6dc90aa700da.gif": {
+      "size": 5768,
+      "sha256": "99C0BC5A026346A8B5AF86DD253143E8ABB2FA9357239B3EC84A00CE28E06AAA"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_m_15_01_b05d7b78b581.gif": {
+      "size": 2652,
+      "sha256": "12B8C6E37C9C9F08001C988E1278568F312AFF4436B27A69014BF97759CBCA17"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_m_17_01_79de0e4abf28.gif": {
+      "size": 5156,
+      "sha256": "B49BBB4F5C8ED5226F64CB2A52E438049458ACEDC1D57CD80C75C12BA2C7C2DA"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_m_21_01_5855dba7b4c9.gif": {
+      "size": 7174,
+      "sha256": "94E6E2522FC0D11657890B1353CFF0B01C613E98D81E6BB21DDAF322BC861863"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_m_33_ecb72d37feca.gif": {
+      "size": 11470,
+      "sha256": "1654BB0FA3130A05B6A5EAFE2463CB5E53A9D5F7A1739A3B86F5CC1F64CF2721"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_m_46_00lm_13bc7b1e6398.gif": {
+      "size": 6158,
+      "sha256": "FCD4060476B18085B2F00177DF1AF63D22D1E6D79ABB958B6E9DB42F7428D0BC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_m_47_00lm_a0b26ce1a856.gif": {
+      "size": 6158,
+      "sha256": "FCD4060476B18085B2F00177DF1AF63D22D1E6D79ABB958B6E9DB42F7428D0BC"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_01_ef_00_70160be24938.gif": {
+      "size": 14295,
+      "sha256": "50BBBEAB62EBCA715DC50BFEB2C5C4A45199F04724C6ABE734BC529F5A29ABAE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_04_8060890a9e29.gif": {
+      "size": 3961,
+      "sha256": "6672374AD7914E490E5E30DEF01423394E74DADDC8CAD2FC0F38D1C208D2D324"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_08_01_07a7581cf499.gif": {
+      "size": 9560,
+      "sha256": "C7102065D49E3773D4450C9A8D2826DB10AF2979FAF3893D4DE527BE73BC9E07"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_08_u_93f27be6e2e9.gif": {
+      "size": 11603,
+      "sha256": "F6A8C38662B8C7D042F42756D18C32F75622617E2FD87EE682CB95C90E14BAF5"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_09_7e4906cc6d71.gif": {
+      "size": 14107,
+      "sha256": "BB8921D760B5571C90B5D79FBE631E30FF96A6B68C83D4A9C179FF82CB5759BE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_12_01_a2245cf6389e.gif": {
+      "size": 21115,
+      "sha256": "8CEF403151D1C28C508733129DFB98EAC0F68CEB3ACBF563A1E1A61039DD3A8F"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_15_01_fb3b3eb519f9.gif": {
+      "size": 2964,
+      "sha256": "F4E450C6B07C64342844E56BBD3685E40673847134D1F2FEE638636D87B5DFE7"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_16_812143e0c264.gif": {
+      "size": 30288,
+      "sha256": "3A322A2A9FFF67DE771F1D7C443647433BA2BCA4A9624A28677CF8829D888991"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_17_a938b0c6be8f.gif": {
+      "size": 3303,
+      "sha256": "1A35E9225670D46441F06C0A2371041CFEEC8E2A61D4D6BDCF5AA66B2376DB5D"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_26_01_e97f91987f34.gif": {
+      "size": 7421,
+      "sha256": "4FA7DBEABA83B0288285EED432C4850604AB3DC939C6DEB6253C5B2AB791B985"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_28_02_09905eeb5691.gif": {
+      "size": 17779,
+      "sha256": "FAF0242BC742B2C7DABEA43AB92867E6EE84A085080926A4C4168F118C50D04B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_30_b_u_4e8c19f911d6.gif": {
+      "size": 3695,
+      "sha256": "ADD54467F81434F5F303B373FFA90A1C1D41D20E09DFF18BCFF7BC19A75A04ED"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_30_u_8744e135070b.gif": {
+      "size": 3714,
+      "sha256": "5E73E2F9B9718DC389B79CBC6E841C4A229EA6EC6AE2913B64E52CAE5A54C2DE"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_33_00_6cbe7ee6fd04.gif": {
+      "size": 6444,
+      "sha256": "A61923A753EF2580FE799D82182C54B3F799FE5E45FCB54BE9DBA70A58E0A963"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_34_93b605337c7b.gif": {
+      "size": 4633,
+      "sha256": "9A00427FE9C5BDF728FAE1B2E2E55DC7935FD55372CBB8D08EE13C4D59BA2A7B"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_37_01_6524faaa5a1d.gif": {
+      "size": 6163,
+      "sha256": "3F86AE9B97D9E5D65C3889E38CE0B8C7866195044ED1119A0D486727721AF399"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_mb_38new_15f4d97b20b3.gif": {
+      "size": 5356,
+      "sha256": "329C5C84CDD2CCD7837D00FACEBEAD1E36484FD5F647B9916837D5920231BA69"
+    },
+    "gui_launcher/data/previews/projectiles/mis_mon_om_03_00_6e5f1c8668bd.gif": {
+      "size": 33860,
+      "sha256": "39596598DF7881A450DA838CE166C06081A0A46260850881577B74B029F4133B"
+    },
+    "gui_launcher/data/previews/projectiles/miss_9016_pw_t_23764609fed8.gif": {
+      "size": 26024,
+      "sha256": "B7C23E26B360E4D54786E826E0B0C0A6A4856441491AFDE343166EC13901E44A"
+    },
+    "gui_launcher/data/previews/projectiles/miss_9040_pw_t_9040daa34576.gif": {
+      "size": 39079,
+      "sha256": "E01BCEFD862B5DE4CFDD9E72414FA4362C48B10DEB44448B5A96905214DB6599"
+    },
+    "gui_launcher/data/previews/projectiles/miss_9044_pw_t_c70e957f1880.gif": {
+      "size": 13523,
+      "sha256": "0C8B50C9E65AEFFFE262D247ED4B05A285F424653BD6A7DE001153F23BB96E9B"
+    },
+    "gui_launcher/data/previews/projectiles/miss_9045_pw_t_b73b8613b091.gif": {
+      "size": 8504,
+      "sha256": "3AD5A6B80DE9ECCDDB7CC16BE62A9DA83EB5CA28D34D8960D6927ED21FB9DF88"
+    },
+    "gui_launcher/data/previews/projectiles/miss_9088_pw_t_60876cb1bb0f.gif": {
+      "size": 17005,
+      "sha256": "50F68661EE67128CA4B698F40B9238364C7B37EA9321A852B255877126EA7F59"
+    },
+    "gui_launcher/data/previews/projectiles/miss_9101_pw_t_2bcc6d8da613.gif": {
+      "size": 29974,
+      "sha256": "5918B0B1AB8790DE95C7A15C56FFAAF09B0D2421799004C650612EDF3F81D9F5"
+    },
+    "gui_launcher/data/previews/projectiles/mon_d_05_dbaf42da7551.gif": {
+      "size": 27739,
+      "sha256": "E84BE35CE4A157AFE19D69D27CF63614A9CA2CAFDD68D6E69B9C3BEF9730032A"
+    },
+    "gui_launcher/data/previews/projectiles/mon_d_18_9934dc1af076.gif": {
+      "size": 15553,
+      "sha256": "AC8CE41795F7CD3E510308195B86851C7CC4B1C5D08CADE4E35E6CCB65B790DA"
+    },
+    "gui_launcher/data/previews/projectiles/mon_m_01_1_a66dad7b4a3b.gif": {
+      "size": 30346,
+      "sha256": "BB305C6F50F244161857DCB9FD312677FF191C0AE58B377C6CF82921C6638541"
+    },
+    "gui_launcher/data/previews/projectiles/mon_m_05_1_0291a40c2702.gif": {
+      "size": 27688,
+      "sha256": "72A70A7CCAD5B7C0922FAACA791F8FF567A33332A8FC5B932125B20E7D1E090E"
+    },
+    "gui_launcher/data/previews/projectiles/mon_m_08_1_2bfda68c3c22.gif": {
+      "size": 21403,
+      "sha256": "7A9403B9C0E5174C308B52E30D67A18ECF09004F50C4F4E25BD49984B743AC5F"
+    },
+    "gui_launcher/data/previews/projectiles/mon_m_10_1_89ab4c5ad024.gif": {
+      "size": 24856,
+      "sha256": "7F5B1FC9F4A0E84064CB52B4F183BDA01C9C469E61DC38B765D0429726F57D2D"
+    },
+    "gui_launcher/data/previews/projectiles/mon_mb_01_1_e24702ff5a3d.gif": {
+      "size": 76182,
+      "sha256": "D2B395720DF689B50CAB142F91D328C81FE078C961DA2A0448C83225A7689772"
+    },
+    "gui_launcher/data/previews/projectiles/mon_mb_05_1_863861314dad.gif": {
+      "size": 92313,
+      "sha256": "B6322F53B3833A267561B0BC235888FB03713904E7087D4BBB14A3BA97801A30"
+    },
+    "gui_launcher/data/previews/projectiles/mon_mb_08_1_2c6e2e558c5e.gif": {
+      "size": 42804,
+      "sha256": "DA769F93524526A4B2D03BD305F96C5A19F4FB9C8070C5A324014963765F4F8D"
+    },
+    "gui_launcher/data/previews/projectiles/mon_mb_09_1_735f7f768743.gif": {
+      "size": 80239,
+      "sha256": "F6E0343EEE09919DDE03B4B4276C4A5CF7F00555F02C663CDB2838A7F4EE315C"
+    },
+    "gui_launcher/data/previews/projectiles/mon_mb_10_1_8cd2a8eadff5.gif": {
+      "size": 45164,
+      "sha256": "E753E5A667C11167D99BBE5E1FE012EA94377E49CCBB8617CFFFE40EC31CBF75"
+    },
+    "gui_launcher/data/previews/projectiles/pvp_mis_00_e88f6114a6b3.gif": {
+      "size": 6533,
+      "sha256": "0F243AC963B4A10F4889C3B45FC233666627B996B7DA52C7BBF99E85F82D1265"
+    },
+    "gui_launcher/data/previews/projectiles/skill_bm_b_blzz_1c28291e685b.gif": {
+      "size": 77454,
+      "sha256": "296C418BF7F6386759712C4CBBB4E051FE14F0429730AFECC5134AD066EE8B07"
+    },
+    "gui_launcher/data/previews/projectiles/skill_bm_rose_def454255ad4.gif": {
+      "size": 7115,
+      "sha256": "9FC54269BB5B032C9A2D789C169C3CB41D855EB78F6B385A4BEDE66272418A4F"
+    },
+    "gui_launcher/data/previews/projectiles/skill_bm_up_thr00_14792318de97.gif": {
+      "size": 35314,
+      "sha256": "AFD0CE063856FF19E608062228ACE6C84A22AB90E6014F31F22108E2A1ED2134"
+    },
+    "gui_launcher/data/previews/projectiles/skill_bm_windrr00_95b0b65ea9fc.gif": {
+      "size": 20222,
+      "sha256": "37E336BA4DCEC9C0895D153AA79A1453A392176E69D66E79B5B0B13D1B29BF5F"
+    },
+    "gui_launcher/data/previews/projectiles/ssky_pvp_item_mine_sk_007b828278f9.gif": {
+      "size": 13291,
+      "sha256": "B1A1A999AE72329EE2849F30CDEBD689B1E64AB49B788388BAD6E54338552FF5"
+    },
+    "gui_launcher/data/projectile_aliases.json": {
+      "size": 475,
+      "sha256": "13FDB2F18E705559AC66F7CDE4E9D107274ED4FA79D6964DA3CFF1770E3A3218"
+    },
+    "gui_launcher/data/projectiles.json": {
+      "size": 2161094,
+      "sha256": "0165E2909D3EF04F22BA32350CED427EE7D43A90477F9B83E58EC1B202CDA154"
     },
     "gui_launcher/inventory_admin_gui.ps1": {
       "size": 35959,
@@ -972,8 +3039,16 @@
       "sha256": "6573E9A691137AABB29C28B0B2CC6A2F2A4476EA6EAD3613E1F9ADB1591827AC"
     },
     "gui_launcher/nanaimo_launcher.ps1": {
-      "size": 151727,
-      "sha256": "C318C1FE24947F17EFFA0CECA700BFDA8AED900F8D87DE91D211381D8D31904A"
+      "size": 153254,
+      "sha256": "DFA4DBDDDE16A29A379BF3F1B7480367317F53A3A2E29EF7FB841A83238C8FBC"
+    },
+    "gui_launcher/projectile_browser.ps1": {
+      "size": 11534,
+      "sha256": "742714A008248DC1C6AEFF3FE9F48C761280A4610A65D42C37CE8BBA7798B536"
+    },
+    "gui_launcher/projectile_resources.cs": {
+      "size": 6477,
+      "sha256": "CF6978850716D868206E55BCFEDDE7667201BB85D8501312A3D6AA1CDE12AEDE"
     },
     "gui_launcher/resource_patches/superboss_projectile_alias.json": {
       "size": 1361,
@@ -984,12 +3059,12 @@
       "sha256": "49914ACBA1F40F1139E80F2F27E788AA895372A1D0C90DAFF62D141569BD11E1"
     },
     "manifest/hero_dragon_resources.json": {
-      "size": 14498,
-      "sha256": "BBB60393D63CC94F6AB296FE85DB963639780E10C2BD4FFA83B503E981A4F79C"
+      "size": 14880,
+      "sha256": "1444381007489D2DDE69A271F158F184D1A4C558F6147599A449CD122213E697"
     },
     "manifest/korean_pet_resources.json": {
-      "size": 714845,
-      "sha256": "1F5BB7332DBB015D217CD7F44D36AA203CC8EAD47794E6559DF8F904BE368A84"
+      "size": 718903,
+      "sha256": "AA3C7CD682366676719FBF6916029B96EBFE2468CF51C23B4A094DADD11774DB"
     },
     "manifest/lumineos_combat.json": {
       "size": 59897,
@@ -1003,9 +3078,29 @@
       "size": 10911,
       "sha256": "DD6A266D28214DA42075E35B81E7E1D5EC80A4544056CA4854270F4529EB67FA"
     },
+    "manifest/projectile_diy_patch.json": {
+      "size": 34355,
+      "sha256": "29AAF2DA2E9BA3FFD1CB457FC1B6C5DBADBF32F9746037888A3EE87536C3DA0C"
+    },
     "scripts/apartment_exterior_panel.py": {
       "size": 17446,
       "sha256": "1F2013880AE0079F1D529B27BFB41C0FFD153962C1BB48B424D19A0E533E6E77"
+    },
+    "scripts/assets/projectile/basketball.im3": {
+      "size": 46380,
+      "sha256": "7E287FE9424B5812107C383812145C957AD03551DE9D013588DDD6A696277866"
+    },
+    "scripts/assets/projectile/basketball.png": {
+      "size": 2162,
+      "sha256": "3D70FDF43F54819A979EB096E3186B2E15B91338DA825C0C4A8EA976EBE8C38E"
+    },
+    "scripts/assets/projectile/basketball_animation.json": {
+      "size": 347,
+      "sha256": "C01BD3DBC5463D00F5C3F44E4C4EF2BD2DF144387D1F206B7D0D2D409AA05BFB"
+    },
+    "scripts/assets/projectile/basketball_spin.png": {
+      "size": 52808,
+      "sha256": "C54CD42E98FC654408C6DA21D1663D5A05C8594CD2CBA404D7AE3D03B47DF240"
     },
     "scripts/deploy_lumineos_release.py": {
       "size": 7395,
@@ -1040,8 +3135,8 @@
       "sha256": "0B80CED3BFF996FFA24619516B104776F659C09193332D0B7B88A3386122DF05"
     },
     "scripts/prepare_client_compatibility.py": {
-      "size": 69307,
-      "sha256": "EDC0746A07A7DB4FA79A31CC29FF48AD79A6946AF1C34BD0A6FCAC76582B3AD9"
+      "size": 71943,
+      "sha256": "22F0CABC59831B3CE971E3014A8D2B6BB235C7028AF1D83CF37D6F7195F18C5F"
     },
     "scripts/prepare_entertainment_resources.py": {
       "size": 3024,
@@ -1054,6 +3149,10 @@
     "scripts/prepare_korean_pets.py": {
       "size": 12046,
       "sha256": "882FCAF9F3998C09EEA856EB0BE29E508222223F131810B4FACFDC0BA5321075"
+    },
+    "scripts/prepare_projectile_diy.ps1": {
+      "size": 6809,
+      "sha256": "C39201979F023102B0D62C1BFAD95497DCFE870B020D97E79342B0ADBBBFC242"
     },
     "scripts/verify_client_baseline.py": {
       "size": 3062,
@@ -1100,28 +3199,28 @@
       "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
     },
     "adapter_runtime/Nanaimo.Adapter.dll": {
-      "size": 1453056,
-      "sha256": "F33265B2FF132B7538A45DFA846B6F11EAB31B65D3A35B1D174DCB3AA792CF33"
+      "size": 1457664,
+      "sha256": "9EADA52BD1E909C7C22E0861D07F071C08A74B365718F64B117163F2F0A9AAEB"
     },
     "adapter_runtime/Nanaimo.Adapter.exe": {
       "size": 151552,
-      "sha256": "64C83F7A5EA6C690D1E0FC11987CF5085B1CE7561F08E338680FFFF80CEC8C54"
+      "sha256": "991F6B25FC27135F5343AB1124CA72521B903839AC287B6B7C2271958CFC14B9"
     },
     "adapter_runtime/Nanaimo.Adapter.pdb": {
-      "size": 211264,
-      "sha256": "801063C6144E3FB06A80F48A6F932B6DEABFDDD993F98B79BE408D69BD616AA9"
+      "size": 211756,
+      "sha256": "83D9AB69C6EF58FFB5994439C5FC73A04DC85E84E859A7DBED31CB223B89DAA9"
     },
     "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
       "size": 372,
       "sha256": "D7A0BECA53834E0A387B9E5083BD1DADF5BEE565B48595A9D4CB457D15726C78"
     },
     "adapter_runtime/Nanaimo.Gameplay.dll": {
-      "size": 5157376,
-      "sha256": "A33387C6CD385F02587818082B1E84EAB08DFA150874EC6CE96E4CA35BB0BF82"
+      "size": 5178368,
+      "sha256": "CA1338D92AFA3BE5B97A4617C94F08CD4F84544DB43C4EDDCC6EF5C36A369885"
     },
     "adapter_runtime/Nanaimo.Gameplay.pdb": {
-      "size": 515228,
-      "sha256": "3DF5CF0ED28A3B4E5DEF8BCFD2D462224D92E24BC30F01A2194DF9151CA70858"
+      "size": 519300,
+      "sha256": "6A2E75759A7130F8AA486DD7A537CE903642A489336DC0840FB8951721ED9D80"
     },
     "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
       "size": 5120,
@@ -1785,7 +3884,7 @@
     },
     "adapter_runtime/adapter_manifest.json": {
       "size": 52662,
-      "sha256": "8AB3125FB2C9B1E036F0B21E2BEE9C7CC48496B2405EE6E2B142D4CC81489C83"
+      "sha256": "AA02D36B67500142E8FC29A329E03DD19FDCD79BE8632A741BF1DF04E47B1D51"
     },
     "adapter_runtime/clretwrc.dll": {
       "size": 310568,
@@ -1844,8 +3943,8 @@
       "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
     },
     "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-      "size": 20424704,
-      "sha256": "904381AC7260DEC1793F2C3270CA01208C4975BEBCD8D02A6F834DADFE30D9F9"
+      "size": 20426752,
+      "sha256": "D1289EF42740EDAA846A3ABEA03E85A1B8C92C4875869C7DBAE950931B3B2C99"
     },
     "adapter_runtime/netstandard.dll": {
       "size": 100648,
@@ -1937,10 +4036,10 @@
     },
     "adapter_runtime/资源/数据/pi._D7": {
       "size": 550320,
-      "sha256": "6497CD2E6C0351B5FC859CED8817955E4E3FDE829F8B6C6DC365FB7C61D32372"
+      "sha256": "514580CC90959B9194A53317870D5D5A7EA0814EAD9CA67C379491D5A000598E"
     }
   },
-  "source_closure_count": 311,
+  "source_closure_count": 313,
   "public_export_policy": {
     "mode": "explicit-reviewed-allowlist-only",
     "exclude_private_profiles_states_logs_backups": true,

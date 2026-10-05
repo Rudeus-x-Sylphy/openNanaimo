@@ -128,7 +128,7 @@ internal static class DungeonRankingChecks
             Check(!NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF73)
-                && NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
+                && !NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(
                     awaitingAction: true, nextTransitionAuthorized: false, townTransitionAuthorized: false,
                     deathLatched: true, opcode: 0xCF1D)
                 && NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(

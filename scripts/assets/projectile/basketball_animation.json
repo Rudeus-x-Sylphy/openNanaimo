@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "frames": 16,
+  "cell": [
+    48,
+    48
+  ],
+  "sheet": [
+    48,
+    768
+  ],
+  "layout": "vertical",
+  "preview_ms": 80,
+  "animation": "3D surface seams; fixed lighting; native frame track",
+  "runtime_acceptance": false,
+  "im3_sha256": "7E287FE9424B5812107C383812145C957AD03551DE9D013588DDD6A696277866"
+}

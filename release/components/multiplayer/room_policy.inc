@@ -179,8 +179,11 @@ static void teamplay_start_set_map(unsigned hd,unsigned episode,unsigned dungeon
     g_teamplay_start_dungeon=dungeon;g_teamplay_start_difficulty=difficulty;
 }
 static unsigned g_teamplay_cf7f_arrived[MULTI_MAX_PLAYERS];
+static unsigned g_teamplay_preload_delivered[MULTI_MAX_PLAYERS];
 static int g_teamplay_start_released=1;
 static int g_teamplay_settlement_broadcasted=0;
+static unsigned g_teamplay_failure_order[MULTI_MAX_PLAYERS];
+static unsigned g_teamplay_personal_result_order[MULTI_MAX_PLAYERS];
 static int g_teamplay_battle_initialized=0;
 static unsigned g_teamplay_final_request_low[MULTI_MAX_PLAYERS];
 static int teamplay_start_all_arrived(void){int i,seen=0;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){seen=1;if(g_teamplay_cf7f_arrived[i]!=g_teamplay_start_epoch)return 0;}return seen;}
@@ -196,6 +199,7 @@ static void teamplay_start_reset_current(void){
     if(idx==multiplayer_room_owner_index()){
         g_teamplay_start_epoch=0u;g_teamplay_start_released=0;g_teamplay_battle_initialized=0;
         memset(g_teamplay_cf7f_arrived,0,sizeof(g_teamplay_cf7f_arrived));
+    memset(g_teamplay_preload_delivered,0,sizeof(g_teamplay_preload_delivered));
         memset(g_multi_start_profile_pending,0,sizeof(g_multi_start_profile_pending));
     }
 }
@@ -203,7 +207,10 @@ static void teamplay_start_seed_epoch(unsigned epoch,unsigned real_stage,unsigne
     g_teamplay_start_epoch=epoch?epoch:1u;g_teamplay_start_tick=tickms();
     g_teamplay_start_real_stage=real_stage;g_teamplay_start_show_stage=show_stage;g_teamplay_start_slot=slot;
     g_teamplay_start_released=0;g_teamplay_settlement_broadcasted=0;g_teamplay_battle_initialized=0;
+    memset(g_teamplay_failure_order,0,sizeof(g_teamplay_failure_order));
+    memset(g_teamplay_personal_result_order,0,sizeof(g_teamplay_personal_result_order));
     memset(g_teamplay_cf7f_arrived,0,sizeof(g_teamplay_cf7f_arrived));
+    memset(g_teamplay_preload_delivered,0,sizeof(g_teamplay_preload_delivered));
 }
 #if TEAMPLAY_FEATURE_CFDA_ROOM_ACTOR_VECTOR
 static void teamplay_send_cfda_room_actor_vector_current(SOCKET c){
@@ -243,9 +250,24 @@ static void teamplay_preload_members_on_owner_cfeb(unsigned real_stage,unsigned 
     for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){
         members++;g_multi_conn[i].real_stage=real_stage;g_multi_conn[i].show_stage=show_stage;g_multi_conn[i].slot=slot;g_multi_conn[i].start_tick=g_teamplay_start_tick;
         if(i==owner){g_multi_start_profile_pending[i]=0u;continue;}
-        g_multi_start_profile_pending[i]=epoch;multi_switch_to(i,src);send_cfec_room_profile(g_multi_conn[i].socket,real_stage,show_stage,slot);multi_switch_back(src,i);
+        g_teamplay_preload_delivered[i]=epoch;g_multi_start_profile_pending[i]=epoch;multi_switch_to(i,src);send_cfec_room_profile(g_multi_conn[i].socket,real_stage,show_stage,slot);multi_switch_back(src,i);
     }
     printf("  [MULTI_START] ROOM_PHASE_POLICY owner-CFEB uid=%u epoch=%u tick=%u members=%d -> members preload_CFEC before owner loading\n",g_multi_conn[src].uid,epoch,g_teamplay_start_tick,members);fflush(0);
+}
+/* CF70 can arrive after the owner has prepared the map. Deliver the same
+   pending preload once, before this member can join the final start barrier. */
+static void teamplay_preload_late_member_current(void){
+    int src=g_multi_current;
+    if(src<0||!g_teamplay_start_epoch||g_teamplay_start_released
+        ||src==multiplayer_room_owner_index()||!g_multi_conn[src].room_active
+        ||g_teamplay_preload_delivered[src]==g_teamplay_start_epoch
+        ||g_teamplay_cf7f_arrived[src]==g_teamplay_start_epoch)return;
+    g_multi_conn[src].real_stage=g_teamplay_start_real_stage;
+    g_multi_conn[src].show_stage=g_teamplay_start_show_stage;
+    g_multi_conn[src].slot=g_teamplay_start_slot;
+    g_multi_start_profile_pending[src]=g_teamplay_start_epoch;
+    g_teamplay_preload_delivered[src]=g_teamplay_start_epoch;
+    send_cfec_room_profile(g_multi_conn[src].socket,g_teamplay_start_real_stage,g_teamplay_start_show_stage,g_teamplay_start_slot);
 }
 static void teamplay_broadcast_start(unsigned real_stage,unsigned show_stage,unsigned slot){
 #if TEAMPLAY_FEATURE_START_BARRIER
@@ -265,7 +287,7 @@ static void teamplay_broadcast_start(unsigned real_stage,unsigned show_stage,uns
     for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){
         members++;g_multi_conn[i].real_stage=real_stage;g_multi_conn[i].show_stage=show_stage;g_multi_conn[i].slot=slot;g_multi_conn[i].start_tick=g_teamplay_start_tick;
         if(i==owner){g_multi_start_profile_pending[i]=0u;send_cf80_start(g_multi_conn[i].socket);continue;}
-        if(g_multi_start_profile_pending[i]!=epoch){g_multi_start_profile_pending[i]=epoch;multi_switch_to(i,src);send_cfec_room_profile(g_multi_conn[i].socket,real_stage,show_stage,slot);multi_switch_back(src,i);}
+        if(g_multi_start_profile_pending[i]!=epoch){g_teamplay_preload_delivered[i]=epoch;g_multi_start_profile_pending[i]=epoch;multi_switch_to(i,src);send_cfec_room_profile(g_multi_conn[i].socket,real_stage,show_stage,slot);multi_switch_back(src,i);}
     }
     printf("  [MULTI_START] ROOM_MEMBER_POLICY owner=%u epoch=%u tick=%u members=%d owner_final_CF80=sent members=preload_CFEC stage=%u/%u slot=%u\n",g_multi_conn[src].uid,epoch,g_teamplay_start_tick,members,real_stage,show_stage,slot);fflush(0);if(members<=1)teamplay_start_mark_all_released();
 #endif
@@ -283,11 +305,27 @@ static void teamplay_start_member_cf7f(void){
 
 #else
 static void teamplay_start_release_owner(void){int owner=multiplayer_room_owner_index(),src=g_multi_current;if(g_teamplay_start_released||owner<0)return;multi_switch_to(owner,src);send_cf80_start(g_multi_conn[owner].socket);multi_switch_back(src,owner);g_teamplay_start_released=1;printf("  [MULTI_BARRIER] release owner uid=%u epoch=%u all_cf7f=1\n",g_multi_conn[owner].uid,g_teamplay_start_epoch);fflush(0);}
+/* CF70 can arrive after the owner has prepared the map. Deliver the same
+   pending preload once, before this member can join the final start barrier. */
+static void teamplay_preload_late_member_current(void){
+    int src=g_multi_current;
+    if(src<0||!g_teamplay_start_epoch||g_teamplay_start_released
+        ||src==multiplayer_room_owner_index()||!g_multi_conn[src].room_active
+        ||g_teamplay_preload_delivered[src]==g_teamplay_start_epoch
+        ||g_teamplay_cf7f_arrived[src]==g_teamplay_start_epoch)return;
+    g_multi_conn[src].real_stage=g_teamplay_start_real_stage;
+    g_multi_conn[src].show_stage=g_teamplay_start_show_stage;
+    g_multi_conn[src].slot=g_teamplay_start_slot;
+    g_multi_start_profile_pending[src]=g_teamplay_start_epoch;
+    g_teamplay_preload_delivered[src]=g_teamplay_start_epoch;
+    send_cfec_room_profile(g_multi_conn[src].socket,g_teamplay_start_real_stage,g_teamplay_start_show_stage,g_teamplay_start_slot);
+}
 static void teamplay_broadcast_start(unsigned real_stage,unsigned show_stage,unsigned slot){
 #if TEAMPLAY_FEATURE_START_BARRIER
     int i,src=g_multi_current,owner=multiplayer_room_owner_index(),members=0;unsigned epoch;
-    if(src<0)return;epoch=++g_multi_start_push_serial;if(!epoch)epoch=++g_multi_start_push_serial;g_teamplay_start_epoch=epoch;g_teamplay_start_released=0;memset(g_teamplay_cf7f_arrived,0,sizeof(g_teamplay_cf7f_arrived));g_teamplay_cf7f_arrived[src]=epoch;
-    for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){members++;g_multi_conn[i].real_stage=real_stage;g_multi_conn[i].show_stage=show_stage;g_multi_conn[i].slot=slot;if(i==owner){g_multi_start_profile_pending[i]=0u;continue;}g_multi_start_profile_pending[i]=epoch;multi_switch_to(i,src);send_cfec_room_profile(g_multi_conn[i].socket,real_stage,show_stage,slot);multi_switch_back(src,i);}
+    if(src<0)return;epoch=++g_multi_start_push_serial;if(!epoch)epoch=++g_multi_start_push_serial;g_teamplay_start_epoch=epoch;g_teamplay_start_released=0;memset(g_teamplay_cf7f_arrived,0,sizeof(g_teamplay_cf7f_arrived));
+    memset(g_teamplay_preload_delivered,0,sizeof(g_teamplay_preload_delivered));g_teamplay_cf7f_arrived[src]=epoch;
+    for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){members++;g_multi_conn[i].real_stage=real_stage;g_multi_conn[i].show_stage=show_stage;g_multi_conn[i].slot=slot;if(i==owner){g_multi_start_profile_pending[i]=0u;continue;}g_teamplay_preload_delivered[i]=epoch;g_multi_start_profile_pending[i]=epoch;multi_switch_to(i,src);send_cfec_room_profile(g_multi_conn[i].socket,real_stage,show_stage,slot);multi_switch_back(src,i);}
     printf("  [MULTI_BARRIER] owner=%u epoch=%u members=%d stage=%u/%u slot=%u owner_cf80=WITHHELD\n",g_multi_conn[src].uid,epoch,members,real_stage,show_stage,slot);fflush(0);if(members<=1)teamplay_start_release_owner();
 #else
     multiplayer_broadcast_start_room_start_base_legacy(real_stage,show_stage,slot);
@@ -324,7 +362,26 @@ static void teamplay_room_leave_current(void){
 }
 static int teamplay_room_member_count(void){int i,n=0;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active)n++;return n;}
 static void teamplay_send_cf88_room(SOCKET c,unsigned total_score,int variant){
-    /* Each member enters settlement independently and commits its own result. */
+    int src=g_multi_current,i,count=0,alive=0;
+    if(src>=0&&g_teamplay_failure_order[src]==g_multi_conn[src].join_order)return;
+    /* The last participant's failure request also finishes dead viewers.
+       A surviving teammate retains its independent revival/result boundary. */
+    if(variant==1&&src>=0){
+        for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){
+            count++;if(i==src?g_profile_hp_current:g_multi_conn[i].profile.hp_current)alive++;
+        }
+        if(count>1&&!alive){
+            for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){
+                g_teamplay_failure_order[i]=g_multi_conn[i].join_order;
+                if(g_teamplay_personal_result_order[i]!=g_multi_conn[i].join_order){
+                    multi_switch_to(i,src);send_cf88_playable_noexp(g_multi_conn[i].socket,total_score);multi_switch_back(src,i);
+                    g_teamplay_personal_result_order[i]=g_multi_conn[i].join_order;
+                }
+            }
+            g_teamplay_settlement_broadcasted=1;return;
+        }
+    }
+    if(src>=0)g_teamplay_personal_result_order[src]=g_multi_conn[src].join_order;
     if(variant==0)send_cf88_playable(c,total_score);
     else if(variant==1)send_cf88_playable_noexp(c,total_score);
     else send_cf88_pve_settlement(c,total_score);

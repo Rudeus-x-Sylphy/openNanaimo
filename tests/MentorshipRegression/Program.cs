@@ -52,6 +52,7 @@ internal static partial class Program
                         Console.WriteLine($"COURSE_RESOURCE {quest.QuestId} {objective.ObjectiveId} {objective.Name} {episode}/{dungeonBit}/{pet}");
             return;
         }
+        await CheckNativeMentorshipAsync();
         await CheckProductionMentorshipAsync();
         await CheckGameplayReviewAsync();
         CheckContracts();
@@ -340,8 +341,8 @@ internal static partial class Program
         var list = (await Dispatch(f, student, MentorProtocol.ListRequestOpcode, new byte[4]))!;
         Check(list.Length == 36 && BinaryPrimitives.ReadUInt32LittleEndian(list.AsSpan(12)) == 1,
             "second player receives the same-channel advertiser");
-        Check(BinaryPrimitives.ReadUInt16LittleEndian(list.AsSpan(18)) == WireIdentityAllocator.GetSceneEntityId(Character(teacher).Id),
-            "second player receives the teacher scene identity");
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(list.AsSpan(18)) == 0,
+            "advertisement shows the teacher graduation count");
         var visitorList = (await Dispatch(f, f.Visitor, MentorProtocol.ListRequestOpcode, new byte[4]))!;
         Check(visitorList.Length == 16 && BinaryPrimitives.ReadUInt32LittleEndian(visitorList.AsSpan(12)) == 0,
             "other channels do not expose advertisements");
@@ -369,8 +370,8 @@ internal static partial class Program
             "shared relationship dispatch never creates a mentorship request");
         Check(await Dispatch(f, teacher, MentorProtocol.CreateSchoolingRoomRequestOpcode, [0]) is null,
             "schooling entry requires the established empty request");
-        Check((await Dispatch(f, teacher, MentorProtocol.CreateSchoolingRoomRequestOpcode, []))!.Length == 10,
-            "schooling entry applies the teacher qualification gate");
+        Check((await Dispatch(f, teacher, MentorProtocol.CreateSchoolingRoomRequestOpcode, []))!.Length == 288,
+            "schooling profile includes the full relation and character layout");
     }
 
     private static async Task<MentorshipRelationRecord> EstablishAsync(Fixture f, MentorshipDirection direction)

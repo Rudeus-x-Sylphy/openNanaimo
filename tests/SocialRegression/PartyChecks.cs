@@ -6,7 +6,11 @@ internal static partial class Program
     private static async Task CheckPartyAsync(Fixture fixture)
     {
         Broadcasts(fixture.First).Clear();
-        var invitation = new byte[24];
+        Character(fixture.First).Level = 37;
+        Character(fixture.First).DungeonGrade = 8;
+        Character(fixture.Second).Level = 12;
+        Character(fixture.Second).DungeonGrade = 3;
+        var invitation = new byte[24]; invitation[20] = 99;
         PrivateChatProtocol.WriteText(invitation.AsSpan(0, 16), "Forged");
         var ownerUid = WireIdentityAllocator.GetSceneEntityId(Character(fixture.First).Id);
         BinaryPrimitives.WriteUInt16LittleEndian(invitation.AsSpan(16), ownerUid);
@@ -21,6 +25,49 @@ internal static partial class Program
         var accepted = await Dispatch(fixture, fixture.Second, 0xC4E1, answer);
         Check(accepted is not null && (int)Get(fixture.First, "PartyId")! > 0
             && Equals(Get(fixture.First, "PartyId"), Get(fixture.Second, "PartyId")), "party acceptance binds both members");
+        Check(accepted![27] == 37 && accepted[28] == 8 && accepted[50] == 12 && accepted[51] == 3,
+            "party union projects independent levels and titles in the native fields");
+        Check(accepted[29] == Character(fixture.First).CurrentMapId,
+            "invitation level cannot become the party leader map");
+        Broadcasts(fixture.First).Clear();
+        Invoke<object?>(fixture.Service, "QueuePartyStatusUpdate", fixture.First);
+        var status = (byte[])Get(Broadcasts(fixture.First)[0]!, "Payload")!;
+        Check(status[6] == 37 && status[7] == 8, "party status updates carry level and title independently");
+        Invoke<object?>(fixture.Service, "QueuePartyStatusUpdate", fixture.First);
+        Check(Broadcasts(fixture.First).Count == 1, "unchanged party status is published once");
+        await using (var worker = new NativeDungeonClient(_ => Task.CompletedTask))
+        await using (var pool = new NativeDungeonPool("unused", fixture.Root))
+        {
+            var lease = new NativeDungeonPool.Lease(pool, "test", 60001, Guid.NewGuid());
+            Set(fixture.First, "NativeDungeon", worker); Set(fixture.First, "NativeLease", lease);
+            Set(fixture.First, "NativeDungeonSelectionValid", true);
+            Set(fixture.First, "NativeContinuationRosterRequested", true);
+            var map = NativeDungeonClient.Frame(0xCFEB, new byte[4]);
+            Check(Invoke<bool>(fixture.Service, "DeferNativePartyMap", fixture.First, map),
+                "owner map waits for the party member transport");
+            Set(fixture.Second, "NativeDungeon", worker); Set(fixture.Second, "NativeLease", lease);
+            Check(Invoke<bool>(fixture.Service, "DeferNativePartyMap", fixture.First, map),
+                "owner map waits for the party member ready roster");
+            Set(fixture.Second, "NativeContinuationRosterRequested", true);
+            Check(!Invoke<bool>(fixture.Service, "DeferNativePartyMap", fixture.First, map),
+                "both owned ready rosters release the common map");
+            Set(fixture.First, "NativeCheckpoint", NativeDungeonState.Create(Character(fixture.First), [], []));
+            Set(fixture.Second, "NativeCheckpoint", NativeDungeonState.Create(Character(fixture.Second), [], []));
+            Set(fixture.First, "NativeDungeonEpisode", (byte)2);
+            await Invoke<Task>(fixture.Service, "HandleNativeWorkerFrameAsync", fixture.Second,
+                NativeDungeonClient.Frame(0xCFEC, new byte[800]), (long)Get(fixture.Second, "NativeBattleEpoch")!, Token);
+            Check((bool)Get(fixture.Second, "NativeDungeonSelectionValid")!
+                && (byte)Get(fixture.Second, "NativeDungeonEpisode")! == 2,
+                "common map binds a member whose roster preceded the owner selection");
+            foreach (var session in new[] { fixture.First, fixture.Second })
+            {
+                Set(session, "NativeDungeon", null); Set(session, "NativeLease", null);
+                Set(session, "NativeDungeonSelectionValid", false);
+                Set(session, "NativeDungeonEpisode", (byte)0);
+                Set(session, "NativeCheckpoint", null);
+                Set(session, "NativeContinuationRosterRequested", false);
+            }
+        }
         Check(await Dispatch(fixture, fixture.Second, 0xC4E1, answer) is null, "party agreement idempotence");
         Check(await Dispatch(fixture, fixture.First, 0xC4E7, []) is not null, "party owner departure resolves member ownership");
         await Dispatch(fixture, fixture.Second, 0xC4E7, []);

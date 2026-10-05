@@ -88,7 +88,8 @@ internal static class MentorProtocol
 
     internal static byte[] BuildListResult(
         uint requestedPage,
-        IReadOnlyList<CharacterRecord> advertisingCharacters)
+        IReadOnlyList<CharacterRecord> advertisingCharacters,
+        IReadOnlyDictionary<long, ushort>? graduatedStudents = null)
     {
         var page = Math.Min(requestedPage, (uint)MaximumListPage);
         var start = checked((int)page * ListPageSize);
@@ -111,9 +112,10 @@ internal static class MentorProtocol
             var entry = payload.AsSpan(
                 ListHeaderPayloadLength + (index * ListEntryLength),
                 ListEntryLength);
-            entry[0] = (byte)Math.Clamp(character.Gender, 0, 1);
-            entry[1] = (byte)Math.Clamp(character.Level, 1, byte.MaxValue);
-            BinaryPrimitives.WriteUInt16LittleEndian(entry.Slice(2, 2), GetLessonPeerUid(character));
+            entry[0] = (byte)Math.Clamp(character.Level, 1, byte.MaxValue);
+            entry[1] = CharacterTitleState.GetGrade(character);
+            BinaryPrimitives.WriteUInt16LittleEndian(entry.Slice(2, 2),
+                graduatedStudents?.GetValueOrDefault(character.Id) ?? 0);
             WriteFixedGbk(entry.Slice(4, PeerNameLength), character.Name);
         }
 
@@ -273,7 +275,7 @@ internal static class MentorProtocol
         {
             // Lightweight host checks do not carry client catalogs. The production
             // tuple is fixed by the validated quest/resource definitions.
-            return new(2, 1, 1, TimeSpan.FromMinutes(2), 20, [75000138],
+            return new(20, 1, 10, TimeSpan.FromMinutes(2), 20, [75000138],
                 [new(75000138, 0, 0)], new(17000015, 1, 71000012));
         }
     }
@@ -292,7 +294,7 @@ internal static class MentorProtocol
         if (reward.Amount is 0 or > ushort.MaxValue || !ShopCatalog.TryGet(reward.RewardCode, out var item)
             || item.Section != InventorySection.Pet)
             throw new InvalidDataException("Mentorship graduation item definition is incompatible.");
-        return new(2, 1, 1, TimeSpan.FromMinutes(2), 20, [objective.ObjectiveId],
+        return new(20, 1, 10, TimeSpan.FromMinutes(2), 20, [objective.ObjectiveId],
             [new(objective.ObjectiveId, episode, dungeonBit)],
             new(reward.RewardCode, checked((ushort)reward.Amount), rewardQuest.QuestId));
     }

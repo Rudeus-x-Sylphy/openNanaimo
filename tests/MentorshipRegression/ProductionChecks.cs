@@ -83,7 +83,8 @@ internal static partial class Program
             "completed coursework still requires student level twenty");
         await f.ExecuteAsync("UPDATE Characters SET Level = 20 WHERE Id = $id", ("$id", Character(f.Student).Id));
         Character(f.Student).Level = 20;
-        Check(await MentorCommand(f, f.Teacher, "/mentor graduate " + relation.Id) is not null, "production graduation is reachable through the private command");
+        Check((await Dispatch(f, f.Teacher, 0xC578, [])) is { Length: 288 },
+            "teacher profile completes eligible level-twenty graduation");
         var graduated = (await f.Database.GetMentorshipRelationsAsync(Actor(f.Student), true)).Single();
         Check(graduated.State == MentorshipRelationState.Graduated && graduated.GraduationRewardGranted,
             "production graduation persists its award disposition");

@@ -20,7 +20,7 @@ static int settlement_sent,cf8b_post_reset_cf71_only,dungeon_room_phase=1,post_r
 static unsigned post_reset_epoch,dungeon_room_epoch=1,post_reset_real,post_reset_show,post_reset_mode;
 static int port,c,off,pending,super,next_exists=1,count,ops[8];
 static unsigned char buf[12];
-static unsigned combat_hp=2000,g_profile_hp_current=2000,g_profile_mp_current=800,lifesteal_remainder;
+static unsigned combat_hp=2000,g_profile_hp_current=2000,g_profile_mp_current=800,lifesteal_remainder,mp_absorb_remainder;
 static int injury_armed=1,injury_dead,death_latched,retry_acknowledged;
 static struct {unsigned battle_epoch;} boss_ctx={7};
 static struct {unsigned mode;} power_ctx;
