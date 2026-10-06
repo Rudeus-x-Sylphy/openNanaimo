@@ -431,6 +431,7 @@ public sealed partial class DatabaseService
         await Execute("""
             UPDATE Characters SET TutorialCompleted=0, Appearance=$appearance, Gender=$gender,
               Level=$level, Experience=$exp, MaxHp=$hpmax, CurrentHp=$hp, MaxMp=$mpmax, CurrentMp=$mp,
+              Strength=$attribute, Vitality=$attribute, Agility=$attribute, Intelligence=$attribute, Luck=$attribute,
               Hans=$coin, Cash=$cash, CardMysteryKeyCount=$mystery, CardGoldenKeyCount=$gold,
               AttackModifier=$attack, DefenseFlat=$defense, InitialAttackMode=$attackMode,
               EquippedPetItemCode=$pet, PetVariant=$pet_variant, QuickSlotExpansionExpires=$quickbar,
@@ -440,6 +441,7 @@ public sealed partial class DatabaseService
               SkillPoints=0, SkillPointsMeat=0 WHERE Id=$id
             """, ("$appearance", appearance), ("$gender", Read("gender")), ("$level", level),
             ("$exp", CharacterProgression.ExperienceRequiredForLevel(level)),
+            ("$attribute", CharacterCombatProgression.InitialAttribute(level)),
             ("$hpmax", Read("hp_max", 1500)), ("$hp", Read("hp_max", 1500)),
             ("$mpmax", Read("mp_max", 500)), ("$mp", Read("mp_max", 500)),
             ("$coin", selectedCoin), ("$cash", selectedNana),
@@ -742,7 +744,9 @@ public sealed partial class DatabaseService
             : Math.Min((long)uint.MaxValue, Math.Max(0L, storedExperience) + experienceDelta);
         var level = Math.Max(Math.Clamp(storedLevel, 1, CharacterProgression.MaximumLevel),
             CharacterProgression.CalculateLevel(experience));
-        var gainedLevels = Math.Max(0, level - storedLevel);
+        var gainedLevels = CharacterCombatProgression.GainedLevels(storedLevel, level);
+        vitality = CharacterCombatProgression.GrowAttribute(vitality, gainedLevels);
+        intelligence = CharacterCombatProgression.GrowAttribute(intelligence, gainedLevels);
         var maxHp = Math.Max(storedMaxHp, CharacterProgression.CalculateMaxHp(level, vitality));
         var maxMp = Math.Max(storedMaxMp, CharacterProgression.CalculateMaxMp(level, intelligence));
         // Current resources include equipped bonuses; persisted maxima remain base stats.
@@ -852,7 +856,12 @@ public sealed partial class DatabaseService
         // Deltas retain deposits and gifts committed by other online players.
         int changed = await Execute("""
             UPDATE Characters SET Hans=Hans+$hans, Cash=Cash+$cash,
-              Level=$level, Experience=$exp, AttributePoints=AttributePoints+$points,
+              Level=$level, Experience=$exp,
+              Strength=MIN(65535,MAX(0,Strength)+$levels),
+              Vitality=MIN(65535,MAX(0,Vitality)+$levels),
+              Agility=MIN(65535,MAX(0,Agility)+$levels),
+              Intelligence=MIN(65535,MAX(0,Intelligence)+$levels),
+              Luck=MIN(65535,MAX(0,Luck)+$levels),
               MaxHp=$maxHp, MaxMp=$maxMp, CurrentHp=$hp, CurrentMp=$mp,
               RevivalUseCount=$revives, LastSavedAt=$now
             WHERE Id=$id AND AccountId=$account AND (ActiveSessionId=$session OR ($recover=1 AND ActiveSessionId IS NULL))
@@ -860,7 +869,7 @@ public sealed partial class DatabaseService
             """, ("$hans", checked(after.GetBalance(32) - before.GetBalance(32))),
             ("$cash", checked(after.GetBalance(40) - before.GetBalance(40))),
             ("$level", level), ("$exp", experience),
-            ("$points", gainedLevels * CharacterProgression.AttributePointsPerLevel),
+            ("$levels", gainedLevels),
             ("$maxHp", maxHp), ("$maxMp", maxMp), ("$hp", currentHp), ("$mp", currentMp),
             ("$revives", after.Get(60)), ("$now", DateTime.UtcNow.ToString("O")), ("$account", accountId), ("$session", sessionId), ("$recover", recovering ? 1 : 0));
         if (changed != 1) throw new InvalidOperationException("Dungeon session no longer owns its character.");

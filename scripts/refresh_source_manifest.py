@@ -55,7 +55,7 @@ def collect(root=ROOT):
             seen.add(path.resolve())
     if (root / "release/components/stage_damage/scene_hazard_catalog.inc").resolve() in seen:
         for rel in ("release/components/stage_damage/scene_hazard_registry.json",
-                    "scripts/generate_scene_hazard_catalog.py"):
+                    "scripts/generate_scene_hazard_catalog.py", "scripts/generate_scene_hazard_resources.py"):
             path = root / rel
             if not path.is_file():
                 raise ValueError("missing scene hazard input: " + rel)

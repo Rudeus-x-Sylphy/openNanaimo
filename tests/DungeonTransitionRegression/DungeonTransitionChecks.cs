@@ -148,8 +148,14 @@ internal static class DungeonTransitionChecks
             BinaryPrimitives.WriteUInt16LittleEndian(settlement.AsSpan(8), 45);
             await Send(settlement);
             Check((bool)Get(session, "NativeDungeonSettlementAwaitingAction")!, name + ": settlement waits for input");
-            await Send(NativeDungeonClient.Frame(0xCF1D, []));
-            Check(Get(session, "NativeDungeon") is not null && Drain(session).Count == 0, name + ": unarmed disconnect suppressed without response");
+            // A dead character's CF1D is an explicit return action. Exercise
+            // the unsolicited-disconnect gate only for a successful result.
+            if (!death)
+            {
+                await Send(NativeDungeonClient.Frame(0xCF1D, []));
+                Check(Get(session, "NativeDungeon") is not null && Drain(session).Count == 0,
+                    name + ": unarmed disconnect suppressed without response");
+            }
             if (mode != 0)
             {
                 if (death)

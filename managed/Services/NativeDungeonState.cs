@@ -86,7 +86,8 @@ public sealed class NativeDungeonState
         // Zero is an explicit unequip, not a request to restore the creation pet.
         var equippedPetItemCode = c.EquippedPetItemCode;
         s.Put(60, c.RevivalUseCount); s.Put(64, c.QuickSlotExpansionExpires); s.Put(68, equippedPetItemCode);
-        s.Put(AttackModifierOffset, c.AttackModifier); s.Put(DefenseFlatOffset, c.DefenseFlat);
+        s.Put(AttackModifierOffset, CharacterCombatProgression.NativeAttack(c.Strength, c.Agility, c.AttackModifier));
+        s.Put(DefenseFlatOffset, CharacterCombatProgression.NativeDefense(c.Vitality, c.Strength, c.DefenseFlat));
         s.Put(PetCombatLevelOffset, (uint)Math.Clamp(c.InitialAttackMode + 1, 1, 3));
         var pet = c.Items.FirstOrDefault(i => i.ItemCode == equippedPetItemCode && i.Quantity > 0);
         var petState = PetProgression.GetState(c, equippedPetItemCode);
@@ -94,7 +95,6 @@ public sealed class NativeDungeonState
         s.Put(PetLevelOffset, petState.Level);
         s.Put(PetExperienceOffset, petState.Experience);
         s.Put(DungeonGradeOffset, CharacterTitleState.GetGrade(c));
-        // Keep the original adapter's zero additive damage and defense policy.
         s.Put(88, name.Length); s.Put(92, c.Gender); name.CopyTo(data, 96);
         ReadOnlySpan<int> equipmentAppearanceOffsets = [0, 4, 8, 12, 20];
         for (int i = 0; i < equipmentAppearanceOffsets.Length; i++)

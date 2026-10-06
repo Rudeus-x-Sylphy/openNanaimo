@@ -1,43 +1,9 @@
 #ifndef NANAIMO_COLLISION_DAMAGE_RUNTIME_COLLISION_DAMAGE_INC
 #define NANAIMO_COLLISION_DAMAGE_RUNTIME_COLLISION_DAMAGE_INC
-/* COLLISION_DAMAGE ordinary-collision double damage (module: battle & skills).
- *
- * Symptom (user, original client, dungeon run): flying into a monster only
- * injures the player; the monster's HP never moves, while the original game
- * damages both sides on body contact (meat skills being the exception).
- *
- * What the runtime shows (user's own CARD_TERMINAL_POLICY run, log only):
- *   - the ordinary contact frame is D00F kind20/28; the adapter classifies it as
- *     `ordinary-player-collision` and calls only the player-injury settlement.
- *   - the same frame carries exactly one initialised WORD at frame+0x0A
- *     (`w0A`): 41 in the first room, then 125/126/127/128 in room 2 -- the
- *     selector band of the monsters in that room.
- *   - the shipped meat-contact path (`handle_meat_collision_report`) already
- *     consumes that same WORD as its target candidate and, over the recorded
- *     meat runs, bound it to real monster rows and applied contact damage
- *     (`[MEAT153] collision carrier=kind20-w0A selector=41 binding=1 ...
- *     damage_applied=100 hp=100->0`).  So the target half of a contact already
- *     exists in production code; the ordinary branch simply never calls it.
- *
- * This unit adds the missing half for ordinary (non-meat) contacts:
- *   D00F kind20 -> player injury settlement (unchanged) AND a bound-target
- *   collision damage settlement on the kind20 candidate, reported to the
- *   client through the existing D00E outbox so the HP bar moves.
- *
- * Mode knob (A/B, both compile):
- *   0 = COLLISION_CONTEXT behaviour (no target damage; the frame is logged and dropped)
- *   1 = released behaviour (target damage on the candidate)
- *
- * Damage policy: COMBAT_ECONOMY uses the explicit collision value 100 for both the player
- * and the collided ordinary target. The number is local adapter policy; no
- * packet or static resource field carries body-contact damage.
- *
- * Deliberately NOT done here: terminal reward handling (card/Hans/coin) stays
- * with the ordinary hit-report path; a contact that empties the bar settles HP
- * and score exactly like the shipped meat-contact policy (ledger-only), and the
- * distinct `terminal-without-reward` log makes it countable.  Whether a ram
- * kill should pay a drop is a separate open item, not invented here.
- */
+/* Ordinary body contact settles player injury and bound-target damage
+ * independently. Target contact damage uses the configured fixed value;
+ * player contact damage uses the selected resource attack and defenses.
+ * Target HP, terminal rewards and score use the ordinary combat ledger. */
 #ifndef COLLISION_DAMAGE_COLLISION_TARGET_DAMAGE_MODE
 #define COLLISION_DAMAGE_COLLISION_TARGET_DAMAGE_MODE 1u
 #endif

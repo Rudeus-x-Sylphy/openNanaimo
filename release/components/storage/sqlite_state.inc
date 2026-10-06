@@ -13,7 +13,13 @@ extern unsigned __attribute__((stdcall)) GetLastError(void);
 extern long __attribute__((stdcall)) InterlockedCompareExchange(volatile long*,long,long);
 extern long __attribute__((stdcall)) InterlockedExchange(volatile long*,long);
 extern void __attribute__((stdcall)) Sleep(unsigned);
-extern void* __attribute__((cdecl)) tmpfile(void);
+extern unsigned __attribute__((stdcall)) GetTempPathW(unsigned,unsigned short*);
+extern unsigned __attribute__((stdcall)) GetCurrentProcessId(void);
+extern void* __attribute__((stdcall)) CreateFileW(const unsigned short*,unsigned,unsigned,void*,unsigned,unsigned,void*);
+extern int __attribute__((stdcall)) CloseHandle(void*);
+extern int __attribute__((cdecl)) _open_osfhandle(long,int);
+extern void* __attribute__((cdecl)) _fdopen(int,const char*);
+extern int __attribute__((cdecl)) _close(int);
 extern int __attribute__((cdecl)) fseek(void*,long,int);
 extern long __attribute__((cdecl)) ftell(void*);
 extern int __attribute__((cdecl)) ferror(void*);
@@ -80,11 +86,32 @@ static void ns_import(const char*name){void*s,*old,*bytes=0;int rc,n=0;s=ns_stmt
     if(rc==101&&bytes){s=ns_stmt("INSERT OR IGNORE INTO NativeStateImports(Scope,Name,Content,ImportedAt) VALUES(?1,?2,?3,strftime('%Y-%m-%dT%H:%M:%fZ','now'))",name);ns_bind_blob(s,3,bytes,n,0);rc=ns_step(s);ns_finalize(s);}
     free(bytes);if(rc!=101||ns_exec(ns_db,"COMMIT",0,0,0)!=0){ns_exec(ns_db,"ROLLBACK",0,0,0);ns_die("migration failed");}
 }
+/* Serializers need a seekable binary stream. Create it in the user's temp
+   directory with exclusive creation and delete-on-close ownership. */
+static void* ns_temporary_stream(void){
+    unsigned short path[32768];unsigned base,n,i,attempt,value,pid=GetCurrentProcessId();
+    static unsigned serial=0u;void*handle,*stream;int fd;
+    const char*prefix="nanaimo-state-";const char*digits="0123456789abcdef";
+    base=GetTempPathW(32768u,path);if(!base||base>32720u)return 0;
+    for(attempt=0u;attempt<64u;attempt++){
+        n=base;for(i=0u;prefix[i];i++)path[n++]=(unsigned short)prefix[i];
+        for(i=0u;i<8u;i++)path[n++]=(unsigned short)digits[(pid>>(28u-4u*i))&15u];
+        path[n++]='-';value=++serial;
+        for(i=0u;i<8u;i++)path[n++]=(unsigned short)digits[(value>>(28u-4u*i))&15u];
+        path[n++]='.';path[n++]='t';path[n++]='m';path[n++]='p';path[n]=0;
+        handle=CreateFileW(path,0xC0000000u,7u,0,1u,0x04000100u,0);
+        if(handle==(void*)-1){unsigned error=GetLastError();if(error==80u||error==183u)continue;return 0;}
+        fd=_open_osfhandle((long)handle,0x8002);if(fd<0){CloseHandle(handle);return 0;}
+        stream=_fdopen(fd,"w+b");if(!stream)_close(fd);return stream;
+    }
+    return 0;
+}
 static void* native_state_fopen(const char*name,const char*mode){void*f=0,*s;int rc,i,write=mode[0]=='w'||mode[0]=='a';if(!ns_is_state(name))return fopen(name,mode);ns_lock();ns_initialize();ns_import(name);
     if(mode[0]!='r'&&!write){ns_unlock();ns_die("unsupported stream mode");}for(i=0;mode[i];i++)if(mode[i]=='+'){ns_unlock();ns_die("read/update streams require explicit record update");}
-    if(mode[0]!='w'){s=ns_stmt("SELECT Content FROM NativeState WHERE Scope=?1 AND Name=?2",name);rc=ns_step(s);if(rc!=100&&rc!=101){ns_finalize(s);ns_unlock();ns_die("record read failed");}if((rc==101||ns_column_type(s,0)==5)&&mode[0]=='r'){ns_finalize(s);ns_unlock();return 0;}f=tmpfile();if(f&&rc==100&&ns_column_type(s,0)!=5){int n=ns_column_bytes(s,0);if(n<0||n>NS_LIMIT||(n&&fwrite(ns_column_blob(s,0),1,n,f)!=(unsigned)n)){fclose(f);f=0;}}ns_finalize(s);if(f&&mode[0]=='r')fseek(f,0,0);
-    }else f=tmpfile();
+    if(mode[0]!='w'){s=ns_stmt("SELECT Content FROM NativeState WHERE Scope=?1 AND Name=?2",name);rc=ns_step(s);if(rc!=100&&rc!=101){ns_finalize(s);ns_unlock();ns_die("record read failed");}if((rc==101||ns_column_type(s,0)==5)&&mode[0]=='r'){ns_finalize(s);ns_unlock();return 0;}f=ns_temporary_stream();if(f&&rc==100&&ns_column_type(s,0)!=5){int n=ns_column_bytes(s,0);if(n<0||n>NS_LIMIT||(n&&fwrite(ns_column_blob(s,0),1,n,f)!=(unsigned)n)){fclose(f);f=0;}}ns_finalize(s);if(f&&mode[0]=='r'&&fseek(f,0,0)!=0)ns_die("state stream rewind failed");
+    }else f=ns_temporary_stream();
     if(f&&write){for(i=0;i<128;i++)if(!ns_streams[i].f)break;if(i==128){fclose(f);f=0;}else{ns_streams[i].f=f;memcpy(ns_streams[i].name,name,ns_len(name)+1);}}
+    if(!f)ns_die("state stream unavailable; stored content unchanged");
     ns_unlock();return f;
 }
 static int native_state_fclose(void*f){int i,ok=1,n=0,rc;void*b=0;if(!f)return -1;ns_lock();for(i=0;i<128;i++)if(ns_streams[i].f==f)break;if(i<128){if(fflush(f)!=0||ferror(f)||(b=ns_read_bytes(f,&n))==0)ok=0;else ok=ns_set(ns_streams[i].name,b,n);free(b);ns_streams[i].f=0;}rc=fclose(f);ns_unlock();return ok?rc:-1;}

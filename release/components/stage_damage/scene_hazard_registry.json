@@ -1,376 +1,186 @@
 {
-  "schema": 1,
+  "schema": 2,
+  "rule": "Selected type4 zero-HP parts use their positive authored contact attack when no positive-HP contact root applies.",
   "policies": [
-    {
-      "resource": "ep01_dg02_new_obj_meteor.mmo",
-      "sha256": "80A21EE3F8175DCFEA21C2BF84B3F6DF9A0BC24B69951294F37D8C2178ADCB01",
-      "mmo_record_count": 36,
-      "damage": 100,
-      "expected_selected_rows": 216,
-      "evidence": "Observed standalone kind60 terrain collision restored by abed8a2; no positive-HP parent exists.",
-      "scopes": [
-        {
-          "hd": 0,
-          "episode": 0,
-          "dungeon": 2,
-          "stage": 0,
-          "difficulty_mask": 7
-        }
-      ]
-    },
-    {
-      "resource": "obj_ep01_st11_obj01.mmo",
-      "sha256": "1F4205F3DA705CAE866B09927FFB23FC03530A6EC65EBF786F15EBC5916317D2",
-      "mmo_record_count": 1,
-      "damage": 300,
-      "expected_selected_rows": 9,
-      "evidence": "Authored mechanical obstacle contact damage.",
-      "scopes": [
-        {
-          "hd": 0,
-          "episode": 2,
-          "dungeon": 1,
-          "stage": 0,
-          "difficulty_mask": 7
-        }
-      ],
-      "rows": [
-        {
-          "row": 0,
-          "basis": 10,
-          "association": -1,
-          "damage": 300
-        }
-      ]
-    },
-    {
-      "resource": "obj_ep01_st11_obj02_01.mmo",
-      "sha256": "23DA1F12712F05B7A70C4E58DE8D5486FC1074D1AB185F466967AB00BE5B2041",
-      "mmo_record_count": 21,
-      "damage": 300,
-      "expected_selected_rows": 39,
-      "evidence": "Authored mechanical obstacle contact damage.",
-      "scopes": [
-        {
-          "hd": 0,
-          "episode": 2,
-          "dungeon": 1,
-          "stage": 0,
-          "difficulty_mask": 7
-        }
-      ],
-      "rows": [
-        {
-          "row": 0,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 9,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 10,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 11,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 12,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 13,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 14,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 15,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 16,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 17,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 18,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 19,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 20,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        }
-      ]
-    },
-    {
-      "resource": "obj_ep01_st12_01_00.mmo",
-      "sha256": "9DB6D2C5EF0CFC4E46922EE32946A8ED7865B909EFB7355AFD7C754BD2185F30",
-      "mmo_record_count": 10,
-      "damage": 300,
-      "expected_selected_rows": 108,
-      "evidence": "Authored mechanical obstacle contact damage.",
-      "scopes": [
-        {
-          "hd": 0,
-          "episode": 2,
-          "dungeon": 2,
-          "stage": 0,
-          "difficulty_mask": 7
-        }
-      ],
-      "rows": [
-        {
-          "row": 0,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 1,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 2,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 3,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 4,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 5,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 6,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 7,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 8,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        }
-      ]
-    },
-    {
-      "resource": "obj_ep01_st12_01_01.mmo",
-      "sha256": "B206EA148B89AA75392E3A2E2FD52AA187F5A3B0435BDC06A142F07B0A740A46",
-      "mmo_record_count": 12,
-      "damage": 300,
-      "expected_selected_rows": 54,
-      "evidence": "Authored mechanical obstacle contact damage.",
-      "scopes": [
-        {
-          "hd": 0,
-          "episode": 2,
-          "dungeon": 2,
-          "stage": 0,
-          "difficulty_mask": 7
-        }
-      ],
-      "rows": [
-        {
-          "row": 0,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 1,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 2,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 3,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 4,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 5,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 6,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 7,
-          "basis": 0,
-          "association": 8,
-          "damage": 300
-        },
-        {
-          "row": 8,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        }
-      ]
-    },
-    {
-      "resource": "obj_ep01_st12_02_00.mmo",
-      "sha256": "B6C4781CF91B9E36E88746E453FDAF43113F96800A3C4801D9720F13F4E9CD52",
-      "mmo_record_count": 7,
-      "damage": 300,
-      "expected_selected_rows": 45,
-      "evidence": "Authored mechanical obstacle contact damage.",
-      "scopes": [
-        {
-          "hd": 0,
-          "episode": 2,
-          "dungeon": 2,
-          "stage": 0,
-          "difficulty_mask": 7
-        }
-      ],
-      "rows": [
-        {
-          "row": 0,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 1,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 2,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 3,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        },
-        {
-          "row": 4,
-          "basis": 0,
-          "association": -1,
-          "damage": 300
-        }
-      ]
-    }
+    {"resource":"ani_obj_ep04_dg01_sk00_b01.mmo","sha256":"BDDFEBDEA4803F53E3D2EDD01D33D9302FA42670AAB9580F3A52FD8DD698D390","mmo_record_count":8,"damage":510,"expected_selected_rows":65,"scopes":[{"hd":0,"episode":4,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":510},{"row":1,"basis":0,"association":-1,"damage":510},{"row":2,"basis":0,"association":-1,"damage":510},{"row":3,"basis":0,"association":-1,"damage":510},{"row":4,"basis":0,"association":-1,"damage":510}]},
+    {"resource":"ani_obj_ep04_dg01_sk00_b02.mmo","sha256":"6F16D96914F54EB663ECA23C9351987151D3FDAAB9D2AFA6722EAE2B89EC5C0B","mmo_record_count":8,"damage":510,"expected_selected_rows":56,"scopes":[{"hd":0,"episode":4,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":510},{"row":2,"basis":0,"association":-1,"damage":510},{"row":3,"basis":0,"association":-1,"damage":510},{"row":4,"basis":0,"association":-1,"damage":510}]},
+    {"resource":"ani_obj_ep04_dg02_02_00.mmo","sha256":"496D2B1E0A7C9A8D5E8E3CE5ACCB03294CE6A38AA8AF79EB623FF241B4A213E5","mmo_record_count":7,"damage":500,"expected_selected_rows":24,"scopes":[{"hd":0,"episode":4,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":4,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":6,"basis":0,"association":5,"damage":500}]},
+    {"resource":"ep01_dg02_new_obj_meteor.mmo","sha256":"80A21EE3F8175DCFEA21C2BF84B3F6DF9A0BC24B69951294F37D8C2178ADCB01","mmo_record_count":36,"damage":90,"expected_selected_rows":72,"scopes":[{"hd":0,"episode":0,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":24,"basis":0,"association":-1,"damage":90},{"row":25,"basis":0,"association":-1,"damage":90},{"row":26,"basis":0,"association":-1,"damage":90},{"row":27,"basis":0,"association":-1,"damage":90},{"row":28,"basis":0,"association":-1,"damage":90},{"row":29,"basis":0,"association":-1,"damage":90},{"row":30,"basis":0,"association":-1,"damage":90},{"row":31,"basis":0,"association":-1,"damage":90},{"row":32,"basis":0,"association":-1,"damage":90},{"row":33,"basis":0,"association":-1,"damage":90},{"row":34,"basis":0,"association":-1,"damage":90},{"row":35,"basis":0,"association":-1,"damage":90}]},
+    {"resource":"ep01_dg02_new_obj_time00.mmo","sha256":"C1DE9065DF6311B8BE63D76A72480139CD4AD0440E06BDDE06C15F06C7E23F94","mmo_record_count":7,"damage":90,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":0,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":90}]},
+    {"resource":"ep01_dg02_new_obj_time01.mmo","sha256":"E5BDF551BAB0B295A93643DB3CD92EB97CE4FAEA7CF45A00091514EC88031AF2","mmo_record_count":6,"damage":90,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":0,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":90}]},
+    {"resource":"ep01_new_O_block_B.mmo","sha256":"44B5743ED3E4B354DB4D94A64B54BFF4E0237FD2B211F2BBEBB24F4A82B7F025","mmo_record_count":1,"damage":60,"expected_selected_rows":21,"scopes":[{"hd":0,"episode":0,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":60}]},
+    {"resource":"ep02_dg02_obj_new_sn00.mmo","sha256":"46E7EA6B3DD35DA1F4988C2C6CA2790166AB2F478D27C66653EC374793DE3633","mmo_record_count":1,"damage":300,"expected_selected_rows":8,"scopes":[{"hd":0,"episode":2,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":300}]},
+    {"resource":"ep02_dg02_obj_new_sn01.mmo","sha256":"4EDBD995BDEF580377E95417FC1735363BF7F5943DD515CD6D6AA38C6DF5B97F","mmo_record_count":1,"damage":300,"expected_selected_rows":16,"scopes":[{"hd":0,"episode":2,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":300}]},
+    {"resource":"ep02_dg02_obj_new_sn02.mmo","sha256":"811EF3A517CD84FB4F6F71EBFECD017C02E00AF440C7C3E784620CAFF3E519A0","mmo_record_count":1,"damage":300,"expected_selected_rows":14,"scopes":[{"hd":0,"episode":2,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":300}]},
+    {"resource":"ep03_dg01_new_obj_pn00.mmo","sha256":"B415C321CBCDFEA1F1706D1B7393111D9B0921C5D41411B7D069FB1B10277A09","mmo_record_count":2,"damage":410,"expected_selected_rows":5,"scopes":[{"hd":0,"episode":3,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":410}]},
+    {"resource":"ep03_new_obj_nf00.mmo","sha256":"09BE5ECE009EC89708936123560D0D9A1CD59D4943CAC4CE74CCBFE9E3D0559D","mmo_record_count":1,"damage":410,"expected_selected_rows":27,"scopes":[{"hd":0,"episode":3,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":410}]},
+    {"resource":"ep04_st01_obj_02.mmo","sha256":"5ECF3E884C015ACF96B894FD6417389EB2CFF7EA9389C6D429EA110821EEFF5B","mmo_record_count":25,"damage":410,"expected_selected_rows":1,"scopes":[{"hd":0,"episode":3,"dungeon":0,"stage":0,"difficulty_mask":4}],"rows":[{"row":24,"basis":0,"association":-1,"damage":410}]},
+    {"resource":"ep04_st01_obj_02_01.mmo","sha256":"869F848D141524D4C1005183F94CFD0A65412ED42DF13F27A9F3F1C0E4E6B72B","mmo_record_count":25,"damage":410,"expected_selected_rows":2,"scopes":[{"hd":0,"episode":3,"dungeon":0,"stage":0,"difficulty_mask":3}],"rows":[{"row":24,"basis":0,"association":-1,"damage":410}]},
+    {"resource":"ep04_st02_obj_02_wheel.mmo","sha256":"DFB422629606EAB10461BA9D66900B50E78833010A608307329853171793AB3C","mmo_record_count":2,"damage":410,"expected_selected_rows":2,"scopes":[{"hd":0,"episode":3,"dungeon":1,"stage":0,"difficulty_mask":4}],"rows":[{"row":0,"basis":0,"association":-1,"damage":410},{"row":1,"basis":0,"association":-1,"damage":410}]},
+    {"resource":"ep04_st02_obj_02_wheel_dw.mmo","sha256":"2867C7329516C218B00B9A8F716A2F6E8C85458803A76394A2E37BB5FD76127C","mmo_record_count":1,"damage":410,"expected_selected_rows":15,"scopes":[{"hd":0,"episode":3,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":410}]},
+    {"resource":"ep07_dg02_obj_03_00.mmo","sha256":"E4D4CFF1B94EDA82D4B161E4FC9882232EED2AC2DDA3623880ABD6ED4CD68DB8","mmo_record_count":2,"damage":820,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":7,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":820},{"row":1,"basis":0,"association":-1,"damage":820}]},
+    {"resource":"ep07_dg02_obj_03_01.mmo","sha256":"28A8A2B242BFDF78E0CD148103C41307A54586FD575D9D5C69795165EAAB4BC2","mmo_record_count":2,"damage":820,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":7,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":820},{"row":1,"basis":0,"association":-1,"damage":820}]},
+    {"resource":"ep09_dg02_obj_foot.mmo","sha256":"13879854F184CB3141C33FCE2EFD009581361A2A87C64D90338378CDFA273B81","mmo_record_count":8,"damage":1590,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":9,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":3,"basis":0,"association":-1,"damage":1590}]},
+    {"resource":"ep09_dg02_obj_head.mmo","sha256":"AA0747648A5B1DA214E76CB4265D46F0AC9A05A66387D83F5513367233853469","mmo_record_count":24,"damage":1590,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":9,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":23,"basis":0,"association":-1,"damage":1590}]},
+    {"resource":"ep10_common_timebomb_00.mmo","sha256":"BED309F0DC3CB143A2AE1201BD5B8E24EA1E41A1D15B8A920A4A51EF8F10B9CB","mmo_record_count":4,"damage":1180,"expected_selected_rows":66,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_01.mmo","sha256":"7B85A322088C918368C215E056E53CCC77F60D8639DC62B0043EA9657B7F5D22","mmo_record_count":4,"damage":1180,"expected_selected_rows":44,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_02.mmo","sha256":"C1F19754E366B51E1627C4BA5BD119B4A8C9C958C60EA8369F7BFA3A4DCA35F5","mmo_record_count":4,"damage":1180,"expected_selected_rows":66,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_03.mmo","sha256":"28E75EEC82CDDE0454B9E7A8728A34ED10BCB8CCF3508FD3D898CC5391857847","mmo_record_count":4,"damage":1180,"expected_selected_rows":66,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_04.mmo","sha256":"608A38E82C1C28AA827B8ADCAB430066A90BE0331392EE293A204EB1834C1C49","mmo_record_count":4,"damage":1180,"expected_selected_rows":44,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_05.mmo","sha256":"0E5D2F3CB9CC6CDC508C5C980559113CC1AFDE5F37F27B7C433B123043401734","mmo_record_count":4,"damage":1180,"expected_selected_rows":44,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_06.mmo","sha256":"4B90007A88B8920085317144C1FCE61E50985D4E1432F16376BEE6E622135C77","mmo_record_count":4,"damage":1180,"expected_selected_rows":66,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_07.mmo","sha256":"020010AB2539EF542D6BE54BC25097F593A562205A03D68412CCBE24A9FF88FC","mmo_record_count":4,"damage":1180,"expected_selected_rows":88,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_08.mmo","sha256":"AE2C49926DE4BBDA5B5C305013DFA4E7EF60E9607C4C2DB3245D600DFFC10352","mmo_record_count":4,"damage":1180,"expected_selected_rows":44,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_09.mmo","sha256":"0E20D60D41D8D44B31CAE28C4027653214841D04CF05E9D4F029A8DA19D53BF4","mmo_record_count":4,"damage":1180,"expected_selected_rows":22,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_10.mmo","sha256":"29E2C63B5F1A8954FE81F192A67C58B18F6004016C2817E0F9D2D084125FEE2B","mmo_record_count":4,"damage":1180,"expected_selected_rows":44,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_11.mmo","sha256":"15A3AA6DDB6FC76A8EC930A5F94D943B9078E25AFFF6111E7B3E059E3C1E2784","mmo_record_count":4,"damage":1180,"expected_selected_rows":22,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_common_timebomb_12.mmo","sha256":"D2D82B3485198DA20A2336129D84F363D8248E1253F1F9F5674DF06C28E65BE7","mmo_record_count":4,"damage":1180,"expected_selected_rows":22,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6},{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg00_obj_bone_00.mmo","sha256":"1ED715E488996D468E1D628063059891CE42877F0D2105EFFD370804EDC4C01E","mmo_record_count":13,"damage":1180,"expected_selected_rows":66,"scopes":[{"hd":0,"episode":10,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180},{"row":2,"basis":0,"association":-1,"damage":1180},{"row":3,"basis":0,"association":-1,"damage":1180},{"row":4,"basis":0,"association":-1,"damage":1180},{"row":5,"basis":0,"association":-1,"damage":1180},{"row":6,"basis":0,"association":-1,"damage":1180},{"row":7,"basis":0,"association":-1,"damage":1180},{"row":8,"basis":0,"association":-1,"damage":1180},{"row":9,"basis":0,"association":-1,"damage":1180},{"row":10,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg01_fire_effrct.mmo","sha256":"D941DBD74C529383A7CADEAA1EABD77AC0484F420C73AC6137F08B7495E6E263","mmo_record_count":3,"damage":1180,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":6}],"rows":[{"row":2,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg01_obj00_00.mmo","sha256":"91FD362CCA2B3BC7A18817F93A6D17BBDB1687E5FD464C2D6530A0920E782E9B","mmo_record_count":7,"damage":1180,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":5,"damage":1180},{"row":1,"basis":0,"association":5,"damage":404},{"row":2,"basis":0,"association":5,"damage":404},{"row":3,"basis":0,"association":5,"damage":404},{"row":4,"basis":0,"association":5,"damage":404},{"row":5,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg01_obj00_01.mmo","sha256":"8978B250D04F2437BC4C4DCE686A302BE47CABE71A7E50DDEB579E9BD43B570E","mmo_record_count":8,"damage":1180,"expected_selected_rows":21,"scopes":[{"hd":0,"episode":10,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":6,"damage":1180},{"row":1,"basis":0,"association":6,"damage":404},{"row":2,"basis":0,"association":6,"damage":404},{"row":3,"basis":0,"association":6,"damage":404},{"row":4,"basis":0,"association":6,"damage":404},{"row":5,"basis":0,"association":6,"damage":404},{"row":6,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg02_obj00_00.mmo","sha256":"5FA5425703DD5FC666844724BC15B6B09DEF31817BEE6953E53B535820390809","mmo_record_count":3,"damage":1180,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180},{"row":2,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg02_obj00_01.mmo","sha256":"F48223A000BFE86349F5C1FAF4612ADE729FAC99D50AC937584BF4539E357F8B","mmo_record_count":3,"damage":1180,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180},{"row":2,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg02_obj01_00.mmo","sha256":"7FDBF04882F403B8A88E08F213FCF281F9724A417EA1C903B8A261BDA8262682","mmo_record_count":1,"damage":1180,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg02_obj01_01.mmo","sha256":"8F94FF0E48BA139BA2A7CE28D8255148B8AA2A3A7F857DBA8B92E7C681EA1C61","mmo_record_count":1,"damage":1180,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg02_obj01_02.mmo","sha256":"E98A546C05921DA2486D291E962023CCB07A2B2810F0F94784D385D9C04F34A0","mmo_record_count":1,"damage":1180,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":10,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg02_obj02_00.mmo","sha256":"D43D7EA567F20467CCE1B3754F1F8A3A40B6492692FE6405E30F67695BE18BCC","mmo_record_count":3,"damage":1180,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg02_obj03_d.mmo","sha256":"08C15A4AB12FC8CEA3A07A092A8F14B415A389EFE82D30F7702C022882549429","mmo_record_count":4,"damage":1180,"expected_selected_rows":8,"scopes":[{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep10_dg02_obj03_u.mmo","sha256":"9B3DF1E17776A72F0E10AC92EDD617F134A9A0A8D8DC12B783A3650AC082FDAC","mmo_record_count":4,"damage":1180,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":10,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1180},{"row":1,"basis":0,"association":-1,"damage":1180}]},
+    {"resource":"ep11_dg00_obj_00_00.mmo","sha256":"DE7F232815940EBF5FEA01F9B44A4011D89216758CDF2159756A85889087D18F","mmo_record_count":8,"damage":1320,"expected_selected_rows":15,"scopes":[{"hd":0,"episode":11,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":7,"basis":0,"association":-1,"damage":1320}]},
+    {"resource":"ep11_dg01_obj_00_00.mmo","sha256":"0B191FF172216DF89D58724F2848699670DDB3584D44476B3597BA3B7F41F275","mmo_record_count":1,"damage":1320,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":11,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1320}]},
+    {"resource":"ep11_dg01_obj_00_01.mmo","sha256":"9BCCE7094C7A1146E7042603161ED4C5175EC3549CB6D63832D6F85F6B2C7079","mmo_record_count":1,"damage":1320,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":11,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1320}]},
+    {"resource":"ep11_dg01_obj_01_00.mmo","sha256":"342C08D7982DBFB8377E79948CC48DB8AB5396166659DC9D34B44E051E83CB88","mmo_record_count":1,"damage":1320,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":11,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1320}]},
+    {"resource":"ep11_dg02_obj_00_00.mmo","sha256":"2D0B7D6D9367412C9B029F1D82F9D8DFC3CD772AAC8D40C4F43AB453E9080EB3","mmo_record_count":5,"damage":1320,"expected_selected_rows":8,"scopes":[{"hd":0,"episode":11,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":11,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1320}]},
+    {"resource":"ep11_dg02_obj_00_01.mmo","sha256":"F79F2F030B4D566EE336FD007F0A427CD46172251ADA81B09B0669480E9DAC41","mmo_record_count":5,"damage":1320,"expected_selected_rows":4,"scopes":[{"hd":0,"episode":11,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":11,"dungeon":2,"stage":1,"difficulty_mask":1}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1320}]},
+    {"resource":"ep11_dg02_obj_01_00.mmo","sha256":"447B1066FE44097BB8C1BB1B490D8090474BA9CB39E48411B790BB7077A93264","mmo_record_count":10,"damage":1320,"expected_selected_rows":8,"scopes":[{"hd":0,"episode":11,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":11,"dungeon":2,"stage":1,"difficulty_mask":1}],"rows":[{"row":9,"basis":0,"association":-1,"damage":1320}]},
+    {"resource":"ep11_dg02_obj_02_00.mmo","sha256":"0036618DA18C43B00CDCEC0DE013ED120026F00451EE6AC7B36F20BFC31A5810","mmo_record_count":7,"damage":1320,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":11,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1320}]},
+    {"resource":"ep11_dg02_obj_02_01.mmo","sha256":"3845324AC1149A55707993EC95D29FC0A51FFAE143E828C24FAE3E07D4AE9AE3","mmo_record_count":7,"damage":1320,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":11,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1320}]},
+    {"resource":"ep12_dg00_obj_00_00.mmo","sha256":"269AA54DA863CB488E77186DCE339FE3EB3197043EBBE2F02CA2E9ADFB00605E","mmo_record_count":2,"damage":1460,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":12,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":1460}]},
+    {"resource":"ep12_dg00_obj_03_00.mmo","sha256":"D9837FC2A038DC6BEACC757680641B06600EF09230CD01364064E04770CE84DB","mmo_record_count":8,"damage":1460,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":12,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1460},{"row":7,"basis":0,"association":-1,"damage":1460}]},
+    {"resource":"ep12_dg00_obj_03_01.mmo","sha256":"2667142E31C81E8CE2CE14B3DA91C6ACB1BBECB13B1729EA85898DD906D61A51","mmo_record_count":1,"damage":1460,"expected_selected_rows":2,"scopes":[{"hd":0,"episode":12,"dungeon":0,"stage":0,"difficulty_mask":6}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1460}]},
+    {"resource":"ep12_dg00_obj_03_02.mmo","sha256":"1F1AB22F770274F6D07E4FF75384A6791C77B621579A5B97CE6FAD84F570834B","mmo_record_count":2,"damage":1460,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":12,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":1460}]},
+    {"resource":"ep12_dg01_obj_00_01.mmo","sha256":"925A19CA262DFF14A3CB543FB91E30D775CC38F815851B8B8358C647D12EF5A5","mmo_record_count":2,"damage":1460,"expected_selected_rows":10,"scopes":[{"hd":0,"episode":12,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1460},{"row":1,"basis":0,"association":-1,"damage":1460}]},
+    {"resource":"ep12_dg02_obj_00_00.mmo","sha256":"E5BCAB565842BE784F4AD679D74A852EE240245B2B58E56D5D1B46F05A7ECDF2","mmo_record_count":7,"damage":2190,"expected_selected_rows":15,"scopes":[{"hd":0,"episode":12,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2190},{"row":1,"basis":0,"association":-1,"damage":2190},{"row":4,"basis":0,"association":-1,"damage":2190},{"row":5,"basis":0,"association":-1,"damage":2190},{"row":6,"basis":0,"association":-1,"damage":2190}]},
+    {"resource":"ep12_dg02_obj_00_01.mmo","sha256":"3A8E6412F549E557822103ED97FCB93EA415D81AA22135D9E5A6D3E8B21BB403","mmo_record_count":7,"damage":2190,"expected_selected_rows":15,"scopes":[{"hd":0,"episode":12,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2190},{"row":1,"basis":0,"association":-1,"damage":2190},{"row":4,"basis":0,"association":-1,"damage":2190},{"row":5,"basis":0,"association":-1,"damage":2190},{"row":6,"basis":0,"association":-1,"damage":2190}]},
+    {"resource":"ep12_dg02_obj_02_00.mmo","sha256":"0B960A8145492FCA850B12C0DB85FA6B1F265F500426C9377F6D309E36552DF7","mmo_record_count":7,"damage":1460,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":12,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":6,"basis":0,"association":-1,"damage":1460}]},
+    {"resource":"ep12_dg02_obj_03_00.mmo","sha256":"3924E92B691AA37DA6C7E039BE6901F63D60D39D06BD91C4AAB59651A23528BD","mmo_record_count":11,"damage":1460,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":12,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":10,"basis":0,"association":-1,"damage":1460}]},
+    {"resource":"ep13_dg00_obj_00_01.mmo","sha256":"8344C1616AC1B4B07AA4DCA95F4DBBAB90F55EB4345DA1F1657AB079741B5A34","mmo_record_count":7,"damage":1600,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":13,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600},{"row":1,"basis":0,"association":-1,"damage":1600},{"row":2,"basis":0,"association":-1,"damage":1600},{"row":3,"basis":0,"association":-1,"damage":1600},{"row":4,"basis":0,"association":-1,"damage":1600},{"row":5,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg00_obj_00_02.mmo","sha256":"7C99913E79D40A12AEC22CF150C855F6D46B858044CF0904737BCF6112A719E1","mmo_record_count":7,"damage":1600,"expected_selected_rows":90,"scopes":[{"hd":0,"episode":13,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600},{"row":1,"basis":0,"association":-1,"damage":1600},{"row":2,"basis":0,"association":-1,"damage":1600},{"row":3,"basis":0,"association":-1,"damage":1600},{"row":4,"basis":0,"association":-1,"damage":1600},{"row":5,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg00_obj_02_00.mmo","sha256":"430F9CC2BEE6B18A7F580CA48F33DF61C6627906B7B12D07C5C4BC6AC2837691","mmo_record_count":2,"damage":1600,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":13,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg01_obj_00_01.mmo","sha256":"A064EB2819966C0C4C63A556AADABCB867C89EE0A8F6E82327E2EAF04F7B74C5","mmo_record_count":3,"damage":1600,"expected_selected_rows":1,"scopes":[{"hd":0,"episode":13,"dungeon":1,"stage":0,"difficulty_mask":1}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg01_obj_02_01.mmo","sha256":"A4625D6B1E808A460E1E8BB1B17F338E0F51C51167EB7177646B537F3C58C678","mmo_record_count":4,"damage":1600,"expected_selected_rows":30,"scopes":[{"hd":0,"episode":13,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600},{"row":1,"basis":0,"association":-1,"damage":1600},{"row":2,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg01_obj_03_01.mmo","sha256":"652B4AD673BE1C58589EDA32690579840DB00373E0AD5B11A3B73B064C7E05BE","mmo_record_count":6,"damage":1600,"expected_selected_rows":75,"scopes":[{"hd":0,"episode":13,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600},{"row":1,"basis":0,"association":-1,"damage":1600},{"row":2,"basis":0,"association":-1,"damage":1600},{"row":3,"basis":0,"association":-1,"damage":1600},{"row":4,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg02_obj_B_00.mmo","sha256":"723C075779E957B0B0BC598ADED3C5650938683C97C1FAE0DE0DEF06F0716CE5","mmo_record_count":4,"damage":1600,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":13,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":13,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":1600},{"row":2,"basis":0,"association":-1,"damage":1600},{"row":3,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg02_obj_B_01.mmo","sha256":"9989AFB3D91384EF3DF6848B518CF8991BE49CCAA2AE617940F65785082CADCE","mmo_record_count":1,"damage":1600,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":13,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":13,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg02_obj_box_00.mmo","sha256":"9435946F94BDB6C5A0ACEBCF74171F1F9919315644F65D6204F1BF80D363C3AC","mmo_record_count":10,"damage":1600,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":13,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":13,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg02_obj_box_01.mmo","sha256":"71DCEE4D8CCA0DF642CC8C2608C6C98BE867E475FC37417F9EEF7E4E4EB89D98","mmo_record_count":10,"damage":1600,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":13,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":13,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg02_obj_pail_01.mmo","sha256":"F6FEC5ABA58C9039A600E9A98DF0F35E4F08FB0592FE5FE8564741086DA06214","mmo_record_count":10,"damage":1600,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":13,"dungeon":2,"stage":0,"difficulty_mask":7},{"hd":0,"episode":13,"dungeon":2,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep13_dg02_obj_whale_00.mmo","sha256":"5F5C7969421158FCA3E1996ED62F849D7A4E6C82E54333A47E947446B25E5F61","mmo_record_count":2,"damage":1600,"expected_selected_rows":1,"scopes":[{"hd":0,"episode":13,"dungeon":2,"stage":0,"difficulty_mask":4}],"rows":[{"row":1,"basis":0,"association":-1,"damage":1600}]},
+    {"resource":"ep14_dg00_obj_01_00.mmo","sha256":"6B317633659B0692D391A2A50FAD3BBA644DA3E7656D982DE5F2C9B9529C1ADF","mmo_record_count":8,"damage":2625,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":14,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2625},{"row":1,"basis":0,"association":-1,"damage":2625}]},
+    {"resource":"ep14_dg01_obj_01_00.mmo","sha256":"2EC91B6C847AD092B7217CB3D0587EA13A15118212754E5228829C02FEF71AB0","mmo_record_count":4,"damage":1750,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":14,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":2,"basis":0,"association":-1,"damage":1750},{"row":3,"basis":0,"association":-1,"damage":1750}]},
+    {"resource":"ep14_dg01_obj_03_00.mmo","sha256":"69F23525DF3721AA649BD073DFE2835F0433B7186E4802F1877E2368AD626830","mmo_record_count":3,"damage":1750,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":14,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":1750}]},
+    {"resource":"ep14_dg01_obj_03_01.mmo","sha256":"F8D7E092F64F5E03E3771BBE8BB1F2C74D0FC64627B4096DCF034EFDD2AF365C","mmo_record_count":3,"damage":1910,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":14,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":2,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep14_dg02_obj_00_00.mmo","sha256":"AE5D58574031970361FBB78FE73F0A58A71DF72B557A49642062B718E143FB77","mmo_record_count":9,"damage":1750,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":14,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1750},{"row":1,"basis":0,"association":-1,"damage":1750}]},
+    {"resource":"ep14_dg02_obj_00_01.mmo","sha256":"3F4A3C23F8057AE453506408C295FF305EB0DDCA076E3D3FF69EF42B9184CB0E","mmo_record_count":9,"damage":1750,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":14,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1750},{"row":1,"basis":0,"association":-1,"damage":1750}]},
+    {"resource":"ep14_dg02_obj_01_00.mmo","sha256":"E6F17A0F3221A22B619161D56B36A91251C6771AB5E1FE8F4534F3229BBFC58F","mmo_record_count":12,"damage":1750,"expected_selected_rows":24,"scopes":[{"hd":0,"episode":14,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1750},{"row":1,"basis":0,"association":-1,"damage":1750},{"row":2,"basis":0,"association":-1,"damage":1750},{"row":3,"basis":0,"association":-1,"damage":1750}]},
+    {"resource":"ep14_dg02_obj_01_01.mmo","sha256":"5DE0F8A023E851EF2668E88853AECF0D1D45373424A7B6D94811159FAB84CC3F","mmo_record_count":12,"damage":1750,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":14,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1750},{"row":1,"basis":0,"association":-1,"damage":1750},{"row":2,"basis":200,"association":-1,"damage":1750},{"row":3,"basis":200,"association":-1,"damage":1750}]},
+    {"resource":"ep15_dg00_obj_00_00.mmo","sha256":"1CE081FC57CF2873349D1375FF240C8A4D6F3E74CDD908DA202C36002E83A224","mmo_record_count":5,"damage":1910,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":15,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":1910},{"row":2,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep15_dg00_obj_00_01.mmo","sha256":"1F74568D5E9449C14E154BAA2DF307E6824C8C2CF7EE7FDC2394DBF52B8C70E0","mmo_record_count":5,"damage":1910,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":15,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":1910},{"row":2,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep15_dg00_obj_01_00.mmo","sha256":"6539DF4E02AB8CDFFC02CFE5A49D89BA0A5388B11FDF5648D43F7D987DC8E80B","mmo_record_count":5,"damage":1910,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":15,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1910},{"row":1,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep15_dg00_obj_01_01.mmo","sha256":"17B339A95D490742707613D36CA9DD7A044C9070535C360EB3072F1239565D14","mmo_record_count":5,"damage":1910,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":15,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1910},{"row":1,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep15_dg01_obj_00_D.mmo","sha256":"ECD5D600B1AEC6F82DDD5BD1C4FBAAAC0542DDB298BB4DC1EF34E7C737F46CB9","mmo_record_count":1,"damage":1910,"expected_selected_rows":4,"scopes":[{"hd":0,"episode":15,"dungeon":1,"stage":0,"difficulty_mask":5}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep15_dg01_obj_jewel_00.mmo","sha256":"B11B9121AEC12942FF6F4FF611A409A04A121D71EEEF0864FE980A081B5325CC","mmo_record_count":1,"damage":1910,"expected_selected_rows":2,"scopes":[{"hd":0,"episode":15,"dungeon":1,"stage":0,"difficulty_mask":5}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep15_dg01_obj_jewel_01.mmo","sha256":"96AD4E3CF93E51018DE999491E5C13424F79D19F83AE7710BF8D1B64653DB163","mmo_record_count":1,"damage":1910,"expected_selected_rows":2,"scopes":[{"hd":0,"episode":15,"dungeon":1,"stage":0,"difficulty_mask":5}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep15_dg01_obj_jewel_03.mmo","sha256":"185BB2784129B92801ADE8A06AD4F61BD5643BCE1492B6AF359503391737F241","mmo_record_count":4,"damage":1910,"expected_selected_rows":4,"scopes":[{"hd":0,"episode":15,"dungeon":1,"stage":0,"difficulty_mask":4}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1910},{"row":1,"basis":0,"association":-1,"damage":1910},{"row":2,"basis":0,"association":-1,"damage":1910},{"row":3,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep15_dg01_obj_robot_00.mmo","sha256":"8C8C1861943C4424BFA4BC9DE7BEF90CD85AFB776B25537C7A19993AE9132A5F","mmo_record_count":1,"damage":1910,"expected_selected_rows":4,"scopes":[{"hd":0,"episode":15,"dungeon":1,"stage":0,"difficulty_mask":5}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep15_dg02_obj_00.mmo","sha256":"4B89CFA4D14056609C24F53EBBBCFEBC02CDB8927FD2F2101745BFBD02FF5ADF","mmo_record_count":3,"damage":1910,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":15,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1910}]},
+    {"resource":"ep16_dg00_m_158_05_01.mmo","sha256":"EB85B0FBD2E6AA58C4C98C8076D77E056C69ADF63F44F499814CFC66C242D722","mmo_record_count":5,"damage":923,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":4,"basis":0,"association":-1,"damage":923}]},
+    {"resource":"ep16_dg00_obj_00.mmo","sha256":"78D9E3E437E3D5FFCED37A8C5AE3BE2FFEE6FF9BD7A2CAB00424D329BAB95B37","mmo_record_count":6,"damage":840,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":840},{"row":5,"basis":0,"association":-1,"damage":840}]},
+    {"resource":"ep16_dg00_obj_10.mmo","sha256":"0048BCA3E713D8604A97C581530D04F0A08B3051C880046E90A1C66F9B75E6EA","mmo_record_count":1,"damage":2070,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2070}]},
+    {"resource":"ep16_dg00_obj_20_00.mmo","sha256":"1C50D7C36A1E8705BF31E720C4E15A1F4862DD2EF4AD55AB054E4B04BCC9AE62","mmo_record_count":28,"damage":2070,"expected_selected_rows":105,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2070},{"row":1,"basis":0,"association":-1,"damage":2070},{"row":2,"basis":0,"association":-1,"damage":2070},{"row":3,"basis":0,"association":-1,"damage":2070},{"row":4,"basis":0,"association":-1,"damage":2070},{"row":5,"basis":0,"association":-1,"damage":2070},{"row":6,"basis":0,"association":-1,"damage":2070},{"row":7,"basis":0,"association":-1,"damage":2070},{"row":8,"basis":0,"association":-1,"damage":2070},{"row":9,"basis":0,"association":-1,"damage":2070},{"row":10,"basis":0,"association":-1,"damage":2070},{"row":11,"basis":0,"association":-1,"damage":2070},{"row":12,"basis":0,"association":-1,"damage":2070},{"row":13,"basis":0,"association":-1,"damage":2070},{"row":14,"basis":0,"association":-1,"damage":2070},{"row":15,"basis":0,"association":-1,"damage":2070},{"row":16,"basis":0,"association":-1,"damage":2070},{"row":17,"basis":0,"association":-1,"damage":2070},{"row":18,"basis":0,"association":-1,"damage":2070},{"row":19,"basis":0,"association":-1,"damage":2070},{"row":20,"basis":0,"association":-1,"damage":2070}]},
+    {"resource":"ep16_dg00_obj_30_d.mmo","sha256":"61D32BF1825E3859E21B9CA4FDF9C736E88CD7F6BEBCB4E9A00F120ABBA4CA42","mmo_record_count":3,"damage":2070,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2070},{"row":2,"basis":0,"association":-1,"damage":2070}]},
+    {"resource":"ep16_dg00_obj_30_u.mmo","sha256":"319A530E02DDB5A7F0941A86F3595F623A3BF31A1B09FCD8BD5AC53EF2D09922","mmo_record_count":3,"damage":2070,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2070},{"row":2,"basis":0,"association":-1,"damage":2070}]},
+    {"resource":"ep16_dg01_devil_00.mmo","sha256":"9E4D69AD88D4076C0A4694805571D79716948093FC0DCB0ACBE9D74998EDA96C","mmo_record_count":6,"damage":2082,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2082},{"row":1,"basis":0,"association":-1,"damage":2082}]},
+    {"resource":"ep16_dg01_devil_01.mmo","sha256":"1329FEC39A7697C45476CB9442092027338DEFC94F95DB191C83321766E6F8A2","mmo_record_count":6,"damage":1150,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1150},{"row":1,"basis":0,"association":-1,"damage":1150}]},
+    {"resource":"ep16_dg01_obj_00.mmo","sha256":"E33BF5679056A0D2DC26B01D7E527161BB1290361683494F45CC615356D3A220","mmo_record_count":2,"damage":2082,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2082},{"row":1,"basis":0,"association":-1,"damage":2082}]},
+    {"resource":"ep16_dg01_obj_02_d.mmo","sha256":"D479440C9237385330344C56E48569B2106C395F6E0D5006128F95C71E81BCAF","mmo_record_count":3,"damage":2082,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":2082}]},
+    {"resource":"ep16_dg01_obj_02_u.mmo","sha256":"BB8D3B535DF18B9F3C778CFBC96F8BF671AC978E9016833F5FBF0863E0B7A4B5","mmo_record_count":3,"damage":2082,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":16,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":2082}]},
+    {"resource":"ep17_dg00_obj_01_00.mmo","sha256":"D0168B69C5DC28AB937937C88EDA7431020DBF416A7F50805C293514385AF4B1","mmo_record_count":4,"damage":2094,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2094},{"row":1,"basis":0,"association":-1,"damage":2094},{"row":2,"basis":0,"association":-1,"damage":2094}]},
+    {"resource":"ep17_dg00_obj_B_bomb_00.mmo","sha256":"4D6AA7C9A8C084872911D9720E277F1659DE74613FFF3963CBC51018CB408DE1","mmo_record_count":33,"damage":2094,"expected_selected_rows":126,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2094},{"row":1,"basis":0,"association":-1,"damage":2094},{"row":2,"basis":0,"association":-1,"damage":2094},{"row":3,"basis":0,"association":-1,"damage":2094},{"row":4,"basis":0,"association":-1,"damage":2094},{"row":5,"basis":0,"association":-1,"damage":2094},{"row":6,"basis":0,"association":-1,"damage":2094}]},
+    {"resource":"ep17_dg00_obj_back_00.mmo","sha256":"F55612AA91856FD56E3E4A8FC3090B45A326130689CBACB2F32A3C180C278B3B","mmo_record_count":6,"damage":2094,"expected_selected_rows":360,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2094},{"row":1,"basis":0,"association":-1,"damage":2094},{"row":2,"basis":0,"association":-1,"damage":2094},{"row":3,"basis":0,"association":-1,"damage":2094},{"row":4,"basis":0,"association":-1,"damage":2094},{"row":5,"basis":0,"association":-1,"damage":2094}]},
+    {"resource":"ep17_dg00_obj_back_01.mmo","sha256":"E309869076EE8820E579BD5105970FD719E53ECA9A06B4D151923F465563C803","mmo_record_count":6,"damage":2094,"expected_selected_rows":432,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2094},{"row":1,"basis":0,"association":-1,"damage":2094},{"row":2,"basis":0,"association":-1,"damage":2094},{"row":3,"basis":0,"association":-1,"damage":2094},{"row":4,"basis":0,"association":-1,"damage":2094},{"row":5,"basis":0,"association":-1,"damage":2094}]},
+    {"resource":"ep17_dg00_obj_back_02.mmo","sha256":"4018083B7C862EBFA75F0B2A75877482AE208592B41A93CDC2E1AB669A0BC43A","mmo_record_count":1,"damage":2094,"expected_selected_rows":147,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2094}]},
+    {"resource":"ep17_dg00_obj_knife_00.mmo","sha256":"0AAB1BF014B347E12EDEE77D74A592033A17ECD54685E098AC31EE2A382E4C43","mmo_record_count":2,"damage":2094,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2094}]},
+    {"resource":"ep17_dg00_obj_mirra_00.mmo","sha256":"C80C97079718D58E09B95468E2DB5B158C1213688D2CD340FC6D8D63C2550D10","mmo_record_count":4,"damage":2094,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2094},{"row":1,"basis":0,"association":-1,"damage":2094},{"row":2,"basis":0,"association":-1,"damage":2094},{"row":3,"basis":0,"association":-1,"damage":2094}]},
+    {"resource":"ep17_dg00_obj_mirra_01.mmo","sha256":"4CB5307B3EC958EF3A36D06C62476E758D6D9FCB680B4BFD6A35BB2CC0A1AE98","mmo_record_count":2,"damage":2094,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2094},{"row":1,"basis":0,"association":-1,"damage":2094}]},
+    {"resource":"ep17_dg01_obj_back_00.mmo","sha256":"8CFB4336917ED9A14AD634493E1C7CDD66BAF071631A11FA64CF34A06E6415CC","mmo_record_count":5,"damage":2106,"expected_selected_rows":195,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2106},{"row":1,"basis":0,"association":-1,"damage":2106},{"row":2,"basis":0,"association":-1,"damage":2106},{"row":3,"basis":0,"association":-1,"damage":2106},{"row":4,"basis":0,"association":-1,"damage":2106}]},
+    {"resource":"ep17_dg01_obj_back_01.mmo","sha256":"0FEF1874C9426B91A5758CA92B6367372CDE3868E6A47061E99410C8F3B1DC69","mmo_record_count":5,"damage":2106,"expected_selected_rows":210,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2106},{"row":1,"basis":0,"association":-1,"damage":2106},{"row":2,"basis":0,"association":-1,"damage":2106},{"row":3,"basis":0,"association":-1,"damage":2106},{"row":4,"basis":0,"association":-1,"damage":2106}]},
+    {"resource":"ep17_dg01_obj_back_02.mmo","sha256":"76ED01186D3AAD9C9D24BAD8FE96900DDB5D9323074E757BE86C6C6D40E18496","mmo_record_count":1,"damage":2106,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2106}]},
+    {"resource":"ep17_dg01_obj_jewel_02.mmo","sha256":"08054616B2EFE4E46DBBC42A9F733FBF145080B55DFEB52061CEB020EE9B6729","mmo_record_count":8,"damage":2106,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2106},{"row":1,"basis":0,"association":-1,"damage":2106},{"row":2,"basis":0,"association":-1,"damage":2106}]},
+    {"resource":"ep17_dg01_obj_spear_00.mmo","sha256":"D7C05D76866AB764506739252336B227FC28A4237BA7CC3324353C0F37A89069","mmo_record_count":1,"damage":2106,"expected_selected_rows":27,"scopes":[{"hd":0,"episode":17,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2106}]},
+    {"resource":"ep18_dg00_obj_house_00.mmo","sha256":"330DB4E67277065876A42A4D3B248B445244BC320C2C79F643198B8E99E8C72A","mmo_record_count":6,"damage":2118,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":18,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":2118},{"row":2,"basis":0,"association":-1,"damage":2118},{"row":3,"basis":0,"association":-1,"damage":2118}]},
+    {"resource":"ep18_dg00_obj_sun_00.mmo","sha256":"BE695B90387355D445D0F86C471AB01B9247DEC5BCE9A4FF096EF569B7B1846F","mmo_record_count":3,"damage":2118,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":18,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2118},{"row":1,"basis":0,"association":-1,"damage":2118},{"row":2,"basis":0,"association":-1,"damage":2118}]},
+    {"resource":"ep18_dg01_obj_Mf_00.mmo","sha256":"19CB4DD34DE540B7191A75F6AD9994CAC1B3B7C4D9E870222974AD4BFF9F2431","mmo_record_count":4,"damage":2130,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":18,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2130},{"row":2,"basis":0,"association":-1,"damage":2130},{"row":3,"basis":0,"association":-1,"damage":2130}]},
+    {"resource":"ep18_dg01_obj_star_00.mmo","sha256":"6FA6195691565FDFC89CAFCAE2A3AF14E1D94184B61FF9F36E0BE8A841FE3046","mmo_record_count":4,"damage":2130,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":18,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2130},{"row":1,"basis":0,"association":-1,"damage":2130}]},
+    {"resource":"ep19_dg00_obj_bug.mmo","sha256":"444AFD1A4C0974B059C03590E50006619D8E6B3BECD2AC6D84CF3E3765E9C30D","mmo_record_count":8,"damage":2142,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":19,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":7,"basis":0,"association":-1,"damage":2142}]},
+    {"resource":"ep19_dg00_obj_gift00.mmo","sha256":"9F641D77EF8811E53FF620C5EA9640765B9D3B19C1D48BACA4BE13E5DA8F96AF","mmo_record_count":16,"damage":2142,"expected_selected_rows":39,"scopes":[{"hd":0,"episode":19,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":2142},{"row":2,"basis":0,"association":-1,"damage":2142},{"row":3,"basis":0,"association":-1,"damage":2142},{"row":4,"basis":0,"association":-1,"damage":2142},{"row":5,"basis":0,"association":-1,"damage":2142},{"row":6,"basis":0,"association":-1,"damage":2142},{"row":7,"basis":0,"association":-1,"damage":2142},{"row":8,"basis":0,"association":-1,"damage":2142},{"row":9,"basis":0,"association":-1,"damage":2142},{"row":10,"basis":0,"association":-1,"damage":2142},{"row":11,"basis":0,"association":-1,"damage":2142},{"row":12,"basis":0,"association":-1,"damage":2142},{"row":15,"basis":0,"association":-1,"damage":2142}]},
+    {"resource":"ep19_dg01_obj_card_D.mmo","sha256":"B79CAEAF0F61E8DB1E657FBEAE125C0122ACE06EDA92D252C62FBC56BB9A1AD3","mmo_record_count":4,"damage":2154,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":19,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2154},{"row":1,"basis":0,"association":-1,"damage":2154},{"row":2,"basis":0,"association":-1,"damage":2154},{"row":3,"basis":0,"association":-1,"damage":2154}]},
+    {"resource":"ep19_dg01_obj_card_U.mmo","sha256":"3CF49139C9647268E522FD9AB79D676C5839F19253A79AAB8B72965770B5C78A","mmo_record_count":4,"damage":2154,"expected_selected_rows":24,"scopes":[{"hd":0,"episode":19,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2154},{"row":1,"basis":0,"association":-1,"damage":2154},{"row":2,"basis":0,"association":-1,"damage":2154},{"row":3,"basis":0,"association":-1,"damage":2154}]},
+    {"resource":"ep19_dg01_obj_cat00.mmo","sha256":"D1E525F8FC04FBAA033B992F5DD532DF87C90F8F918E2397ACEE9E4D19DF9F79","mmo_record_count":4,"damage":2154,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":19,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2154},{"row":1,"basis":0,"association":-1,"damage":2154},{"row":2,"basis":0,"association":-1,"damage":2154}]},
+    {"resource":"ep19_dg01_obj_table.mmo","sha256":"A630811B980D1F14B08EBC20D831A0C092C37A9E840550C648A95C867734CBAB","mmo_record_count":29,"damage":2154,"expected_selected_rows":48,"scopes":[{"hd":0,"episode":19,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2154},{"row":1,"basis":0,"association":-1,"damage":2154},{"row":2,"basis":0,"association":-1,"damage":2154},{"row":3,"basis":0,"association":-1,"damage":2154},{"row":4,"basis":0,"association":-1,"damage":2154},{"row":5,"basis":0,"association":-1,"damage":2154},{"row":6,"basis":0,"association":-1,"damage":2154},{"row":7,"basis":0,"association":-1,"damage":2154},{"row":8,"basis":0,"association":-1,"damage":2154},{"row":17,"basis":0,"association":-1,"damage":2154},{"row":18,"basis":0,"association":-1,"damage":2154},{"row":19,"basis":0,"association":-1,"damage":2154},{"row":20,"basis":0,"association":-1,"damage":2154},{"row":21,"basis":0,"association":-1,"damage":2154},{"row":22,"basis":0,"association":-1,"damage":2154},{"row":23,"basis":0,"association":-1,"damage":2154}]},
+    {"resource":"ep20_dg00_obj_Fish_pen.mmo","sha256":"7C1D4518F40D020DFF4B9993C98BCCCE1DB305A0172A51EDA2DBAEFEB9FB904A","mmo_record_count":8,"damage":2166,"expected_selected_rows":24,"scopes":[{"hd":0,"episode":20,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2166},{"row":5,"basis":0,"association":-1,"damage":2166},{"row":6,"basis":0,"association":-1,"damage":2166},{"row":7,"basis":0,"association":-1,"damage":2166}]},
+    {"resource":"ep20_dg00_obj_bear.mmo","sha256":"9FBE5F51CF89F1D57772CBFB2D23F192ED32E4525BFA6BC708A1D78F544240D0","mmo_record_count":4,"damage":2166,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":20,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2166},{"row":1,"basis":0,"association":-1,"damage":2166}]},
+    {"resource":"ep20_dg01_obj_crystal.mmo","sha256":"F780ED2C7CC2C5506A52F4514A43461683BC61708C1D4481B52FD61E260A7BA8","mmo_record_count":8,"damage":2178,"expected_selected_rows":48,"scopes":[{"hd":0,"episode":20,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":2178},{"row":1,"basis":0,"association":-1,"damage":2178},{"row":2,"basis":0,"association":-1,"damage":2178},{"row":3,"basis":0,"association":-1,"damage":2178},{"row":4,"basis":0,"association":-1,"damage":2178},{"row":5,"basis":0,"association":-1,"damage":2178},{"row":6,"basis":0,"association":-1,"damage":2178},{"row":7,"basis":0,"association":-1,"damage":2178}]},
+    {"resource":"ep20_dg01_obj_post_00.mmo","sha256":"DC627B28C2C567177F712BE0E85AD3587E87E0552B7447EAF412681B1B39C2E7","mmo_record_count":4,"damage":2178,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":20,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":2178},{"row":2,"basis":0,"association":-1,"damage":2178}]},
+    {"resource":"ep20_dg01_obj_post_01.mmo","sha256":"5378B81D5560DE4819C72FF798D0340FFDBD5E4B63FB586078B60C898300C2FF","mmo_record_count":4,"damage":2178,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":20,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":2178},{"row":2,"basis":0,"association":-1,"damage":2178}]},
+    {"resource":"ep21_dg00_obj_basket_01.mmo","sha256":"5FE117F0D3BF2D72B5E77E819223575E852561635181DEDAE96C610E38E03D62","mmo_record_count":9,"damage":3285,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":21,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep21_dg00_obj_ghost.mmo","sha256":"818827C2E0EF00B921C1DF185AE9A66A8C3E1D75D76AB9C9161C8B896952243F","mmo_record_count":4,"damage":3285,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":21,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep21_dg01_obj_c_bine00.mmo","sha256":"477A325CFEA190C4BD3C18D6278AB0115659DFE32A9A41CE9FC4F1D91D87A52F","mmo_record_count":6,"damage":3303,"expected_selected_rows":18,"scopes":[{"hd":0,"episode":21,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3303},{"row":1,"basis":0,"association":-1,"damage":3303},{"row":2,"basis":0,"association":-1,"damage":3303},{"row":3,"basis":0,"association":-1,"damage":3303},{"row":4,"basis":0,"association":-1,"damage":3303},{"row":5,"basis":0,"association":-1,"damage":3303}]},
+    {"resource":"ep21_dg01_obj_skull_00.mmo","sha256":"B4D7B2155DB1CAAC69B325E5B2E20061A30185399E8A8919EDFD373238657919","mmo_record_count":10,"damage":3303,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":21,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3303},{"row":4,"basis":0,"association":-1,"damage":3303},{"row":5,"basis":0,"association":-1,"damage":3303},{"row":6,"basis":0,"association":-1,"damage":3303}]},
+    {"resource":"ep21_dg01_obj_squash_L0.mmo","sha256":"B3F5FDD84AC04F6FF30FF9E010F24C34972AA0578E661BBC1BD19E1888DB5194","mmo_record_count":4,"damage":3303,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":21,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3303},{"row":1,"basis":0,"association":-1,"damage":3303},{"row":2,"basis":0,"association":-1,"damage":3303},{"row":3,"basis":0,"association":-1,"damage":3303}]},
+    {"resource":"ep21_dg01_obj_squash_L1.mmo","sha256":"8363D3D1F83C4DE00D71E864CCB0E97A37A09F3CA9090EC2E75AAA381B482A43","mmo_record_count":4,"damage":3303,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":21,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3303},{"row":1,"basis":0,"association":-1,"damage":3303},{"row":2,"basis":0,"association":-1,"damage":3303},{"row":3,"basis":0,"association":-1,"damage":3303}]},
+    {"resource":"ep22_dg00_m_194_03.mmo","sha256":"C011438B34D80F5DB8C9DC2D8F053DA31FEA1415B9563A1E88FB912557550783","mmo_record_count":16,"damage":2214,"expected_selected_rows":90,"scopes":[{"hd":0,"episode":22,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":500,"association":-1,"damage":2214},{"row":1,"basis":500,"association":-1,"damage":2214},{"row":2,"basis":500,"association":-1,"damage":2214},{"row":3,"basis":500,"association":-1,"damage":2214},{"row":4,"basis":500,"association":-1,"damage":2214},{"row":5,"basis":500,"association":-1,"damage":2214},{"row":6,"basis":500,"association":-1,"damage":2214},{"row":7,"basis":500,"association":-1,"damage":2214},{"row":8,"basis":500,"association":-1,"damage":2214},{"row":9,"basis":500,"association":-1,"damage":2214},{"row":10,"basis":500,"association":-1,"damage":2214},{"row":11,"basis":500,"association":-1,"damage":2214},{"row":12,"basis":500,"association":-1,"damage":2214},{"row":13,"basis":500,"association":-1,"damage":2214},{"row":14,"basis":500,"association":-1,"damage":2214}]},
+    {"resource":"ep22_dg00_obj_biggate.mmo","sha256":"98839139E3FB4F4D63F5B87F4F611A675F80555152CC291CAA7F7197049A6F17","mmo_record_count":4,"damage":3285,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":22,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":2,"basis":0,"association":-1,"damage":3285},{"row":3,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_obj_convey.mmo","sha256":"A64D559E6CFD7B7844BD6C5941178B6C7ED1F17C1728B914B4C8E817BE4DA3F7","mmo_record_count":5,"damage":3285,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":22,"dungeon":1,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285},{"row":1,"basis":0,"association":-1,"damage":3285},{"row":2,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_obj_convey1.mmo","sha256":"9F7338F0237AFA0B0217061F86FA0A1A1D9050EC48EC03199AC334D0CF59BEB8","mmo_record_count":3,"damage":3285,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":22,"dungeon":1,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285},{"row":1,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_obj_convey2.mmo","sha256":"5681F44A1716AE384AA998FD40D36A6F7136CA71F188B09EA1A5392A31A082B0","mmo_record_count":6,"damage":3285,"expected_selected_rows":36,"scopes":[{"hd":0,"episode":22,"dungeon":0,"stage":0,"difficulty_mask":7},{"hd":0,"episode":22,"dungeon":1,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285},{"row":1,"basis":0,"association":-1,"damage":3285},{"row":2,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_obj_way1.mmo","sha256":"ADC81C079639E9CE5E4471E6AB6C36BAB4FA7F86905B24101DD7D4C0CC462E72","mmo_record_count":19,"damage":3285,"expected_selected_rows":114,"scopes":[{"hd":0,"episode":22,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285},{"row":1,"basis":0,"association":-1,"damage":3285},{"row":2,"basis":0,"association":-1,"damage":3285},{"row":3,"basis":0,"association":-1,"damage":3285},{"row":4,"basis":0,"association":-1,"damage":3285},{"row":5,"basis":0,"association":-1,"damage":3285},{"row":6,"basis":0,"association":-1,"damage":3285},{"row":7,"basis":0,"association":-1,"damage":3285},{"row":8,"basis":0,"association":-1,"damage":3285},{"row":9,"basis":0,"association":-1,"damage":3285},{"row":10,"basis":0,"association":-1,"damage":3285},{"row":11,"basis":0,"association":-1,"damage":3285},{"row":12,"basis":0,"association":-1,"damage":3285},{"row":13,"basis":0,"association":-1,"damage":3285},{"row":14,"basis":0,"association":-1,"damage":3285},{"row":15,"basis":0,"association":-1,"damage":3285},{"row":16,"basis":0,"association":-1,"damage":3285},{"row":17,"basis":0,"association":-1,"damage":3285},{"row":18,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_obj_way2.mmo","sha256":"64DB86084E728724973B9C01F17B80F24E54AB3C6CDC0EA36339D9523355CCB4","mmo_record_count":25,"damage":3285,"expected_selected_rows":150,"scopes":[{"hd":0,"episode":22,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285},{"row":1,"basis":0,"association":-1,"damage":3285},{"row":2,"basis":0,"association":-1,"damage":3285},{"row":3,"basis":0,"association":-1,"damage":3285},{"row":4,"basis":0,"association":-1,"damage":3285},{"row":5,"basis":0,"association":-1,"damage":3285},{"row":6,"basis":0,"association":-1,"damage":3285},{"row":7,"basis":0,"association":-1,"damage":3285},{"row":8,"basis":0,"association":-1,"damage":3285},{"row":9,"basis":0,"association":-1,"damage":3285},{"row":10,"basis":0,"association":-1,"damage":3285},{"row":11,"basis":0,"association":-1,"damage":3285},{"row":12,"basis":0,"association":-1,"damage":3285},{"row":13,"basis":0,"association":-1,"damage":3285},{"row":14,"basis":0,"association":-1,"damage":3285},{"row":15,"basis":0,"association":-1,"damage":3285},{"row":16,"basis":0,"association":-1,"damage":3285},{"row":17,"basis":0,"association":-1,"damage":3285},{"row":18,"basis":0,"association":-1,"damage":3285},{"row":19,"basis":0,"association":-1,"damage":3285},{"row":20,"basis":0,"association":-1,"damage":3285},{"row":21,"basis":0,"association":-1,"damage":3285},{"row":22,"basis":0,"association":-1,"damage":3285},{"row":23,"basis":0,"association":-1,"damage":3285},{"row":24,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_st01_obj_gate1.mmo","sha256":"FBBFF871424CEEC47D1232A42F306FEA9576A98234C5CDD62B44EE63C9D54021","mmo_record_count":7,"damage":3285,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":22,"dungeon":1,"stage":1,"difficulty_mask":7}],"rows":[{"row":4,"basis":0,"association":-1,"damage":3285},{"row":5,"basis":0,"association":-1,"damage":3285},{"row":6,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_st01_obj_gate2.mmo","sha256":"9E6F51919237E4B8F74CCD0964DD95CEAF325231C252B34D308B46B05F789247","mmo_record_count":2,"damage":3285,"expected_selected_rows":6,"scopes":[{"hd":0,"episode":22,"dungeon":1,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285},{"row":1,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_st01_obj_gate_00.mmo","sha256":"B0AFCAC42C9B137EAED93E53CA7019DABB12F6126F57EEC1DD0DD805886771C7","mmo_record_count":8,"damage":4200,"expected_selected_rows":24,"scopes":[{"hd":0,"episode":22,"dungeon":1,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":4200},{"row":1,"basis":0,"association":-1,"damage":4200},{"row":2,"basis":0,"association":-1,"damage":4200},{"row":3,"basis":0,"association":-1,"damage":4200},{"row":4,"basis":0,"association":-1,"damage":4200},{"row":5,"basis":0,"association":-1,"damage":4200},{"row":6,"basis":0,"association":-1,"damage":4200},{"row":7,"basis":0,"association":-1,"damage":4200}]},
+    {"resource":"ep22_dg00_st01_obj_way1.mmo","sha256":"26B47E4A7B7DEA2201B5A2D01DAD35802425C89193929A2259C0116209AEE6A1","mmo_record_count":16,"damage":3285,"expected_selected_rows":42,"scopes":[{"hd":0,"episode":22,"dungeon":1,"stage":1,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":3285},{"row":2,"basis":0,"association":-1,"damage":3285},{"row":4,"basis":0,"association":-1,"damage":3285},{"row":5,"basis":0,"association":-1,"damage":3285},{"row":7,"basis":0,"association":-1,"damage":3285},{"row":8,"basis":0,"association":-1,"damage":3285},{"row":15,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_st01_obj_way2.mmo","sha256":"32212294613AB7C97E74E88414A55ACC7EE9674CB9CF4995E36896E1E2211853","mmo_record_count":16,"damage":3285,"expected_selected_rows":63,"scopes":[{"hd":0,"episode":22,"dungeon":1,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285},{"row":1,"basis":0,"association":-1,"damage":3285},{"row":2,"basis":0,"association":-1,"damage":3285},{"row":3,"basis":0,"association":-1,"damage":3285},{"row":4,"basis":0,"association":-1,"damage":3285},{"row":6,"basis":0,"association":-1,"damage":3285},{"row":15,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep22_dg00_st01_obj_way3.mmo","sha256":"C3C3D762A64F2775DC77E574C49397C1F7209812E962DF904E9A0494EF69805E","mmo_record_count":16,"damage":3285,"expected_selected_rows":42,"scopes":[{"hd":0,"episode":22,"dungeon":1,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":3285},{"row":1,"basis":0,"association":-1,"damage":3285},{"row":3,"basis":0,"association":-1,"damage":3285},{"row":5,"basis":0,"association":-1,"damage":3285},{"row":6,"basis":0,"association":-1,"damage":3285},{"row":8,"basis":0,"association":-1,"damage":3285},{"row":15,"basis":0,"association":-1,"damage":3285}]},
+    {"resource":"ep23_dg00_obj_wall01.mmo","sha256":"553209D1E6081676F375C902B0DD3AFE382821459F6DD99A6B08204DD977B036","mmo_record_count":1,"damage":1343,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":9999,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg00_obj_wall02.mmo","sha256":"4DAA22D639764172C364DA8D15D23E5052CAD791BB69C9097C7D02855A356D34","mmo_record_count":2,"damage":1343,"expected_selected_rows":15,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":9999,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg00_obj_wall03.mmo","sha256":"DE4F0BA7BFAD8464D67BF3F0A326AB0CB23CBB21080550F4DD073B209FB9DEE5","mmo_record_count":2,"damage":1343,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":9999,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg00_obj_wall04-1.mmo","sha256":"35EFDF353B2A0450F4D8EECCF12277187BE47B03DFED0972B7DE81A4F5BED922","mmo_record_count":1,"damage":1343,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":9999,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg00_obj_wall04.mmo","sha256":"8C791FB0773B55A3B0F5D19F3117832C739487027C8A6B857E780C23A7704ACF","mmo_record_count":1,"damage":1343,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":9999,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg00_obj_wall05.mmo","sha256":"ADA52E99816DEE404A8926FFFAD39B5C392628858128202FEA4C06D76F766E24","mmo_record_count":1,"damage":1343,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":9999,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg00_obj_wall06.mmo","sha256":"F383CBEBC4D2F98B5A9988F230BB4B25179891C2D76D816D86FF749555D14D9F","mmo_record_count":6,"damage":1343,"expected_selected_rows":36,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":9999,"association":-1,"damage":1343},{"row":1,"basis":9999,"association":-1,"damage":1343},{"row":2,"basis":9999,"association":-1,"damage":1343},{"row":3,"basis":9999,"association":-1,"damage":1343},{"row":4,"basis":9999,"association":-1,"damage":1343},{"row":5,"basis":9999,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg00_obj_wall07.mmo","sha256":"11E3F4B7456E5E0F4C90F5B7E887064192D74482A846DB3129297D5A380C46D7","mmo_record_count":2,"damage":1343,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":9999,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg00_obj_wall08.mmo","sha256":"312C13CFCF600BB77AF1A7B3981ED288E7AA789E2037E14A4C54E52F645A33A1","mmo_record_count":4,"damage":1343,"expected_selected_rows":12,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":9999,"association":-1,"damage":1343},{"row":1,"basis":9999,"association":-1,"damage":1343},{"row":2,"basis":9999,"association":-1,"damage":1343},{"row":3,"basis":9999,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg00_obj_wall09.mmo","sha256":"71D1ECAD771C7A7B4F6ADC1574AEAEA3012905E73CBF5402B5CFD6F506838B29","mmo_record_count":2,"damage":1343,"expected_selected_rows":3,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":500,"association":-1,"damage":1343}]},
+    {"resource":"ep23_dg01_obj_box_type01.mmo","sha256":"D5B7108DD105473F1E39A9CD0616F46147BF41323EB79905535DC86F0525DED8","mmo_record_count":13,"damage":20000,"expected_selected_rows":39,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":20000},{"row":1,"basis":0,"association":-1,"damage":20000},{"row":2,"basis":0,"association":-1,"damage":20000},{"row":3,"basis":0,"association":-1,"damage":20000},{"row":4,"basis":0,"association":-1,"damage":20000},{"row":5,"basis":0,"association":-1,"damage":20000},{"row":6,"basis":0,"association":-1,"damage":20000},{"row":7,"basis":0,"association":-1,"damage":20000},{"row":8,"basis":0,"association":-1,"damage":20000},{"row":9,"basis":0,"association":-1,"damage":20000},{"row":10,"basis":0,"association":-1,"damage":20000},{"row":11,"basis":0,"association":-1,"damage":20000},{"row":12,"basis":0,"association":-1,"damage":20000}]},
+    {"resource":"ep23_dg01_obj_box_type04.mmo","sha256":"F16CAF6C931370BE36B7EAA9A224B8905A225F51867D535B6505104528A0D47B","mmo_record_count":22,"damage":20000,"expected_selected_rows":48,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":1,"basis":0,"association":-1,"damage":20000},{"row":4,"basis":0,"association":-1,"damage":20000},{"row":6,"basis":0,"association":-1,"damage":20000},{"row":7,"basis":0,"association":-1,"damage":20000},{"row":10,"basis":0,"association":-1,"damage":20000},{"row":11,"basis":0,"association":-1,"damage":20000},{"row":12,"basis":0,"association":-1,"damage":20000},{"row":13,"basis":0,"association":-1,"damage":20000},{"row":14,"basis":0,"association":-1,"damage":20000},{"row":15,"basis":0,"association":-1,"damage":20000},{"row":16,"basis":0,"association":-1,"damage":20000},{"row":17,"basis":0,"association":-1,"damage":20000},{"row":18,"basis":0,"association":-1,"damage":20000},{"row":19,"basis":0,"association":-1,"damage":20000},{"row":20,"basis":0,"association":-1,"damage":20000},{"row":21,"basis":0,"association":-1,"damage":20000}]},
+    {"resource":"ep23_dg01_obj_pipe.mmo","sha256":"5442C6C498418BE4D40AACCB4BC76FF46254CB426441A7A1AD9BBEC4D7665065","mmo_record_count":37,"damage":1000,"expected_selected_rows":111,"scopes":[{"hd":0,"episode":23,"dungeon":0,"stage":1,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":1000},{"row":1,"basis":0,"association":-1,"damage":1000},{"row":2,"basis":0,"association":-1,"damage":1000},{"row":3,"basis":0,"association":-1,"damage":1000},{"row":4,"basis":0,"association":-1,"damage":1000},{"row":5,"basis":0,"association":-1,"damage":1000},{"row":6,"basis":0,"association":-1,"damage":1000},{"row":7,"basis":0,"association":-1,"damage":1000},{"row":8,"basis":0,"association":-1,"damage":1000},{"row":9,"basis":0,"association":-1,"damage":1000},{"row":10,"basis":0,"association":-1,"damage":1000},{"row":11,"basis":0,"association":-1,"damage":1000},{"row":12,"basis":0,"association":-1,"damage":1000},{"row":13,"basis":0,"association":-1,"damage":1000},{"row":14,"basis":0,"association":-1,"damage":1000},{"row":15,"basis":0,"association":-1,"damage":1000},{"row":16,"basis":0,"association":-1,"damage":1000},{"row":17,"basis":0,"association":-1,"damage":1000},{"row":18,"basis":0,"association":-1,"damage":1000},{"row":19,"basis":0,"association":-1,"damage":1000},{"row":20,"basis":0,"association":-1,"damage":1000},{"row":21,"basis":0,"association":-1,"damage":1000},{"row":22,"basis":0,"association":-1,"damage":1000},{"row":23,"basis":0,"association":-1,"damage":1000},{"row":24,"basis":0,"association":-1,"damage":1000},{"row":25,"basis":0,"association":-1,"damage":1000},{"row":26,"basis":0,"association":-1,"damage":1000},{"row":27,"basis":0,"association":-1,"damage":1000},{"row":28,"basis":0,"association":-1,"damage":1000},{"row":29,"basis":0,"association":-1,"damage":1000},{"row":30,"basis":0,"association":-1,"damage":1000},{"row":31,"basis":0,"association":-1,"damage":1000},{"row":32,"basis":0,"association":-1,"damage":1000},{"row":33,"basis":0,"association":-1,"damage":1000},{"row":34,"basis":0,"association":-1,"damage":1000},{"row":35,"basis":0,"association":-1,"damage":1000},{"row":36,"basis":0,"association":-1,"damage":1000}]},
+    {"resource":"ep_st01_block_x01.mmo","sha256":"05297BE2A394382F8A42EBF6169F0B03E9053CDE88ED340DD3594E15EF324D39","mmo_record_count":2,"damage":410,"expected_selected_rows":8,"scopes":[{"hd":0,"episode":3,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":410},{"row":1,"basis":0,"association":-1,"damage":410}]},
+    {"resource":"ep_st01_block_x02.mmo","sha256":"C9F2B7CDD8930962EAD3F6537A2332D316611438701F85CE8BD87C43823B8862","mmo_record_count":2,"damage":410,"expected_selected_rows":2,"scopes":[{"hd":0,"episode":3,"dungeon":0,"stage":0,"difficulty_mask":4}],"rows":[{"row":0,"basis":0,"association":-1,"damage":410},{"row":1,"basis":0,"association":-1,"damage":410}]},
+    {"resource":"obj_ep01_st10_fallgate.mmo","sha256":"1813B95E64CF680DEB85FC1A9FDE8C0BF59967F6F3D9A6398E8D960781CBD2E8","mmo_record_count":2,"damage":300,"expected_selected_rows":22,"scopes":[{"hd":0,"episode":2,"dungeon":0,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":300},{"row":1,"basis":0,"association":-1,"damage":300}]},
+    {"resource":"obj_ep01_st11_obj01.mmo","sha256":"1F4205F3DA705CAE866B09927FFB23FC03530A6EC65EBF786F15EBC5916317D2","mmo_record_count":1,"damage":300,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":2,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":10,"association":-1,"damage":300}]},
+    {"resource":"obj_ep01_st11_obj02_01.mmo","sha256":"23DA1F12712F05B7A70C4E58DE8D5486FC1074D1AB185F466967AB00BE5B2041","mmo_record_count":21,"damage":300,"expected_selected_rows":39,"scopes":[{"hd":0,"episode":2,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":300},{"row":9,"basis":0,"association":-1,"damage":300},{"row":10,"basis":0,"association":-1,"damage":300},{"row":11,"basis":0,"association":-1,"damage":300},{"row":12,"basis":0,"association":-1,"damage":300},{"row":13,"basis":0,"association":-1,"damage":300},{"row":14,"basis":0,"association":-1,"damage":300},{"row":15,"basis":0,"association":-1,"damage":300},{"row":16,"basis":0,"association":-1,"damage":300},{"row":17,"basis":0,"association":-1,"damage":300},{"row":18,"basis":0,"association":-1,"damage":300},{"row":19,"basis":0,"association":-1,"damage":300},{"row":20,"basis":0,"association":-1,"damage":300}]},
+    {"resource":"obj_ep01_st11_obj03.mmo","sha256":"12ED9AE01ABB38114FA8D507995C7CB77FFB12E42B2109EEF1361DA02D4496CB","mmo_record_count":1,"damage":300,"expected_selected_rows":9,"scopes":[{"hd":0,"episode":2,"dungeon":1,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":300}]},
+    {"resource":"obj_ep01_st12_01_00.mmo","sha256":"9DB6D2C5EF0CFC4E46922EE32946A8ED7865B909EFB7355AFD7C754BD2185F30","mmo_record_count":10,"damage":300,"expected_selected_rows":108,"scopes":[{"hd":0,"episode":2,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":8,"damage":300},{"row":1,"basis":0,"association":8,"damage":300},{"row":2,"basis":0,"association":8,"damage":300},{"row":3,"basis":0,"association":8,"damage":300},{"row":4,"basis":0,"association":8,"damage":300},{"row":5,"basis":0,"association":8,"damage":300},{"row":6,"basis":0,"association":8,"damage":300},{"row":7,"basis":0,"association":8,"damage":300},{"row":8,"basis":0,"association":-1,"damage":300}]},
+    {"resource":"obj_ep01_st12_01_01.mmo","sha256":"B206EA148B89AA75392E3A2E2FD52AA187F5A3B0435BDC06A142F07B0A740A46","mmo_record_count":12,"damage":300,"expected_selected_rows":54,"scopes":[{"hd":0,"episode":2,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":8,"damage":300},{"row":1,"basis":0,"association":8,"damage":300},{"row":2,"basis":0,"association":8,"damage":300},{"row":3,"basis":0,"association":8,"damage":300},{"row":4,"basis":0,"association":8,"damage":300},{"row":5,"basis":0,"association":8,"damage":300},{"row":6,"basis":0,"association":8,"damage":300},{"row":7,"basis":0,"association":8,"damage":300},{"row":8,"basis":0,"association":-1,"damage":300}]},
+    {"resource":"obj_ep01_st12_02_00.mmo","sha256":"B6C4781CF91B9E36E88746E453FDAF43113F96800A3C4801D9720F13F4E9CD52","mmo_record_count":7,"damage":300,"expected_selected_rows":45,"scopes":[{"hd":0,"episode":2,"dungeon":2,"stage":0,"difficulty_mask":7}],"rows":[{"row":0,"basis":0,"association":-1,"damage":300},{"row":1,"basis":0,"association":-1,"damage":300},{"row":2,"basis":0,"association":-1,"damage":300},{"row":3,"basis":0,"association":-1,"damage":300},{"row":4,"basis":0,"association":-1,"damage":300}]}
   ],
   "negative_samples": [
-    {
-      "resource": "ep01_dg02_new_obj_flash_00.mmo",
-      "expected_unclassified_rows": 168,
-      "reason": "Same episode/object family and HP0 standalone type4 shape, but no damage evidence."
-    },
-    {
-      "resource": "ep17_dg00_obj_B_bomb_00.mmo",
-      "expected_unclassified_rows": 594,
-      "reason": "Hazardous-sounding name is not sufficient evidence."
-    },
-    {
-      "resource": "ep03_dg00_obj_fire-nw0.mmo",
-      "expected_unclassified_rows": 21,
-      "reason": "Fire naming is not sufficient evidence."
-    },
-    {
-      "resource": "ep13_dg02_obj_rock_00.mmo",
-      "expected_unclassified_rows": 4,
-      "reason": "Rock naming is not sufficient evidence."
-    },
-    {
-      "resource": "ep17_dg01_obj_spear_00.mmo",
-      "expected_unclassified_rows": 27,
-      "reason": "Spear naming is not sufficient evidence."
-    },
-    {
-      "resource": "ep05_bbm_ef_leaf00.mmo",
-      "expected_unclassified_rows": 1260,
-      "reason": "High-volume decorative standalone type4 negative control."
-    },
-    {
-      "resource": "cloud_obj_01.mmo",
-      "expected_unclassified_rows": 870,
-      "reason": "High-volume ambient standalone type4 negative control."
-    }
+    {"resource":"cloud_obj_01.mmo","expected_unclassified_rows":870},
+    {"resource":"ep01_dg02_new_obj_flash_00.mmo","expected_unclassified_rows":168},
+    {"resource":"ep03_dg00_obj_fire-nw0.mmo","expected_unclassified_rows":21},
+    {"resource":"ep05_bbm_ef_leaf00.mmo","expected_unclassified_rows":1260},
+    {"resource":"ep13_dg02_obj_rock_00.mmo","expected_unclassified_rows":4}
   ]
 }

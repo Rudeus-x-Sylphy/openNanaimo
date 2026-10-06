@@ -18407,11 +18407,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     private static byte[] BuildProfileResponsePayload(CharacterRecord? character)
     {
-        // C377 reads a fixed frame through frame+135. Its remote-profile path
-        // consumes the name at +8, selectors at +39/+41, max HP at +42 and
-        // max MP at +44. The values at +46/+56 are separate derived profile
-        // statistics, not base attributes; keep them zero until their retail
-        // adapter semantics are independently established.
+        // C377 carries absolute defense and the attack base before client display additions.
         var payload = new byte[128];
         WriteFixedGbk(payload.AsSpan(0, 24), character?.Name ?? "角色");
 
@@ -18426,6 +18422,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             payload.AsSpan(36, 2),
             (ushort)Math.Clamp(character?.MaxMp ?? 100, 1, ushort.MaxValue));
 
+        CharacterCombatProfile.WriteProfileStats(payload, character);
         return payload;
     }
 

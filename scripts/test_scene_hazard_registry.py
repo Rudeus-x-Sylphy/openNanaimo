@@ -33,8 +33,8 @@ class SceneHazardRegistryTests(unittest.TestCase):
         self.assertIn(
             "SCENE_HAZARD_CATALOG_PASS scopes=288 type4=44531 "
             "association_candidates=31788 exact_associated=29916 "
-            "broken_association=1887 standalone=12743 hazards=471 "
-            "unclassified=14144 policies=6 negative_samples=7",
+            "broken_association=1887 standalone=12743 hazards=5013 "
+            "unclassified=9602 policies=173 negative_samples=5",
             result.stdout,
         )
 
@@ -44,25 +44,44 @@ class SceneHazardRegistryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "identity drift"):
             generator.audit(registry)
         registry = json.loads(REGISTRY.read_text(encoding="ascii"))
-        registry["policies"][0]["scopes"][0]["dungeon"] = 1
+        registry["policies"][0]["scopes"][0]["dungeon"] = 255
         with self.assertRaisesRegex(ValueError, "outside allowed scope"):
             generator.audit(registry)
 
+    def test_registry_rejects_wildcards_and_zero_damage(self):
+        for mutation in ("wildcard", "missing_rows", "zero_damage", "duplicate", "old_schema"):
+            with self.subTest(mutation=mutation):
+                registry = json.loads(REGISTRY.read_text(encoding="ascii"))
+                policy = registry["policies"][0]
+                if mutation == "wildcard":
+                    policy["rows"][0]["row"] = -1
+                elif mutation == "missing_rows":
+                    del policy["rows"]
+                elif mutation == "zero_damage":
+                    policy["rows"][0]["damage"] = 0
+                elif mutation == "duplicate":
+                    policy["rows"].append(policy["rows"][0])
+                else:
+                    registry["schema"] = 1
+                with self.assertRaises(ValueError):
+                    generator.audit(registry)
+
     def test_registry_has_identity_and_negative_samples(self):
         registry = json.loads(REGISTRY.read_text(encoding="ascii"))
-        self.assertEqual(registry["schema"], 1)
-        policy = registry["policies"]
-        self.assertEqual(policy[:1], [{
-            "resource": "ep01_dg02_new_obj_meteor.mmo",
-            "sha256": "80A21EE3F8175DCFEA21C2BF84B3F6DF9A0BC24B69951294F37D8C2178ADCB01",
-            "mmo_record_count": 36,
-            "damage": 100,
-            "expected_selected_rows": 216,
-            "evidence": "Observed standalone kind60 terrain collision restored by abed8a2; no positive-HP parent exists.",
-            "scopes": [{"hd": 0, "episode": 0, "dungeon": 2, "stage": 0, "difficulty_mask": 7}],
-        }])
+        self.assertEqual(registry["schema"], 2)
+        policies = {p["resource"]: p for p in registry["policies"]}
+        self.assertEqual(len(policies), 173)
+        spear = policies["obj_ep01_st11_obj03.mmo"]
+        self.assertEqual(spear["expected_selected_rows"], 9)
+        self.assertEqual(spear["rows"], [dict(row=0, basis=0, association=-1, damage=300)])
+        meteor = policies["ep01_dg02_new_obj_meteor.mmo"]
+        self.assertEqual(meteor["expected_selected_rows"], 72)
+        self.assertEqual([r["row"] for r in meteor["rows"]], list(range(24, 36)))
+        self.assertEqual({r["damage"] for r in meteor["rows"]}, {90})
+        self.assertEqual(policies["ep17_dg01_obj_spear_00.mmo"]["damage"], 2106)
+        self.assertEqual(policies["ep17_dg00_obj_B_bomb_00.mmo"]["damage"], 2094)
         negative_names = {item["resource"] for item in registry["negative_samples"]}
-        self.assertEqual(len(negative_names), 7)
+        self.assertEqual(len(negative_names), 5)
         self.assertIn("ep01_dg02_new_obj_flash_00.mmo", negative_names)
         self.assertIn("cloud_obj_01.mmo", negative_names)
 
@@ -81,7 +100,7 @@ class SceneHazardRegistryTests(unittest.TestCase):
         self.assertIn("policy->difficulty_mask&(1u<<ctx->difficulty)", source)
         self.assertIn("ep01_dg02_new_obj_meteor.mmo", catalog)
         self.assertNotIn("ep01_dg02_new_obj_flash_00.mmo", catalog)
-        self.assertNotIn("ep17_dg00_obj_B_bomb_00.mmo", catalog)
+        self.assertIn("ep17_dg00_obj_B_bomb_00.mmo", catalog)
 
 
 if __name__ == "__main__":

@@ -306,6 +306,7 @@ def validated_closure(closure: dict) -> list[dict]:
             "release/components/cards/card_drop_cn_boss_bindings.json",
             "scripts/generate_cn_card_drops.py",
             "scripts/generate_scene_hazard_catalog.py",
+            "scripts/generate_scene_hazard_resources.py",
             "release/components/stage_damage/scene_hazard_registry.json",
         }
         if not (native or managed or build_script or embedded_recipe or card_distribution):

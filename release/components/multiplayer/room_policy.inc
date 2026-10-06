@@ -192,16 +192,26 @@ static int teamplay_start_request_is_duplicate(void){
     return idx>=0&&idx<MULTI_MAX_PLAYERS&&g_teamplay_start_epoch&&
         g_teamplay_cf7f_arrived[idx]==g_teamplay_start_epoch;
 }
+static void teamplay_start_reset_room(void){
+    g_teamplay_start_epoch=0u;g_teamplay_start_tick=0u;
+    g_teamplay_start_real_stage=g_teamplay_start_show_stage=g_teamplay_start_slot=0u;
+    g_teamplay_start_hd=g_teamplay_start_episode=g_teamplay_start_dungeon=g_teamplay_start_difficulty=0u;
+    g_teamplay_start_released=0;g_teamplay_battle_initialized=0;g_teamplay_settlement_broadcasted=0;
+    memset(g_teamplay_cf7f_arrived,0,sizeof(g_teamplay_cf7f_arrived));
+    memset(g_teamplay_preload_delivered,0,sizeof(g_teamplay_preload_delivered));
+    memset(g_multi_start_profile_pending,0,sizeof(g_multi_start_profile_pending));
+    memset(g_teamplay_final_request_low,0,sizeof(g_teamplay_final_request_low));
+    memset(g_teamplay_failure_order,0,sizeof(g_teamplay_failure_order));
+    memset(g_teamplay_personal_result_order,0,sizeof(g_teamplay_personal_result_order));
+}
 static void teamplay_start_reset_current(void){
-    int idx=g_multi_current;
+    int idx=g_multi_current,owner=multiplayer_room_owner_index();
     if(idx<0||idx>=MULTI_MAX_PLAYERS)return;
     g_teamplay_cf7f_arrived[idx]=0u;g_multi_start_profile_pending[idx]=0u;
-    if(idx==multiplayer_room_owner_index()){
-        g_teamplay_start_epoch=0u;g_teamplay_start_released=0;g_teamplay_battle_initialized=0;
-        memset(g_teamplay_cf7f_arrived,0,sizeof(g_teamplay_cf7f_arrived));
-    memset(g_teamplay_preload_delivered,0,sizeof(g_teamplay_preload_delivered));
-        memset(g_multi_start_profile_pending,0,sizeof(g_multi_start_profile_pending));
-    }
+    g_teamplay_preload_delivered[idx]=0u;g_teamplay_final_request_low[idx]=0u;
+    /* Quick entry starts while every connection is outside the room.
+       Empty-room teardown owns the shared epoch just as room creation does. */
+    if(owner<0||idx==owner)teamplay_start_reset_room();
 }
 static void teamplay_start_seed_epoch(unsigned epoch,unsigned real_stage,unsigned show_stage,unsigned slot){
     g_teamplay_start_epoch=epoch?epoch:1u;g_teamplay_start_tick=tickms();
@@ -346,6 +356,10 @@ static void teamplay_room_leave_current(void){
     int src=g_multi_current,target;unsigned uid,owner;char p[4096];
     if(src<0||src>=MULTI_MAX_PLAYERS||!g_multi_conn[src].room_active)return;
     uid=g_multi_conn[src].uid;multiplayer_mark_room(0);owner=multiplayer_owner_uid();
+    g_teamplay_cf7f_arrived[src]=0u;g_teamplay_preload_delivered[src]=0u;
+    g_multi_start_profile_pending[src]=0u;g_teamplay_final_request_low[src]=0u;
+    g_teamplay_failure_order[src]=0u;g_teamplay_personal_result_order[src]=0u;
+    if(multiplayer_room_owner_index()<0)teamplay_start_reset_room();
 #if TEAMPLAY_FEATURE_LATE_ROSTER_PUSH
     g_teamplay_roster_seen_mask[src]=0u;
     for(target=0;target<MULTI_MAX_PLAYERS;target++)g_teamplay_roster_seen_mask[target]&=~(1u<<(unsigned)src);

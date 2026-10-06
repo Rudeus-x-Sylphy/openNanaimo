@@ -10,6 +10,11 @@ void Check(bool value, string label)
     if (!value) throw new InvalidOperationException(label);
     checks++; Console.WriteLine("PASS " + label);
 }
+var repeatedDisposal = new NativeDungeonClient(_ => Task.CompletedTask);
+await Task.WhenAll(repeatedDisposal.DisposeAsync().AsTask(), repeatedDisposal.DisposeAsync().AsTask());
+await repeatedDisposal.DisposeAsync();
+Check(true, "overlapping and repeated transport teardown completes once");
+
 async Task<byte[]> ReadFrame(NetworkStream stream)
 {
     var header = new byte[8]; await stream.ReadExactlyAsync(header);

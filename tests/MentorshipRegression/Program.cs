@@ -347,7 +347,8 @@ internal static partial class Program
         Check(visitorList.Length == 16 && BinaryPrimitives.ReadUInt32LittleEndian(visitorList.AsSpan(12)) == 0,
             "other channels do not expose advertisements");
         var ownList = (await Dispatch(f, teacher, MentorProtocol.ListRequestOpcode, new byte[4]))!;
-        Check(ownList.Length == 16, "advertiser does not appear as their own peer");
+        Check(ownList.Length == 36 && BinaryPrimitives.ReadUInt32LittleEndian(ownList.AsSpan(12)) == 1,
+            "advertiser immediately appears in their own recruitment list");
         Check(f.Deliveries.Count == 0, "advertisement queries never produce negotiation notifications");
         Set(teacher, "OnlineTracked", false);
         var offlineList = (await Dispatch(f, student, MentorProtocol.ListRequestOpcode, new byte[4]))!;

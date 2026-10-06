@@ -210,8 +210,10 @@ internal static class DungeonSaveChecks
                     CharacterExperienceAward: 20));
             var thresholdPersisted = (await db.GetCharacterAsync(account, token))!;
             Check(thresholdPersisted.Experience == 110 && thresholdPersisted.Level == 2
-                && thresholdPersisted.AttributePoints == CharacterProgression.AttributePointsPerLevel,
-                "native settlement derives a level-up from cumulative experience at the shared threshold");
+                && thresholdPersisted.AttributePoints == thresholdCharacter.AttributePoints
+                && thresholdPersisted.Strength == thresholdCharacter.Strength + 1
+                && thresholdPersisted.Vitality == thresholdCharacter.Vitality + 1,
+                "native settlement distributes growth at the shared experience threshold");
 
             var staleAfterBytes = thresholdAfter.Bytes.ToArray();
             Put(staleAfterBytes, 12, 100);
@@ -221,8 +223,10 @@ internal static class DungeonSaveChecks
                 "character-stale-progression");
             var stalePersisted = (await db.GetCharacterAsync(account, token))!;
             Check(stalePersisted.Experience == 110 && stalePersisted.Level == 2
-                && stalePersisted.AttributePoints == CharacterProgression.AttributePointsPerLevel,
-                "stale dungeon checkpoints cannot regress experience, level or duplicate level points");
+                && stalePersisted.AttributePoints == thresholdCharacter.AttributePoints
+                && stalePersisted.Strength == thresholdPersisted.Strength
+                && stalePersisted.Vitality == thresholdPersisted.Vitality,
+                "stale dungeon checkpoints preserve committed experience, level and attributes");
 
             ShopCatalog.TryGetPetGrowthStage(petCatalog.PetGrowthClass, 1, out var firstGrowth);
             var expectedFirstStageReward = checked(

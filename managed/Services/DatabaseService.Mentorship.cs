@@ -291,8 +291,8 @@ public sealed partial class DatabaseService
             JOIN CharacterMentorAdvertisements m ON m.CharacterId = c.Id
             WHERE m.IsAdvertising = 1 AND c.IsOnline = 1 AND a.IsOnline = 1 AND a.IsBanned = 0
               AND c.ActiveSessionId = a.ActiveSessionId AND c.CurrentChannelId = $channel
-              AND a.CurrentChannelId = $channel AND c.Id <> $self ORDER BY c.Id
-            """, ("$channel", actor.ChannelId), ("$self", actor.CharacterId)))
+              AND a.CurrentChannelId = $channel ORDER BY c.Id
+            """, ("$channel", actor.ChannelId)))
         {
             using var reader = await query.ExecuteReaderAsync(token);
             while (await reader.ReadAsync(token))
@@ -305,6 +305,8 @@ public sealed partial class DatabaseService
             if ((await ReadMentorshipQualificationAsync(connection, transaction, candidate.Actor, policy, token)).CanAdvertise)
                 result.Add(candidate.Character);
         transaction.Commit();
+        foreach (var character in result)
+            character.DungeonGrade = await LoadDungeonGradeAsync(connection, character.Id, token);
         return result;
     }
 

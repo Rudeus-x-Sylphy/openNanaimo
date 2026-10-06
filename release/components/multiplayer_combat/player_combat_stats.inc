@@ -1,11 +1,11 @@
 #ifndef NANAIMO_MULTIPLAYER_COMBAT_PLAYER_COMBAT_STATS_INC
 #define NANAIMO_MULTIPLAYER_COMBAT_PLAYER_COMBAT_STATS_INC
+#include "../character_progression/combat_growth.inc"
+static unsigned character_progression_effective_defense(void);
 
-/* Local adapter policy, not a recovered original game endpoint formula. The attack
-   modifier mirrors the native CFEC additive slot. Flight percentage remains a
-   later multiplier. Selected-PET type1 gems are deliberately not auto-added in
-   MULTIPLAYER_COMBAT, so one configured modifier is authoritative for ordinary and Boss
-   projectile reconciliation. */
+/* The attack modifier uses the CFEC additive slot before the flight multiplier.
+   Ordinary and Boss projectiles share one configured adjustment; selected-pet
+   attack gemstones are not added a second time here. */
 static unsigned multiplayer_combat_profile_adjust_attack(unsigned base){
     unsigned out=base,pct=item_effects_flight_attack_percent();
     if(out>0xFFFFFFFFu-g_profile_attack_modifier)out=0xFFFFFFFFu;else out+=g_profile_attack_modifier;
@@ -16,6 +16,7 @@ static unsigned multiplayer_combat_profile_adjust_attack(unsigned base){
    one point for every positive accepted hit so a large configured value does
    not create permanent invulnerability. */
 static unsigned multiplayer_combat_profile_reduce_damage(unsigned raw){
-    if(!raw)return 0u;return raw>g_profile_defense_flat?raw-g_profile_defense_flat:1u;
+    if(!raw)return 0u;
+    return character_progression_reduce_damage(raw,character_progression_effective_defense());
 }
 #endif

@@ -160,6 +160,8 @@ public sealed partial class NetworkAdapterService
             return true;
         }
         if (session.NativeDungeon is null) return false;
+        if (opcode == 0xCF70 && frame.Length == 12)
+            await RefreshNativeCombatProgressionAsync(session, token);
         if (opcode == 0xCFEB && DeferNativePartyMap(session, frame)) return true;
         if (opcode == 0xCF70 && frame.Length == 12
             && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4, 2)) == 12)
@@ -1079,9 +1081,10 @@ public sealed partial class NetworkAdapterService
         session.NativeBattleResources = MergeNativeDungeonRevivalResources(
             session.NativeBattleResources, session.NativeCheckpoint, next,
             requestOpcode, session.NativeDungeonDeathLatched);
-        session.NativeBattleResources = MergeNativeDungeonQuickItemResources(
-            session.NativeBattleResources, frame, exchange.Frames,
-            checked((ushort)session.NativeCheckpoint.Get(4)));
+        if (IsNativeDungeonRecoveryActive(session))
+            session.NativeBattleResources = MergeNativeDungeonQuickItemResources(
+                session.NativeBattleResources, frame, exchange.Frames,
+                checked((ushort)session.NativeCheckpoint.Get(4)));
         if (requestOpcode == 0xD034 && session.NativeBattleResources is { } pickupResources)
         {
             foreach (var response in exchange.Frames)

@@ -15,6 +15,8 @@ public sealed class NativeDungeonClient : IAsyncDisposable
     private TaskCompletionSource<NativeDungeonState>? _pending;
     private List<byte[]>? _capturedFrames;
     private IOException? _readFailure;
+    private readonly object _disposeGate = new();
+    private Task? _disposeTask;
     public NativeDungeonClient(Func<byte[], Task> receive, int port = 52050) { _receive = receive; _port = port; }
     public async Task ConnectAsync(CancellationToken token)
     {
@@ -141,7 +143,12 @@ public sealed class NativeDungeonClient : IAsyncDisposable
                     $"Native worker receive failed on port {_port}; last opcode=0x{lastOpcode:X4}: {ex.Message}", ex));
         }
     }
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
+    {
+        lock (_disposeGate)
+            return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
+    private async Task DisposeCoreAsync()
     {
         await _stop.CancelAsync(); _client.Dispose();
         if (_reader is not null) await _reader;

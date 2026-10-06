@@ -32,17 +32,17 @@ internal static class LiveChecks
         return result;
     }
 
-    internal static async Task RunAsync(DatabaseService database, NetworkAdapterService service, string root, Action<bool,string> check)
+    internal static async Task RunAsync(DatabaseService database, NetworkAdapterService service, string root, Action<bool,string> check, uint consumableCode = 14000001)
     {
         var executable = Environment.GetEnvironmentVariable("NANAIMO_SOCIAL_BRIDGE");
         if (string.IsNullOrWhiteSpace(executable)) throw new InvalidOperationException("Set NANAIMO_SOCIAL_BRIDGE to an isolated current build.");
         service.NativeDungeonEnabled = true;
         var sessions = new List<object>();
-        foreach (var name in new[] { "ShareA", "ShareB" })
+        foreach (var name in consumableCode == 14000001 ? new[] { "ShareA", "ShareB" } : new[] { "FullA", "FullB" })
         {
             var account = await database.OpenLocalAccountAsync(name);
             await database.CreateLocalCharacterAsync(account, name, 0);
-            await database.GrantInventoryItemToAccountAsync(account, 14000001, 3);
+            await database.GrantInventoryItemToAccountAsync(account, consumableCode, 3);
             await database.GrantInventoryItemToAccountAsync(account, 15000001, 1);
             await database.GrantInventoryItemToAccountAsync(account, 17018835, 1);
             var character = (await database.GetCharacterAsync(account))!;
@@ -65,7 +65,7 @@ internal static class LiveChecks
         await database.GrantInventoryItemToAccountAsync(owner.AccountId, 43000002, 1);
         check((await database.CreateCoupleRelationAsync(owner.AccountId, owner.Id, Get<string>(first, "SessionId"), peer.Id,
             43000002, CancellationToken.None, Get<string>(second, "SessionId"))).Success, "live sharing relationship");
-        await using var pool = new NativeDungeonPool(Path.GetFullPath(executable), Path.Combine(root, "native"));
+        await using var pool = new NativeDungeonPool(Path.GetFullPath(executable), Path.Combine(root, consumableCode == 14000001 ? "native" : "native-full"));
         await using var reservation = await pool.AcquireAsync("reserve", CancellationToken.None);
         await using var leaseA = await pool.AcquireAsync("shared", CancellationToken.None);
         await using var leaseB = await pool.AcquireAsync("shared", CancellationToken.None);
@@ -116,7 +116,7 @@ internal static class LiveChecks
                 var handle = BinaryPrimitives.ReadUInt16LittleEndian(inventory.AsSpan(16));
                 Set(session, "NativeCoupleStartRequested", false);
                 var equipment = new byte[136]; equipment[27] = 1; equipment[42] = 1;
-                BinaryPrimitives.WriteUInt32LittleEndian(equipment.AsSpan(36), 14000001);
+                BinaryPrimitives.WriteUInt32LittleEndian(equipment.AsSpan(36), consumableCode);
                 BinaryPrimitives.WriteUInt16LittleEndian(equipment.AsSpan(40), handle);
                 character.Appearance.CopyTo(equipment, 96);
                 var completion = (await Call<byte[]?>(service, "HandleNativeFrameAsync",
@@ -132,14 +132,14 @@ internal static class LiveChecks
                     offset += size;
                 }
                 check(roomRefresh.Count == 1 && roomRefresh[0].Length == 0x74
-                    && BinaryPrimitives.ReadUInt32LittleEndian(roomRefresh[0].AsSpan(0x38)) == 14000001,
+                    && BinaryPrimitives.ReadUInt32LittleEndian(roomRefresh[0].AsSpan(0x38)) == consumableCode,
                     "live worker refreshes the visible ready-room quickbar " + character.Name);
                 for (var reopen = 0; reopen < 2; reopen++)
                     await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC378, []),
                         (ushort)0xC378, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None);
                 var liveInventory = await client.ExchangeAsync(null, null, CancellationToken.None);
-                check(liveInventory.Get(224) == 14000001 && liveInventory.Get(228) > 0
-                    && (await database.GetCharacterByIdAsync(character.Id))!.QuickSlots.Single().ItemCode == 14000001,
+                check(liveInventory.Get(224) == consumableCode && liveInventory.Get(228) > 0
+                    && (await database.GetCharacterByIdAsync(character.Id))!.QuickSlots.Single().ItemCode == consumableCode,
                     "live worker retains the backpack-assigned quick slot across repeated opens " + character.Name);
                 Set(session, "NativeCoupleStartRequested", false);
                 var petEquipment = new byte[136];
@@ -149,7 +149,7 @@ internal static class LiveChecks
                 await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC47D, petEquipment),
                     (ushort)0xC47D, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None);
                 var selectedPet = await client.ExchangeAsync(null, null, CancellationToken.None);
-                check(selectedPet.Get(68) == 15000001 && selectedPet.Get(224) == 14000001
+                check(selectedPet.Get(68) == 15000001 && selectedPet.Get(224) == consumableCode
                     && (await database.GetCharacterByIdAsync(character.Id))!.EquippedPetItemCode == 15000001,
                     "live ready room pet selection retains quick slot " + character.Name);
                 var pets = (await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC44B, []),
@@ -172,7 +172,7 @@ internal static class LiveChecks
                 await Call<byte[]?>(service, "HandleNativeFrameAsync", NativeDungeonClient.Frame(0xC378, []),
                     (ushort)0xC378, "WorldAdapter", "127.0.0.1", "127.0.0.1", session, CancellationToken.None);
                 var deselectedPet = await client.ExchangeAsync(null, null, CancellationToken.None);
-                check(deselectedPet.Get(68) == 0 && deselectedPet.Get(224) == 14000001
+                check(deselectedPet.Get(68) == 0 && deselectedPet.Get(224) == consumableCode
                     && (await database.GetCharacterByIdAsync(character.Id))!.EquippedPetItemCode == 0,
                     "live ready room pet deselection survives backpack reopening " + character.Name);
                 typeof(NetworkAdapterService).GetMethod("ArmNativeDungeonRevivalCycle", Private)!.Invoke(service, [session]);
@@ -194,18 +194,33 @@ internal static class LiveChecks
                 "production CF93 automatically binds the current partner");
             var deltas = Drain(first).Where(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF94).ToArray();
             check(deltas.Length == 2 && BinaryPrimitives.ReadUInt16LittleEndian(deltas[1].AsSpan(10)) == ushort.MaxValue,
-                "production route emits both actor effects");
+                $"production route emits both actor effects (count={deltas.Length}, "
+                    + $"ownerHp={Get<NativeDungeonState>(first, "NativeCheckpoint").Get(20)}, "
+                    + $"partnerHp={Get<NativeDungeonState>(second, "NativeCheckpoint").Get(20)})");
             // A snapshot waits for earlier peer callbacks, including persistence.
             var remote = await clients[1].ExchangeAsync(null, null, CancellationToken.None);
             var savedOwner = (await database.GetCharacterByIdAsync(owner.Id))!;
             var savedPeer = (await database.GetCharacterByIdAsync(peer.Id))!;
             var ownerResources = Get<BattleResourceSnapshot>(first, "NativeBattleResources");
             var peerResources = Get<BattleResourceSnapshot>(second, "NativeBattleResources");
-            check(savedOwner.CurrentHp == Math.Min((int)ownerResources.MaximumHp, 460)
-                && savedPeer.CurrentHp == Math.Min((int)peerResources.MaximumHp, 460)
+            check(savedOwner.CurrentHp == Math.Min((int)ownerResources.MaximumHp, consumableCode == 14002486 ? 65545 : 460)
+                && savedPeer.CurrentHp == Math.Min((int)peerResources.MaximumHp, consumableCode == 14002486 ? 65545 : 460)
                 && remote.Get(20) == savedPeer.CurrentHp, "production source and streaming peer persist recovery");
-            check(savedOwner.Items.Single(i => i.ItemCode == 14000001).Quantity == 2
-                && savedPeer.Items.Single(i => i.ItemCode == 14000001).Quantity == 3, "production sharing debits owner only");
+            if (consumableCode == 14002486)
+            {
+                check(deltas.All(f => f.Length == 24
+                    && BinaryPrimitives.ReadUInt32LittleEndian(f.AsSpan(12)) == consumableCode
+                    && BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(16)) == CoupleBenefitPolicy.ScaleRecovery(32767, 43000002)
+                    && BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(18)) == CoupleBenefitPolicy.ScaleRecovery(4000, 43000002)
+                    && BinaryPrimitives.ReadUInt32LittleEndian(f.AsSpan(20)) == 0),
+                    "full recovery publishes complete HP and MP results for both actors");
+                check(savedOwner.CurrentHp == ownerResources.MaximumHp && savedOwner.CurrentMp == ownerResources.MaximumMp
+                    && savedPeer.CurrentHp == peerResources.MaximumHp && savedPeer.CurrentMp == peerResources.MaximumMp
+                    && remote.Get(28) == savedPeer.CurrentMp,
+                    "full recovery persists both actors at their own effective HP and MP maxima");
+            }
+            check(savedOwner.Items.Single(i => i.ItemCode == consumableCode).Quantity == 2
+                && savedPeer.Items.Single(i => i.ItemCode == consumableCode).Quantity == 3, "production sharing debits owner only");
             await Call<NativeDungeonExchangeResult>(service, "CommitNativeCheckpointCapturedAsync", second, null, CancellationToken.None, false);
             savedPeer = (await database.GetCharacterByIdAsync(peer.Id))!;
             check(savedPeer.CurrentHp == peerResources.CurrentHp, "peer's next checkpoint preserves streaming recovery");

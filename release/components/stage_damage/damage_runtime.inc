@@ -114,15 +114,19 @@ static unsigned stage_damage_boss_contact_lookup(const struct stage_damage_damag
         if(cmp<0)lo=mid+1u;else if(cmp>0)hi=mid;else return boss_contact_rows[mid].attack;
     }return 0u;
 }
-static unsigned stage_damage_monster_contact_lookup(const struct stage_damage_damage_context *ctx,unsigned selector){
+static const struct monster_contact_row *stage_damage_monster_contact_find(const struct stage_damage_damage_context *ctx,unsigned selector){
     unsigned key[5],lo=0u,hi=MONSTER_CONTACT_ROW_COUNT,i;if(!ctx||!ctx->active)return 0u;
     key[0]=ctx->resource_hd;key[1]=ctx->resource_episode;key[2]=ctx->resource_dungeon;
     key[3]=ctx->resource_stage;key[4]=ctx->difficulty*3u+ctx->resource_stage;
     while(lo<hi){unsigned mid=lo+(hi-lo)/2u;const struct monster_contact_row *r=&monster_contact_rows[mid];const unsigned *row=&r->hd;int cmp=0;
         for(i=0;i<5u;i++){if(row[i]<key[i]){cmp=-1;break;}if(row[i]>key[i]){cmp=1;break;}}
-        if(!cmp){if(selector<r->first)cmp=1;else if(selector>r->last)cmp=-1;else return r->attack;}
+        if(!cmp){if(selector<r->first)cmp=1;else if(selector>r->last)cmp=-1;else return r;}
         if(cmp<0)lo=mid+1u;else hi=mid;
     }return 0u;
+}
+static unsigned stage_damage_monster_contact_lookup(const struct stage_damage_damage_context *ctx,unsigned selector){
+    const struct monster_contact_row *row=stage_damage_monster_contact_find(ctx,selector);
+    return row?row->attack:0u;
 }
 static int stage_damage_target_profile_compare(const struct hp_sync_profile_def *p,unsigned hd,unsigned ep,unsigned dg,unsigned st,unsigned diff,unsigned segment){
     if((unsigned)p->hd_id!=hd)return (unsigned)p->hd_id<hd?-1:1;
@@ -160,10 +164,9 @@ static unsigned stage_damage_scene_associated_lookup(const struct stage_damage_d
         out->resource=child->resource_index<HP_SYNC_RESOURCE_COUNT?hp_sync_resources[child->resource_index].name:"<scene-resource-oob>";}
     return damage;
 }
-/* Standalone terrain attacks cannot be inferred from type4, HP0, names, or
- * MMO shape alone: the same shape covers decorative and ambient resources.
- * The generated registry is fail-closed on resource identity and stage scope;
- * runtime additionally guards the authored target shape. */
+/* Zero-HP scene parts use their authored contact attack, independently of
+ * target durability. Exact resource rows and selected scopes distinguish
+ * damaging parts from decorative parts; zero attacks have no fallback. */
 static int stage_damage_resource_name_equal(const char *left,const char *right){
     if(!left||!right)return 0;
     while(*left&&*right&&*left==*right){left++;right++;}
@@ -183,7 +186,7 @@ static unsigned stage_damage_scene_hazard_lookup(const struct stage_damage_damag
     resource_def=&hp_sync_resources[target->resource_index];resource=resource_def->name;
     for(i=0u;i<STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT;i++)if(stage_damage_scene_hazard_policy_matches(ctx,resource_def,resource,&stage_damage_scene_hazard_policies[i])&&
         target->basis==stage_damage_scene_hazard_policies[i].basis&&target->association==stage_damage_scene_hazard_policies[i].association&&
-        (stage_damage_scene_hazard_policies[i].row<0||(unsigned)stage_damage_scene_hazard_policies[i].row==(unsigned)target->selector-(unsigned)target->placement_selector_start)){
+        (target->selector>=target->placement_selector_start&&(unsigned)stage_damage_scene_hazard_policies[i].row==(unsigned)target->selector-(unsigned)target->placement_selector_start)){
         unsigned damage=stage_damage_scene_hazard_policies[i].damage;
         if(out){out->target_type=(unsigned)target->target_type;out->row_count=(unsigned)profile->target_count;out->base=damage;
             out->status=STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE;out->policy_damage=damage;out->resource=resource;}
@@ -205,10 +208,11 @@ static unsigned stage_damage_player_d00f_damage(const struct stage_damage_damage
         if(!damage&&out)out->status=STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND;
         return damage;
     }
-    if(kind==20u){unsigned damage=stage_damage_monster_contact_lookup(ctx,owner);
-        if(out){out->status=damage?STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_COLLISION_FIXED;
-            out->base=damage;out->policy_damage=damage?damage:STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;out->resource=damage?"<ordinary-collision-resource>":"<ordinary-collision-policy>";}
-        return damage?damage:STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;
+    if(kind==20u){const struct monster_contact_row *contact=stage_damage_monster_contact_find(ctx,owner);
+        unsigned damage=contact?contact->attack:STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;
+        if(out){out->status=contact?(damage?STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_EXACT_ZERO):STAGE_DAMAGE_DAMAGE_COLLISION_FIXED;
+            out->base=contact?damage:0u;out->policy_damage=damage;out->resource=contact?"<ordinary-collision-resource>":"<ordinary-collision-policy>";}
+        return damage;
     }
     if(kind==40u){unsigned damage=stage_damage_boss_contact_lookup(ctx,req);
         if(out){out->status=damage?STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_FIXED;

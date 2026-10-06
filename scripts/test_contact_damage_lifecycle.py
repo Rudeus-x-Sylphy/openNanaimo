@@ -15,37 +15,40 @@ static int __attribute__((stdcall)) capture(SOCKET c,const char*p,int n,int flag
 static DWORD __attribute__((stdcall)) clock_fixed(void){return 123400u;}
 static unsigned word(unsigned o){return frame[o]|((unsigned)frame[o+1]<<8);}
 int main(int argc,char**argv){
-    unsigned char req[28];unsigned hp=5000u,i,kind,mode;int dead=0,rc;
+    unsigned char req[28];unsigned hp=5000u,i,kind,mode,expected;int dead=0,rc;
     struct stage_damage_damage_context ctx;struct stage_damage_damage_lookup lookup;
     struct skill_effect_cleanup_context skill;
     memset(req,0,sizeof(req));memset(&skill,0,sizeof(skill));
     pSd=capture;pT=clock_fixed;g_multi_current=0;g_profile_defense_flat=0;
     g_multi_conn[0].active=1;g_multi_conn[0].uid=21;g_multi_conn[0].socket=100;
     mode=(unsigned)atoi(argv[1]);kind=mode==0u?20u:mode==1u?40u:60u;req[8]=kind;
-    if(mode==6u){
+    if(mode==7u){
+        stage_damage_damage_begin(&ctx,0,2,1,0,0,1,1);req[10]=85;req[11]=1;
+    }else if(mode==6u){
         stage_damage_damage_begin(&ctx,0,4,2,0,2,1,1);req[10]=0xB6;req[11]=1;req[12]=2;
     }else if(mode==2u){
         stage_damage_damage_begin(&ctx,0,15,2,0,2,1,1);req[10]=17;req[12]=2;
     }else if(mode==3u){
-        stage_damage_damage_begin(&ctx,0,0,2,0,0,1,1);req[10]=239;
+        stage_damage_damage_begin(&ctx,0,0,2,0,0,1,1);req[10]=7;req[11]=1;
     }else if(mode>=4u){
         stage_damage_damage_begin(&ctx,0,1,0,0,2,1,1);req[10]=mode==4u?95u:149u;req[12]=2u;
     }else{
         stage_damage_damage_begin(&ctx,0,3,2,1,1,1,1);
         if(kind==20u){req[10]=9;req[11]=1;}else{req[0x12]=9;}
     }
-    CHECK(stage_damage_player_d00f_damage(&ctx,req,kind,&lookup)==(mode==0u?188u:mode==1u?369u:mode==2u?1146u:mode==6u?510u:mode>=4u?180u:100u));
+    expected=mode==0u?188u:mode==1u?369u:mode==2u?1146u:mode==7u?300u:mode==6u?510u:mode>=4u?180u:90u;
+    CHECK(stage_damage_player_d00f_damage(&ctx,req,kind,&lookup)==expected);
     if(mode==2u){CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE);CHECK(lookup.owner==17u&&lookup.source==2u&&lookup.associated_selector==16u);CHECK(!strcmp(lookup.resource,"ep15_dg02_m_154_00.mmo"));}
-    if(mode==3u){CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);CHECK(lookup.owner==239u&&lookup.source==0u);CHECK(!strcmp(lookup.resource,"ep01_dg02_new_obj_meteor.mmo"));}
+    if(mode==3u){CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);CHECK(lookup.owner==263u&&lookup.source==0u);CHECK(!strcmp(lookup.resource,"ep01_dg02_new_obj_meteor.mmo"));}
     if(mode==6u){CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE);
         CHECK(lookup.owner==438u&&lookup.associated_selector==439u);
         CHECK(!strcmp(lookup.resource,"ani_obj_ep04_dg02_03_01.mmo"));}
     rc=player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill);
     CHECK(rc==1&&sends==1&&size==36&&word(6)==0xD010&&word(8)==21&&word(10)==100);
-    CHECK(hp==(mode==0u?4812u:mode==1u?4631u:mode==2u?3854u:mode==6u?4490u:mode>=4u?4820u:4900u)&&word(16)==hp&&word(18)==5000-hp);
+    CHECK(hp==(5000u-expected)&&word(16)==hp&&word(18)==5000-hp);
     CHECK(frame[29]==kind&&word(12)==789);
     if(kind==40u){CHECK(word(26)==9&&frame[30]==0&&frame[31]==0&&word(32)==9);}
-    if(mode==2u){CHECK(word(26)==17u&&frame[29]==60u&&word(30)==0u);}if(mode==3u){CHECK(word(26)==239u&&frame[29]==60u&&word(30)==0u);}
+    if(mode==2u){CHECK(word(26)==17u&&frame[29]==60u&&word(30)==0u);}if(mode==3u){CHECK(word(26)==263u&&frame[29]==60u&&word(30)==0u);}
     g_profile_defense_flat=10000;hp=5;
     CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill));
     CHECK(hp==4&&word(18)==1);
@@ -53,11 +56,10 @@ int main(int argc,char**argv){
     CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill));
     CHECK(dead&&hp==0&&word(10)==200&&word(18)==1);i=sends;
     CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i);
-    /* Revival only restores HP/death state; it does not invalidate the battle
-     * epoch or suppress this captured kind60 route. */
+    /* Revival restores HP/death state within the same battle epoch. */
     hp=5000;dead=0;
     CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i+1);
-    CHECK(hp==(mode==0u?4812u:mode==1u?4631u:mode==2u?3854u:mode==6u?4490u:mode>=4u?4820u:4900u));i=sends;
+    CHECK(hp==(5000u-expected));i=sends;
     hp=5000;dead=0;
     CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,2,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i);
     skill_effect_cleanup_arm(&skill,52000015,5,1,1,123000);
@@ -75,12 +77,25 @@ int main(int argc,char**argv){
     stage_damage_damage_reset(&ctx);
     CHECK(stage_damage_player_d00f_damage(&ctx,req,20u,&lookup)==100u);
     CHECK(stage_damage_player_d00f_damage(&ctx,req,40u,&lookup)==200u);
+    /* An explicitly zero ordinary attack must not turn into fallback100 or
+     * the minimum-one damage after defense, including a zero-value response. */
+    stage_damage_damage_begin(&ctx,0,1,0,0,0,1,1);
+    memset(req,0,sizeof(req));req[8]=20;req[10]=203;hp=5000;dead=0;i=sends;
+    memset(&skill,0,sizeof(skill));g_profile_defense_flat=10000;
+    CHECK(stage_damage_player_d00f_damage(&ctx,req,20u,&lookup)==0u);
+    CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_EXACT_ZERO);
+    rc=player_collision_apply_player_d00f_injury(100,62050,req,20u,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill);
+    CHECK(hp==5000u&&!dead);
+    CHECK((!rc&&sends==i)||(rc&&sends==i+1&&word(18)==0u&&word(16)==5000u));
     for(i=0;i<MONSTER_CONTACT_ROW_COUNT;i++){
         const struct monster_contact_row*r=&monster_contact_rows[i];
         stage_damage_damage_begin(&ctx,r->hd,r->ep,r->dg,r->stage,r->slot/3,1,1);
         if(ctx.identity_translated)continue;
         CHECK(stage_damage_monster_contact_lookup(&ctx,r->first)==r->attack);
         CHECK(stage_damage_monster_contact_lookup(&ctx,r->last)==r->attack);
+        req[10]=(unsigned char)r->first;req[11]=(unsigned char)(r->first>>8);
+        CHECK(stage_damage_player_d00f_damage(&ctx,req,20u,&lookup)==r->attack);
+        CHECK(lookup.status==(r->attack?STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_EXACT_ZERO));
     }
     return 0;
 }
@@ -99,7 +114,7 @@ class ContactDamageLifecycleTests(unittest.TestCase):
         if result.returncode: raise AssertionError(result.stdout + result.stderr)
 
     def test_production_damage_matrix(self):
-        for kind in range(7):
+        for kind in range(8):
             with self.subTest(kind=kind):
                 result = subprocess.run([str(self.exe), str(kind)], cwd=self.work, capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

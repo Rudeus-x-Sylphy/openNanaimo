@@ -6,7 +6,7 @@
   "official_baseline_verified": false,
   "binary_delta_implemented": false,
   "complete_playable_game": false,
-  "source_closure_count_observed": 315,
+  "source_closure_count_observed": 321,
   "default_layers": [
     "runtime",
     "source",
@@ -65,7 +65,7 @@
       "approval": "required_per_file"
     },
     {
-      "path": "docs/L7-L8资源移植.md",
+      "path": "docs/L7-L8\u8d44\u6e90\u79fb\u690d.md",
       "layer": "docs",
       "size": 5536,
       "sha256": "29f9a771ddccb4698a10d25666ec1da22e23129d96f3f947577fda7fa688ba28",
@@ -73,7 +73,7 @@
       "approval": "required_per_file"
     },
     {
-      "path": "docs/启动流程与源码索引.md",
+      "path": "docs/\u542f\u52a8\u6d41\u7a0b\u4e0e\u6e90\u7801\u7d22\u5f15.md",
       "layer": "docs",
       "size": 14766,
       "sha256": "c7471570833d9e21e8132587b9d66f77269498eb0061b7b35f3c31f998a3aa32",
@@ -81,7 +81,7 @@
       "approval": "required_per_file"
     },
     {
-      "path": "docs/子弹DIY与篮球试玩.md",
+      "path": "docs/\u5b50\u5f39DIY\u4e0e\u7bee\u7403\u8bd5\u73a9.md",
       "layer": "docs",
       "size": 2162,
       "sha256": "0b5ced538885eba35f22c3e487158d96cb1fad052b69ac465f6a4915221a986a",
@@ -89,7 +89,7 @@
       "approval": "required_per_file"
     },
     {
-      "path": "docs/文件清单与导出工具.md",
+      "path": "docs/\u6587\u4ef6\u6e05\u5355\u4e0e\u5bfc\u51fa\u5de5\u5177.md",
       "layer": "docs",
       "size": 5764,
       "sha256": "0f91265842f426c33f1ba04b59bc8ba1bcd20077d9df90b5fd3e48580f988ffe",
@@ -97,15 +97,15 @@
       "approval": "required_per_file"
     },
     {
-      "path": "docs/构建与验证.md",
+      "path": "docs/\u6784\u5efa\u4e0e\u9a8c\u8bc1.md",
       "layer": "docs",
-      "size": 16879,
-      "sha256": "21203D2595C15ACA257468EAA3C425BE9862565FA5BF355746305ABED933F110",
+      "size": 17877,
+      "sha256": "de0464c3bd3fa27b18c855c745722e137d7b8e47bdd4f9477571c6fe2629af94",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
-      "path": "docs/第三方与许可说明.md",
+      "path": "docs/\u7b2c\u4e09\u65b9\u4e0e\u8bb8\u53ef\u8bf4\u660e.md",
       "layer": "docs",
       "size": 1559,
       "sha256": "66f90a7b2e4c218b2bd8cf548c74dd6eefb14b5db97e0870d714bbf9be4ac7f0",
@@ -113,7 +113,7 @@
       "approval": "required_per_file"
     },
     {
-      "path": "docs/运行依赖.md",
+      "path": "docs/\u8fd0\u884c\u4f9d\u8d56.md",
       "layer": "docs",
       "size": 8230,
       "sha256": "5bf7a68300440c2e3407cb7f40bd03f6ee8e94cab66688f5cc7a31c7100b7745",
@@ -121,7 +121,7 @@
       "approval": "required_per_file"
     },
     {
-      "path": "docs/韩服宠物佩戴等级下放方案.md",
+      "path": "docs/\u97e9\u670d\u5ba0\u7269\u4f69\u6234\u7b49\u7ea7\u4e0b\u653e\u65b9\u6848.md",
       "layer": "docs",
       "size": 9905,
       "sha256": "08c4e882b6fcbb94513f07add0c1e0853bd83e97e379890e896539d6fc078d0d",
@@ -209,7 +209,7 @@
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/authority/01-协议分帧与连接.md",
+      "path": "knowledge/authority/01-\u534f\u8bae\u5206\u5e27\u4e0e\u8fde\u63a5.md",
       "layer": "knowledge",
       "size": 4997,
       "sha256": "8dd8de28df4ba99175f6ca8fcf8d2f3df1000e9f604b659d399b889b6e2a4202",
@@ -217,7 +217,7 @@
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/authority/02-登录村庄与角色.md",
+      "path": "knowledge/authority/02-\u767b\u5f55\u6751\u5e84\u4e0e\u89d2\u8272.md",
       "layer": "knowledge",
       "size": 17340,
       "sha256": "85167c18c7608dc6c68546486d6ef1ae7929d01a749d943a467b84c5276bc6d9",
@@ -225,66 +225,66 @@
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/authority/03-角色资料与背包.md",
+      "path": "knowledge/authority/03-\u89d2\u8272\u8d44\u6599\u4e0e\u80cc\u5305.md",
       "layer": "knowledge",
-      "size": 90989,
-      "sha256": "B2A46D6BA2ED21B8203F5D3FB14FCD5C644D23904D55D7DD7DFA85EFDFD6E657",
+      "size": 91173,
+      "sha256": "7a48b89062874c4bc1a757de4f11e56299773213ac2af31b26a93b7b0fc300b7",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/authority/04-宠物与战斗.md",
+      "path": "knowledge/authority/04-\u5ba0\u7269\u4e0e\u6218\u6597.md",
       "layer": "knowledge",
-      "size": 38060,
-      "sha256": "F76028A44434FA2D639990DA61B85E030496D361D43D3C5ACFBD65DC7C44DDE5",
+      "size": 39589,
+      "sha256": "ae643619099ddcc3339ca2f2c07452fc1e6a2cee3194b5c28a06f3b1379b71b9",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/authority/05-房间与多人同步.md",
+      "path": "knowledge/authority/05-\u623f\u95f4\u4e0e\u591a\u4eba\u540c\u6b65.md",
       "layer": "knowledge",
-      "size": 28989,
-      "sha256": "184bdd109b001ad775d2d0cf0394212e5ef1b247447d03ed0e4eed47afee2b9a",
+      "size": 30028,
+      "sha256": "a0c228dbb0260159b9a6c20a7a8a80eae11e7b69abe07853c652b78e85d92172",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/authority/06-目标掉落与首领.md",
+      "path": "knowledge/authority/06-\u76ee\u6807\u6389\u843d\u4e0e\u9996\u9886.md",
       "layer": "knowledge",
       "size": 38110,
-      "sha256": "278DB44F9854DF3DA79259C88F7CBB79080C135D9030926B81D6EE8161FB7860",
+      "sha256": "278db44f9854df3da79259c88f7cbb79080c135d9030926b81d6ee8161fb7860",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/authority/07-拾取结算与奖励.md",
+      "path": "knowledge/authority/07-\u62fe\u53d6\u7ed3\u7b97\u4e0e\u5956\u52b1.md",
       "layer": "knowledge",
-      "size": 21747,
-      "sha256": "E595CBE13876670D3FDC6FF96C4EFF00996D1B90D430C3720B0B8AA41FD7FD4E",
+      "size": 21798,
+      "sha256": "31fccccdf1ab105af0e9162b40317289c334c66a6df77b27f30384748f7e180a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/authority/08-静态地址与调用链.md",
+      "path": "knowledge/authority/08-\u9759\u6001\u5730\u5740\u4e0e\u8c03\u7528\u94fe.md",
       "layer": "knowledge",
-      "size": 168636,
-      "sha256": "08FFD8CAA416B75A61240B45DD5A6FBE36E1CF741F9AFB65C3A0F8E32E1E73FC",
+      "size": 169185,
+      "sha256": "7f82f8c1e5f9c3f56bd6b84ab92d7ae5f9bb8733bebc19a0d48e7aaf3e5c7502",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/authority/09-运行配置与验证.md",
+      "path": "knowledge/authority/09-\u8fd0\u884c\u914d\u7f6e\u4e0e\u9a8c\u8bc1.md",
       "layer": "knowledge",
-      "size": 34464,
-      "sha256": "648486A061E6AE6A9617F79135A627A9722A47B37B62352FFE43E5DED5BFA164",
+      "size": 36166,
+      "sha256": "97bf1224af6f9e3325cf20a36bb36f118ecf7bfabd32f4dec4122921c6b203ab",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
-      "path": "knowledge/知识库索引.md",
+      "path": "knowledge/\u77e5\u8bc6\u5e93\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 12057,
-      "sha256": "27878D17BB4C7C0712B48E4041476DD4CB9BAE9208A38025581F57DA4A5F40F6",
+      "size": 12318,
+      "sha256": "c09cc1273b2dec5ae9eff2c4591f121db38eeba110afc8a8877c3b075ed23aae",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -404,7 +404,7 @@
       "path": "managed-host/CardSynthesisChecks.cs",
       "layer": "source",
       "size": 26147,
-      "sha256": "CF849B1BE94C52D545F4310B2CD4F4C291AD74E1D7AFDFE85B55C71957D8BD02",
+      "sha256": "cf849b1be94c52d545f4310b2cd4f4c291ad74e1d7afdfe85b55c71957d8bd02",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -459,8 +459,8 @@
     {
       "path": "managed-host/DungeonSaveChecks.cs",
       "layer": "source",
-      "size": 27023,
-      "sha256": "98f195ac814880670ca079d0421c010a96691eacd42a563741668b244a8eef85",
+      "size": 27292,
+      "sha256": "9f9476cf9c691b031466c639bcdff221d063f047ef3e3e643326c423f678fe30",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -539,8 +539,8 @@
     {
       "path": "managed-host/LauncherProfileChecks.cs",
       "layer": "source",
-      "size": 19195,
-      "sha256": "8d9398e1d57609269b610fc2a5b09604446804b4a8a11e3e3a8d1827f2a7ec02",
+      "size": 19345,
+      "sha256": "a46fcc8afe93dba1609defbdf47c7a5eb2b06d76825fd690babe858198e6ea97",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -843,8 +843,8 @@
     {
       "path": "managed/Models/CharacterRecord.cs",
       "layer": "source",
-      "size": 5963,
-      "sha256": "00500be9ac4712fc8bd1d94fd4274baaf505dc8383d793c839905e5007b0d729",
+      "size": 6033,
+      "sha256": "d7665cb9b0bcda4c1a02f08887d95de5d67e052551450991c030b1e4809896ab",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1057,6 +1057,22 @@
       "approval": "required_per_file"
     },
     {
+      "path": "managed/Services/CharacterCombatProfile.cs",
+      "layer": "source",
+      "size": 1549,
+      "sha256": "d3d6d5d6a6957ef919b7aea485109b47b13c974572cef12f2f8812e2ad9a1559",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "managed/Services/CharacterCombatProgression.cs",
+      "layer": "source",
+      "size": 1665,
+      "sha256": "f5b74c86eff86114c75d5cca267047a42cb307474d4774dc9de6e5a87b743562",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "managed/Services/CharacterProgression.cs",
       "layer": "source",
       "size": 1554,
@@ -1195,8 +1211,8 @@
     {
       "path": "managed/Services/DatabaseService.LocalAccounts.cs",
       "layer": "source",
-      "size": 18000,
-      "sha256": "495783dff8f69ab3ba2f0ff52a72c9f751ea40a568e2580102431de99ddb583f",
+      "size": 18214,
+      "sha256": "80a9757eedad94ec14cd512b67d6414d5925552fe9209da0f4bb5c0843baffe9",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1211,16 +1227,16 @@
     {
       "path": "managed/Services/DatabaseService.Mentorship.cs",
       "layer": "source",
-      "size": 48275,
-      "sha256": "27fba6077870c0109274160100ab10d716abcfb12c78f6fef1f9be6602a31751",
+      "size": 48368,
+      "sha256": "b93fd3463f1287203d996996ce0c9e1ebb8ce7f2b90b3c47b8a6d7fe4a0dc858",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
       "layer": "source",
-      "size": 76525,
-      "sha256": "1F13AF8AA66E8B8619989748718E0EA9256B3ABF6139B721547A0270D131CFEE",
+      "size": 77133,
+      "sha256": "a579ec07ae4e34bbec31fa8d58319f89b8a80e7d5be23add00f4978b9ff6e93d",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1283,8 +1299,8 @@
     {
       "path": "managed/Services/DatabaseService.cs",
       "layer": "source",
-      "size": 588100,
-      "sha256": "75ec1406664db47d043107ae2035dd4ad4aad7cf1fe342dbbe1a1fbbd4a046bb",
+      "size": 589750,
+      "sha256": "0b7f13dcf5f212f5455ce6567f0403775359fce30193feec27e73aa8b5c3547e",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1324,7 +1340,7 @@
       "path": "managed/Services/DungeonRewardPolicy.cs",
       "layer": "source",
       "size": 5566,
-      "sha256": "C255C702C2356D87BA86010A373F4B219E2034CC3B7C08D9184B7DBE858C9A6C",
+      "sha256": "c255c702c2356d87ba86010a373f4b219e2034cc3b7c08d9184b7dbe858c9a6c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1395,8 +1411,8 @@
     {
       "path": "managed/Services/NativeDungeonClient.cs",
       "layer": "source",
-      "size": 6816,
-      "sha256": "51268acb9979edce99e9cd7be3bde96a025ebe2a9beb5900b908e39a3a75f384",
+      "size": 7045,
+      "sha256": "c75a7700904f6a6ffba9635cfe9955ad5df52bcd4c74948ecad589ec8b14c7dc",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1411,8 +1427,8 @@
     {
       "path": "managed/Services/NativeDungeonState.cs",
       "layer": "source",
-      "size": 9715,
-      "sha256": "de9ee26d0f512c955830b96df0cc263e9428e278464de42a6fe4d88f4c5dce43",
+      "size": 9773,
+      "sha256": "7b2791bce6bebd4d0747b9427d8d5962f030d3b686c31e873fd9df5793583853",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1588,7 +1604,7 @@
       "path": "managed/Services/NetworkAdapterService.InventoryNotifications.cs",
       "layer": "source",
       "size": 5531,
-      "sha256": "24BB6A23A2265A29ADCB374DE9538229422A03DFAC6BCE26B2CB378A9F1D28E8",
+      "sha256": "24bb6a23a2265a29adcb374de9538229422a03dfac6bce26b2cb378a9f1d28e8",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1625,18 +1641,26 @@
       "approval": "required_per_file"
     },
     {
+      "path": "managed/Services/NetworkAdapterService.NativeCombatProgression.cs",
+      "layer": "source",
+      "size": 2451,
+      "sha256": "3e62b1c80a66c76a40719554eea529b9d3921f32eedd2fa0d48023da8421eaab",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
       "layer": "source",
-      "size": 90827,
-      "sha256": "13244725364534ec2af9224525cc1f9019f72bd78e0bf00a76ac58aa005a5eb2",
+      "size": 91014,
+      "sha256": "6b8b15360438260d9a1778a78e7deccaac0b5ae114f876866333c9e29e9b2613",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
       "layer": "source",
-      "size": 7168,
-      "sha256": "1845c27e2e482aa3c0f2e30a067af0dcfb42e91fe43c000d4564685a27f6af74",
+      "size": 7612,
+      "sha256": "098b2ea115c8f070aa23afee191d721b074c89866ef64b2d1f6d955621916350",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1644,7 +1668,7 @@
       "path": "managed/Services/NetworkAdapterService.NativeDungeonRevival.cs",
       "layer": "source",
       "size": 12183,
-      "sha256": "0365A2AAFD1DBAF679A3F68F35A502E56D39F60E2339A85306CCF9CFC6DCBB27",
+      "sha256": "0365a2aafd1dbaf679a3f68f35a502e56d39f60e2339a85306ccf9cfc6dcbb27",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1660,7 +1684,7 @@
       "path": "managed/Services/NetworkAdapterService.NativeInventory.cs",
       "layer": "source",
       "size": 4762,
-      "sha256": "AB1656B1F8AFAC8F025C006B88E068975FFBE46E1FE3367D2997973FA7661D0C",
+      "sha256": "ab1656b1f8afac8f025c006b88e068975ffbe46e1fe3367d2997973fa7661d0c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1739,8 +1763,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.cs",
       "layer": "source",
-      "size": 957701,
-      "sha256": "24AF21730916E359C7C896846D7612FC5ABF04B27C8C499D71B9F1E5B2420FE8",
+      "size": 957495,
+      "sha256": "c00143c3ece4ccd20dabc98fa528da9c7f2e818bc08359a1e2fb7871a98f526b",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1915,8 +1939,8 @@
     {
       "path": "manifest/source_closure.json",
       "layer": "source",
-      "size": 57573,
-      "sha256": "B2EFFBA688C73F242771DD5D1C5EB28310312C3908CE13A5B223DD0704C4AED7",
+      "size": 58690,
+      "sha256": "d24d2e2a1aa6083a8e13db463d8494e7d395c9570f1d8c9ee8226fe591275557",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1940,7 +1964,7 @@
       "path": "release/components/adapter_core/teamplay_adapter.inc",
       "layer": "source",
       "size": 17237,
-      "sha256": "58EF8D20EB32461084670B6A0B0FC51D34D46F9459F1DD4C90FCD57182BD65AB",
+      "sha256": "58ef8d20eb32461084670b6a0b0fc51d34d46f9459f1dd4c90fcd57182bd65ab",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2169,6 +2193,22 @@
       "approval": "required_per_file"
     },
     {
+      "path": "release/components/character_progression/combat_growth.inc",
+      "layer": "source",
+      "size": 428,
+      "sha256": "458c339a611031c8b532957dda5547933cb3c4211448e4eae052e24990c1204f",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "release/components/character_progression/defense_runtime.inc",
+      "layer": "source",
+      "size": 886,
+      "sha256": "426c7051b474c0eabc34bdb9d008acb6a2328c5a96a86e3e3ba04d687248d9ec",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "release/components/combat_attribution/map_identity_runtime.inc",
       "layer": "source",
       "size": 5674,
@@ -2204,15 +2244,15 @@
       "path": "release/components/combat_economy/coin_drop_runtime.inc",
       "layer": "source",
       "size": 4742,
-      "sha256": "8D84E450356ABC886CB5D02387F6130B429A8AF1733B6B4F7F14B150A7532104",
+      "sha256": "8d84e450356abc886cb5d02387f6130b429a8af1733b6b4f7f14b150a7532104",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "release/components/combat_economy/collision_damage_runtime.inc",
       "layer": "source",
-      "size": 9658,
-      "sha256": "00e146c721c755d3fe828ea087215003691ddd07bf8ece84dedb3ffdb52257a1",
+      "size": 7603,
+      "sha256": "9294fb1df139c03b8f5a868fc884820e9fac505f57a7ff43b4bf6e8925166f9e",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2308,7 +2348,7 @@
       "path": "release/components/flight_items/flightitem_runtime.inc",
       "layer": "source",
       "size": 3843,
-      "sha256": "9517F83389F4B52C72B05BB277A14FE4610D5101F23306219F493C6D5E3F2C94",
+      "sha256": "9517f83389f4b52c72b05bb277a14fe4610d5101f23306219f493c6d5e3f2c94",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2339,8 +2379,8 @@
     {
       "path": "release/components/game_session/managed_bridge.inc",
       "layer": "source",
-      "size": 13749,
-      "sha256": "3a6a940033f254bc7bb81c003a4166bf9242210c16001a6bd7b89a3fa019a37b",
+      "size": 14077,
+      "sha256": "c1b834e659e0473c37eda604e462f1eb8e5945f940eeb0a3d33e5bb95d425f47",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2395,8 +2435,8 @@
     {
       "path": "release/components/inventory_instances/petitem_runtime.inc",
       "layer": "source",
-      "size": 18393,
-      "sha256": "4A8FF404F0B732844F2124973C921DCBB605A69675C2405697B6383AA3F089DE",
+      "size": 18449,
+      "sha256": "5d66124cc50646ad8bad0009f82725bbb9213d2d00ff2d89fe13dab082c2e616",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2435,8 +2475,8 @@
     {
       "path": "release/components/multiplayer/room_policy.inc",
       "layer": "source",
-      "size": 27420,
-      "sha256": "a14b3ab97c05db57bf830b0650d533843423054596d51224d29eb34e25ce3a73",
+      "size": 28529,
+      "sha256": "0359717a92bfe379ec22c75e6911ea945588374fc2e8cbdd52bd6c2a75e98b33",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2460,7 +2500,7 @@
       "path": "release/components/multiplayer_combat/player_combat_stats.inc",
       "layer": "source",
       "size": 1257,
-      "sha256": "e35e974a54c5bdcb38d043171b16ebfcac92ba39d212f5d0d798345f19475748",
+      "sha256": "b69a9a4d0d7983e657cf9da53ddc66289614e4b96f9e015d30e197b5961290ab",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2564,7 +2604,7 @@
       "path": "release/components/protocol/protocol.inc",
       "layer": "source",
       "size": 90816,
-      "sha256": "78E5433DB10CD1D3E6119BA3A501B1D375B0AD6D4DB03BA886FEAA70763FEC3B",
+      "sha256": "78e5433db10cd1d3e6119ba3a501b1d375b0ad6d4db03ba886feaa70763fec3b",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2572,7 +2612,7 @@
       "path": "release/components/protocol/protocol_state_sync.inc",
       "layer": "source",
       "size": 7587,
-      "sha256": "0F4B9DEFB621FA066905F02591E8CD8AF7028897AA6C04440527B23C7C044F3A",
+      "sha256": "0f4b9defb621fa066905f02591e8cd8af7028897aa6c04440527b23c7c044f3a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2588,7 +2628,7 @@
       "path": "release/components/protocol_extensions/protocol_overrides.inc",
       "layer": "source",
       "size": 21910,
-      "sha256": "3A6F9801462F3F110FF3FF00B30BD6E697991FC4406719566800ADED5CFE76B9",
+      "sha256": "3a6f9801462f3f110ff3ff00b30bd6e697991fc4406719566800aded5cfe76b9",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2683,8 +2723,8 @@
     {
       "path": "release/components/stage_damage/damage_runtime.inc",
       "layer": "source",
-      "size": 17474,
-      "sha256": "767D1236847FA3244D0471884AA5C44BABD1242CF89EA6AF6E42EA7BF688AAD0",
+      "size": 17745,
+      "sha256": "12bc894ef80581b07eb2a1e847945b0be873a4314bf19cadcda3659107cc3259",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2699,16 +2739,16 @@
     {
       "path": "release/components/stage_damage/scene_hazard_catalog.inc",
       "layer": "source",
-      "size": 5668,
-      "sha256": "A010DCC74D06DAC7CCB9DE77B6ED81D19569D194CEB887E538854BC91AE23155",
+      "size": 94772,
+      "sha256": "896adfd75b5207c7315ecb72e0a64876601b375c70d34f925740a6b53646e33b",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "release/components/stage_damage/scene_hazard_registry.json",
       "layer": "source",
-      "size": 8494,
-      "sha256": "DCD3F85B2CBDA537DEAAC83CC3A5AA9236A17E658CD34784A1A155EA34E6C7B9",
+      "size": 81128,
+      "sha256": "ae8df07203bd412bb05cfe4d7e9aa34c84f3be69487caa4c969b5baec21c4759",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2723,8 +2763,8 @@
     {
       "path": "release/components/storage/sqlite_state.inc",
       "layer": "source",
-      "size": 11016,
-      "sha256": "6ac2ca378c631cfc1e40ba36563b47fae109264305d2e5a03cb3f144c1244d1c",
+      "size": 12831,
+      "sha256": "67868385e48d641340bd58f68ba8d14c1e292c125e11d6c4ca0da065f97750b7",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2820,7 +2860,7 @@
       "path": "release/teamplay_common.inc",
       "layer": "source",
       "size": 14885,
-      "sha256": "4241FA95BC913E5CE30B6E90C27FD6484751E2C40DF551FA23AA5B213E5E9298",
+      "sha256": "4241fa95bc913e5ce30b6e90c27fd6484751e2c40df551fa23aa5b213e5e9298",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2923,8 +2963,8 @@
     {
       "path": "scripts/export_patch.py",
       "layer": "source",
-      "size": 25402,
-      "sha256": "98B7C09DAEA8A6F5135B7E7A2A2B0AD632D014006509C6083B05D2F051620857",
+      "size": 25460,
+      "sha256": "c07406ccb3c27f802836dd119c2fcbc90ec36528ac7c4b7cb6a5bf2d7e244f1a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2987,8 +3027,16 @@
     {
       "path": "scripts/generate_scene_hazard_catalog.py",
       "layer": "source",
-      "size": 14270,
-      "sha256": "DEDA9B3A18139A2E7A9F6AFD66D4434BCD4805851CB463FE2F1A14E6F3180C0C",
+      "size": 13727,
+      "sha256": "fa6f54b540b0064cd3ac17780ff7f3735f51aa36b749b7f1a58d57305c31e788",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/generate_scene_hazard_resources.py",
+      "layer": "source",
+      "size": 5837,
+      "sha256": "f77bf1a40f257fe17bdc6a079a922733dfcedea7ac5a66a4f026b906c63f67fb",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3076,7 +3124,7 @@
       "path": "scripts/refresh_manifest.py",
       "layer": "source",
       "size": 9084,
-      "sha256": "C917ABC28312C19157542A87624CD99F46D452AE182AF126200680606D7EE880",
+      "sha256": "c917abc28312c19157542a87624cd99f46d452ae182af126200680606d7ee880",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3091,8 +3139,8 @@
     {
       "path": "scripts/refresh_source_manifest.py",
       "layer": "source",
-      "size": 5233,
-      "sha256": "AA7853E25931D52DDE84535F178D62B0F1DBF9096A2E258A9C777B5BB8CC26A0",
+      "size": 5279,
+      "sha256": "99f4b300ce18a300b212d1816d4eecbe771d9b24d52dacd43c3e692a10623bea",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3133,6 +3181,14 @@
       "layer": "source",
       "size": 11950,
       "sha256": "d51c96f8ddff4b5b8c8123198201c35dd35a611e47d304ad8c2c6f96037feffc",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/test_associated_scene_damage.py",
+      "layer": "source",
+      "size": 12048,
+      "sha256": "238f6dde7ec4b7345f263f6c5012d6ce57afbae25721a18abe3743e79d6e9520",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3188,7 +3244,31 @@
       "path": "scripts/test_card_drop_port.py",
       "layer": "source",
       "size": 4997,
-      "sha256": "69290348710C060D95598644AE68F8D9AF1CFB7CD8FCAE9E8FB9E9758FB7F058",
+      "sha256": "69290348710c060d95598644ae68f8d9af1cfb7cd8fcae9e8fb9e9758fb7f058",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/test_character_combat_equipment.py",
+      "layer": "source",
+      "size": 5216,
+      "sha256": "9cb0f11603a7287c49d30acfe16a00e56a248384a129b591250ae97efeced69a",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/test_character_combat_progression.ps1",
+      "layer": "source",
+      "size": 1150,
+      "sha256": "81ca168e10f64ffdcd18092fcb30f843a8724e253c2f98e54baf9e5cc6dd9b11",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/test_character_native_growth.py",
+      "layer": "source",
+      "size": 2545,
+      "sha256": "dd902572faabd244acbe7b18a95f96ad77a82568a6577e6bba8b37d1b9fe0a76",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3211,8 +3291,8 @@
     {
       "path": "scripts/test_contact_damage_lifecycle.py",
       "layer": "source",
-      "size": 7097,
-      "sha256": "a89f0164986bccb3cc76660f76bb6f9e0908816be93c73347fec1d759b3cf5de",
+      "size": 8025,
+      "sha256": "2074217a5a04ae21f3bad407727e99c2ecea9394c94efb8d59a1aa46b196ec06",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3292,7 +3372,7 @@
       "path": "scripts/test_gameplay_bugfixes.py",
       "layer": "source",
       "size": 5529,
-      "sha256": "06EA990E5CE6F96F8F01E1633FE680ED80F46427CDE2FC581A8D36F3CB66E2E9",
+      "sha256": "a5fcf73d1d1045a3afac935cce859cab5a53b2e9c593e50fc5b8a2299d6ab6f9",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3417,6 +3497,14 @@
       "approval": "required_per_file"
     },
     {
+      "path": "scripts/test_party_room_reentry.py",
+      "layer": "source",
+      "size": 3771,
+      "sha256": "cfe0920c6a2a0c62cc2cfb706b69f64faa1212ec52331230d471995d2488c5f8",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "scripts/test_pet_localization_levels.py",
       "layer": "source",
       "size": 3096,
@@ -3461,6 +3549,14 @@
       "layer": "source",
       "size": 7408,
       "sha256": "f11e5b93f1e35038732b38cc71a76527e8d6e6ccf23005b20b91940c78477345",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/test_scene_hazard_registry.py",
+      "layer": "source",
+      "size": 5430,
+      "sha256": "eb2ae93ab9401acd198e238b40efb7346c10ac7d4f8dcfcf06f62fe1fbb2f3ff",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

@@ -119,4 +119,5 @@ static unsigned pet_crafting_pet_effective_hp_max(void){unsigned v;pet_crafting_
 static unsigned pet_crafting_pet_effective_hp_current(void){unsigned v;pet_crafting_pet_effective_resources(0,&v,0,0);return v;}
 static unsigned pet_crafting_pet_effective_mp_max(void){unsigned v;pet_crafting_pet_effective_resources(0,0,&v,0);return v;}
 static unsigned pet_crafting_pet_effective_mp_current(void){unsigned v;pet_crafting_pet_effective_resources(0,0,0,&v);return v;}
+#include "../character_progression/defense_runtime.inc"
 #endif

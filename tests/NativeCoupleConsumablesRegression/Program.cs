@@ -92,6 +92,7 @@ try
     var sessionId = Get<string>("SessionId");
     Check(await database.BeginWorldSessionAsync(account, character.Id, sessionId, 1, "127.0.0.1"), "owned persistence session");
     Set("AccountId", account); Set("Character", character); Set("OnlineTracked", true); Set("NativeBattleEpoch", 4L);
+    Set("NativeCoupleStartRequested", true); Set("NativeCoupleIdentityPublished", true);
     var before = NativeDungeonState.Create(character, [], []);
     var nativeResources = BattleResourceSnapshot.Capture(before, 4);
     Set("NativeCheckpoint", before); Set("NativeBattleResources", nativeResources);
@@ -108,6 +109,20 @@ try
     await Observe(Effect(sceneId), 4);
     Check(ReferenceEquals(nativeResources, Get<BattleResourceSnapshot>("NativeBattleResources")),
         "scene alias cannot authorize native recovery");
+    foreach (var (gate, blocked) in new[]
+    {
+        ("NativeCoupleStartRequested", false), ("NativeCoupleIdentityPublished", false),
+        ("NativeDungeonDeathLatched", true), ("NativeDungeonSettlementAwaitingAction", true)
+    })
+    {
+        Set(gate, blocked);
+        var inactiveEffect = Effect((ushort)character.Id, hp: 7, mp: 3);
+        await Observe(inactiveEffect, 4);
+        Check(ReferenceEquals(nativeResources, Get<BattleResourceSnapshot>("NativeBattleResources"))
+            && character.CurrentHp == 10 && character.CurrentMp == 10,
+            "inactive recipient cannot accept a streaming recovery: " + gate);
+        Set(gate, !blocked);
+    }
     var response = Effect((ushort)character.Id);
     await Observe(response, 3);
     Check(ReferenceEquals(nativeResources, Get<BattleResourceSnapshot>("NativeBattleResources")), "stale battle does not mutate current resources");
@@ -136,7 +151,43 @@ try
     saved = (await database.GetCharacterByIdAsync(character.Id))!;
     Check(saved.CurrentHp == Math.Min((int)concurrentBefore.MaximumHp, concurrentBefore.CurrentHp + 7),
         "concurrent duplicate publication commits once");
+    async Task ExecuteSql(string sql)
+    {
+        await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            { DataSource = Path.Combine(root, "game.db") }.ToString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync();
+    }
+    var failedEffect = Effect((ushort)character.Id, hp: 7, mp: 3);
+    var beforeFailure = Get<BattleResourceSnapshot>("NativeBattleResources");
+    var beforeFailureCharacter = (character.CurrentHp, character.CurrentMp);
+    await ExecuteSql("CREATE TRIGGER RejectRecovery BEFORE UPDATE OF CurrentHp ON Characters "
+        + "BEGIN SELECT RAISE(ABORT, 'Recovery commit rejected'); END;");
+    var rejected = false;
+    try { await Observe(failedEffect, 4); }
+    catch (SqliteException) { rejected = true; }
+    finally { await ExecuteSql("DROP TRIGGER RejectRecovery;"); }
+    Check(rejected, "recovery persistence failure is returned to the caller");
+    Check(ReferenceEquals(beforeFailure, Get<BattleResourceSnapshot>("NativeBattleResources"))
+        && (character.CurrentHp, character.CurrentMp) == beforeFailureCharacter,
+        "failed recovery commit leaves in-memory resources unchanged");
+    saved = (await database.GetCharacterByIdAsync(character.Id))!;
+    Check((saved.CurrentHp, saved.CurrentMp) == beforeFailureCharacter,
+        "failed recovery transaction preserves persistent resources");
+    await Observe(failedEffect, 4);
+    var retried = Get<BattleResourceSnapshot>("NativeBattleResources");
+    saved = (await database.GetCharacterByIdAsync(character.Id))!;
+    Check(retried.CurrentHp == Math.Min((int)beforeFailure.MaximumHp, beforeFailure.CurrentHp + 7)
+        && retried.CurrentMp == Math.Min((int)beforeFailure.MaximumMp, beforeFailure.CurrentMp + 3)
+        && saved.CurrentHp == retried.CurrentHp && saved.CurrentMp == retried.CurrentMp,
+        "same recovery result remains retryable after a failed commit");
+    await Observe(failedEffect, 4);
+    Check(ReferenceEquals(retried, Get<BattleResourceSnapshot>("NativeBattleResources")),
+        "successfully retried recovery is committed once");
     await LiveChecks.RunAsync(database, service, root, Check);
+    await LiveChecks.RunAsync(database, service, root, Check, 14002486);
 }
 finally
 {

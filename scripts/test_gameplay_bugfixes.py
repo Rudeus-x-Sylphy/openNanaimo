@@ -75,10 +75,10 @@ int main(void){
             CHECK(stage_damage_player_d00f_damage(&ctx,request,60u,&result)==300u);
             CHECK(result.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);
         }
-        CHECK(seen==(j==1u?16u:69u));
+        CHECK(seen==(j==1u?19u:69u));
         CHECK(stage_damage_scene_hazard_lookup(&ctx,65535u,&result)==0u);
     }
-    CHECK(total==255u);
+    CHECK(total==264u);
     stage_damage_damage_reset(&ctx);CHECK(stage_damage_scene_hazard_lookup(&ctx,100u,&result)==0u);
     send_c3e8_card_page(100,40u,3u,1u);
     for(i=0x20u;i<0x3Fu;i++)CHECK(output[i]==0u);

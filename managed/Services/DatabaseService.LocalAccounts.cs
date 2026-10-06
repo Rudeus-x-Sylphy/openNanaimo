@@ -244,14 +244,17 @@ public sealed partial class DatabaseService
         }
         var characterId = (long)(await Execute("""
             INSERT INTO Characters(AccountId,Name,Gender,Face,Appearance,Level,Experience,MaxHp,MaxMp,CurrentHp,CurrentMp,
+              Strength,Vitality,Agility,Intelligence,Luck,
               Hans,Cash,AttackModifier,DefenseFlat,EquippedPetItemCode,PetVariant,InitialAttackMode,CurrentMapId,CurrentTownPage,
               CardMysteryKeyCount,CardGoldenKeyCount,QuickSlotExpansionExpires,FreeMagicExpansionExpires,
               SelectedSkill0,SelectedSkill1,SkillSlotExpansionExpires,SkillPoints,CreatedAt,LastSavedAt)
-            VALUES($account,$name,$gender,$face,$appearance,$level,$exp,$hp,$mp,$hp,$mp,$coin,$nana,$attack,$defense,$pet,$petVariant,
+            VALUES($account,$name,$gender,$face,$appearance,$level,$exp,$hp,$mp,$hp,$mp,
+              $attribute,$attribute,$attribute,$attribute,$attribute,$coin,$nana,$attack,$defense,$pet,$petVariant,
               $mode,0,0,$mystery,$gold,$quickbar,$free,$skill0,$skill1,$skillExpiry,$skillPoints,$now,$now)
             RETURNING Id
             """, ("$account", accountId), ("$name", username), ("$gender", gender), ("$face", BinaryPrimitives.ReadUInt32LittleEndian(appearance)), ("$appearance", appearance),
             ("$level", level), ("$exp", CharacterProgression.ExperienceRequiredForLevel((int)level)),
+            ("$attribute", CharacterCombatProgression.InitialAttribute((int)level)),
             ("$hp", hp), ("$mp", mp), ("$coin", shopping.Coin!.Value), ("$nana", shopping.Nana!.Value),
             ("$attack", Read("attack")), ("$defense", Read("defense")), ("$pet", shopping.SelectedPet),
             ("$petVariant", shopping.SelectedPet is >= 15000001 and <= 15000003 ? shopping.SelectedPet - 15000000 : 0),

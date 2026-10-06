@@ -26,9 +26,7 @@ static unsigned expected_associated(const struct stage_damage_damage_context *ct
 int main(void){
     unsigned char req[28];struct stage_damage_damage_context ctx;struct stage_damage_damage_lookup out;
     unsigned i,selector,mapped=0u,hazards=0u,unmapped=0u,scopes=0u,mapped_scopes=0u,type4_total=0u,association_candidates=0u,standalone=0u,broken_association=0u,unclassified_type4=0u;
-    /* 0x11/source2 is the captured Dungeon 16 / dungeon 3 kind60 tuple from
-     * native.log line 13414; keep it explicit rather than relying only on the
-     * catalog-wide self-consistency loop. */
+    /* Selected multipart contact selectors. */
     static const unsigned ep15_selectors[]={0x07u,0x11u,0x1Bu,0x1Du,0x1Eu,0x1Fu,0x54u,0x5Du,0xEDu,0xFCu,0xFDu,0xFEu,0x10Au,0x114u,0x11Cu,0x124u};
     memset(req,0,sizeof(req));req[8]=60u;
     for(i=0u;i<HP_SYNC_PROFILE_COUNT;i++){
@@ -50,21 +48,22 @@ int main(void){
             }else{const struct hp_sync_target_def *target=&hp_sync_target_defs[p->first_row+selector];const char *resource=target->resource_index<HP_SYNC_RESOURCE_COUNT?hp_sync_resources[target->resource_index].name:"";
                 if(actual){
                     CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE);CHECK(target->target_type==4u);
-                    if(target->association>=0){CHECK(target->association==8&&actual==300u);broken_association++;}
-                    CHECK(target->raw_hp==0&&target->nominal_hp==0&&(target->basis==0||target->basis==10)&&target->reward_kind==0);
+                    if(target->association>=0){broken_association++;}
+                    CHECK(target->raw_hp==0&&target->nominal_hp==0&&target->reward_kind==0);
                     CHECK(out.owner==selector&&out.source==2u&&out.target_type==4u&&out.associated_selector==0u);
                     CHECK(out.base==actual&&out.policy_damage==actual&&out.row_count==(unsigned)p->target_count);CHECK(!strcmp(out.resource,resource));hazards++;
                 }else{CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);unmapped++;
                     if(target->target_type==4u){unclassified_type4++;if(target->association>=0)broken_association++;}}}
 
+            CHECK(stage_damage_player_d00f_damage(&ctx,req,80u,&out)==0u);
         }
         if(scope_mapped)mapped_scopes++;
     }
     CHECK(scopes==288u);CHECK(mapped_scopes==267u);CHECK(type4_total==44531u);
     CHECK(association_candidates==31788u);CHECK(standalone==12743u);CHECK(broken_association==1887u);
-    CHECK(mapped==29916u);CHECK(hazards==STAGE_DAMAGE_SCENE_HAZARD_SELECTED_ROW_COUNT);CHECK(hazards==471u);
-    CHECK(unclassified_type4==14144u);CHECK(type4_total-mapped-hazards==unclassified_type4);CHECK(unmapped>mapped);
-    CHECK(STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT==38u);
+    CHECK(mapped==29916u);CHECK(hazards==STAGE_DAMAGE_SCENE_HAZARD_SELECTED_ROW_COUNT);CHECK(hazards==5013u);
+    CHECK(unclassified_type4==9602u);CHECK(type4_total-mapped-hazards==unclassified_type4);CHECK(unmapped>mapped);
+    CHECK(STAGE_DAMAGE_SCENE_HAZARD_POLICY_COUNT==703u);
     stage_damage_damage_begin(&ctx,0u,15u,2u,0u,2u,1u,1u);
     CHECK(sizeof(ep15_selectors)/sizeof(ep15_selectors[0])==16u);
     for(i=0u;i<sizeof(ep15_selectors)/sizeof(ep15_selectors[0]);i++){
@@ -88,8 +87,8 @@ int main(void){
         }
     }
     for(i=0u;i<3u;i++){
-        stage_damage_damage_begin(&ctx,0u,0u,2u,0u,i,1u,1u);req[0x0A]=239u;req[0x0B]=0u;req[0x0C]=0u;req[0x0D]=0u;
-        CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==100u);
+        stage_damage_damage_begin(&ctx,0u,0u,2u,0u,i,1u,1u);req[0x0A]=7u;req[0x0B]=1u;req[0x0C]=0u;req[0x0D]=0u;
+        CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==90u);
         CHECK(out.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE&&out.target_type==4u);
         CHECK(!strcmp(out.resource,"ep01_dg02_new_obj_meteor.mmo"));
     }
@@ -103,6 +102,26 @@ int main(void){
     CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);
     req[0x0A]=0u;req[0x0B]=0u;CHECK(stage_damage_player_d00f_damage(&ctx,req,80u,&out)==0u);
     CHECK(out.status==STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND);
+    /* Decorative meteor rows have zero contact attack; all three spear
+     * placements per difficulty have authored contact attack 300. */
+    for(i=0u;i<3u;i++){
+        static const unsigned spears[3][3]={{341u,344u,351u},{341u,344u,350u},{385u,392u,394u}};
+        unsigned part;
+        stage_damage_damage_begin(&ctx,0u,0u,2u,0u,i,1u,1u);
+        for(part=239u;part<263u;part++){
+            req[10]=(unsigned char)part;req[11]=(unsigned char)(part>>8);
+            CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==0u);
+        }
+        stage_damage_damage_begin(&ctx,0u,2u,1u,0u,i,1u,1u);
+        for(part=0u;part<3u;part++){
+            req[10]=(unsigned char)spears[i][part];req[11]=(unsigned char)(spears[i][part]>>8);
+            CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==300u);
+            CHECK(!strcmp(out.resource,"obj_ep01_st11_obj03.mmo"));
+            CHECK(stage_damage_player_d00f_damage(&ctx,req,80u,&out)==0u);
+        }
+        stage_damage_damage_reset(&ctx);
+        CHECK(stage_damage_player_d00f_damage(&ctx,req,60u,&out)==0u);
+    }
     /* Coral emitters retain their exact selected-scope parent attack. */
     for(i=0u;i<3u;i++){
         const struct hp_sync_profile_def *p;unsigned matched=0u;
@@ -138,7 +157,7 @@ class AssociatedSceneDamageTests(unittest.TestCase):
             run_result = subprocess.run(
                 [str(binary)], cwd=directory, capture_output=True, text=True, errors="replace", timeout=60)
             self.assertEqual(run_result.returncode, 0, run_result.stdout + run_result.stderr)
-            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=288 mapped_scopes=267 type4=44531 association_candidates=31788 exact_associated=29916 broken_association=1887 standalone=12743 hazards=471 unclassified=14144", run_result.stdout)
+            self.assertIn("ASSOCIATED_SCENE_DAMAGE_PASS scopes=288 mapped_scopes=267 type4=44531 association_candidates=31788 exact_associated=29916 broken_association=1887 standalone=12743 hazards=5013 unclassified=9602", run_result.stdout)
 
     def test_dispatch_is_exact_not_global_kind60_damage(self):
         source = (ROOT / "release/components/game_session/gs_runtime.inc").read_text("utf-8")

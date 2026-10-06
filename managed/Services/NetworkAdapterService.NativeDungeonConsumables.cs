@@ -105,19 +105,31 @@ public sealed partial class NetworkAdapterService
             return;
         using var resourceCommit = await LockNativeDungeonResourcesAsync(session, token);
         if (session.Character is not { } character || session.NativeCheckpoint is not { } before
-            || session.NativeDungeonDeathLatched || session.NativeBattleEpoch != battleEpoch
+            || !IsNativeDungeonRecoveryActive(session) || session.NativeBattleEpoch != battleEpoch
             || session.NativeBattleResources is not { } resources || resources.Epoch != battleEpoch)
             return;
-        var updated = MergeNativeDungeonQuickItemResources(resources, null, [response], checked((ushort)before.Get(4)));
+        var actorUid = checked((ushort)before.Get(4));
+        var updated = MergeNativeDungeonQuickItemResources(resources, null, [response], actorUid);
         if (updated is null || ReferenceEquals(updated, resources)) return;
-        session.NativeBattleResources = updated;
-        character.CurrentHp = updated.CurrentHp;
-        character.CurrentMp = updated.CurrentMp;
         // Persist only a resource change: inventory, money and progression use
         // identical before/after values and cannot be debited a second time.
         var after = new NativeDungeonState(before.Bytes.ToArray());
         updated.ApplyTo(after);
-        await _database.ApplyNativeDungeonDeltaAsync(session.AccountId, character.Id,
-            session.SessionId, before, after, token, Guid.NewGuid().ToString("N"));
+        try
+        {
+            await _database.ApplyNativeDungeonDeltaAsync(session.AccountId, character.Id,
+                session.SessionId, before, after, token, Guid.NewGuid().ToString("N"));
+        }
+        catch
+        {
+            // Failed persistence must leave both resources and the result
+            // receipt unchanged so the same recovery can be committed again.
+            if (NativeQuickItemReceipts.TryGetValue(response, out var receipts))
+                lock (receipts) receipts.Remove((actorUid, resources.Epoch));
+            throw;
+        }
+        session.NativeBattleResources = updated;
+        character.CurrentHp = updated.CurrentHp;
+        character.CurrentMp = updated.CurrentMp;
     }
 }

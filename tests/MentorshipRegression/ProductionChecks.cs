@@ -48,6 +48,22 @@ internal static partial class Program
         Check(await InvokeMentorship<Task<uint>>(f.Service, "ScaleMentorshipExperienceAsync",
                 f.Student, 100u, CancellationToken.None) == 150,
             "active teacher and student receive one hundred fifty percent experience in the same dungeon");
+        Check(await InvokeMentorship<Task<uint>>(f.Service, "ScaleMentorshipExperienceAsync",
+                f.Teacher, 101u, CancellationToken.None) == 151,
+            "teacher also receives the multiplier with fractional experience rounded down");
+        Check(await InvokeMentorship<Task<uint>>(f.Service, "ScaleMentorshipExperienceAsync",
+                f.Student, uint.MaxValue, CancellationToken.None) == uint.MaxValue,
+            "mentorship experience saturates without integer overflow");
+        Set(f.Teacher, "NativeDungeonDeathLatched", true);
+        Check(await InvokeMentorship<Task<uint>>(f.Service, "ScaleMentorshipExperienceAsync",
+                f.Student, 100u, CancellationToken.None) == 100,
+            "a dead teacher cannot provide the shared experience bonus");
+        Set(f.Teacher, "NativeDungeonDeathLatched", false);
+        Set(f.Student, "NativeDungeonLogicalDifficulty", (byte)1);
+        Check(await InvokeMentorship<Task<uint>>(f.Service, "ScaleMentorshipExperienceAsync",
+                f.Student, 100u, CancellationToken.None) == 100,
+            "different dungeon difficulties preserve base experience");
+        Set(f.Student, "NativeDungeonLogicalDifficulty", (byte)0);
         Set(f.Student, "NativeDungeonStage", (byte)1);
         Check(await InvokeMentorship<Task<uint>>(f.Service, "ScaleMentorshipExperienceAsync",
                 f.Student, 100u, CancellationToken.None) == 100,

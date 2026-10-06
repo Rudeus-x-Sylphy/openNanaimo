@@ -9120,15 +9120,15 @@ public sealed partial class DatabaseService
         var experience = Math.Min(uint.MaxValue, oldExperience + experienceReward);
         var level = Math.Max(Math.Clamp(oldLevel, 1, CharacterProgression.MaximumLevel),
             CharacterProgression.CalculateLevel(experience));
-        var gainedLevels = Math.Max(0, level - oldLevel);
+        var gainedLevels = CharacterCombatProgression.GainedLevels(oldLevel, level);
         // Same level-up rule as the other grant paths: one point into each of the five
         // attributes per level, with the vital caps recomputed from the raised
         // vitality/intelligence instead of the pre-level values.
-        var strength = oldStrength + gainedLevels;
-        var vitality = oldVitality + gainedLevels;
-        var agility = oldAgility + gainedLevels;
-        var intelligence = oldIntelligence + gainedLevels;
-        var luck = oldLuck + gainedLevels;
+        var strength = CharacterCombatProgression.GrowAttribute(oldStrength, gainedLevels);
+        var vitality = CharacterCombatProgression.GrowAttribute(oldVitality, gainedLevels);
+        var agility = CharacterCombatProgression.GrowAttribute(oldAgility, gainedLevels);
+        var intelligence = CharacterCombatProgression.GrowAttribute(oldIntelligence, gainedLevels);
+        var luck = CharacterCombatProgression.GrowAttribute(oldLuck, gainedLevels);
         var maxHp = CharacterProgression.CalculateMaxHp(level, vitality);
         var maxMp = CharacterProgression.CalculateMaxMp(level, intelligence);
         var now = DateTime.UtcNow.ToString("O");
@@ -9375,7 +9375,9 @@ public sealed partial class DatabaseService
         var experience = amount > long.MaxValue - oldExperience ? long.MaxValue : oldExperience + amount;
         var level = CharacterProgression.CalculateLevel(experience);
         level = Math.Max(Math.Clamp(oldLevel, 1, CharacterProgression.MaximumLevel), level);
-        var gainedLevels = Math.Max(0, level - oldLevel);
+        var gainedLevels = CharacterCombatProgression.GainedLevels(oldLevel, level);
+        vitality = CharacterCombatProgression.GrowAttribute(vitality, gainedLevels);
+        intelligence = CharacterCombatProgression.GrowAttribute(intelligence, gainedLevels);
         var maxHp = CharacterProgression.CalculateMaxHp(level, vitality);
         var maxMp = CharacterProgression.CalculateMaxMp(level, intelligence);
         await using (var update = connection.CreateCommand())
@@ -9385,7 +9387,11 @@ public sealed partial class DatabaseService
                 UPDATE Characters
                 SET Experience = $experience,
                     Level = $level,
-                    AttributePoints = AttributePoints + $points,
+                    Strength = MIN(65535, MAX(0, Strength) + $levels),
+                    Vitality = $vitality,
+                    Agility = MIN(65535, MAX(0, Agility) + $levels),
+                    Intelligence = $intelligence,
+                    Luck = MIN(65535, MAX(0, Luck) + $levels),
                     MaxHp = $maxHp,
                     MaxMp = $maxMp,
                     CurrentHp = CASE WHEN $points > 0 THEN $maxHp ELSE MIN(CurrentHp, $maxHp) END,
@@ -9396,6 +9402,9 @@ public sealed partial class DatabaseService
             update.Parameters.AddWithValue("$experience", experience);
             update.Parameters.AddWithValue("$level", level);
             update.Parameters.AddWithValue("$points", gainedLevels * CharacterProgression.AttributePointsPerLevel);
+            update.Parameters.AddWithValue("$levels", gainedLevels);
+            update.Parameters.AddWithValue("$vitality", vitality);
+            update.Parameters.AddWithValue("$intelligence", intelligence);
             update.Parameters.AddWithValue("$maxHp", maxHp);
             update.Parameters.AddWithValue("$maxMp", maxMp);
             update.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
@@ -9488,6 +9497,9 @@ public sealed partial class DatabaseService
                     CharacterId INTEGER NOT NULL, SettlementKey TEXT NOT NULL,
                     CharacterExperience INTEGER NOT NULL, PetExperience INTEGER NOT NULL, Hans INTEGER NOT NULL,
                     PRIMARY KEY(CharacterId, SettlementKey));
+                """;
+            await receipt.ExecuteNonQueryAsync(cancellationToken);
+            receipt.CommandText = """
                 INSERT OR IGNORE INTO ActivityRewardReceipts
                     (CharacterId, SettlementKey, CharacterExperience, PetExperience, Hans)
                 VALUES($id, $key, $experience, $pet, $hans);
@@ -9509,7 +9521,9 @@ public sealed partial class DatabaseService
             : oldExperience + experienceReward;
         var level = Math.Max(Math.Clamp(oldLevel, 1, CharacterProgression.MaximumLevel),
             CharacterProgression.CalculateLevel(experience));
-        var gainedLevels = Math.Max(0, level - oldLevel);
+        var gainedLevels = CharacterCombatProgression.GainedLevels(oldLevel, level);
+        vitality = CharacterCombatProgression.GrowAttribute(vitality, gainedLevels);
+        intelligence = CharacterCombatProgression.GrowAttribute(intelligence, gainedLevels);
         var maxHp = Math.Max(oldMaxHp, CharacterProgression.CalculateMaxHp(level, vitality));
         var maxMp = Math.Max(oldMaxMp, CharacterProgression.CalculateMaxMp(level, intelligence));
         var hans = oldHans > long.MaxValue - hansReward ? long.MaxValue : oldHans + hansReward;
@@ -9522,7 +9536,11 @@ public sealed partial class DatabaseService
                 UPDATE Characters
                 SET Experience = $experience,
                     Level = $level,
-                    AttributePoints = AttributePoints + $points,
+                    Strength = MIN(65535, MAX(0, Strength) + $levels),
+                    Vitality = $vitality,
+                    Agility = MIN(65535, MAX(0, Agility) + $levels),
+                    Intelligence = $intelligence,
+                    Luck = MIN(65535, MAX(0, Luck) + $levels),
                     MaxHp = $maxHp,
                     MaxMp = $maxMp,
                     CurrentHp = CASE WHEN $points > 0 THEN $maxHp ELSE MIN(CurrentHp, $maxHp) END,
@@ -9534,6 +9552,9 @@ public sealed partial class DatabaseService
             update.Parameters.AddWithValue("$experience", experience);
             update.Parameters.AddWithValue("$level", level);
             update.Parameters.AddWithValue("$points", gainedLevels * CharacterProgression.AttributePointsPerLevel);
+            update.Parameters.AddWithValue("$levels", gainedLevels);
+            update.Parameters.AddWithValue("$vitality", vitality);
+            update.Parameters.AddWithValue("$intelligence", intelligence);
             update.Parameters.AddWithValue("$maxHp", maxHp);
             update.Parameters.AddWithValue("$maxMp", maxMp);
             update.Parameters.AddWithValue("$hans", hans);

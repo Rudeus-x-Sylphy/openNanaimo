@@ -92,9 +92,9 @@ public sealed class CharacterRecord
     public string ManaStatus => $"{CurrentMp}/{MaxMp}";
     public string MapStatus => $"{CurrentMapId}/{CurrentTownPage} ({PositionX}, {PositionY})";
     public string ChannelStatus => CurrentChannelId?.ToString() ?? "-";
-    public int Attack => 10 + Strength * 3 + Agility;
+    public int Attack => CharacterCombatProgression.CalculateAttack(Strength, Agility);
     public int MagicAttack => 10 + Intelligence * 3 + Luck;
-    public int Defense => 5 + Vitality * 2 + Strength;
+    public int Defense => CharacterCombatProgression.CalculateDefense(Vitality, Strength);
     public int MagicDefense => 5 + Intelligence * 2 + Vitality;
     public int MoveSpeed => 100 + Agility * 2;
     public int CriticalBasisPoints => Math.Min(5000, 500 + Agility * 20 + Luck * 30);
