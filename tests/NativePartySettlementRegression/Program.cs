@@ -13,6 +13,10 @@ internal static class Program
     const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
     static readonly CancellationToken Token = CancellationToken.None;
     static int checks;
+    // Current terminal policy commits score/4, not the obsolete worker fixture's
+    // flat 100 EXP. Keep literal expectations independent of the policy helper.
+    const long OwnerSettlementExperience = 27095; // 108380 / 4
+    const long MemberSettlementExperience = 150; // 600 / 4
     private delegate bool BeginBattle(object session, ReadOnlySpan<byte> frame);
     static BeginBattle BindBattleStart(NetworkAdapterService service)
     {
@@ -101,7 +105,7 @@ internal static class Program
             stop.Dispose();
         }
     }
-    public static async Task Main()
+    public static async Task Main(string[] args)
     {
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         var root = Path.Combine(Path.GetTempPath(), "NanaimoSettlement", Guid.NewGuid().ToString("N"));
@@ -140,6 +144,31 @@ internal static class Program
         try
         {
             Set(service, "NativeDungeonEnabled", true);
+            // A member-initiated continuation also preclears the owner. CF6D
+            // status is a byte; treating status/owner as a WORD drops 0x010A.
+            foreach (var session in new[] { owner, member }) Set(session, "NativeDungeonSettlementAwaitingAction", true);
+            var memberReset = NativeDungeonClient.Frame(0xCF8B, new byte[] { 0, 0, 2, 0 });
+            var ownerPeers = Call<Array>(service, "ArmNativePartyContinuation", member, memberReset);
+            Check(ownerPeers.Length == 1, "member continuation arms owner");
+            var ownerPreclear = NativeDungeonClient.Frame(0xCF6D, new byte[36]);
+            ownerPreclear[8] = 10; ownerPreclear[9] = 1;
+            Check(Call<bool>(service, "IsNativePartyContinuationPreclear", owner, ownerPreclear),
+                "owner flag is independent of CF6D byte status");
+            await Call<Task>(service, "HandleNativeWorkerFrameAsync", owner, ownerPreclear, 1L, Token);
+            Check(Drain(owner).Count(f => U16(f, 6) == 0xCF6D && f[9] == 1) == 1,
+                "authorized owner preclear is not suppressed as an unsolicited transition");
+            ownerPreclear[8] = 11;
+            Check(!Call<bool>(service, "IsNativePartyContinuationPreclear", owner, ownerPreclear), "unsuccessful preclear is rejected");
+            ownerPreclear[8] = 10; Put16(ownerPreclear, 4, 43);
+            Check(!Call<bool>(service, "IsNativePartyContinuationPreclear", owner, ownerPreclear), "malformed preclear is rejected");
+            Call<object?>(service, "CancelNativePartyContinuation", member, ownerPeers);
+            Put16(ownerPreclear, 4, 44);
+            Check(!Call<bool>(service, "IsNativePartyContinuationPreclear", owner, ownerPreclear), "unarmed owner preclear remains rejected");
+            if (args.Contains("--continuation-preclear-only", StringComparer.Ordinal))
+            {
+                Console.WriteLine($"NATIVE_CONTINUATION_PRECLEAR_PASS checks={checks}");
+                return;
+            }
             foreach (var session in new[] { owner, member })
             {
                 var exported = new NativeDungeonState(((NativeDungeonState)Get(session, "NativeCheckpoint")!).Bytes.ToArray());
@@ -152,7 +181,7 @@ internal static class Program
                 var sent = Drain(session).Where(f => U16(f, 6) == 0xCF88).ToArray();
                 Check(sent.Length == 1 && U16(sent[0], 10) == Character(owner).Id, "captured mixed-rating result reaches requesting member with real owner");
                 if (ReferenceEquals(session, owner))
-                    Check((await db.GetCharacterAsync((long)Get(session, "AccountId")!))!.Experience == 100,
+                    Check((await db.GetCharacterAsync((long)Get(session, "AccountId")!))!.Experience == OwnerSettlementExperience,
                         "high-rating member experience commits despite zero-rating teammate");
                 Check(await Call<Task<bool>>(service, "RouteNativeDungeonAsync", NativeDungeonClient.Frame(0xCF87, new byte[4]),
                     (ushort)0xCF87, "WorldAdapter", session, Token), "repeated settlement request consumed");
@@ -169,11 +198,11 @@ internal static class Program
             var deferredBefore = (await db.GetCharacterAsync((long)Get(owner, "AccountId")!))!.Experience;
             await Call<Task>(service, "HandleNativeWorkerFrameAsync", owner, Result(owner, member), 1L, Token);
             Check(Drain(owner).Count(f => U16(f, 6) == 0xCF88) == 1, "deferred mixed-rating result is published");
-            Check((await db.GetCharacterAsync((long)Get(owner, "AccountId")!))!.Experience == deferredBefore + 100,
+            Check((await db.GetCharacterAsync((long)Get(owner, "AccountId")!))!.Experience == deferredBefore + OwnerSettlementExperience,
                 "deferred personal award commits despite zero-rating teammate");
             await Call<Task>(service, "HandleNativeWorkerFrameAsync", owner, Result(owner, member), 1L, Token);
             Drain(owner);
-            Check((await db.GetCharacterAsync((long)Get(owner, "AccountId")!))!.Experience == deferredBefore + 100,
+            Check((await db.GetCharacterAsync((long)Get(owner, "AccountId")!))!.Experience == deferredBefore + OwnerSettlementExperience,
                 "deferred repeated result retains one personal award");
             var invalid = Result(owner, member); invalid[64 + 11] = 6;
             await Call<Task>(service, "HandleNativeWorkerFrameAsync", owner, invalid, 1L, Token);
@@ -222,7 +251,7 @@ internal static class Program
                 var beforeExperience = (await db.GetCharacterAsync((long)Get(member, "AccountId")!))!.Experience;
                 await Call<Task>(service, "HandleNativeWorkerFrameAsync", member, Result(owner, member, 5, 5), 1L, Token);
                 Check(Drain(member).Any(f => U16(f, 6) == 0xCF88), "next round member publishes its own result");
-                Check((await db.GetCharacterAsync((long)Get(member, "AccountId")!))!.Experience == beforeExperience + 100,
+                Check((await db.GetCharacterAsync((long)Get(member, "AccountId")!))!.Experience == beforeExperience + MemberSettlementExperience,
                     "each continued member battle commits one fresh award");
                 Set(member, "NativeBattleResources", ((BattleResourceSnapshot)Get(member, "NativeBattleResources")!) with { SettlementFrozen = true });
             }

@@ -141,7 +141,9 @@ class SocialSyncBoundaryTests(unittest.TestCase):
         source = (ROOT/'release/components/protocol_extensions/protocol_overrides.inc').read_text('utf-8')
         function = re.search(r'static unsigned teamplay_settlement_member_rating\([^\n]+\)\{.*?\n\}', source, re.S).group()
         compile_check('''#include <assert.h>
-static unsigned combat_economy_rating(unsigned score,unsigned ok,unsigned dg){return score>=100?5u:1u;}
+struct boss_hp_sync_context;
+static const struct boss_hp_sync_context*multiplayer_shared_boss_context(void){return 0;}
+static unsigned combat_economy_rating(unsigned score,unsigned ok,const struct boss_hp_sync_context*ctx){return score>=100?5u:1u;}
 static unsigned dungeon_settlement_visible_rating(unsigned allow){return 0;}
 ''' + function + '''
 int main(void){

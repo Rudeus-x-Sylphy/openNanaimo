@@ -7534,9 +7534,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
                     var ownerCharacter = FindDungeonRoomOwner(session)?.Character ?? session.Character;
                     var levelStart = CharacterProgression.ExperienceRequiredForLevel(session.Character.Level);
-                    var nextLevel = session.Character.Level >= CharacterProgression.MaximumLevel
-                        ? levelStart + 1
-                        : CharacterProgression.ExperienceRequiredForLevel(session.Character.Level + 1);
+                    var nextLevel = CharacterProgression.NextExperienceThreshold(session.Character.Level);
                     var actualGainedExperience = (uint)Math.Clamp(
                         session.Character.Experience - experienceBeforeReward,
                         0L,
@@ -15593,9 +15591,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private static ArenaPvpResultRecord BuildArenaPvpResultRecord(CharacterRecord character, ushort win)
     {
         var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
-        var nextLevel = character.Level >= CharacterProgression.MaximumLevel
-            ? levelStart + 1
-            : CharacterProgression.ExperienceRequiredForLevel(character.Level + 1);
+        var nextLevel = CharacterProgression.NextExperienceThreshold(character.Level);
         var protocolLevelStart = (uint)Math.Clamp(levelStart, 0L, uint.MaxValue - 1L);
         var protocolNextLevel = (uint)Math.Clamp(
             nextLevel,
@@ -15809,9 +15805,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // profile window reads those same three local-state values to compute
         // (current - start) / (next - start).
         var levelStart = CharacterProgression.ExperienceRequiredForLevel(level);
-        var nextLevel = level >= CharacterProgression.MaximumLevel
-            ? levelStart + 1
-            : CharacterProgression.ExperienceRequiredForLevel(level + 1);
+        var nextLevel = CharacterProgression.NextExperienceThreshold(level);
         BinaryPrimitives.WriteUInt32LittleEndian(
             payload.AsSpan(32, 4),
             (uint)Math.Clamp(character?.Experience ?? 0L, 0L, uint.MaxValue));
@@ -16966,9 +16960,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         byte readyRoomRank = 0)
     {
         var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
-        var nextLevel = character.Level >= CharacterProgression.MaximumLevel
-            ? levelStart + 1
-            : CharacterProgression.ExperienceRequiredForLevel(character.Level + 1);
+        var nextLevel = CharacterProgression.NextExperienceThreshold(character.Level);
         return DungeonProtocol.BuildRoomMember(
             character,
             (ushort)Math.Clamp(owner?.Id ?? character.Id, 1L, (long)ushort.MaxValue),
@@ -17579,9 +17571,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             (uint)Math.Clamp(character.Experience, 0L, uint.MaxValue));
 
         var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
-        var nextLevel = character.Level >= CharacterProgression.MaximumLevel
-            ? levelStart + 1
-            : CharacterProgression.ExperienceRequiredForLevel(character.Level + 1);
+        var nextLevel = CharacterProgression.NextExperienceThreshold(character.Level);
         BinaryPrimitives.WriteUInt32LittleEndian(
             payload.AsSpan(20, 4),
             (uint)Math.Clamp(levelStart, 0L, uint.MaxValue - 1L));

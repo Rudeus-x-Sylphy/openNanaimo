@@ -267,7 +267,7 @@ static struct boss_hp_sync_context g_boss_context;
 static struct boss_hp_sync_context*multiplayer_shared_boss_context(void){return &g_boss_context;}
 static unsigned combat_economy_boss_total_hp(const struct boss_hp_sync_context*c){(void)c;return 15000u;}
 static void teamplay_score_snapshot(unsigned*s){s[0]=9480;s[1]=0;s[2]=0;}
-static unsigned combat_economy_rating(unsigned score,unsigned cleared,unsigned dungeon){unsigned step=dungeon==2u?16000u:10000u,grade;if(!cleared)return 0u;grade=score/step;return grade>5u?5u:grade;}
+static unsigned combat_economy_rating(unsigned score,unsigned cleared,const struct boss_hp_sync_context*ctx){unsigned step=ctx->dungeon==2u?16000u:10000u,grade;if(!cleared)return 0u;grade=score/step;return grade>5u?5u:grade;}
 static void mkpkt(char*p,unsigned op,int len,int flags){(void)flags;memset(p,0,4096);boss_hp_sync_put16((unsigned char*)p,4,(unsigned)len);boss_hp_sync_put16((unsigned char*)p,6,op);}
 static void stable_put32(char*p,unsigned off,unsigned value){boss_hp_sync_put32((unsigned char*)p,off,value);}
 static unsigned teamplay_boss_final_hans_commit(unsigned hp){assert(hp==15000u);hans_calls++;return 300u;}

@@ -60,15 +60,17 @@ internal static partial class Program
         {
             var frame = Settlement(fixture.First, fixture.Second);
             var remote = frame.AsSpan(12 + 0x34).ToArray();
+            var baseExperience = DungeonExperiencePolicy.ScaleEquipment(100080 / 4, Character(fixture.First));
+            var expectedExperience = CoupleBenefitPolicy.ScaleExperience(baseExperience, (await fixture.Database.GetActiveCoupleRelationAsync(Character(fixture.First).Id, Token))!.RingItemCode, true);
             await Invoke<Task>(service, "ApplyNativeCoupleExperienceAsync", fixture.First, frame, Token);
-            Check(BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(24)) == 120
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(24)) == expectedExperience
                 && frame.AsSpan(12 + 0x34).SequenceEqual(remote), "couple experience scales only the local settlement row");
             await Invoke<Task>(service, "ApplyNativeCoupleExperienceAsync", fixture.First, frame, Token);
-            Check(BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(24)) == 120, "couple settlement adjustment idempotence");
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(24)) == expectedExperience, "couple settlement adjustment idempotence");
             Set(fixture.Second, "NativeDungeonDungeon", (byte)1);
             var separated = Settlement(fixture.First, fixture.Second);
             await Invoke<Task>(service, "ApplyNativeCoupleExperienceAsync", fixture.First, separated, Token);
-            Check(BinaryPrimitives.ReadUInt32LittleEndian(separated.AsSpan(24)) == 100, "couple experience requires the same complete stage selection");
+            Check(BinaryPrimitives.ReadUInt32LittleEndian(separated.AsSpan(24)) == baseExperience, "couple experience requires the same complete stage selection");
             Set(fixture.Second, "NativeDungeonDungeon", (byte)0);
             var profile = NativeDungeonClient.Frame(0xCFEC, Enumerable.Repeat((byte)17, 800).ToArray());
             var before = profile.ToArray();

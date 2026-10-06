@@ -230,8 +230,8 @@ class PartyStateTests(unittest.TestCase):
     def test_mixed_rating_clear_results_for_normal_and_super_boss(self):
         # Selected authored targets: ordinary body; Super-Boss modes 0 and 1.
         for dungeon, stage, targets, expected_score in (
-                (1, 0, ((0, 0),), 10000),
-                (2, 1, ((0, 9), (1, 8)), 50000)):
+                (1, 0, ((0, 0),), 6000),
+                (2, 1, ((0, 9), (1, 8)), 11000)):
             with self.subTest(dungeon=dungeon, stage=stage), party(dungeon=dungeon, stage=stage) as clients:
                 self.start(clients, 1)
                 owner, member = clients
@@ -270,10 +270,10 @@ class PartyStateTests(unittest.TestCase):
                     self.assertEqual(struct.unpack_from('<HH', result, 8), (2, 11))
                     self.assertEqual([struct.unpack_from('<H', result, offset)[0] for offset in (12, 64)], [11, 12])
                     self.assertGreater(result[23], 0)
-                    self.assertEqual(result[75], 0)
+                    self.assertGreater(result[75], 0) # Boss score belongs to both active participants
                     self.assertEqual(struct.unpack_from('<I', result, 40)[0], expected_score)
-                    self.assertEqual(struct.unpack_from('<I', result, 92)[0], 0)
-                    self.assertEqual(struct.unpack_from('<I', result, local_offset + 12)[0], 100)
+                    self.assertEqual(struct.unpack_from('<I', result, 92)[0], expected_score)
+                    self.assertEqual(struct.unpack_from('<I', result, local_offset + 12)[0], expected_score // 4)
                 for connection in clients:
                     drain(connection)
                     connection.sendall(frame(0xCF87, bytes(4)))

@@ -516,14 +516,17 @@ static void send_cf9a_surrender_abuser(SOCKET c){
 #endif
 
 static void send_cf6d_entry(SOCKET c){
-    /* 1_full current-map tuple: exact 44-byte shape, localized UID/name. */
+    /* Status is BYTE +8; BYTE +9 independently sets application+4 (owner).
+       Continuation preclear must not demote the owner to a guest. Keep the
+       existing 44-byte shape and derive identity from this room, not UID 1. */
+    unsigned owner=multiplayer_owner_uid(),uid=multiplayer_current_uid();
     char p[4096]; mkpkt(p,0xCF6D,0x2C,1);
-    p[8]=10; p[9]=0; p[0x0A]=0x30; p[0x0B]=0;
+    p[8]=10; p[9]=(char)(uid==owner); p[0x0A]=0x30; p[0x0B]=0;
     p[0x0C]=1; p[0x0D]=1; p[0x0E]=1; p[0x0F]=0;
-    p[0x10]=1; p[0x11]=p[0x12]=p[0x13]=0;
+    stable_put32(p,0x10,owner);
     stable_name(p+0x14);
     sendbuf(c,p,0x2C);
-    printf("  S0xCF6D 1_full shape status=10 role=48 uid=1 len=44 t=%lds\n",sec()); fflush(0);
+    printf("  S0xCF6D room-entry status=10 is_owner=%u owner=%u viewer=%u room=48 len=44 t=%lds\n",uid==owner,owner,uid,sec()); fflush(0);
 }
 static void send_cf76_entry(SOCKET c){
     /* 0x77DE90 success case consumes +9/+10, strings at +12 and +36,

@@ -15,6 +15,7 @@ internal static class MigrationChecks
         await QuestSystemChecks.RunAsync();
         await TutorialAppearanceChecks.RunAsync();
         await PureNewPlayerChecks.RunAsync();
+        await LiveDungeonExperienceChecks.RunAsync();
         await NativeDungeonExperienceChecks.RunAsync();
         await InventoryDiscardChecks.RunAsync();
         await InventoryExpansionChecks.RunAsync();

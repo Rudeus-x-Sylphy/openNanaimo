@@ -104,7 +104,7 @@ public sealed partial class NetworkAdapterService
         lock (memo)
         {
             BindNativeDungeonRankingMemo(session, memo);
-            if (!session.NativeDungeonSelectionValid || session.NativeDungeonDeathLatched
+            if (!session.NativeDungeonSelectionValid
                 || !session.OnlineTracked || session.Character is null || memo.Pending is not { } pending
                 || pending.HdIndex != session.NativeDungeonHdIndex || pending.Episode != session.NativeDungeonEpisode
                 || pending.Dungeon != session.NativeDungeonDungeon || pending.Stage != session.NativeDungeonStage
@@ -158,7 +158,7 @@ public sealed partial class NetworkAdapterService
         lock (memo)
         {
             BindNativeDungeonRankingMemo(session, memo);
-            if (memo.Published || memo.Committed is null || memo.Committed.Value.Rating == 0)
+            if (memo.Published || memo.Committed is null)
                 PatchNativeCharacterProgressionFrame(response, checkpoint.Get(4), character, character);
             memo.Published = true;
         }
@@ -172,6 +172,9 @@ public sealed partial class NetworkAdapterService
         if (GetPendingNativeDungeonRanking(session) is not { } settlement
             || session.Character is not { } before || session.NativeCheckpoint is not { } checkpoint)
             return;
+        using var resourceCommit = await LockNativeDungeonResourcesAsync(session, token);
+        before = session.Character!;
+        checkpoint = session.NativeCheckpoint!;
         var after = new NativeDungeonState(checkpoint.Bytes.ToArray());
         session.NativeBattleResources?.ApplyTo(after);
         var applied = await _database.ApplyNativeDungeonDeltaAsync(
@@ -179,6 +182,10 @@ public sealed partial class NetworkAdapterService
             settlement: settlement);
         if (applied.Applied) MarkNativeDungeonRankingCommitted(session, settlement);
         await RefreshSessionCharacterAsync(session, token);
+        session.NativeCheckpoint = after;
+        if (LiveExperienceEpochs.TryGetValue(session, out var liveEpoch)
+            && liveEpoch.ManagedEpoch == session.NativeBattleEpoch)
+            await SynchronizeNativeExperienceAsync(session, liveEpoch.NativeEpoch, token);
         PatchNativeCharacterProgressionFrame(response, checkpoint.Get(4), before, session.Character!);
         PatchNativePetSettlementFrame(response, checkpoint.Get(4), applied);
         PatchNativeDungeonTitleFrame(response, checkpoint.Get(4), CharacterTitleState.GetGrade(session.Character));

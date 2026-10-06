@@ -699,8 +699,7 @@ public sealed partial class NetworkAdapterService
                 {
                     var character = room.SettledCharacters.GetValueOrDefault(member.SessionId) ?? member.Character!;
                     var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
-                    var nextLevel = character.Level >= CharacterProgression.MaximumLevel ? levelStart + 1
-                        : CharacterProgression.ExperienceRequiredForLevel(character.Level + 1);
+                    var nextLevel = CharacterProgression.NextExperienceThreshold(character.Level);
                     return new EntertainmentEndGameRecord(GetSceneEntityId(character),
                         checked((byte)Math.Clamp(character.Level, 1, byte.MaxValue)),
                         CharacterTitleState.GetGrade(character), CharacterTitleState.GetGrade(character),

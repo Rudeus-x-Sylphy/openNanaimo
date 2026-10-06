@@ -21,6 +21,8 @@ int main(int argc,char**argv){
     memset(req,0,sizeof(req));memset(&skill,0,sizeof(skill));
     pSd=capture;pT=clock_fixed;g_multi_current=0;g_profile_defense_flat=0;
     g_multi_conn[0].active=1;g_multi_conn[0].uid=21;g_multi_conn[0].socket=100;
+    g_multi_transport_alive[0]=1;g_multi_conn[0].room_active=1;
+    teamplay_score_begin(1u);g_teamplay_authority.score_by_player[0]=789u;
     mode=(unsigned)atoi(argv[1]);kind=mode==0u?20u:mode==1u?40u:60u;req[8]=kind;
     if(mode==7u){
         stage_damage_damage_begin(&ctx,0,2,1,0,0,1,1);req[10]=85;req[11]=1;

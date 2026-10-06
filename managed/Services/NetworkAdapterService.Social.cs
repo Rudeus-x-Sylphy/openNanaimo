@@ -147,11 +147,11 @@ public sealed partial class NetworkAdapterService
         if (session.Character is null || session.NativeCheckpoint is null
             || _coupleExperienceFrames.TryGetValue(response, out _)
             || !TryReadNativeDungeonSettlementFrame(response,
-                checked((ushort)session.NativeCheckpoint.Get(4)), out var rating, out _, out var amount)
-            || rating == 0 || session.NativeDungeonDeathLatched)
+                checked((ushort)session.NativeCheckpoint.Get(4)), out _, out var score, out _))
             return;
         var relation = await _database.GetActiveCoupleRelationAsync(session.Character.Id, token);
-        var scaled = CoupleBenefitPolicy.ScaleExperience(amount, relation?.RingItemCode ?? 0,
+        var amount = DungeonExperiencePolicy.BaseSettlementExperience(score);
+        var scaled = CoupleBenefitPolicy.ScaleExperience(DungeonExperiencePolicy.ScaleEquipment(amount, session.Character), relation?.RingItemCode ?? 0,
             relation is not null && FindNativeDungeonPartner(session, relation) is not null);
         scaled = await ScaleMentorshipExperienceAsync(session, scaled, token);
         var count = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8));

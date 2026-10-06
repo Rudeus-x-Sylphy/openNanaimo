@@ -67,6 +67,20 @@ def collect(root=ROOT):
             path = root / rel
             if not path.is_file(): raise ValueError('missing preloaded target input: ' + rel)
             seen.add(path.resolve())
+    # DCC7 bytes remain pinned by the separate runtime manifest and generated
+    # header hash; do not authorize a raw game catalog as exported source.
+    if (root / 'release/components/combat_economy/combat_score_resource_data.inc').resolve() in seen:
+        for rel in ('scripts/combat-score-generator/Program.cs',
+                    'scripts/combat-score-generator/CombatScoreGenerator.csproj'):
+            path = root / rel
+            if not path.is_file(): raise ValueError('missing combat score input: ' + rel)
+            seen.add(path.resolve())
+    if any(p.name == 'character_experience_table.inc' for p in seen):
+        for rel in ('release/components/dungeon_progression/character_experience.csv',
+                    'scripts/generate_character_experience.py'):
+            path = root / rel
+            if not path.is_file(): raise ValueError('missing character experience input: ' + rel)
+            seen.add(path.resolve())
     complete_build = root / 'scripts/build_complete_adapter.ps1'
     if complete_build.is_file():
         seen.add(complete_build.resolve())

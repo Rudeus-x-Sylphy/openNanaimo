@@ -203,10 +203,25 @@ static void send_c481_quickbar_expansion(SOCKET c,int success,unsigned row,unsig
 /* sub_8005F0 case0xF5 -> sub_81D440. Success consumes status, code and
    the same object identity used by C430/C46D; failure consumes status only. */
 static void send_c46e_item_use_result(SOCKET c,int success,unsigned code,unsigned identity){char p[4096];int n=success?20:12;mkpkt(p,0xC46E,n,1);stable_put32(p,8,success?1u:2u);if(success){stable_put32(p,12,code);stable_put32(p,16,identity);}sendbuf(c,p,n);printf("  S0xC46E PROFILE_SNAPSHOT item-use success=%d status=%u code=%u identity=%u len=%d t=%lds\n",success,success?1u:2u,code,identity,n,sec());fflush(0);}
+/* D035 applies a client-side incremental HP/MP pickup, whereas this server's
+ * accepted resource pickup policy fills to the effective cap. Publish the
+ * absolute result to the collector immediately; peer broadcast excludes self.
+ * Use the existing CF72 lifecycle gate so this is not a PET/Power rebuild. */
+static void game_session_send_claimed_pickup_result(SOCKET c,const unsigned char*req,unsigned uid,struct attack_mode_powerup_context*power_ctx){
+    unsigned category=(unsigned)req[0]|((unsigned)req[1]<<8);
+    unsigned item_type=(unsigned)req[4]|((unsigned)req[5]<<8)|((unsigned)req[6]<<16)|((unsigned)req[7]<<24);
+    send_d035_playable(c,req,uid,power_ctx);
+    if(category==40u&&(item_type==2u||item_type==3u)){
+        send_cf72_dynamic_actor_refresh_phase(c,uid,native_cf72_phase_for_socket(c));
+        multiplayer_broadcast_actor_resources_current();
+        printf("  [PICKUP_RESOURCE] collector=%u item=%u hp=%u/%u mp=%u/%u sync=D035-then-local-CF72 policy=effective-cap\n",uid,item_type,pet_crafting_pet_effective_hp_current(),pet_crafting_pet_effective_hp_max(),pet_crafting_pet_effective_mp_current(),pet_crafting_pet_effective_mp_max());fflush(0);
+    }
+}
+
 /* INJURY_RESOURCE: D010 DWORD+0x0C is the live battle-score carrier consumed by
    client 0x6EF06B -> 0x748990.  Do not zero it on injury. */
 static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,unsigned local_uid,unsigned hp,unsigned damage,int terminal,unsigned battle_score){
-    char p[4096];mkpkt(p,0xD010,0x24,1);
+    char p[4096];battle_score=teamplay_current_score();mkpkt(p,0xD010,0x24,1);
     stable_resource_put16(p,0x08,local_uid);stable_resource_put16(p,0x0A,terminal?200u:100u);
     stable_put32(p,0x0C,battle_score);stable_resource_put16(p,0x10,hp);stable_resource_put16(p,0x12,damage);
     p[0x1A]=req[0x0A];p[0x1B]=req[0x0B];p[0x1D]=req[0x08];
@@ -1039,7 +1054,7 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                         if(boss_result.scripted_report_suppressed){if(boss_result.applied_damage){unsigned total=combat_economy_score_boss_terminal(&score_ctx,&boss_ctx,&boss_result);printf("  [GS %d] BOSS_COMPONENT component-hit-deferred wire_child=%u wire_ordinal=%u resolved_ordinal=%u collapsed=%u damage=%u component_hp=%u/%u body_bar_hp=%u total=%u response=none\n",port,boss_result.wire_child,boss_result.wire_ordinal,boss_result.target_ordinal,boss_result.component_route_collapsed,boss_result.applied_damage,boss_result.component_hp,boss_result.component_max_hp,boss_result.hp,total);fflush(0);}else{printf("  [GS %d] BOSS_COMPONENT retired-report-suppressed wire_child=%u wire_ordinal=%u resolved_ordinal=%u collapsed=%u ignored_damage=%u component_hp=%u/%u body_bar_hp=%u response=none\n",port,boss_result.wire_child,boss_result.wire_ordinal,boss_result.target_ordinal,boss_result.component_route_collapsed,boss_result.scripted_ignored_damage,boss_result.component_hp,boss_result.component_max_hp,boss_result.hp);fflush(0);}if(boss_result.applied_damage)inventory_migration_apply_absorb(c,boss_result.applied_damage,&combat_hp,&injury_dead,score_ctx.total,&lifesteal_remainder,&mp_absorb_remainder,"D011-deferred");}
                         else{
 #endif
-                        if(boss_result.applied_damage){unsigned total=combat_economy_score_boss_terminal(&score_ctx,&boss_ctx,&boss_result);printf("  [GS %d] BATTLE_SCORE COMBAT_ECONOMY boss mode=%u applied_damage=%u total=%u policy=kill-total-hp mode_cumulative=%u projectile_verified=%d response=D012-only\n",port,boss_result.mode_index,boss_result.applied_damage,total,boss_result.cumulative_damage,projectile_verified);fflush(0);}
+                        if(boss_result.applied_damage){unsigned total=combat_economy_score_boss_terminal(&score_ctx,&boss_ctx,&boss_result);printf("  [GS %d] BATTLE_SCORE COMBAT_ECONOMY boss mode=%u applied_damage=%u total=%u policy=dcc7-authored-1x mode_cumulative=%u projectile_verified=%d response=D012-only\n",port,boss_result.mode_index,boss_result.applied_damage,total,boss_result.cumulative_damage,projectile_verified);fflush(0);}
 #if TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
 teamplay_send_d013_boss_result_retirements(c,&boss_result);
 #if TEAMPLAY_FEATURE_BOSS_SMOOTH_CHILD_PHASE
@@ -1140,7 +1155,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                         if(grant){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}
 #endif
                         }
-                        else{int claim_ok=teamplay_drop_claim(category,scene_uid,item_type,multiplayer_current_uid());if(claim_ok){if(category==40u&&item_type==2u){combat_hp=pet_crafting_pet_effective_hp_max();g_profile_hp_current=combat_hp;injury_dead=0;}if(category==40u&&item_type==3u)g_profile_mp_current=pet_crafting_pet_effective_mp_max();sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);if(category==40u&&(item_type==2u||item_type==3u))multiplayer_broadcast_actor_resources_current();}else{printf("  [MULTI_DROP] suppress duplicate/unoffered pickup uid=%u category=%u scene=%u item=%u\n",multiplayer_current_uid(),category,scene_uid,item_type);fflush(0);}}
+                        else{int claim_ok=teamplay_drop_claim(category,scene_uid,item_type,multiplayer_current_uid());if(claim_ok){if(category==40u&&item_type==2u){combat_hp=pet_crafting_pet_effective_hp_max();g_profile_hp_current=combat_hp;injury_dead=0;}if(category==40u&&item_type==3u)g_profile_mp_current=pet_crafting_pet_effective_mp_max();sleep(0);game_session_send_claimed_pickup_result(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else{printf("  [MULTI_DROP] suppress duplicate/unoffered pickup uid=%u category=%u scene=%u item=%u\n",multiplayer_current_uid(),category,scene_uid,item_type);fflush(0);}}
                     } else if(type==0xCF73 && len==8){
                         post_reset_pending=post_reset_seen_c587=post_reset_seen_cf70=0;pending_super_cf87=0;
 #if TEAMPLAY_FEATURE_CF99_SUPER_REARM_CLEAR

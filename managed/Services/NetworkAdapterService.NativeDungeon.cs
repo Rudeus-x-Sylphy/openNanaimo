@@ -101,7 +101,7 @@ public sealed partial class NetworkAdapterService
     private async Task<bool> RouteNativeDungeonAsync(byte[] frame, ushort opcode, string channel,
         ConnectionSession session, CancellationToken token)
     {
-        if (opcode is >= 0xF100 and <= 0xF109) return true;
+        if (opcode is >= 0xF100 and <= 0xF10B) return true;
         if (!NativeDungeonEnabled || channel != "WorldAdapter") return false;
         if (opcode == 0xCF09 && frame.Length is 64 or 132 && session.OnlineTracked && session.Character is not null)
         {
@@ -1007,7 +1007,6 @@ public sealed partial class NetworkAdapterService
         // Snapshot pending ranking before a CF8B acknowledgement can advance
         // the selection tuple; the result belongs to the completed stage.
         var pendingRanking = GetPendingNativeDungeonRanking(session);
-        var progressionBefore = session.Character;
         // A partner can reconnect with the same actor identity. Refresh the
         // worker generation binding at each consumption boundary.
         await RefreshCoupleBenefitsCoreAsync(session, token,
@@ -1026,6 +1025,14 @@ public sealed partial class NetworkAdapterService
             CancelNativePartyContinuation(session, continuationPeers);
             throw;
         }
+        // Drain first-death receipts before the settlement snapshot. Otherwise a
+        // captured final kill can be counted in CF88's displayed award or appear
+        // after its absolute total, despite being a separate durable reward.
+        foreach (var response in exchange.Frames)
+            if (response.Length >= 8 && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) == 0xF10A)
+                await ApplyNativeLiveExperienceAsync(session, response, session.NativeBattleEpoch, token);
+        exchange = new NativeDungeonExchangeResult(exchange.State, exchange.Frames.Where(response =>
+            response.Length < 8 || BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) != 0xF10A).ToArray());
         foreach (var response in exchange.Frames)
             await ApplyNativeCoupleExperienceAsync(session, response, token);
         exchange = new NativeDungeonExchangeResult(
@@ -1087,6 +1094,7 @@ public sealed partial class NetworkAdapterService
             _log($"NativeDungeon death settlement retry accepted: character={session.Character.Id} tuple={session.NativeDungeonHdIndex}/{session.NativeDungeonEpisode}/{session.NativeDungeonDungeon}/{session.NativeDungeonStage}/{session.NativeDungeonLogicalDifficulty}");
         }
         using var resourceCommit = await LockNativeDungeonResourcesAsync(session, token);
+        var progressionBefore = session.Character!;
         var next = exchange.State;
         session.NativeBattleResources = MergeNativeDungeonRevivalResources(
             session.NativeBattleResources, session.NativeCheckpoint, next,
@@ -1120,7 +1128,7 @@ public sealed partial class NetworkAdapterService
                 if (!TryReadNativeDungeonSettlementFrame(
                         response, memberUid, out var rating, out var score, out var experienceAward))
                     continue;
-                if (session.NativeDungeonDeathLatched) { rating = 0; experienceAward = 0; }
+                if (session.NativeDungeonDeathLatched) rating = 0;
                 settlement = new NativeDungeonSettlementRecord(
                     session.NativeDungeonHdIndex,
                     session.NativeDungeonEpisode,
@@ -1154,6 +1162,9 @@ public sealed partial class NetworkAdapterService
         session.NativeCheckpoint = next;
         File.Delete(journal);
         await RefreshSessionCharacterAsync(session, token);
+        if (settlement is not null && LiveExperienceEpochs.TryGetValue(session, out var liveEpoch)
+            && liveEpoch.ManagedEpoch == session.NativeBattleEpoch)
+            await SynchronizeNativeExperienceAsync(session, liveEpoch.NativeEpoch, token);
         resourceCommit.Dispose(); // Publication and quest work do not hold the resource commit gate.
         if (settlement is { Rating: > 0 } completed && persistSettlementRank && !session.NativeDungeonDeathLatched)
         {
@@ -1183,12 +1194,12 @@ public sealed partial class NetworkAdapterService
         // A valid personal award remains authoritative when the team result
         // cannot enter the leaderboard. Keep deferred and captured results on
         // the same receipt rather than letting ranking eligibility hide EXP.
-        if (!session.NativeDungeonSettlementAwaitingAction || session.NativeDungeonDeathLatched
+        if (!session.NativeDungeonSettlementAwaitingAction
             || !session.NativeDungeonSelectionValid || !session.OnlineTracked
             || session.Character is null || session.NativeCheckpoint is null
             || !TryReadNativeDungeonSettlementFrame(response,
                 checked((ushort)session.NativeCheckpoint.Get(4)), out var rating, out var score,
-                out var experienceAward) || rating == 0)
+                out var experienceAward))
             return;
         var memo = _nativeDungeonRankings.GetOrCreateValue(session);
         lock (memo)
@@ -1217,6 +1228,11 @@ public sealed partial class NetworkAdapterService
             return;
         }
         var responseOpcode = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6, 2));
+        if (responseOpcode == 0xF10A)
+        {
+            await ApplyNativeLiveExperienceAsync(session, response, battleEpoch, token);
+            return;
+        }
         using var settlementPublication = responseOpcode == 0xCF88
             ? await LockNativeSettlementPublicationAsync(session, token) : null;
         if (responseOpcode == 0xCF88 && (session.NativeDungeonExitRequested
@@ -1603,9 +1619,7 @@ public sealed partial class NetworkAdapterService
             var level = Math.Clamp(after.Level, 1, CharacterProgression.MaximumLevel);
             var currentExperience = checked((uint)Math.Clamp(after.Experience, 0L, uint.MaxValue));
             var lowerExperience = checked((uint)CharacterProgression.ExperienceRequiredForLevel(level));
-            var nextExperience = level < CharacterProgression.MaximumLevel
-                ? checked((uint)CharacterProgression.ExperienceRequiredForLevel(level + 1))
-                : checked(lowerExperience + (uint)level * 100u);
+            var nextExperience = checked((uint)CharacterProgression.NextExperienceThreshold(level));
             var addedExperience = after.Experience > before.Experience
                 ? checked((uint)Math.Min(uint.MaxValue, after.Experience - before.Experience))
                 : 0u;

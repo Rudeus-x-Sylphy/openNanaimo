@@ -99,6 +99,7 @@ def payload_policy(value: str, layer: str) -> None:
             "release/components/stage_damage/scene_hazard_registry.json",
             "release/components/target_resources/preloaded_target_catalog.json",
             "release/components/cards/card_drop_cn.csv",
+            "release/components/dungeon_progression/character_experience.csv",
             "release/components/cards/card_drop_cn_boss_bindings.json",
             "release/components/cards/gen_card_drop_pool_boss.py",
             "release/components/cards/generate_card_drop_data.py",
@@ -106,7 +107,9 @@ def payload_policy(value: str, layer: str) -> None:
         good = ((parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"})
                 or (parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"})
                 or value in {"managed-host/Resources/client-compatibility.json",
-                             "gui_launcher/projectile_resources.cs", "manifest/projectile_diy_patch.json"}
+                             "gui_launcher/projectile_resources.cs", "manifest/projectile_diy_patch.json",
+                             "scripts/combat-score-generator/Program.cs",
+                             "scripts/combat-score-generator/CombatScoreGenerator.csproj"}
                 or (parts[0] == "scripts" and p.suffix in {".py", ".ps1"})
                 or value in DUNGEON7_ARTWORK
                 or value in card_generation_sources
@@ -300,10 +303,14 @@ def validated_closure(closure: dict) -> list[dict]:
         p = PurePosixPath(rel)
         native = p.parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"}
         managed = p.parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"}
-        build_script = rel == "scripts/build_complete_adapter.ps1"
+        build_script = rel in {"scripts/build_complete_adapter.ps1",
+                               "scripts/combat-score-generator/Program.cs",
+                               "scripts/combat-score-generator/CombatScoreGenerator.csproj"}
         embedded_recipe = rel == "managed-host/Resources/client-compatibility.json"
         card_distribution = rel in {
             "release/components/cards/card_drop_cn.csv",
+            "release/components/dungeon_progression/character_experience.csv",
+            "scripts/generate_character_experience.py",
             "release/components/cards/card_drop_cn_boss_bindings.json",
             "scripts/generate_cn_card_drops.py",
             "scripts/generate_scene_hazard_catalog.py",

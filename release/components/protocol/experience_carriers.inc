@@ -7,7 +7,8 @@
  * CF71 roster/late-preload callers multi_apply_profile(actor) before builder
  * and restore recipient afterward: use that exact full-name context, not
  * the wire name (stable_name truncates it) or the recipient socket.
- * CF88 remains the sole earned-progression commit and level-up carrier.
+ * CF88 carries the additional terminal award; live first-death receipts use
+ * the separately proven C57C battle notification plus non-rebuilding CF72.
  */
 static void release_normalize_experience_carrier(char *p,int n){
     unsigned op,len=0u,seed=STABLE_LEVEL;

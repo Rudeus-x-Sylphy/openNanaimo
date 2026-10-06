@@ -63,6 +63,23 @@ class ExportPatchTests(unittest.TestCase):
         p.write_text(json.dumps(self.doc if doc is None else doc), "utf-8")
         return p
 
+    def test_character_experience_inputs_are_exactly_scoped_source(self):
+        for name in ('release/components/dungeon_progression/character_experience.csv',
+                     'scripts/generate_character_experience.py'):
+            patch.payload_policy(name, 'source')
+        with self.assertRaises(patch.ExportError):
+            patch.payload_policy('release/components/dungeon_progression/player-dump.csv', 'source')
+
+    def test_combat_score_generator_is_exactly_scoped_source(self):
+        for name in ("scripts/combat-score-generator/Program.cs",
+                     "scripts/combat-score-generator/CombatScoreGenerator.csproj"):
+            patch.payload_policy(name, "source")
+            patch.validated_closure({"count":1,"files":[{"path":name,"size":1,"sha256":"0"*64}]})
+        for name in ("scripts/arbitrary/Program.cs", "scripts/combat-score-generator/bin/tool.dll",
+                     "adapter_runtime/资源/数据/dungeon_combat_catalog.bin"):
+            with self.assertRaises(patch.ExportError):
+                patch.payload_policy(name, "source")
+
     def test_default_inventory_does_not_write_or_copy_state(self):
         self.control()
         for name in ("profile.ini", "private/token.txt", "state/account.dat", "build/a.exe", "installer/game.exe"):

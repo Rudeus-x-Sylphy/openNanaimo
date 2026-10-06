@@ -530,6 +530,7 @@ public sealed partial class DatabaseService
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        await MigrateCharacterExperienceCurveAsync(connection, cancellationToken);
         await MigrateLegacyAdapterSettingsAsync(connection, cancellationToken);
         await InitializeApartmentRecommendationsAsync(connection, cancellationToken);
         await InitializeApartmentHousingAsync(connection, cancellationToken);
@@ -9117,7 +9118,7 @@ public sealed partial class DatabaseService
             .Where(reward => reward.RewardType == 6 && reward.RewardCode / 1000000 == 13 && reward.Amount != 0)
             .ToArray();
         var hans = Math.Min(uint.MaxValue, oldHans + hansReward);
-        var experience = Math.Min(uint.MaxValue, oldExperience + experienceReward);
+        var experience = Math.Min(CharacterProgression.MaximumExperience, oldExperience + experienceReward);
         var level = Math.Max(Math.Clamp(oldLevel, 1, CharacterProgression.MaximumLevel),
             CharacterProgression.CalculateLevel(experience));
         var gainedLevels = CharacterCombatProgression.GainedLevels(oldLevel, level);
@@ -9372,7 +9373,7 @@ public sealed partial class DatabaseService
             intelligence = reader.GetInt32(3);
         }
 
-        var experience = amount > long.MaxValue - oldExperience ? long.MaxValue : oldExperience + amount;
+        var experience = Math.Min(CharacterProgression.MaximumExperience, amount > long.MaxValue - oldExperience ? long.MaxValue : oldExperience + amount);
         var level = CharacterProgression.CalculateLevel(experience);
         level = Math.Max(Math.Clamp(oldLevel, 1, CharacterProgression.MaximumLevel), level);
         var gainedLevels = CharacterCombatProgression.GainedLevels(oldLevel, level);
@@ -9516,9 +9517,9 @@ public sealed partial class DatabaseService
             }
         }
 
-        var experience = oldExperience > long.MaxValue - experienceReward
+        var experience = Math.Min(CharacterProgression.MaximumExperience, oldExperience > long.MaxValue - experienceReward
             ? long.MaxValue
-            : oldExperience + experienceReward;
+            : oldExperience + experienceReward);
         var level = Math.Max(Math.Clamp(oldLevel, 1, CharacterProgression.MaximumLevel),
             CharacterProgression.CalculateLevel(experience));
         var gainedLevels = CharacterCombatProgression.GainedLevels(oldLevel, level);

@@ -152,7 +152,7 @@ static int carriers(void){
 static int avatar(void){
     unsigned char state[MANAGED_STATE_SIZE];unsigned i;
     seed(state,PET,30000u,1400u);
-    managed_put(state,8,25u);managed_put(state,12,30000u);
+    managed_put(state,8,25u);managed_put(state,12,progression_progression_threshold(25u));
     managed_put(state,120,10110337u); /* GM top: HP+200%, MP+300% */
     for(i=0u;i<4u;i++){
         CHECK(managed_bridge_import(state));

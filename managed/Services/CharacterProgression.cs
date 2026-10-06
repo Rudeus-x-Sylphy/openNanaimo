@@ -25,10 +25,24 @@ public static class CharacterProgression
 
     public static long ExperienceRequiredForLevel(int level)
     {
+        return CharacterExperienceTable.Thresholds[Math.Clamp(level, 1, MaximumLevel)];
+    }
+
+    // Level 99 has a display interval, not a transition to level 100.
+    public static long NextExperienceThreshold(int level) =>
+        CharacterExperienceTable.Thresholds[Math.Clamp(level, 1, MaximumLevel) + 1];
+
+    public static long MaximumExperience => NextExperienceThreshold(MaximumLevel);
+
+
+    internal static long MigrateLegacyExperience(int level, long experience)
+    {
         level = Math.Clamp(level, 1, MaximumLevel);
-        var completedLevels = level - 1L;
-        // Match the retained native dungeon progression table.
-        return 50L * completedLevels * (completedLevels + 1L);
+        var oldLower = 50L * (level - 1L) * level;
+        var oldWidth = 100L * level;
+        var progress = Math.Clamp(experience - oldLower, 0, oldWidth - (level < MaximumLevel ? 1 : 0));
+        var lower = ExperienceRequiredForLevel(level);
+        return lower + progress * (NextExperienceThreshold(level) - lower) / oldWidth;
     }
 
     public static int CalculateLevel(long experience)

@@ -729,19 +729,18 @@ public sealed partial class DatabaseService
         int storedMaxHp,
         int storedMaxMp)
     {
-        // Character progression is settlement-owned. Intermediate checkpoints are
+        // Character progression here is settlement-owned; live kills use their own
+        // durable score receipt. Intermediate checkpoints are
         // normalized back to the managed ledger, while a completed result applies
         // exactly the award carried by that result. Legacy settlement journals fall
         // back to their positive snapshot delta; ordinary checkpoints never do.
         var workerExperienceDelta = after.Get(12) > before.Get(12)
             ? after.Get(12) - before.Get(12)
             : 0u;
-        var experienceDelta = settlement is not { Rating: > 0 and <= DungeonRewardPolicy.ClearRatingS }
+        var experienceDelta = settlement is not { Rating: <= DungeonRewardPolicy.ClearRatingS }
             ? 0u
             : settlement.Value.CharacterExperienceAward ?? workerExperienceDelta;
-        var experience = storedExperience >= uint.MaxValue
-            ? uint.MaxValue
-            : Math.Min((long)uint.MaxValue, Math.Max(0L, storedExperience) + experienceDelta);
+        var experience = Math.Min(CharacterProgression.MaximumExperience, Math.Max(0L, storedExperience) + experienceDelta);
         var level = Math.Max(Math.Clamp(storedLevel, 1, CharacterProgression.MaximumLevel),
             CharacterProgression.CalculateLevel(experience));
         var gainedLevels = CharacterCombatProgression.GainedLevels(storedLevel, level);
@@ -753,8 +752,8 @@ public sealed partial class DatabaseService
         var (snapshotHp, snapshotMp) = after.GetEffectiveResourceMaximums();
         var effectiveHp = Math.Max(maxHp, snapshotHp);
         var effectiveMp = Math.Max(maxMp, snapshotMp);
-        var currentHp = gainedLevels > 0 ? maxHp : (int)Math.Min(after.Get(20), (uint)effectiveHp);
-        var currentMp = gainedLevels > 0 ? maxMp : (int)Math.Min(after.Get(28), (uint)effectiveMp);
+        var currentHp = gainedLevels > 0 && settlement is { Rating: > 0 } && after.Get(20) > 0 ? maxHp : (int)Math.Min(after.Get(20), (uint)effectiveHp);
+        var currentMp = gainedLevels > 0 && settlement is { Rating: > 0 } && after.Get(20) > 0 ? maxMp : (int)Math.Min(after.Get(28), (uint)effectiveMp);
         return new NativeDungeonCharacterProgression(
             level, experience, gainedLevels, maxHp, maxMp, currentHp, currentMp, experienceDelta);
     }
@@ -804,6 +803,7 @@ public sealed partial class DatabaseService
                 ("$now", DateTime.UtcNow.ToString("O"))) == 0)
                 settlement = null;
         }
+        var experienceSettlement = settlement;
         if (settlement is { Rating: 0 })
             settlement = null;
         int storedLevel;
@@ -837,7 +837,7 @@ public sealed partial class DatabaseService
         }
 
         var progressionState = ResolveNativeDungeonCharacterProgression(
-            before, after, settlement, storedLevel, storedExperience,
+            before, after, experienceSettlement, storedLevel, storedExperience,
             vitality, intelligence, storedMaxHp, storedMaxMp);
         var experience = progressionState.Experience;
         var level = progressionState.Level;

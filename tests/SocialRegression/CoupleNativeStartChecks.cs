@@ -144,10 +144,11 @@ internal static partial class Program
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(4), checked((ushort)before.Get(4)));
         payload[4 + 0x0B] = 5;
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4 + 0x0C), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4 + 0x1C), 100); // absolute score, not claimed EXP
         var reward = NativeDungeonClient.Frame(0xCF88, payload);
         await Invoke<Task>(fixture.Service, "ApplyNativeCoupleExperienceAsync", session, reward, Token);
         var award = BinaryPrimitives.ReadUInt32LittleEndian(reward.AsSpan(24));
-        Check(award == CoupleBenefitPolicy.ScaleExperience(100, ring, true),
+        Check(award == CoupleBenefitPolicy.ScaleExperience(DungeonExperiencePolicy.ScaleEquipment(25, character), ring, true),
             "native character award follows the active ring tier " + ring);
         var after = new NativeDungeonState(before.Bytes.ToArray());
         BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(12), before.Get(12) + 100);

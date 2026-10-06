@@ -86,28 +86,28 @@
         "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
       },
       "adapter_runtime/Nanaimo.Adapter.dll": {
-        "size": 1460736,
-        "sha256": "2787A9E6F904798FC77A1AA477452F72225B4F93F28F3BED467CC699718197EB"
+        "size": 1482752,
+        "sha256": "824E30421BD45F22FC681E734B69D54264FE3F006F7866AB2CCFDFECD38C4F5F"
       },
       "adapter_runtime/Nanaimo.Adapter.exe": {
         "size": 151552,
-        "sha256": "642BA76C183939A8E534D5076C1E0F44DF5D502D360877ABF906DDD86E8B1209"
+        "sha256": "71C2F90A28F066D3BD7EB63100B201858B7DAB381D7B70438F1D850592D549DC"
       },
       "adapter_runtime/Nanaimo.Adapter.pdb": {
-        "size": 211908,
-        "sha256": "89DEC3625562E073A33E0BBF231E4D481B7494C843CD4F4EF2EACC53AFBEF5CE"
+        "size": 215004,
+        "sha256": "2532E64E4D16985ACA69D62E736638FA748803610DA84865DBE49D649DD3F5AF"
       },
       "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
         "size": 372,
         "sha256": "D7A0BECA53834E0A387B9E5083BD1DADF5BEE565B48595A9D4CB457D15726C78"
       },
       "adapter_runtime/Nanaimo.Gameplay.dll": {
-        "size": 5192704,
-        "sha256": "DC6E270FE18CFE2149BD5E5FBAF89B282444EBB6D988095AAFCA02C062030239"
+        "size": 5215232,
+        "sha256": "FB0B2C4BB43115F4B000BB00366A628093E554EBADDEE7A1E882F401C7CABD2E"
       },
       "adapter_runtime/Nanaimo.Gameplay.pdb": {
-        "size": 522520,
-        "sha256": "AA33E1B202EEFE3AA4CBC5F96003B04B384AEA08A0572B6C839EDE0B407A6823"
+        "size": 526320,
+        "sha256": "A8D115CE5B0E9184341ED24E50DC88AE5C415347B1601D3B7649D299C5CFE55A"
       },
       "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
         "size": 5120,
@@ -771,7 +771,7 @@
       },
       "adapter_runtime/adapter_manifest.json": {
         "size": 52662,
-        "sha256": "A9729F697DF3F073040CE5DAF9DBBA7B4905D62B321D59DF3B78425978E62C83"
+        "sha256": "2A5541A521ACE75EA37C60F967F40831A96A20B24C3479D19193552D8C972D3F"
       },
       "adapter_runtime/clretwrc.dll": {
         "size": 310568,
@@ -830,8 +830,8 @@
         "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
       },
       "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-        "size": 20555264,
-        "sha256": "D845EA07F183FA9CE6BF489CBD846E46971079831D804984873C83144F9CBB6D"
+        "size": 22514688,
+        "sha256": "4B6D78E1E5C324D02483A4EA8676C5EA55F43ABE1B989586E62EC0851B0D8042"
       },
       "adapter_runtime/netstandard.dll": {
         "size": 100648,
@@ -3231,28 +3231,28 @@
       "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
     },
     "adapter_runtime/Nanaimo.Adapter.dll": {
-      "size": 1460736,
-      "sha256": "2787A9E6F904798FC77A1AA477452F72225B4F93F28F3BED467CC699718197EB"
+      "size": 1482752,
+      "sha256": "824E30421BD45F22FC681E734B69D54264FE3F006F7866AB2CCFDFECD38C4F5F"
     },
     "adapter_runtime/Nanaimo.Adapter.exe": {
       "size": 151552,
-      "sha256": "642BA76C183939A8E534D5076C1E0F44DF5D502D360877ABF906DDD86E8B1209"
+      "sha256": "71C2F90A28F066D3BD7EB63100B201858B7DAB381D7B70438F1D850592D549DC"
     },
     "adapter_runtime/Nanaimo.Adapter.pdb": {
-      "size": 211908,
-      "sha256": "89DEC3625562E073A33E0BBF231E4D481B7494C843CD4F4EF2EACC53AFBEF5CE"
+      "size": 215004,
+      "sha256": "2532E64E4D16985ACA69D62E736638FA748803610DA84865DBE49D649DD3F5AF"
     },
     "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
       "size": 372,
       "sha256": "D7A0BECA53834E0A387B9E5083BD1DADF5BEE565B48595A9D4CB457D15726C78"
     },
     "adapter_runtime/Nanaimo.Gameplay.dll": {
-      "size": 5192704,
-      "sha256": "DC6E270FE18CFE2149BD5E5FBAF89B282444EBB6D988095AAFCA02C062030239"
+      "size": 5215232,
+      "sha256": "FB0B2C4BB43115F4B000BB00366A628093E554EBADDEE7A1E882F401C7CABD2E"
     },
     "adapter_runtime/Nanaimo.Gameplay.pdb": {
-      "size": 522520,
-      "sha256": "AA33E1B202EEFE3AA4CBC5F96003B04B384AEA08A0572B6C839EDE0B407A6823"
+      "size": 526320,
+      "sha256": "A8D115CE5B0E9184341ED24E50DC88AE5C415347B1601D3B7649D299C5CFE55A"
     },
     "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
       "size": 5120,
@@ -3916,7 +3916,7 @@
     },
     "adapter_runtime/adapter_manifest.json": {
       "size": 52662,
-      "sha256": "A9729F697DF3F073040CE5DAF9DBBA7B4905D62B321D59DF3B78425978E62C83"
+      "sha256": "2A5541A521ACE75EA37C60F967F40831A96A20B24C3479D19193552D8C972D3F"
     },
     "adapter_runtime/clretwrc.dll": {
       "size": 310568,
@@ -3975,8 +3975,8 @@
       "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
     },
     "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-      "size": 20555264,
-      "sha256": "D845EA07F183FA9CE6BF489CBD846E46971079831D804984873C83144F9CBB6D"
+      "size": 22514688,
+      "sha256": "4B6D78E1E5C324D02483A4EA8676C5EA55F43ABE1B989586E62EC0851B0D8042"
     },
     "adapter_runtime/netstandard.dll": {
       "size": 100648,
@@ -4071,7 +4071,7 @@
       "sha256": "514580CC90959B9194A53317870D5D5A7EA0814EAD9CA67C379491D5A000598E"
     }
   },
-  "source_closure_count": 325,
+  "source_closure_count": 336,
   "public_export_policy": {
     "mode": "explicit-reviewed-allowlist-only",
     "exclude_private_profiles_states_logs_backups": true,

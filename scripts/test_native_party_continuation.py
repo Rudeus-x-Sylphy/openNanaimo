@@ -157,6 +157,11 @@ int main(void){
                                 opcodes = [struct.unpack_from("<H", item, 6)[0] for item in frames]
                                 self.assertIn(0xCF6D, opcodes)
                                 self.assertLess(opcodes.index(0xCF6D), opcodes.index(0xCF8C))
+                                entry = next(item for item in frames if struct.unpack_from("<H", item, 6)[0] == 0xCF6D)
+                                self.assertEqual(len(entry), 44)
+                                self.assertEqual(entry[8], 10)
+                                self.assertEqual(entry[9], 1 if frames is owner_frames else 0)
+                                self.assertEqual(struct.unpack_from("<I", entry, 0x10)[0], 11)
                             self.assertEqual(reset_owner[8:], reset_member[8:])
                             self.assertEqual(reset_member[0x2E], 2 if superboss else epoch + 1)
                             self.assertEqual(reset_member[0x28], 1 if superboss else 0)

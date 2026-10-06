@@ -195,11 +195,12 @@ internal static class DungeonSaveChecks
             Check(!replies.Any(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF88)
                 && premature.Get(12) == imported.Get(12), "premature settlement before Boss defeat grants no experience");
 
-            await db.GrantExperienceAsync(character.Id, 90, token);
+            var levelTwoThreshold = checked((uint)CharacterProgression.ExperienceRequiredForLevel(2));
+            await db.GrantExperienceAsync(character.Id, levelTwoThreshold - 10, token);
             var thresholdCharacter = (await db.GetCharacterAsync(account, token))!;
             var thresholdBefore = NativeDungeonState.Create(thresholdCharacter, [], []);
             var thresholdAfterBytes = thresholdBefore.Bytes.ToArray();
-            Put(thresholdAfterBytes, 12, 110);
+            Put(thresholdAfterBytes, 12, levelTwoThreshold + 10);
             Put(thresholdAfterBytes, 8, 1); // deliberately stale worker level
             var thresholdAfter = new NativeDungeonState(thresholdAfterBytes);
             await db.ApplyNativeDungeonDeltaAsync(
@@ -209,20 +210,20 @@ internal static class DungeonSaveChecks
                     0, 1, 0, 0, 0, DungeonRewardPolicy.ClearRatingS, 0,
                     CharacterExperienceAward: 20));
             var thresholdPersisted = (await db.GetCharacterAsync(account, token))!;
-            Check(thresholdPersisted.Experience == 110 && thresholdPersisted.Level == 2
+            Check(thresholdPersisted.Experience == levelTwoThreshold + 10 && thresholdPersisted.Level == 2
                 && thresholdPersisted.AttributePoints == thresholdCharacter.AttributePoints
                 && thresholdPersisted.Strength == thresholdCharacter.Strength + 1
                 && thresholdPersisted.Vitality == thresholdCharacter.Vitality + 1,
                 "native settlement distributes growth at the shared experience threshold");
 
             var staleAfterBytes = thresholdAfter.Bytes.ToArray();
-            Put(staleAfterBytes, 12, 100);
+            Put(staleAfterBytes, 12, levelTwoThreshold);
             Put(staleAfterBytes, 8, 1);
             await db.ApplyNativeDungeonDeltaAsync(
                 account, character.Id, session, thresholdAfter, new NativeDungeonState(staleAfterBytes), token,
                 "character-stale-progression");
             var stalePersisted = (await db.GetCharacterAsync(account, token))!;
-            Check(stalePersisted.Experience == 110 && stalePersisted.Level == 2
+            Check(stalePersisted.Experience == levelTwoThreshold + 10 && stalePersisted.Level == 2
                 && stalePersisted.AttributePoints == thresholdCharacter.AttributePoints
                 && stalePersisted.Strength == thresholdPersisted.Strength
                 && stalePersisted.Vitality == thresholdPersisted.Vitality,

@@ -40,8 +40,9 @@ internal static class NativeDungeonExperienceChecks
             Put(imported.Bytes, 8, 9); Put(imported.Bytes, 12, 9999);
             var result = Result((ushort)id, 100);
             var emitResult = true;
+            byte[]? capturedKill = null;
             listener.Start();
-            workerTask = Serve(listener, imported, () => emitResult ? result : null, token);
+            workerTask = Serve(listener, imported, () => emitResult ? result : null, () => capturedKill, token);
             await using var service = new NetworkAdapterService(db, _ => { }, root)
                 { NativeDungeonEnabled = true, NativeJournalDirectory = Path.Combine(root, "journal") };
             await using var native = new NativeDungeonClient(_ => Task.CompletedTask, ((IPEndPoint)listener.LocalEndpoint).Port);
@@ -62,14 +63,14 @@ internal static class NativeDungeonExperienceChecks
             }
             async Task Egress(byte[] frame, long epoch = 7)
                 => await (Task)Method("HandleNativeWorkerFrameAsync").Invoke(service, [session, frame, epoch, token])!;
-            async Task Expect(long experience, int level, string name)
+            async Task Expect(long experience, string name)
             {
                 var saved = (await db.GetCharacterAsync(account, token))!;
-                Check(saved.Experience == experience && saved.Level == level, name);
+                Check(saved.Experience == experience && saved.Level == CharacterProgression.CalculateLevel(experience), name);
             }
 
             await Send(0xC378, []);
-            await Expect(0, 1, "combat snapshot cannot grant EXP or levels");
+            await Expect(0, "combat snapshot cannot grant EXP or levels");
             foreach (var (opcode, size, offset, fields) in new (ushort, int, int, int)[]
                      { (0xD00E, 48, 8, 3), (0xD012, 60, 8, 3), (0xD012, 64, 8, 3), (0xD010, 36, 12, 1) })
             {
@@ -81,33 +82,33 @@ internal static class NativeDungeonExperienceChecks
                     Check(U32(published, offset + 4 * i) == 100_080u + (uint)i, $"combat {opcode:X4}/{size} slot{i} retains real score for EXP-neutral client");
             }
             await Send(0xC378, []);
-            await Expect(0, 1, "ordinary kill and Boss terminal alone preserve progression");
+            await Expect(0, "ordinary kill and Boss terminal alone preserve progression");
             Drain(session);
             await Egress(Result((ushort)id, 900));
             Check(Drain(session).Count == 0, "unrequested result stays outside settlement");
-            await Expect(0, 1, "unrequested result cannot grant EXP");
+            await Expect(0, "unrequested result cannot grant EXP");
             result = Result((ushort)id, 100, rating: 6);
             await Send(0xCF87, [0, 0, 0, 0]);
-            await Expect(0, 1, "invalid CF88 rating preserves eligible progression");
+            await Expect(0, "invalid CF88 rating preserves eligible progression");
             Check(Drain(session).Count == 0, "invalid CF88 is rejected before publication");
             result = Result((ushort)id, 100);
             await Send(0xCF87, [0, 0, 0, 0]);
-            await Expect(100, 2, "first legal result commits exactly 100 EXP");
+            await Expect(100, "first legal result commits exactly 100 EXP");
             var first = Drain(session).Single();
-            Check(U32(first, 24) == 100 && U32(first, 28) == 100 && first[22] == 2,
+            Check(U32(first, 24) == 100 && U32(first, 28) == 100 && first[22] == 1,
                 "first result publishes committed award, total and level");
             await Send(0xCF87, [0, 0, 0, 0]);
-            await Expect(100, 2, "duplicate request with a fresh transaction stays single-award");
+            await Expect(100, "duplicate request with a fresh transaction stays single-award");
             Check(Drain(session).Count == 0, "duplicate result preserves the already published page");
             result = Result((ushort)id, 700);
             await Send(0xCF87, [0, 0, 0, 0]);
-            await Expect(100, 2, "changed result contents cannot evade battle receipt");
+            await Expect(100, "changed result contents cannot evade battle receipt");
             Drain(session);
             await Egress(Result((ushort)id, 500));
             Check(Drain(session).Count == 0, "asynchronous repeat preserves the already published page");
-            await Expect(100, 2, "asynchronous repeat preserves persisted EXP");
+            await Expect(100, "asynchronous repeat preserves persisted EXP");
             await Send(0xC378, []);
-            await Expect(100, 2, "stale snapshot after settlement preserves committed EXP");
+            await Expect(100, "stale snapshot after settlement preserves committed EXP");
 
             // An accepted continuation owns the next receipt, even on the same stage.
             Method("ArmNativeDungeonRevivalCycle").Invoke(service, [session]);
@@ -129,30 +130,30 @@ internal static class NativeDungeonExperienceChecks
             Set(session, "NativeDungeonNextTransitionAuthorized", false);
             result = Result((ushort)id, 100, rating: 0);
             await Send(0xCF87, [0, 0, 0, 0]);
-            await Expect(100, 2, "failure rating rejects a positive claimed award");
+            await Expect(200, "failed result also grants score-based character EXP");
             Drain(session);
             result = Result((ushort)id, 100);
             await Send(0xCF87, [0, 0, 0, 0]);
-            await Expect(100, 2, "failure receipt closes rewards for that cycle");
+            await Expect(200, "failure receipt closes rewards for that cycle");
             Drain(session);
 
             Set(session, "NativeSettlementCycle", 2L);
             emitResult = false;
             await Send(0xCF87, [0, 0, 0, 0]);
-            await Expect(100, 2, "pending result carries zero snapshot EXP");
+            await Expect(200, "pending result carries zero snapshot EXP");
             await Egress(Result((ushort)id, 100));
-            await Expect(200, 2, "deferred result commits before publication");
+            await Expect(300, "deferred result commits before publication");
             var deferred = Drain(session).Single();
-            Check(U32(deferred, 24) == 100 && U32(deferred, 40) == 100,
+            Check(U32(deferred, 24) == 100 && U32(deferred, 40) == 400,
                 "deferred result publishes committed award and real score");
             await Send(0xC378, []);
-            await Expect(200, 2, "post-deferred save remains single-award");
+            await Expect(300, "post-deferred save remains single-award");
             Set(session, "NativeDungeonSettlementAwaitingAction", false);
             Set(session, "NativeDungeonTownTransitionAuthorized", true);
             await Egress(Result((ushort)id, 100));
             await Egress(Result((ushort)id, 100), epoch: 6);
             Check(Drain(session).Count == 0, "town and old-worker results are suppressed");
-            await Expect(200, 2, "town and stale worker preserve EXP");
+            await Expect(300, "town and stale worker preserve EXP");
 
             var before = NativeDungeonState.Create((await db.GetCharacterAsync(account, token))!, [], []);
             var settled = new NativeDungeonSettlementRecord(0, 1, 0, 0, 0, 5, 100,
@@ -162,15 +163,27 @@ internal static class NativeDungeonExperienceChecks
             var reopened = new DatabaseService(root);
             await reopened.ApplyNativeDungeonDeltaAsync(account, id, sessionId, before,
                 new NativeDungeonState(before.Bytes.ToArray()), token, "durable-2", settlement: settled);
-            await Expect(300, 3, "receipt survives database reopen and changed commit id");
+            await Expect(400, "receipt survives database reopen and changed commit id");
             var invalidRating = settled with { Rating = 6, SettlementId = "invalid-then-valid" };
             await db.ApplyNativeDungeonDeltaAsync(account, id, sessionId, before,
                 new NativeDungeonState(before.Bytes.ToArray()), token, "invalid-rating", settlement: invalidRating);
-            await Expect(300, 3, "invalid rating preserves character EXP");
+            await Expect(400, "invalid rating preserves character EXP");
             await db.ApplyNativeDungeonDeltaAsync(account, id, sessionId, before,
                 new NativeDungeonState(before.Bytes.ToArray()), token, "valid-rating",
                 settlement: invalidRating with { Rating = 5 });
-            await Expect(400, 3, "invalid rating leaves the same cycle eligible for a legal result");
+            await Expect(500, "invalid rating leaves the same cycle eligible for a legal result");
+            Set(session, "NativeSettlementCycle", 3L);
+            Set(session, "NativeDungeonSettlementAwaitingAction", false);
+            Set(session, "NativeDungeonDeathLatched", false);
+            Set(session, "NativeDungeonTownTransitionAuthorized", false);
+            capturedKill = NativeDungeonClient.Frame(0xF10A,new byte[12]);
+            Put(capturedKill,8,(uint)id);Put(capturedKill,12,9);Put(capturedKill,16,4000);
+            result = Result((ushort)id,1000,score:4000);emitResult=true;
+            await Send(0xCF87,[0,0,0,0]);
+            await Expect(2500,"captured final kill precedes independent terminal award");
+            var finalWithKill=Drain(session).Single();
+            Check(U32(finalWithKill,24)==1000&&U32(finalWithKill,28)==2500&&finalWithKill[22]==2,
+                "CF88 added field excludes already-earned live kill EXP");
             await CheckPetBoundary(db, root, token);
             Console.WriteLine("NATIVE_DUNGEON_EXPERIENCE_HOST_PASS");
         }
@@ -244,7 +257,7 @@ internal static class NativeDungeonExperienceChecks
         Check(current == retryExpected, "active leave checkpoint has no pet clear reward");
     }
 
-    private static async Task Serve(TcpListener listener, NativeDungeonState state, Func<byte[]?> result, CancellationToken token)
+    private static async Task Serve(TcpListener listener, NativeDungeonState state, Func<byte[]?> result, Func<byte[]?> kill, CancellationToken token)
     {
         using var client = await listener.AcceptTcpClientAsync(token);
         var stream = client.GetStream();
@@ -256,18 +269,22 @@ internal static class NativeDungeonExperienceChecks
                 var frame = new byte[BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(4))];
                 header.CopyTo(frame, 0); await stream.ReadExactlyAsync(frame.AsMemory(8), token);
                 var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6));
-                if (opcode == 0xCF87 && result() is { } response) await stream.WriteAsync(response, token);
+                if (opcode == 0xCF87 && result() is { } response)
+                {
+                    if (kill() is { } eventFrame) await stream.WriteAsync(eventFrame,token);
+                    await stream.WriteAsync(response, token);
+                }
                 else if (opcode == 0xF101) await stream.WriteAsync(NativeDungeonClient.Frame(0xF102, state.Bytes), token);
             }
         }
         catch (EndOfStreamException) { }
     }
-    private static byte[] Result(ushort uid, uint award, byte rating = 5)
+    private static byte[] Result(ushort uid, uint award, byte rating = 5, uint score = 400)
     {
         var frame = NativeDungeonClient.Frame(0xCF88, new byte[56]);
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(8), 1);
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(12), uid);
-        frame[23] = rating; Put(frame, 24, award); Put(frame, 40, 100);
+        frame[23] = rating; Put(frame, 24, award); Put(frame, 40, score);
         return NativeDungeonClient.Frame(0xCF88, frame.AsSpan(8));
     }
     private static List<byte[]> Drain(object session)

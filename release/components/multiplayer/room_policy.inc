@@ -29,6 +29,7 @@ struct teamplay_room_authority {
     unsigned initialized,room_epoch,battle_epoch;
     unsigned hd,stage,dungeon,stage_index,difficulty;
     unsigned score_by_slot[3];
+    unsigned score_by_player[MULTI_MAX_PLAYERS];
 #if TEAMPLAY_FEATURE_SHARED_HP
     struct hp_sync_context monster_hp;
     struct crate_drop_policy_context crate_policy;
@@ -133,22 +134,65 @@ static void teamplay_score_begin(unsigned battle_epoch){
     card_system_reset_epoch(battle_epoch);
 #if TEAMPLAY_FEATURE_SCORE_OUTBOX
     g_teamplay_authority.score_by_slot[0]=g_teamplay_authority.score_by_slot[1]=g_teamplay_authority.score_by_slot[2]=0u;
+    memset(g_teamplay_authority.score_by_player,0,sizeof(g_teamplay_authority.score_by_player));
+#endif
+}
+/* Internal first-death notification; never forwarded as a client opcode.
+   Identity, native battle epoch and absolute personal score form the receipt. */
+static void teamplay_live_experience_event(int idx,unsigned score){
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+    char p[4096];int src=g_multi_current;
+    if(idx<0||idx>=MULTI_MAX_PLAYERS||!g_multi_conn[idx].active||!g_multi_transport_alive[idx])return;
+    if(idx!=src)multi_switch_to(idx,src);
+    mkpkt(p,0xF10A,20,1);stable_put32(p,8,g_multi_conn[idx].uid);
+    stable_put32(p,12,g_teamplay_authority.battle_epoch);stable_put32(p,16,score);
+    sendbuf(g_multi_conn[idx].socket,p,20);
+    if(idx!=src)multi_switch_back(src,idx);
 #endif
 }
 static unsigned teamplay_battle_score_add(struct battle_score_context*c,unsigned damage,unsigned kind){
     unsigned total=battle_score_add(c,damage,kind);
 #if TEAMPLAY_FEATURE_SCORE_OUTBOX
-    unsigned slot=multiplayer_current_room_slot();
-    if(slot<3u){unsigned before=g_teamplay_authority.score_by_slot[slot];g_teamplay_authority.score_by_slot[slot]=(damage>0xFFFFFFFFu-before)?0xFFFFFFFFu:before+damage;}
+    int idx=g_multi_current;
+    if(idx>=0&&idx<MULTI_MAX_PLAYERS){unsigned before=g_teamplay_authority.score_by_player[idx];g_teamplay_authority.score_by_player[idx]=(damage>0xFFFFFFFFu-before)?0xFFFFFFFFu:before+damage;if(damage)teamplay_live_experience_event(idx,g_teamplay_authority.score_by_player[idx]);}
+    else{unsigned before=g_teamplay_authority.score_by_slot[0];g_teamplay_authority.score_by_slot[0]=(damage>0xFFFFFFFFu-before)?0xFFFFFFFFu:before+damage;}
+#endif
+    return total;
+}
+/* D012 publishes three absolute player scores, not a scorer UID. Match the
+   imported local policy: credit the full terminal Boss bonus to each active
+   participant, but record it once in the shared battle ledger. */
+static unsigned teamplay_battle_score_add_boss_all(struct battle_score_context*c,unsigned points){
+    unsigned total=battle_score_add(c,points,BATTLE_SCORE_KIND_BOSS);
+#if TEAMPLAY_FEATURE_SCORE_OUTBOX
+    int i;
+    if(g_multi_current>=0){
+        for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){
+            unsigned before=g_teamplay_authority.score_by_player[i];
+            g_teamplay_authority.score_by_player[i]=(points>0xFFFFFFFFu-before)?0xFFFFFFFFu:before+points;
+            if(points)teamplay_live_experience_event(i,g_teamplay_authority.score_by_player[i]);
+        }
+    }else{
+        unsigned before=g_teamplay_authority.score_by_slot[0];
+        g_teamplay_authority.score_by_slot[0]=(points>0xFFFFFFFFu-before)?0xFFFFFFFFu:before+points;
+    }
 #endif
     return total;
 }
 static void teamplay_score_snapshot(unsigned out[3]){
 #if TEAMPLAY_FEATURE_SCORE_OUTBOX
-    out[0]=g_teamplay_authority.score_by_slot[0];out[1]=g_teamplay_authority.score_by_slot[1];out[2]=g_teamplay_authority.score_by_slot[2];
+    int i;unsigned slot;
+    out[0]=out[1]=out[2]=0u;
+    if(g_multi_current<0){out[0]=g_teamplay_authority.score_by_slot[0];return;}
+    /* Slot numbers compact after a disconnect; scores must follow identities. */
+    for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){slot=multiplayer_room_slot_idx(i);if(slot<3u)out[slot]=g_teamplay_authority.score_by_player[i];}
 #else
     out[0]=multiplayer_shared_score_context()->total;out[1]=0u;out[2]=0u;
 #endif
+}
+static unsigned teamplay_current_score(void){
+    unsigned scores[3],slot=multiplayer_current_room_slot();
+    teamplay_score_snapshot(scores);return slot<3u?scores[slot]:0u;
 }
 #if TEAMPLAY_FEATURE_SHARED_HP
 static struct hp_sync_context* teamplay_shared_monster_hp(void){teamplay_authority_init_once();return &g_teamplay_authority.monster_hp;}

@@ -9,6 +9,7 @@ public sealed class NativeDungeonClient : IAsyncDisposable
     private readonly TcpClient _client = new() { NoDelay = true };
     private readonly CancellationTokenSource _stop = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
     private readonly Func<byte[], Task> _receive;
     private readonly int _port;
     private Task? _reader;
@@ -58,9 +59,14 @@ public sealed class NativeDungeonClient : IAsyncDisposable
             _capturedFrames = captureFrames ? [] : null;
             try
             {
-                var stream = _client.GetStream();
-                if (request is not null) await stream.WriteAsync(request, timeout.Token);
-                await stream.WriteAsync(Frame(import is null ? (ushort)0xF101 : (ushort)0xF100, import?.Bytes ?? []), timeout.Token);
+                await _writeGate.WaitAsync(timeout.Token);
+                try
+                {
+                    var stream = _client.GetStream();
+                    if (request is not null) await stream.WriteAsync(request, timeout.Token);
+                    await stream.WriteAsync(Frame(import is null ? (ushort)0xF101 : (ushort)0xF100, import?.Bytes ?? []), timeout.Token);
+                }
+                finally { _writeGate.Release(); }
                 var state = await pending.Task.WaitAsync(timeout.Token);
                 return new NativeDungeonExchangeResult(state, _capturedFrames?.ToArray() ?? []);
             }
@@ -97,8 +103,17 @@ public sealed class NativeDungeonClient : IAsyncDisposable
     public async Task SendAsync(byte[] frame, CancellationToken token)
     {
         await _gate.WaitAsync(token);
-        try { ThrowIfUnavailable(); await _client.GetStream().WriteAsync(frame, token); }
+        try { await SendControlAsync(frame, token); }
         finally { _gate.Release(); }
+    }
+    // Receive callbacks must not acquire the exchange gate: a concurrent F101
+    // waits for this same reader. Serialize writes only, including request/F101
+    // pairs, so a committed growth update cannot deadlock a team notification.
+    internal async Task SendControlAsync(byte[] frame, CancellationToken token)
+    {
+        await _writeGate.WaitAsync(token);
+        try { ThrowIfUnavailable(); await _client.GetStream().WriteAsync(frame, token); }
+        finally { _writeGate.Release(); }
     }
     private void ThrowIfUnavailable()
     {
@@ -152,7 +167,7 @@ public sealed class NativeDungeonClient : IAsyncDisposable
     {
         await _stop.CancelAsync(); _client.Dispose();
         if (_reader is not null) await _reader;
-        _stop.Dispose(); _gate.Dispose();
+        _stop.Dispose(); _gate.Dispose(); _writeGate.Dispose();
     }
 }
 

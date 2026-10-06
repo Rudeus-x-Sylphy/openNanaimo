@@ -76,7 +76,7 @@ static int managed_bridge_import(const unsigned char*p){
     g_quickbar_handle_account[0]=0;quickbar_handles_load();for(i=0;i<256u;i++)g_quickbar_handles[i]=managed_get(p,4000+i*4);
     g_quickbar_entitlement_loaded=0;quickbar_entitlement_load();g_quickbar_entitlement_expiry=managed_get(p,64);
     g_game_session_revival_loaded=0;game_session_revival_load();g_game_session_revival_uses=managed_get(p,60);
-    st.level=g_stable_level;st.exp_total=managed_get(p,12);st.lower=progression_progression_threshold(st.level);st.next=progression_progression_threshold(st.level+1u);
+    st.level=g_stable_level;st.exp_total=managed_get(p,12);st.lower=progression_progression_threshold(st.level);st.next=progression_progression_next(st.level);
     g_progression_profile_exp_total=st.exp_total;
     memset(&grade,0,sizeof(grade));grade.grade=managed_get(p,5024);grade.frontier_valid=managed_get(p,5028);
     grade.frontier.hd=managed_get(p,5032);grade.frontier.episode=managed_get(p,5036);grade.frontier.dungeon=managed_get(p,5040);
@@ -143,6 +143,32 @@ static int managed_bridge_couple_metadata(const unsigned char*p){
 }
 static int managed_bridge_handle(SOCKET c,int type,int len,const unsigned char*f){
     if(type==0xF100){managed_bridge_snapshot(c,len==MANAGED_STATE_SIZE+8?managed_bridge_import(f+8):0u);return 1;}
+    /* Managed DB has already committed this absolute progression. Never import
+       an old inventory/HP snapshot and never rebuild an existing combat actor. */
+    if(type==0xF10B){
+        unsigned level,exp;struct progression_progression_state st;char p[4096];
+        if(len!=40||g_multi_current<0||managed_get(f,8)!=g_multi_conn[g_multi_current].uid
+            ||managed_get(f,36)!=g_teamplay_authority.battle_epoch)return 1;
+        level=managed_get(f,12);exp=managed_get(f,16);
+        if(level<1u||level>99u||level<g_stable_level||exp<g_progression_profile_exp_total
+            ||exp>progression_progression_next(99u)||level!=progression_progression_level_for_exp(exp)
+            ||managed_get(f,20)<1u||managed_get(f,20)>65535u||managed_get(f,24)>65535u
+            ||managed_get(f,32)>65535u)return 1;
+        g_stable_level=level;g_progression_profile_exp_total=exp;
+        g_profile_hp_max=managed_get(f,20);g_profile_mp_max=managed_get(f,24);
+        g_profile_attack_modifier=managed_get(f,28);g_profile_defense_flat=managed_get(f,32);
+        g_multi_conn[g_multi_current].profile.level=level;
+        st.level=level;st.exp_total=exp;st.lower=progression_progression_threshold(level);st.next=progression_progression_next(level);
+        progression_progression_save_name(g_stable_name,g_stable_name_len,&st);
+        /* C57C -> 6EB6F0 is a battle-dispatch progression notification, not CF88.
+           +29=255 selects the statically proven silent/default branch. */
+        mkpkt(p,0xC57C,52,1);stable_put32(p,12,exp);stable_put32(p,16,st.lower);stable_put32(p,20,st.next);
+        stable_resource_put16(p,24,pet_crafting_pet_effective_hp_max());stable_resource_put16(p,26,pet_crafting_pet_effective_mp_max());
+        p[28]=(char)level;p[29]=(char)255;sendbuf(c,p,52);
+        send_cf72_dynamic_actor_refresh_phase(c,multiplayer_current_uid(),native_cf72_phase_for_socket(c));
+        multiplayer_broadcast_actor_resources_current();
+        return 1;
+    }
     if(type==0xF109){
         int src=g_multi_current;
         if(len==20&&src>=0&&src<MULTI_MAX_PLAYERS&&managed_get(f+8,0)==g_multi_conn[src].uid
