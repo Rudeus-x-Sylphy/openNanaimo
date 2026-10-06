@@ -17,6 +17,7 @@ public sealed partial class NetworkAdapterService
             return;
 
         session.TownSceneActive = true;
+        await ReconcileLevelMentorshipsAsync(session, token);
         await QueueTownEntitySnapshotsAsync(session, token);
         var equippedPetItemCode = GetEquippedPetItemCode(session.Character);
 

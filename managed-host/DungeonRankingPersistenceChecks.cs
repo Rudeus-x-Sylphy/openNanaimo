@@ -81,12 +81,12 @@ internal static class DungeonRankingPersistenceChecks
                 Check(await (Task<bool>)Route.Invoke(service, [frame, opcode, "WorldAdapter", session, token])!,
                     $"native participant {actor} routed {opcode:X4}");
             }
-            async Task Settle(bool valid = true)
+            async Task Settle(bool valid = true, bool publish = true)
             {
                 await Send(0xCF87, [0, 0, 0, 0]);
                 var replies = Drain(session);
-                Check(valid ? replies.Count == 1 && U16(replies[0], 6) == 0xCF88 : replies.Count == 0,
-                    valid ? "checkpoint commits before forwarding CF88, without pushing a ranking"
+                Check(valid && publish ? replies.Count == 1 && U16(replies[0], 6) == 0xCF88 : replies.Count == 0,
+                    valid && publish ? "checkpoint commits before forwarding CF88, without pushing a ranking"
                         : "invalid result is suppressed at the settlement boundary");
             }
             await Settle();
@@ -98,11 +98,11 @@ internal static class DungeonRankingPersistenceChecks
             Check(ranking.Count == 1 && ranking[0].Length == 252 && U16(ranking[0], 6) == 0xCF16
                 && BinaryPrimitives.ReadUInt32LittleEndian(ranking[0].AsSpan(0x1C, 4)) == 800,
                 "first native CF15 after settlement reads the newly committed persistent score");
-            await Settle();
+            await Settle(publish: false);
             Check((await db.GetDungeonStageLeaderboardAsync(0, 8, 1, 0, 2)).Count == actor + 1,
                 "repeated CF87 does not duplicate leaderboard participants");
             result = Result(characters, [20u, 30u], DungeonRewardPolicy.ClearRatingB);
-            await Settle();
+            await Settle(publish: false);
             Check((await db.GetDungeonStageLeaderboardAsync(0, 8, 1, 0, 2))
                     .Single(row => row.CharacterId == character.Id).BestScore == 800,
                 "lower native result cannot downgrade the persisted stage record");

@@ -12,7 +12,7 @@ static int terminal_item_drop_is_authored(const struct hp_sync_target_def*td,
     return lo<TERMINAL_ITEM_DROP_ROW_COUNT&&terminal_item_drop_rows[lo]==row;
 }
 #ifndef CARD_ORDINARY_DROP_PERCENT
-#define CARD_ORDINARY_DROP_PERCENT 3u
+#define CARD_ORDINARY_DROP_PERCENT 10u
 #endif
 #define CARD_DROP_BUILD_TAG 2026100502u
 /* COMBAT_ECONOMY private card roll. The roll uses CARD_ORDINARY_DROP_PERCENT and

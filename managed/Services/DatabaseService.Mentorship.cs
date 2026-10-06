@@ -526,7 +526,14 @@ public sealed partial class DatabaseService
     private static async Task<bool> CanGraduateMentorshipAsync(SqliteConnection connection,
         SqliteTransaction transaction, long relationId, int studentLevel, MentorshipPolicy policy, CancellationToken token)
     {
-        if (policy.GraduationMinimumLevel is not int minimum || studentLevel < minimum || policy.LessonCodes.Count == 0) return false;
+        if (policy.GraduationMinimumLevel is not int minimum || studentLevel < minimum) return false;
+        return policy.AutomaticLevelGraduation || await HasCompletedMentorshipCoursesAsync(connection, transaction, relationId, policy, token);
+    }
+
+    private static async Task<bool> HasCompletedMentorshipCoursesAsync(SqliteConnection connection,
+        SqliteTransaction transaction, long relationId, MentorshipPolicy policy, CancellationToken token)
+    {
+        if (policy.LessonCodes.Count == 0) return false;
         foreach (var lessonCode in policy.LessonCodes)
             if (await MentorshipScalarAsync(connection, transaction,
                 "SELECT COUNT(*) FROM MentorshipLessons WHERE RelationId = $id AND LessonCode = $lesson",
@@ -536,6 +543,14 @@ public sealed partial class DatabaseService
 
     public async Task<MentorshipResult> GraduateMentorshipAsync(MentorshipActor teacher, long relationId,
         MentorshipPolicy policy, CancellationToken token = default)
+        => await CompleteMentorshipGraduationAsync(teacher, relationId, policy, false, token);
+
+    internal Task<MentorshipResult> GraduateMentorshipByLevelAsync(MentorshipActor actor, long relationId,
+        MentorshipPolicy policy, CancellationToken token = default)
+        => CompleteMentorshipGraduationAsync(actor, relationId, policy, true, token);
+
+    private async Task<MentorshipResult> CompleteMentorshipGraduationAsync(MentorshipActor teacher, long relationId,
+        MentorshipPolicy policy, bool automatic, CancellationToken token)
     {
         await InitializeMentorshipAsync(token);
         await using var connection = await OpenConnectionAsync(token);
@@ -544,17 +559,20 @@ public sealed partial class DatabaseService
             return new(MentorshipResultCode.Unauthorized);
         var relation = await ReadMentorshipRelationAsync(connection, transaction, relationId, token);
         if (relation is null) return new(MentorshipResultCode.NotFound);
-        if (teacher.CharacterId != relation.TeacherCharacterId) return new(MentorshipResultCode.Unauthorized);
+        if (automatic && !policy.AutomaticLevelGraduation) return new(MentorshipResultCode.Unsupported);
+        if (teacher.CharacterId != relation.TeacherCharacterId
+            && !(automatic && teacher.CharacterId == relation.StudentCharacterId)) return new(MentorshipResultCode.Unauthorized);
         if (relation.State != MentorshipRelationState.Active)
             return new(MentorshipResultCode.AlreadyCompleted, Relation: relation);
-        if (policy.GraduationMinimumLevel is null || policy.LessonCodes.Count == 0)
+        if (policy.GraduationMinimumLevel is null || (!policy.AutomaticLevelGraduation && policy.LessonCodes.Count == 0))
             return new(MentorshipResultCode.Unsupported, Relation: relation);
         var level = checked((int)await MentorshipScalarAsync(connection, transaction,
             "SELECT Level FROM Characters WHERE Id = $id", token, ("$id", relation.StudentCharacterId)));
         if (!await CanGraduateMentorshipAsync(connection, transaction, relationId, level, policy, token))
             return new(MentorshipResultCode.Ineligible, Relation: relation);
         var now = DateTime.UtcNow.ToString("O");
-        var reward = policy.GraduationReward;
+        var reward = await HasCompletedMentorshipCoursesAsync(connection, transaction, relationId, policy, token)
+            ? policy.GraduationReward : null;
         if (reward is not null)
         {
             if (!QuestCatalog.TryGetQuest(reward.ResourceQuestId, out var definition)

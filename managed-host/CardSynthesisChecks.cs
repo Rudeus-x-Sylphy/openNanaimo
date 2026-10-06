@@ -92,9 +92,9 @@ internal static class CardSynthesisChecks
             character, [], wireNow);
         Check(cardList[4] == 17 && cardList.AsSpan(24, 31).ToArray().All(value => value == 0),
             "existing special-card quantities leave slot and page acquisition notices clear");
-        Check(Enumerable.Range(0, 10000).Count(roll => DungeonDropPolicy.PassesNormalCardRoll(0, roll, 1000)) == 300
-            && Enumerable.Range(0, 10000).Count(roll => DungeonDropPolicy.PassesNormalCardRoll(27, roll, 1000)) == 381,
-            "ordinary card probability is 3 percent with additive relative equipment bonuses");
+        Check(Enumerable.Range(0, 10000).Count(roll => DungeonDropPolicy.PassesNormalCardRoll(0, roll, 1000)) == 1000
+            && Enumerable.Range(0, 10000).Count(roll => DungeonDropPolicy.PassesNormalCardRoll(27, roll, 1000)) == 1270,
+            "ordinary card probability is 10 percent with additive relative equipment bonuses");
         var cardNotices = new InventoryAcquisitionTracker();
         cardNotices.Seed(0xC3E8, [12000001u]);
         cardNotices.Track(0xC3E8, [12000001u,12000001u,13000001u]);

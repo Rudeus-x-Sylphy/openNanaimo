@@ -245,6 +245,10 @@ static void stable_monster_hp_apply_report(struct hp_sync_context *ctx,
         }else{
             crate_kind=CRATE_DROP_KIND_NONE;
         }
+    }else if(hp_sync_preloaded_def(ctx,selector)){
+        /* Authored transformations retain their target category even when an
+           older visual-crate alias happens to reuse the numeric selector. */
+        crate_kind=CRATE_DROP_KIND_NONE;
     }else{
         crate_kind=crate_drop_policy_profile_kind(crate,selector,&table_reward);
         if(crate_kind==CRATE_DROP_KIND_NONE){

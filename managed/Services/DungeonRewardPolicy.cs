@@ -136,7 +136,7 @@ internal static class DungeonDropPolicy
     // The client proves the card pool and item protocol, but not the official
     // adapter's base probability. Keep the fallback in one explicit policy
     // value instead of deriving a fake probability from ddakg.DropType.
-    internal const int NormalCardBaseBasisPoints = 300;
+    internal const int NormalCardBaseBasisPoints = 1000;
     internal const int CardOrdinaryDropMinimumHp = 0;
 
     public static bool PassesNormalCardRoll(

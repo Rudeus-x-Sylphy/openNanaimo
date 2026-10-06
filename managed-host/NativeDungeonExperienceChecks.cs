@@ -98,13 +98,13 @@ internal static class NativeDungeonExperienceChecks
                 "first result publishes committed award, total and level");
             await Send(0xCF87, [0, 0, 0, 0]);
             await Expect(100, 2, "duplicate request with a fresh transaction stays single-award");
-            Check(U32(Drain(session).Single(), 24) == 0, "duplicate result publishes zero added EXP");
+            Check(Drain(session).Count == 0, "duplicate result preserves the already published page");
             result = Result((ushort)id, 700);
             await Send(0xCF87, [0, 0, 0, 0]);
             await Expect(100, 2, "changed result contents cannot evade battle receipt");
             Drain(session);
             await Egress(Result((ushort)id, 500));
-            Check(U32(Drain(session).Single(), 24) == 0, "asynchronous repeat publishes zero added EXP");
+            Check(Drain(session).Count == 0, "asynchronous repeat preserves the already published page");
             await Expect(100, 2, "asynchronous repeat preserves persisted EXP");
             await Send(0xC378, []);
             await Expect(100, 2, "stale snapshot after settlement preserves committed EXP");

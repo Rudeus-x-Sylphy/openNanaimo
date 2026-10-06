@@ -28,8 +28,8 @@ int main(void){
     gems[0]=gems[1]=gems[2]=card;
     CHECK(pet_crafting_pet_economy_percent_for_gems(gems,7u)==27u);
     CHECK(pet_crafting_pet_economy_percent_for_gems(gems,6u)==0u);
-    CHECK(card_ordinary_drop_basis_points(0u)==300u);
-    CHECK(card_ordinary_drop_basis_points(27u)==381u);
+    CHECK(card_ordinary_drop_basis_points(0u)==1000u);
+    CHECK(card_ordinary_drop_basis_points(27u)==1270u);
     CHECK(card_ordinary_drop_basis_points(0xFFFFFFFFu)==10000u);
     gems[0]=gems[1]=gems[2]=money;
     CHECK(pet_crafting_pet_economy_percent_for_gems(gems,6u)==27u);
@@ -51,16 +51,16 @@ int main(void){
     }
     item_effects_flight_reset_current(1u,1u,"test");
     item_effects_flight_activate(21000019u,1u,1u,123400u);
-    CHECK(card_ordinary_drop_basis_points(0u)==600u&&card_ordinary_drop_basis_points(27u)==762u);
+    CHECK(card_ordinary_drop_basis_points(0u)==2000u&&card_ordinary_drop_basis_points(27u)==2540u);
     item_effects_flight_activate(21000020u,1u,1u,123400u);
     CHECK(combat_economy_coin_with_bonuses(1000u)==1524u);
     item_effects_flight_activate(21000001u,1u,1u,123400u);
-    CHECK(card_ordinary_drop_basis_points(27u)==762u&&combat_economy_coin_with_bonuses(1000u)==1524u);
+    CHECK(card_ordinary_drop_basis_points(27u)==2540u&&combat_economy_coin_with_bonuses(1000u)==1524u);
     item_effects_flight_activate(21000019u,1u,1u,123400u);
-    CHECK(card_ordinary_drop_basis_points(27u)==762u);
-    g_multi_current=1;CHECK(card_ordinary_drop_basis_points(0u)==300u&&flight_items_flight_money_percent()==100u);
+    CHECK(card_ordinary_drop_basis_points(27u)==2540u);
+    g_multi_current=1;CHECK(card_ordinary_drop_basis_points(0u)==1000u&&flight_items_flight_money_percent()==100u);
     g_multi_current=0;item_effects_flight_reset_current(1u,2u,"next-stage");
-    CHECK(card_ordinary_drop_basis_points(27u)==381u&&flight_items_flight_money_percent()==100u);
+    CHECK(card_ordinary_drop_basis_points(27u)==1270u&&flight_items_flight_money_percent()==100u);
     g_stable_pet=0u;CHECK(pet_crafting_pet_economy_percent(6u)==0u);
     /* Every positive registered row, all three difficulties, exact root/child shapes. */
     for(i=0;i<3u;i++)for(j=1;j<=2;j++){

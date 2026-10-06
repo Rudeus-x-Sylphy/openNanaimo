@@ -4,6 +4,16 @@ namespace OpenNanaimo.Adapter.Services;
 
 public sealed partial class NetworkAdapterService
 {
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<ConnectionSession, SemaphoreSlim>
+        _nativeSettlementPublicationGates = new();
+
+    private async Task<IDisposable> LockNativeSettlementPublicationAsync(ConnectionSession session, CancellationToken token)
+    {
+        var gate = _nativeSettlementPublicationGates.GetValue(session, static _ => new(1, 1));
+        await gate.WaitAsync(token);
+        return new NativeResourceCommitLease(gate);
+    }
+
     private readonly record struct NativePartyContinuationRoomKey(int Port, Guid Generation);
 
     private readonly record struct NativePartyContinuationSelection(

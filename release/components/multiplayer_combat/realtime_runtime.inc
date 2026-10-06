@@ -14,6 +14,7 @@ struct multiplayer_profile {
     stable_u64 coin,nana;
 };
 struct multiplayer_connection {
+    unsigned managed_owner_uid,managed_room_slot,managed_room_identity;
     int active,room_active,party_active,port;
     int village_active,village_actor_ready;
     SOCKET socket;
@@ -101,7 +102,7 @@ static void multiplayer_unregister_connection(int idx){if(idx<0||idx>=MULTI_MAX_
 static void multiplayer_lock_load(int idx){multiplayer_global_lock();multi_load_unlocked(idx);}
 static void multiplayer_save_unlock(int idx){multi_save_unlocked(idx);multiplayer_global_unlock();}
 static unsigned multiplayer_current_uid(void){return g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS&&g_multi_conn[g_multi_current].active?g_multi_conn[g_multi_current].uid:1u;}
-static unsigned multiplayer_owner_uid(void){int i,best=-1;unsigned ord=0xFFFFFFFFu;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&(g_multi_conn[i].party_active||g_multi_conn[i].room_active)&&g_multi_conn[i].join_order<ord){best=i;ord=g_multi_conn[i].join_order;}return best>=0?g_multi_conn[best].uid:multiplayer_current_uid();}
+static unsigned multiplayer_owner_uid(void){int i,best=-1;unsigned ord=0xFFFFFFFFu;if(g_multi_current>=0&&g_multi_conn[g_multi_current].managed_room_identity)return g_multi_conn[g_multi_current].managed_owner_uid;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&(g_multi_conn[i].party_active||g_multi_conn[i].room_active)&&g_multi_conn[i].join_order<ord){best=i;ord=g_multi_conn[i].join_order;}return best>=0?g_multi_conn[best].uid:multiplayer_current_uid();}
 static void multiplayer_mark_room(int active){if(g_multi_current>=0){g_multi_conn[g_multi_current].room_active=active;g_multi_conn[g_multi_current].party_active=active;if(!active)g_multi_conn[g_multi_current].ready=0;}}
 static void multiplayer_store_stage(unsigned real_stage,unsigned show_stage,unsigned slot,unsigned difficulty,unsigned dungeon){if(g_multi_current>=0){g_multi_conn[g_multi_current].real_stage=real_stage;g_multi_conn[g_multi_current].show_stage=show_stage;g_multi_conn[g_multi_current].slot=slot;g_multi_conn[g_multi_current].difficulty=difficulty;g_multi_conn[g_multi_current].dungeon=dungeon;}}
 static void multi_switch_to(int target,int source){multi_save_unlocked(source);multi_load_unlocked(target);}

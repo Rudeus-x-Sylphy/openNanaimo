@@ -85,6 +85,7 @@ public sealed class MentorshipPolicy
     public int MaximumStudents { get; }
     public TimeSpan RequestLifetime { get; }
     public int? GraduationMinimumLevel { get; }
+    public bool AutomaticLevelGraduation { get; }
     private readonly HashSet<uint> _lessonCodes;
     private readonly MentorshipCourseDefinition[] _courses;
     public IReadOnlyList<MentorshipCourseDefinition> Courses => _courses.ToArray();
@@ -98,7 +99,7 @@ public sealed class MentorshipPolicy
 
     public MentorshipPolicy(int minimumTeacherLevel, int minimumLevelGap, int maximumStudents,
         TimeSpan requestLifetime, int? graduationMinimumLevel = null, IEnumerable<uint>? lessonCodes = null,
-        IEnumerable<MentorshipCourseDefinition>? courses = null, MentorshipGraduationReward? graduationReward = null)
+        IEnumerable<MentorshipCourseDefinition>? courses = null, MentorshipGraduationReward? graduationReward = null, bool automaticLevelGraduation = false)
     {
         if (minimumTeacherLevel < 1 || minimumLevelGap < 1 || maximumStudents < 1
             || requestLifetime <= TimeSpan.Zero || requestLifetime > TimeSpan.FromDays(1)
@@ -109,6 +110,7 @@ public sealed class MentorshipPolicy
         MaximumStudents = maximumStudents;
         RequestLifetime = requestLifetime;
         GraduationMinimumLevel = graduationMinimumLevel;
+        AutomaticLevelGraduation = automaticLevelGraduation;
         _lessonCodes = lessonCodes?.ToHashSet() ?? [];
         if (_lessonCodes.Contains(0)) throw new ArgumentOutOfRangeException(nameof(lessonCodes));
         _courses = courses?.ToArray() ?? [];

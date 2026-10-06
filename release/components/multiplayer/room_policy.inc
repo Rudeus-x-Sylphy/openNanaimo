@@ -43,8 +43,10 @@ static void teamplay_crate_hard_reset(void){memset(g_teamplay_authority.crate_se
 static int teamplay_crate_hard_claim(unsigned selector){unsigned byte,mask;if(selector>0xFFFFu)return 1;byte=selector>>3;mask=1u<<(selector&7u);if(g_teamplay_authority.crate_selector_seen[byte]&mask)return 0;g_teamplay_authority.crate_selector_seen[byte]|=(unsigned char)mask;return 1;}
 #endif
 
+static void teamplay_send_initial_roster_states_current(void);
 #if TEAMPLAY_FEATURE_LATE_ROSTER_PUSH
 static unsigned g_teamplay_roster_seen_mask[MULTI_MAX_PLAYERS];
+static unsigned g_teamplay_roster_owner[MULTI_MAX_PLAYERS];
 static unsigned teamplay_roster_active_mask(void){
     int i;unsigned mask=0u;
     for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active)mask|=1u<<(unsigned)i;
@@ -53,7 +55,7 @@ static unsigned teamplay_roster_active_mask(void){
 static void teamplay_roster_reset_current(const char*reason){
     int idx=g_multi_current;
     if(idx<0||idx>=MULTI_MAX_PLAYERS)return;
-    g_teamplay_roster_seen_mask[idx]=0u;
+    g_teamplay_roster_seen_mask[idx]=0u;g_teamplay_roster_owner[idx]=0u;
     printf("  [MULTI_ROSTER] ROOM_SLOT_POLICY reset uid=%u idx=%d reason=%s\n",g_multi_conn[idx].uid,idx,reason);fflush(0);
 }
 static void teamplay_roster_after_current_cf70(void){
@@ -61,11 +63,22 @@ static void teamplay_roster_after_current_cf70(void){
     if(src<0||src>=MULTI_MAX_PLAYERS)return;
     active=teamplay_roster_active_mask();srcbit=1u<<(unsigned)src;owner=multiplayer_owner_uid();
     multi_capture_profile(&source_profile);
-    g_teamplay_roster_seen_mask[src]=active;
+    g_teamplay_roster_seen_mask[src]=active;g_teamplay_roster_owner[src]=owner;
     printf("  [MULTI_ROSTER] ROOM_SLOT_POLICY snapshot requester=%u idx=%d seen_mask=0x%02X\n",g_multi_conn[src].uid,src,active);fflush(0);
     for(target=0;target<MULTI_MAX_PLAYERS;target++){
         if(target==src||!g_multi_conn[target].active||!g_multi_transport_alive[target]||!g_multi_conn[target].room_active)continue;
-        if(!g_teamplay_roster_seen_mask[target]||(g_teamplay_roster_seen_mask[target]&srcbit))continue;
+        if(!g_teamplay_roster_seen_mask[target])continue;
+        /* An earlier member can have occupied slot zero before the leader
+           entered. Re-publish its own row as well as the new leader's row. */
+        if(g_teamplay_roster_owner[target]!=owner){
+            multi_switch_to(target,src);
+            multiplayer_send_roster_current();
+            teamplay_send_initial_roster_states_current();
+            g_teamplay_roster_seen_mask[target]=active;g_teamplay_roster_owner[target]=owner;
+            multi_switch_back(src,target);
+            continue;
+        }
+        if(g_teamplay_roster_seen_mask[target]&srcbit)continue;
         slot=multiplayer_room_slot_idx(src);
         multi_switch_to(target,src);
         multi_capture_profile(&target_profile);
@@ -259,6 +272,7 @@ static void teamplay_preload_members_on_owner_cfeb(unsigned real_stage,unsigned 
     teamplay_start_seed_epoch(epoch,real_stage,show_stage,slot);
     for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){
         members++;g_multi_conn[i].real_stage=real_stage;g_multi_conn[i].show_stage=show_stage;g_multi_conn[i].slot=slot;g_multi_conn[i].start_tick=g_teamplay_start_tick;
+        g_multi_conn[i].difficulty=g_teamplay_start_difficulty;g_multi_conn[i].dungeon=g_teamplay_start_dungeon;
         if(i==owner){g_multi_start_profile_pending[i]=0u;continue;}
         g_teamplay_preload_delivered[i]=epoch;g_multi_start_profile_pending[i]=epoch;multi_switch_to(i,src);send_cfec_room_profile(g_multi_conn[i].socket,real_stage,show_stage,slot);multi_switch_back(src,i);
     }
@@ -275,6 +289,7 @@ static void teamplay_preload_late_member_current(void){
     g_multi_conn[src].real_stage=g_teamplay_start_real_stage;
     g_multi_conn[src].show_stage=g_teamplay_start_show_stage;
     g_multi_conn[src].slot=g_teamplay_start_slot;
+    g_multi_conn[src].difficulty=g_teamplay_start_difficulty;g_multi_conn[src].dungeon=g_teamplay_start_dungeon;
     g_multi_start_profile_pending[src]=g_teamplay_start_epoch;
     g_teamplay_preload_delivered[src]=g_teamplay_start_epoch;
     send_cfec_room_profile(g_multi_conn[src].socket,g_teamplay_start_real_stage,g_teamplay_start_show_stage,g_teamplay_start_slot);
@@ -296,6 +311,7 @@ static void teamplay_broadcast_start(unsigned real_stage,unsigned show_stage,uns
     g_teamplay_cf7f_arrived[src]=epoch;
     for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){
         members++;g_multi_conn[i].real_stage=real_stage;g_multi_conn[i].show_stage=show_stage;g_multi_conn[i].slot=slot;g_multi_conn[i].start_tick=g_teamplay_start_tick;
+        g_multi_conn[i].difficulty=g_teamplay_start_difficulty;g_multi_conn[i].dungeon=g_teamplay_start_dungeon;
         if(i==owner){g_multi_start_profile_pending[i]=0u;send_cf80_start(g_multi_conn[i].socket);continue;}
         if(g_multi_start_profile_pending[i]!=epoch){g_teamplay_preload_delivered[i]=epoch;g_multi_start_profile_pending[i]=epoch;multi_switch_to(i,src);send_cfec_room_profile(g_multi_conn[i].socket,real_stage,show_stage,slot);multi_switch_back(src,i);}
     }
@@ -326,6 +342,7 @@ static void teamplay_preload_late_member_current(void){
     g_multi_conn[src].real_stage=g_teamplay_start_real_stage;
     g_multi_conn[src].show_stage=g_teamplay_start_show_stage;
     g_multi_conn[src].slot=g_teamplay_start_slot;
+    g_multi_conn[src].difficulty=g_teamplay_start_difficulty;g_multi_conn[src].dungeon=g_teamplay_start_dungeon;
     g_multi_start_profile_pending[src]=g_teamplay_start_epoch;
     g_teamplay_preload_delivered[src]=g_teamplay_start_epoch;
     send_cfec_room_profile(g_multi_conn[src].socket,g_teamplay_start_real_stage,g_teamplay_start_show_stage,g_teamplay_start_slot);

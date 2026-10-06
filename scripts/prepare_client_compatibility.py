@@ -18,11 +18,13 @@ try:
     from . import apartment_exterior_panel as exterior_panel
     from . import dungeon7_visuals
     from . import lumineos_scenes
+    from . import dungeon_result_compat
     from . import dungeon_experience_compat
 except ImportError:
     import apartment_exterior_panel as exterior_panel
     import dungeon7_visuals
     import lumineos_scenes
+    import dungeon_result_compat
     import dungeon_experience_compat
 from pathlib import Path
 
@@ -607,12 +609,13 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     for name, va, old, new in SETTLEMENT_MEMBER_TOWN_SITES:
         data, member_town[name] = _patch_site(data, va, old, new, name,
             'the settlement member town control differs')
+    data, result_entry = dungeon_result_compat.patch(data, _patch_site)
     data, power = restore_native_power(data)
     data, experience = dungeon_experience_compat.patch_experience_preview(data, _patch_site)
     data, boss_health = patch_boss_health_display(data)
     data, quickbar = patch_quickbar_refresh(data)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
-        other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power,
+        other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power, result_entry=result_entry,
         settlement_experience=experience, boss_health=boss_health, quickbar=quickbar,
         member_town=_migration_report('patch_settlement_member_town', **member_town))
 
@@ -1067,6 +1070,9 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
         expected_sites.extend((name, va, new) for name, va, _, new in BOSS_HEALTH_DISPLAY_SITES)
         expected_sites.extend((name, va, new) for name, va, _, new in quickbar_refresh_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in SETTLEMENT_MEMBER_TOWN_SITES)
+        result_hook, result_code = dungeon_result_compat.encodings()
+        expected_sites.extend((('dungeon_result_entry', dungeon_result_compat.HOOK_VA, result_hook),
+                               ('dungeon_result_entry_code', dungeon_result_compat.CAVE_VA, result_code)))
     for name, va, expected in expected_sites:
         offset = _va_offset(data, va, len(expected))
         checks.append(_check(name, data[offset:offset + len(expected)] == expected,

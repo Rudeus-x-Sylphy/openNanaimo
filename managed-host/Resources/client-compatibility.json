@@ -173,6 +173,26 @@
     },
     {
       "group": "dungeon-state",
+      "va": 7221632,
+      "target": "e84ceed2ff9c60e85427f8ff80780300754683b8f010000004740b83b8f0100000067534eb096a068bc8e83161f8ffe8c3bbd2ff8d700c8db80c010000b940000000fcf3a58db0100200008db820020000b904000000f3a5619dc3cccccccccc",
+      "known": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "patch_dungeon_result_entry_code",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7319017,
+      "target": "e89283feff",
+      "known": [
+        "e8e371d1ff"
+      ],
+      "operation": "patch_dungeon_result_entry",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
       "va": 7276906,
       "target": "c78590f9ffff00000000",
       "known": [

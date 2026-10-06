@@ -140,6 +140,33 @@ class PartyStateTests(unittest.TestCase):
             self.assertEqual(len(receive(connection, 0xCF80)), 8)
             drain(connection)
 
+    def test_couple_recovery_in_nonzero_quick_entry_dungeon(self):
+        # Both native identities and the inherited member map must agree.
+        for dungeon in (1, 2):
+            with self.subTest(dungeon=dungeon), party(episode=1, dungeon=dungeon, quick_entry=True) as clients:
+                self.start(clients, 0)
+                for actor, viewer, uid in ((clients[0], clients[1], 11), (clients[1], clients[0], 12)):
+                    for _ in range(4):
+                        self.injure(actor, viewer, uid)
+                for index, connection in enumerate(clients):
+                    connection.sendall(frame(0xF106, struct.pack('<III', 11 + index, 43000003, 12 - index)))
+                    connection.sendall(frame(0xF101))
+                    receive(connection, 0xF102)
+                    drain(connection)
+                clients[1].sendall(frame(0xCF93, bytes(4)))
+                own = receive(clients[1], 0xCF94)
+                remote = receive(clients[0], 0xCF94)
+                shared = receive(clients[0], 0xCF94)
+                self.assertEqual(struct.unpack_from('<HH', own, 8), (12, 0))
+                self.assertEqual(own[8:], remote[8:])
+                self.assertEqual(struct.unpack_from('<HH', shared, 8), (11, 65535))
+                self.assertEqual(shared[16:20], own[16:20])
+                for index, connection in enumerate(clients):
+                    connection.sendall(frame(0xF101))
+                    state = receive(connection, 0xF102)[8:]
+                    self.assertEqual(struct.unpack_from('<I', state, 20)[0], 2000)
+                    self.assertEqual(struct.unpack_from('<I', state, 1960)[0], 3 if index == 0 else 2)
+
     def test_quick_entry_stage_identity_all_villages(self):
         for episode, dungeon in ((0, 1), (1, 0), (3, 2), (7, 1), (15, 1), (100, 0)):
             for first in (0, 1):

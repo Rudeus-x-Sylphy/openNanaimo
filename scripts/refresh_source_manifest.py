@@ -60,6 +60,13 @@ def collect(root=ROOT):
             if not path.is_file():
                 raise ValueError("missing scene hazard input: " + rel)
             seen.add(path.resolve())
+    if (root / 'release/components/target_resources/preloaded_target_catalog.inc').resolve() in seen:
+        for rel in ('release/components/target_resources/preloaded_target_catalog.json',
+                    'scripts/generate_preloaded_targets.py', 'scripts/lumineos_codec.py',
+                    'scripts/generate_scene_hazard_catalog.py'):
+            path = root / rel
+            if not path.is_file(): raise ValueError('missing preloaded target input: ' + rel)
+            seen.add(path.resolve())
     complete_build = root / 'scripts/build_complete_adapter.ps1'
     if complete_build.is_file():
         seen.add(complete_build.resolve())

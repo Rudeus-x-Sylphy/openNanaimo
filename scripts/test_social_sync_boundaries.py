@@ -19,7 +19,7 @@ frame, receive, seed = support.frame, support.receive, support.seed
 BRIDGE = Path(os.environ.get('NANAIMO_SOCIAL_BRIDGE', ROOT / 'adapter_runtime/nanaimo_gameplay_bridge.exe'))
 
 @contextmanager
-def room(count=3):
+def room(count=3, profile_extra=""):
     port = None
     for candidate in range(64100, 65000, 10):
         sockets = []
@@ -36,7 +36,7 @@ def room(count=3):
     with tempfile.TemporaryDirectory(prefix='nanaimo-social-sync-') as directory:
         root = Path(directory)
         profile = root / 'profile.ini'
-        profile.write_text('version=2\nname_hex=53796E63\nlevel=1\npet=0\nhp_max=2000\nhp_current=100\nmp_max=1000\nmp_current=10\n')
+        profile.write_text('version=2\nname_hex=53796E63\nlevel=1\npet=0\nhp_max=2000\nhp_current=100\nmp_max=1000\nmp_current=10\n' + profile_extra)
         with (root / 'native.txt').open('wb') as output:
             process = subprocess.Popen([str(BRIDGE), str(port+8), '0', '0', '0', str(profile), str(port)], cwd=root,
                                        stdout=output, stderr=output, creationflags=subprocess.CREATE_NO_WINDOW)

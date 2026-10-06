@@ -97,6 +97,7 @@ def payload_policy(value: str, layer: str) -> None:
         card_generation_sources = {
             "release/components/cards/card_drop_manual_sources.json",
             "release/components/stage_damage/scene_hazard_registry.json",
+            "release/components/target_resources/preloaded_target_catalog.json",
             "release/components/cards/card_drop_cn.csv",
             "release/components/cards/card_drop_cn_boss_bindings.json",
             "release/components/cards/gen_card_drop_pool_boss.py",
@@ -307,7 +308,10 @@ def validated_closure(closure: dict) -> list[dict]:
             "scripts/generate_cn_card_drops.py",
             "scripts/generate_scene_hazard_catalog.py",
             "scripts/generate_scene_hazard_resources.py",
+            "scripts/generate_preloaded_targets.py",
+            "scripts/lumineos_codec.py",
             "release/components/stage_damage/scene_hazard_registry.json",
+            "release/components/target_resources/preloaded_target_catalog.json",
         }
         if not (native or managed or build_script or embedded_recipe or card_distribution):
             raise ExportError("source closure contains an ineligible project source")

@@ -150,7 +150,7 @@ internal static class Program
                 Check(await Call<Task<bool>>(service, "RouteNativeDungeonAsync", NativeDungeonClient.Frame(0xCF87, new byte[4]),
                     (ushort)0xCF87, "WorldAdapter", session, Token), "production settlement request route consumed");
                 var sent = Drain(session).Where(f => U16(f, 6) == 0xCF88).ToArray();
-                Check(sent.Length == 1, "captured mixed-rating result reaches requesting member");
+                Check(sent.Length == 1 && U16(sent[0], 10) == Character(owner).Id, "captured mixed-rating result reaches requesting member with real owner");
                 if (ReferenceEquals(session, owner))
                     Check((await db.GetCharacterAsync((long)Get(session, "AccountId")!))!.Experience == 100,
                         "high-rating member experience commits despite zero-rating teammate");
@@ -163,8 +163,7 @@ internal static class Program
             {
                 await Call<Task>(service, "HandleNativeWorkerFrameAsync", session, Result(owner, member), 1L, Token);
                 var sent = Drain(session).Where(f => U16(f, 6) == 0xCF88).ToArray();
-                Check(sent.Length == 1 && U16(sent[0], 10) == Character(owner).Id,
-                    "mixed team ratings retain each member result and real owner");
+                Check(sent.Length == 0, "streaming duplicate of a captured result is published once per cycle");
             }
             Set(owner, "NativeSettlementCycle", (long)Get(owner, "NativeSettlementCycle")! + 1);
             var deferredBefore = (await db.GetCharacterAsync((long)Get(owner, "AccountId")!))!.Experience;
@@ -241,6 +240,18 @@ internal static class Program
                 Check((bool)Get(viewer, "NativeDungeonSettlementAwaitingAction")!
                     && ((BattleResourceSnapshot)Get(viewer, "NativeBattleResources")!).SettlementFrozen,
                     "dead viewer enters the frozen failure result boundary");
+                await Call<Task>(service, "HandleNativeWorkerFrameAsync", viewer, failure, 1L, Token);
+                Check(Drain(viewer).Count == 0, "duplicate team failure preserves the current result page");
+                Set(viewer, "NativeDungeonExitRequested", true);
+                Set(viewer, "NativeSettlementCycle", (long)Get(viewer, "NativeSettlementCycle")! + 1);
+                await Call<Task>(service, "HandleNativeWorkerFrameAsync", viewer, failure, 1L, Token);
+                Check(Drain(viewer).Count == 0, "late failure cannot reopen a departing viewer result");
+                foreach (var op in new ushort[] { 0xCF87, 0xCF8B })
+                    Check(await Call<Task<bool>>(service, "RouteNativeDungeonAsync", NativeDungeonClient.Frame(op, new byte[4]),
+                        op, "WorldAdapter", viewer, Token), "departing viewer action is consumed before worker access");
+                Set(viewer, "NativeDungeon", null);
+                Check(await Call<Task<bool>>(service, "RouteNativeDungeonAsync", NativeDungeonClient.Frame(0xCF87, new byte[4]),
+                    (ushort)0xCF87, "WorldAdapter", viewer, Token), "late result request remains consumed after worker close");
                 Check(!NetworkAdapterService.ShouldSuppressUnarmedNativeDungeonSettlementLeave(true, false, false, true, 0xCF1D),
                     "dead viewer exit is accepted directly from the failure screen");
             }

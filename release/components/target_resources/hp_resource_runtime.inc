@@ -16,6 +16,7 @@
 #define HP_RESOURCE_SYNC_RUNTIME_INC
 
 #include "../targets/hp_resource_global_data.inc"
+#include "preloaded_target_catalog.inc"
 
 #define HP_SYNC_RUNTIME_CAP 4096u
 #define HP_SYNC_NO_ROW 0xFFFFFFFFu
@@ -312,6 +313,13 @@ static int hp_sync_bind_runtime(struct hp_sync_context *ctx, unsigned selector,
     return 1;
 }
 
+static const struct preloaded_target_def *hp_sync_preloaded_def(const struct hp_sync_context *ctx,unsigned selector){
+    unsigned i;if(!ctx->profile)return 0;
+    for(i=0;i<PRELOADED_TARGET_COUNT;i++)if(preloaded_targets[i].profile_row==ctx->profile->first_row
+        &&preloaded_targets[i].selector==selector)return &preloaded_targets[i];
+    return 0;
+}
+
 static struct hp_sync_target_state *hp_sync_state_for(struct hp_sync_context *ctx, unsigned selector) {
     const struct hp_sync_target_def *d = hp_sync_static_def(ctx, selector);
     const struct hp_sync_target_def *global_d;
@@ -356,6 +364,15 @@ static struct hp_sync_target_state *hp_sync_state_for(struct hp_sync_context *ct
         return &b->state;
     }
     if (b) return &b->state;
+    /* Preloaded transformation objects have immutable per-slot selectors.
+       Preserve the last form's report-only type instead of ordinary fallback HP. */
+    {const struct preloaded_target_def *d=hp_sync_preloaded_def(ctx,selector);
+        if(d){
+            if(!hp_sync_bind_runtime(ctx,selector,ctx->epoch,d->type,d->raw_hp,d->hp,d->basis,
+                    d->reward,HP_SYNC_RESOURCE_COUNT+d->resource))return 0;
+            return &hp_sync_find_runtime(ctx,selector)->state;
+        }
+    }
     if (!ctx->fallback_enabled) return 0;
     b = hp_sync_alloc_runtime(ctx, selector);
     if (!b) return 0;
@@ -496,7 +513,11 @@ static int hp_sync_d00e_wire_selector(unsigned selector, unsigned short *out) {
 }
 
 static const char *hp_sync_resource_name(unsigned resource_index) {
-    if (resource_index >= HP_SYNC_RESOURCE_COUNT) return "<runtime-or-unknown>";
+    if (resource_index >= HP_SYNC_RESOURCE_COUNT){
+        unsigned extra=resource_index-HP_SYNC_RESOURCE_COUNT;
+        if(extra<sizeof(preloaded_target_names)/sizeof(preloaded_target_names[0]))return preloaded_target_names[extra];
+        return "<runtime-or-unknown>";
+    }
     return hp_sync_resources[resource_index].name;
 }
 

@@ -175,6 +175,12 @@ public sealed partial class NetworkAdapterService
             return new(MentorshipResultCode.Ineligible, Relation: ownedRelation);
         var result = await _database.GraduateMentorshipAsync(CreateMentorshipActor(teacher.Session),
             relationId, MentorshipRules, token);
+        await PublishMentorshipGraduationAsync(teacher.CharacterId, result, token);
+        return result;
+    }
+
+    private async Task PublishMentorshipGraduationAsync(long actorCharacterId, MentorshipResult result, CancellationToken token)
+    {
         if (result.Success && result.Relation is { } relation)
         {
             if (relation.GraduationRewardGranted)
@@ -185,10 +191,24 @@ public sealed partial class NetworkAdapterService
                         && TryGetMentorshipPresence(p.SessionId, out _)))
                         student.Session.Character!.Items = savedStudent.Items;
             }
-            DeliverMentorshipCounterpart(teacher.CharacterId, relation, "graduate", result);
+            DeliverMentorshipCounterpart(actorCharacterId, relation, "graduate", result);
             MentorStateChanged?.Invoke();
         }
-        return result;
+    }
+
+    private async Task ReconcileLevelMentorshipsAsync(ConnectionSession session, CancellationToken token)
+    {
+        if (!MentorshipRules.AutomaticLevelGraduation || !TryGetMentorshipPresence(session.SessionId, out _)
+            || !session.TownSceneActive || session.NativeDungeon is not null || session.DungeonRoomId > 0) return;
+        var actor = CreateMentorshipActor(session);
+        foreach (var relation in await _database.GetMentorshipRelationsAsync(actor, false, token))
+        {
+            if (_activeWorldSessions.Values.Any(p => (p.CharacterId == relation.TeacherCharacterId
+                || p.CharacterId == relation.StudentCharacterId) && TryGetMentorshipPresence(p.SessionId, out _)
+                && (!p.Session.TownSceneActive || p.Session.NativeDungeon is not null || p.Session.DungeonRoomId > 0))) continue;
+            var result = await _database.GraduateMentorshipByLevelAsync(actor, relation.Id, MentorshipRules, token);
+            await PublishMentorshipGraduationAsync(actor.CharacterId, result, token);
+        }
     }
 
     internal async Task<MentorshipResult> ReleaseMentorshipAsync(string actorSessionId, long relationId,

@@ -276,7 +276,7 @@ internal static class MentorProtocol
             // Lightweight host checks do not carry client catalogs. The production
             // tuple is fixed by the validated quest/resource definitions.
             return new(20, 1, 10, TimeSpan.FromMinutes(2), 20, [75000138],
-                [new(75000138, 0, 0)], new(17000015, 1, 71000012));
+                [new(75000138, 0, 0)], new(17000015, 1, 71000012), automaticLevelGraduation: true);
         }
     }
 
@@ -296,7 +296,7 @@ internal static class MentorProtocol
             throw new InvalidDataException("Mentorship graduation item definition is incompatible.");
         return new(20, 1, 10, TimeSpan.FromMinutes(2), 20, [objective.ObjectiveId],
             [new(objective.ObjectiveId, episode, dungeonBit)],
-            new(reward.RewardCode, checked((ushort)reward.Amount), rewardQuest.QuestId));
+            new(reward.RewardCode, checked((ushort)reward.Amount), rewardQuest.QuestId), automaticLevelGraduation: true);
     }
 
     private static void WriteFixedGbk(Span<byte> destination, string value)

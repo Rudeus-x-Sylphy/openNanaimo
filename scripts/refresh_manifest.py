@@ -14,14 +14,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
+    'scripts/test_basic_gameplay_boundaries.py',
     'scripts/test_gameplay_bugfixes.py',
     'scripts/generate_scene_hazard_catalog.py',
     'release/components/stage_damage/scene_hazard_registry.json',
     'scripts/verify_client_baseline.py',
     'scripts/prepare_client_compatibility.py',
+    'scripts/dungeon_result_compat.py',
+    'scripts/generate_preloaded_targets.py',
+    'release/components/target_resources/preloaded_target_catalog.json',
     'scripts/prepare_entertainment_resources.py',
     'scripts/prepare_hero_dragon.py',
     'scripts/prepare_korean_pets.py',
+    'scripts/generate_pet_attack_styles.py',
     'scripts/deploy_pet_catalog_update.py',
     'scripts/verify_package.py',
     'manifest/korean_pet_resources.json',

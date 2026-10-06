@@ -449,6 +449,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public BattleResourceSnapshot? NonCombatResourceSnapshot { get; set; }
         public long NativeBattleEpoch { get; set; }
         public long NativeSettlementCycle { get; set; }
+        public bool NativeDungeonExitRequested { get; set; }
+        public string? NativePublishedSettlementId { get; set; }
         public bool NativeCoupleStartRequested { get; set; }
         public bool NativeCoupleIdentityPublished { get; set; }
         public byte? NativeBattleAttackMode { get; set; }
@@ -5220,6 +5222,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         if (initializedTransitionTownScene)
                         {
                             session.TownSceneActive = true;
+                        await ReconcileLevelMentorshipsAsync(session, token);
                             await QueueTownEntitySnapshotsAsync(session, token);
                             if (GetEquippedPetItemCode(session.Character) != 0
                                 && _activeWorldSessions.TryGetValue(session.SessionId, out var transitionSelfTarget))
@@ -5282,6 +5285,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     if (initializedTownScene)
                     {
                         session.TownSceneActive = true;
+                        await ReconcileLevelMentorshipsAsync(session, token);
                         await QueueTownEntitySnapshotsAsync(session, token);
                         if (GetEquippedPetItemCode(session.Character) != 0
                             && _activeWorldSessions.TryGetValue(session.SessionId, out var townSelfTarget))
@@ -14761,6 +14765,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             var relation = await _database.GetActiveCoupleRelationAsync(refreshed.Id, token);
             refreshed.ActiveCoupleRingItemCode = relation?.RingItemCode ?? 0;
             refreshed.ActiveCouplePartnerName = relation?.GetPartnerName(refreshed.Id) ?? string.Empty;
+            await ReconcileLevelMentorshipsAsync(session, token);
         }
     }
 

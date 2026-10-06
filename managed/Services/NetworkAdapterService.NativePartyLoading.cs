@@ -4,6 +4,35 @@ namespace OpenNanaimo.Adapter.Services;
 
 public sealed partial class NetworkAdapterService
 {
+    private async Task PublishNativePartyIdentityAsync(ConnectionSession session, CancellationToken token)
+    {
+        if (session.PartyId <= 0 || session.NativeDungeon is not { } worker || session.NativeCheckpoint is not { } state) return;
+        var actorUid = checked((ushort)state.Get(4));
+        ushort ownerUid = actorUid;
+        uint slot = 0;
+        lock (_partyGate)
+        {
+            if (session.PartyId > 0)
+            {
+                if (!_parties.TryGetValue(session.PartyId, out var party)
+                    || !party.Members.ContainsKey(session.SessionId)
+                    || !party.Members.TryGetValue(party.OwnerSessionId, out var owner)
+                    || owner.Session.Character is not { } character) return;
+                ownerUid = GetSceneEntityId(character);
+                if (owner.Session.SessionId != session.SessionId)
+                    slot = checked((uint)(1 + party.Members.Values
+                        .Where(member => member.Session.SessionId != party.OwnerSessionId)
+                        .OrderBy(member => member.JoinOrder)
+                        .TakeWhile(member => member.Session.SessionId != session.SessionId).Count()));
+            }
+        }
+        var payload = new byte[12];
+        BinaryPrimitives.WriteUInt32LittleEndian(payload, actorUid);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4), ownerUid);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(8), slot);
+        await worker.SendAsync(NativeDungeonClient.Frame(0xF109, payload), token);
+    }
+
     private sealed record NativePartyLoad(ConnectionSession Owner, long Epoch, byte[] Request);
     private readonly Dictionary<int, NativePartyLoad> _nativePartyLoads = [];
 

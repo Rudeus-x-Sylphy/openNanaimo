@@ -188,6 +188,7 @@ class UserOwnedNativeWindowTests(unittest.TestCase):
         allowed = set()
         for va, span in ((0x6E2F90, 7), (0x6E30A0, 64), (0x6F096A, 10), (0x41FB54, 64),
                          (0x76F7C7, 2), (0x762AF5, 6), (0x76FA2E, 2),
+                         (0x6FADE9, 5), (0x6E3180, 96),
                          (0x763E3E, 6), (0x7653E3, 2),  # member town input and display
                          (0x763E3A, 10), (0x7653DF, 6),  # member town control gates
                          (0x6F5B1E, 5), (0x6F5B68, 5), (0x6E3100, 64),  # actor refresh layout

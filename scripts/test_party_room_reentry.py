@@ -12,7 +12,7 @@ frame, receive, flush, room = support.frame, support.receive, support.flush, sup
 
 
 class PartyRoomReentryTests(unittest.TestCase):
-    def run_epochs(self, rejoin, abrupt=False):
+    def run_epochs(self, rejoin, abrupt=False, managed_identity=False):
         with room(2) as clients:
             for epoch in range(4):
                 if epoch:
@@ -35,22 +35,34 @@ class PartyRoomReentryTests(unittest.TestCase):
                             clients.append(connection)
                             connection.sendall(frame(0xF100, support.seed(uid, 0)))
                             receive(connection, 0xF102)
-                for connection in clients:
+                rosters = {connection: {} for connection in clients}
+                for index, connection in enumerate(clients):
+                    if managed_identity:
+                        connection.sendall(frame(0xF109, struct.pack('<III', 11 + index, 11, index)))
                     connection.sendall(frame(0xCF09, bytes(56)))
                     receive(connection, 0xCF0A)
                 # Alternate both dungeon identity and owner arrival order.
                 ordered = clients if epoch % 2 == 0 else list(reversed(clients))
                 for connection in ordered:
                     connection.sendall(frame(0xCF77, struct.pack("<HBBBBH", 100, 0, 2, epoch % 3, 2, 0xFFFF)))
-                    receive(connection, 0xCF78)
+                    entry = receive(connection, 0xCF78)
+                    if managed_identity:
+                        self.assertEqual(struct.unpack_from('<H', entry, 8)[0], 100 if connection is clients[0] else 10)
                     connection.sendall(frame(0xC587))
                     receive(connection, 0xC588)
                     connection.sendall(frame(0xCF70, struct.pack("<I", 50)))
-                    receive(connection, 0xCF71)
+                    first = receive(connection, 0xCF71)
+                    rosters[connection][struct.unpack_from('<H', first, 0x1A)[0]] = first
                 # Ownership follows stable connection join order.
                 owner, member = clients
                 for connection in clients:
-                    flush(connection)
+                    for response in flush(connection):
+                        if struct.unpack_from('<H', response, 6)[0] == 0xCF71:
+                            rosters[connection][struct.unpack_from('<H', response, 0x1A)[0]] = response
+                    self.assertEqual(set(rosters[connection]), {11, 12})
+                    for uid, response in rosters[connection].items():
+                        self.assertEqual(struct.unpack_from('<H', response, 0x18)[0], 11)
+                        self.assertEqual(response[0x56], uid - 11)
                 owner.sendall(frame(0xCFEB, bytes(4)))
                 own = receive(owner, 0xCFEC)
                 shared = receive(member, 0xCFEC)
@@ -65,6 +77,9 @@ class PartyRoomReentryTests(unittest.TestCase):
                 member.sendall(frame(0xCF7F))
                 for connection in clients:
                     receive(connection, 0xCF80)
+
+    def test_managed_party_identity_survives_member_first_entry(self):
+        self.run_epochs(True, managed_identity=True)
 
     def test_complete_room_turnover(self):
         self.run_epochs(False)

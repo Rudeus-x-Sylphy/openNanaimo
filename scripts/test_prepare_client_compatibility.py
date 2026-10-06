@@ -126,6 +126,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
     put(compat.SETTLEMENT_OTHER_AUTO_GATE_VA, compat.SETTLEMENT_OTHER_AUTO_GATE_OLD)
     for _, va, old, _ in compat.SETTLEMENT_MEMBER_TOWN_SITES:
         put(va, old)
+    put(compat.dungeon_result_compat.HOOK_VA, compat.dungeon_result_compat.HOOK_OLD)
+    put(compat.dungeon_result_compat.CAVE_VA, compat.dungeon_result_compat.CAVE_OLD)
     put(compat.SETTLEMENT_AUTO_GATE_VA, settlement_gate)
     put(compat.SETTLEMENT_AUTO_ACTION_GATE_VA, settlement_action_gate)
     put(compat.POWER_RESTORE_HOOK_VA, power_hook)

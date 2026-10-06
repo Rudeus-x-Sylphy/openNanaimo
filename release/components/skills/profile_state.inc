@@ -31,12 +31,18 @@ static void skill_progress_parse_file(void*f){char line[128];unsigned v;while(fg
 if(sscanf(line,"first2_policy=%u",&v)==1){g_skill_progress_policy_first2=v?1u:0u;continue;}
 #endif
 if(sscanf(line,"grade0=%u",&v)==1)g_skill_progress_grade[0]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade1=%u",&v)==1)g_skill_progress_grade[1]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade2=%u",&v)==1)g_skill_progress_grade[2]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade3=%u",&v)==1)g_skill_progress_grade[3]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade4=%u",&v)==1)g_skill_progress_grade[4]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade5=%u",&v)==1)g_skill_progress_grade[5]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade6=%u",&v)==1)g_skill_progress_grade[6]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade7=%u",&v)==1)g_skill_progress_grade[7]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade8=%u",&v)==1)g_skill_progress_grade[8]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade9=%u",&v)==1)g_skill_progress_grade[9]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade10=%u",&v)==1)g_skill_progress_grade[10]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade11=%u",&v)==1)g_skill_progress_grade[11]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade12=%u",&v)==1)g_skill_progress_grade[12]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade13=%u",&v)==1)g_skill_progress_grade[13]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade14=%u",&v)==1)g_skill_progress_grade[14]=(unsigned char)(v>5u?5u:v);else if(sscanf(line,"grade15=%u",&v)==1)g_skill_progress_grade[15]=(unsigned char)(v>5u?5u:v);}}
-static void skill_progress_load(void){char key[40],path[128];void*f;const char*source="default";skill_progress_make_key(key);if(g_skill_progress_loaded&&skill_progress_key_equal(key,g_skill_progress_key))return;skill_progress_defaults();skill_progress_path(path,key,".dat");f=fopen(path,"r");if(f)source="v2";else{f=fopen("skill_progress_state_v1.dat","r");if(f)source="legacy";}if(f){skill_progress_parse_file(f);fclose(f);}
+static void skill_progress_load(void){char key[40],path[128];void*f;const char*source="default";skill_progress_make_key(key);if(g_skill_progress_loaded&&skill_progress_key_equal(key,g_skill_progress_key))return;skill_progress_defaults();skill_progress_path(path,key,".dat");f=fopen(path,"r");if(f)source="v2";
+#ifndef NANAIMO_GAMEPLAY_BRIDGE
+else{f=fopen("skill_progress_state_v1.dat","r");if(f)source="legacy";}
+#endif
+if(f){skill_progress_parse_file(f);fclose(f);}
+#ifndef NANAIMO_GAMEPLAY_BRIDGE
 if(g_profile_skill_config_present){unsigned pi;for(pi=0u;pi<SKILL_PROGRESS_COUNT;pi++)g_skill_progress_grade[pi]=g_profile_skill_grade[pi];g_skill_progress_slots[0]=g_profile_skill_slots[0];g_skill_progress_slots[1]=g_profile_skill_slots[1];
 #if TEAMPLAY_FEATURE_SKILL_DEFAULT_FIRST2_POLICY
  g_skill_progress_policy_first2=1u;
 #endif
  printf("  [PROFILE_STATE] launcher skill override key=%s projectile_route=%u meat_route=%u Z=%u X=%u\n",key,g_profile_skill_projectile_route,g_profile_skill_meat_route,g_skill_progress_slots[0],g_skill_progress_slots[1]);fflush(0);}
+#endif
 #if TEAMPLAY_FEATURE_SKILL_CATALOG_NORMALIZE
 {unsigned ni;for(ni=0u;ni<SKILL_PROGRESS_COUNT;ni++)g_skill_progress_grade[ni]=(unsigned char)SKILL_PROGRESS_MAX_GRADE;}
 #endif

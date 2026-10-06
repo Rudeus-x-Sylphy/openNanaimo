@@ -112,10 +112,14 @@ public sealed partial class NetworkAdapterService
     {
         var character = (await _database.GetCharacterByIdAsync(session.Character!.Id, token))!;
         var actor = CreateMentorshipActor(session);
+        await ReconcileLevelMentorshipsAsync(session, token);
         var relations = await _database.GetMentorshipRelationsAsync(actor, false, token);
-        foreach (var relation in relations.Where(r => r.TeacherCharacterId == character.Id))
-            await GraduateMentorshipAsync(session.SessionId, relation.Id, token);
-        relations = await _database.GetMentorshipRelationsAsync(actor, false, token);
+        if (!MentorshipRules.AutomaticLevelGraduation)
+        {
+            foreach (var relation in relations.Where(r => r.TeacherCharacterId == character.Id))
+                await GraduateMentorshipAsync(session.SessionId, relation.Id, token);
+            relations = await _database.GetMentorshipRelationsAsync(actor, false, token);
+        }
         var qualification = await _database.GetMentorshipQualificationAsync(actor, MentorshipRules, token);
         var payload = new byte[280];
         var student = relations.Any(r => r.StudentCharacterId == character.Id);

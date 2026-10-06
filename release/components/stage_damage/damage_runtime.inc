@@ -6,6 +6,7 @@
 #include "boss_contact_catalog.inc"
 #include "monster_contact_catalog.inc"
 #include "scene_hazard_catalog.inc"
+#include "../target_resources/preloaded_target_catalog.inc"
 
 #define STAGE_DAMAGE_DAMAGE_RESOURCE_EXACT 1u
 #define STAGE_DAMAGE_DAMAGE_EXACT_ZERO 2u
@@ -144,6 +145,27 @@ static const struct hp_sync_profile_def *stage_damage_find_target_profile(const 
         if(cmp<0)lo=mid+1u;else if(cmp>0)hi=mid;else return p;
     }return 0;
 }
+/* Preloaded placements have their own selectors after the ordinary table.
+ * Contact remains active independently of the final form's zero durability. */
+static const struct preloaded_target_def *stage_damage_preloaded_find(const struct stage_damage_damage_context *ctx,unsigned selector){
+    const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);unsigned i;
+    if(!profile)return 0;
+    for(i=0u;i<PRELOADED_TARGET_COUNT;i++)if(preloaded_targets[i].profile_row==profile->first_row&&preloaded_targets[i].selector==selector)return &preloaded_targets[i];
+    return 0;
+}
+static unsigned stage_damage_preloaded_scene_lookup(const struct stage_damage_damage_context *ctx,unsigned selector,struct stage_damage_damage_lookup *out){
+    const struct preloaded_target_def *child=stage_damage_preloaded_find(ctx,selector),*root;unsigned damage;
+    if(!child||child->type!=4u)return 0u;
+    root=child;
+    if(child->association>=0){
+        root=stage_damage_preloaded_find(ctx,child->placement_start+(unsigned)child->association);
+        if(!root||root->placement_start!=child->placement_start||root->resource!=child->resource)return 0u;
+    }
+    damage=root->contact;if(!damage)return 0u;
+    if(out){out->associated_selector=root->selector;out->target_type=child->type;out->base=damage;out->policy_damage=damage;
+        out->resource=preloaded_target_names[child->resource];out->status=STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE;}
+    return damage;
+}
 /* Kind60 reports a selected-slot target selector, not a PON owner.  An authored type4 row
  * uses its explicit same-placement/resource root, or itself when it is the
  * positive-HP root. The root must have an exact selected-scope contact attack. */
@@ -205,13 +227,15 @@ static unsigned stage_damage_player_d00f_damage(const struct stage_damage_damage
     if(out){out->kind=kind;out->owner=owner;out->source=source;out->resource=kind==20u?"<ordinary-collision-policy>":kind==40u?"<boss-collision-component>":"<non-damaging-scene-event>";}
     if(kind==60u){unsigned damage=stage_damage_scene_associated_lookup(ctx,owner,out);
         if(!damage)damage=stage_damage_scene_hazard_lookup(ctx,owner,out);
+        if(!damage)damage=stage_damage_preloaded_scene_lookup(ctx,owner,out);
         if(!damage&&out)out->status=STAGE_DAMAGE_DAMAGE_UNSUPPORTED_KIND;
         return damage;
     }
     if(kind==20u){const struct monster_contact_row *contact=stage_damage_monster_contact_find(ctx,owner);
-        unsigned damage=contact?contact->attack:STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;
-        if(out){out->status=contact?(damage?STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_EXACT_ZERO):STAGE_DAMAGE_DAMAGE_COLLISION_FIXED;
-            out->base=contact?damage:0u;out->policy_damage=damage;out->resource=contact?"<ordinary-collision-resource>":"<ordinary-collision-policy>";}
+        const struct preloaded_target_def *preloaded=contact?0:stage_damage_preloaded_find(ctx,owner);
+        unsigned damage=contact?contact->attack:preloaded?preloaded->contact:STAGE_DAMAGE_COLLISION_PLAYER_DAMAGE;
+        if(out){out->status=(contact||preloaded)?(damage?STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_EXACT_ZERO):STAGE_DAMAGE_DAMAGE_COLLISION_FIXED;
+            out->base=(contact||preloaded)?damage:0u;out->policy_damage=damage;out->resource=preloaded?preloaded_target_names[preloaded->resource]:contact?"<ordinary-collision-resource>":"<ordinary-collision-policy>";}
         return damage;
     }
     if(kind==40u){unsigned damage=stage_damage_boss_contact_lookup(ctx,req);

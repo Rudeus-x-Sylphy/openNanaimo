@@ -143,6 +143,17 @@ static int managed_bridge_couple_metadata(const unsigned char*p){
 }
 static int managed_bridge_handle(SOCKET c,int type,int len,const unsigned char*f){
     if(type==0xF100){managed_bridge_snapshot(c,len==MANAGED_STATE_SIZE+8?managed_bridge_import(f+8):0u);return 1;}
+    if(type==0xF109){
+        int src=g_multi_current;
+        if(len==20&&src>=0&&src<MULTI_MAX_PLAYERS&&managed_get(f+8,0)==g_multi_conn[src].uid
+            &&managed_get(f+8,4)>0u&&managed_get(f+8,4)<=65535u&&managed_get(f+8,8)<3u
+            &&((managed_get(f+8,4)==g_multi_conn[src].uid)==(managed_get(f+8,8)==0u))){
+            g_multi_conn[src].managed_owner_uid=managed_get(f+8,4);
+            g_multi_conn[src].managed_room_slot=managed_get(f+8,8);
+            g_multi_conn[src].managed_room_identity=1u;
+        }
+        return 1;
+    }
     if(type==0xF106){if(len==20)managed_bridge_couple_metadata(f+8);return 1;}
     if(type==0xF107){
         if(len==20&&g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS

@@ -158,7 +158,7 @@
 #define MONSTER_HP_ENABLE_PON_ATTACK_CANDIDATES 1
 /* Reference-server policy: only a monster mapped by ddakg may roll a card. */
 #ifndef CARD_ORDINARY_DROP_PERCENT
-#define CARD_ORDINARY_DROP_PERCENT 3u
+#define CARD_ORDINARY_DROP_PERCENT 10u
 #endif
 #ifndef CARD_DROP_POOL_STRICT
 #define CARD_DROP_POOL_STRICT 1

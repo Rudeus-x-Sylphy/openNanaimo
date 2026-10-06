@@ -101,7 +101,7 @@ public sealed partial class NetworkAdapterService
     private async Task<bool> RouteNativeDungeonAsync(byte[] frame, ushort opcode, string channel,
         ConnectionSession session, CancellationToken token)
     {
-        if (opcode is >= 0xF100 and <= 0xF108) return true;
+        if (opcode is >= 0xF100 and <= 0xF109) return true;
         if (!NativeDungeonEnabled || channel != "WorldAdapter") return false;
         if (opcode == 0xCF09 && frame.Length is 64 or 132 && session.OnlineTracked && session.Character is not null)
         {
@@ -120,6 +120,8 @@ public sealed partial class NetworkAdapterService
             session.NonCombatResourceSnapshot = null;
             session.NativeDungeonDeathLatched = false;
             session.NativeDungeonSelectionValid = false;
+            session.NativeDungeonExitRequested = false;
+            session.NativePublishedSettlementId = null;
             session.NativeContinuationRosterRequested = false;
             session.NativeCoupleStartRequested = false;
             session.NativeCoupleIdentityPublished = false;
@@ -155,11 +157,16 @@ public sealed partial class NetworkAdapterService
             LeaveVillageShopScene(session, "native dungeon"); LeaveTownScene(session, "native dungeon");
             session.NativeForwarding = true;
             ArmNativeDungeonRevivalCycle(session);
+            await PublishNativePartyIdentityAsync(session, token);
             await bridge.SendAsync(frame, token);
             _log($"Native dungeon connected: character={character.Name} uid={state.Get(4)}");
             return true;
         }
+        if (session.NativeDungeonExitRequested && opcode is not (0xCF73 or 0xCF1D))
+            return opcode is >= 0xCF00 and <= 0xD03F or 0xC587 or 0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640;
         if (session.NativeDungeon is null) return false;
+        if (opcode is 0xCF77 or 0xCF6C or 0xCF70)
+            await PublishNativePartyIdentityAsync(session, token);
         if (opcode == 0xCF70 && frame.Length == 12)
             await RefreshNativeCombatProgressionAsync(session, token);
         if (opcode == 0xCFEB && DeferNativePartyMap(session, frame)) return true;
@@ -309,6 +316,8 @@ public sealed partial class NetworkAdapterService
             {
                 session.NativeDungeonSettlementAwaitingAction = false;
                 session.NativeDungeonTownTransitionAuthorized = true;
+                session.NativeDungeonExitRequested = true;
+                ClearNativePartyContinuation(session);
                 // Only an unarmed (or death) CF73 selects town return. During
                 // an authorized CF8B rebuild, CF73 is transport teardown and
                 // must not clear the next-stage carry or synthesize CF74.
@@ -361,6 +370,7 @@ public sealed partial class NetworkAdapterService
             }
             if (opcode == 0xCF1D)
             {
+                session.NativeDungeonExitRequested = true;
                 var battleCurrentMp = checked((int)(session.NativeBattleResources?.CurrentMp
                     ?? session.NativeCheckpoint?.Get(28)
                     ?? (uint)Math.Max(0, session.Character?.CurrentMp ?? 0)));
@@ -1206,8 +1216,12 @@ public sealed partial class NetworkAdapterService
             _log($"NativeDungeon stale worker frame suppressed: frameEpoch={battleEpoch} activeEpoch={session.NativeBattleEpoch}");
             return;
         }
-        await ObserveNativeDungeonQuickItemResourcesAsync(session, response, battleEpoch, token);
         var responseOpcode = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6, 2));
+        using var settlementPublication = responseOpcode == 0xCF88
+            ? await LockNativeSettlementPublicationAsync(session, token) : null;
+        if (responseOpcode == 0xCF88 && (session.NativeDungeonExitRequested
+            || session.NativePublishedSettlementId == NativeDungeonSettlementId(session))) return;
+        await ObserveNativeDungeonQuickItemResourcesAsync(session, response, battleEpoch, token);
         // Town actor construction belongs to the managed town-entry request.
         // A departing battle can acknowledge transport without creating actors.
         if (responseOpcode is 0xC588 or 0xC368 or 0xC389)
@@ -1334,8 +1348,10 @@ public sealed partial class NetworkAdapterService
         if (!session.NativeForwarding) return;
         if (responseOpcode == 0xCF88)
         {
-            if (session.NativeDungeonDeathLatched && !session.NativeDungeonSettlementAwaitingAction
-                && session.NativeBattleResources is { SettlementFrozen: false }
+            if (!session.NativeDungeonSettlementAwaitingAction
+                && (session.NativeDungeonDeathLatched || session.NativeBattleResources is { CurrentHp: 0 }
+                    || session.NativeCheckpoint?.Get(20) == 0)
+                && session.NativeBattleResources is not null
                 && response.Length >= 12 && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8)) is >= 2 and <= 3
                 && response.Length == 12 + 52 * BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8))
                 && Enumerable.Range(0, BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8)))
@@ -1344,6 +1360,7 @@ public sealed partial class NetworkAdapterService
                 session.NativeDungeonSettlementAwaitingAction = true;
                 session.NativeDungeonNextTransitionAuthorized = false;
                 session.NativeDungeonTownTransitionAuthorized = false;
+                session.NativeDungeonDeathLatched = true;
                 session.NativeBattleResources = session.NativeBattleResources with { SettlementFrozen = true, CurrentHp = 0 };
             }
             if (!session.NativeDungeonSettlementAwaitingAction || session.NativeCheckpoint is null
@@ -1362,6 +1379,8 @@ public sealed partial class NetworkAdapterService
         PatchNativeReadyRoomWalletFrame(response, revivalOwner);
         await QueueOutboundWriteAsync(session, new OutboundNativeWrite(response, "NativeDungeon",
             session.ListenerPort, session.RemoteIp ?? "local", true, false, "retained-native-dungeon"), token);
+        if (responseOpcode == 0xCF88)
+            session.NativePublishedSettlementId = NativeDungeonSettlementId(session);
     }
 
     private async Task PatchNativeReadyRoomRankFrameAsync(
