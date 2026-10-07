@@ -342,6 +342,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private CancellationTokenSource? _cts;
     private Task? _villageBotTask;
     private Task? _healthRecoveryTask;
+    private Task? _entertainmentDeadlineTask;
+    private DateTime _nextRelationshipRewardSweepUtc;
     private VillageBotSettings _villageBotSettings = new();
     private AccountLoginPolicy _loginPolicy = AccountLoginPolicy.Disabled;
     private List<AdapterEndpoint> _endpoints = [];
@@ -1560,6 +1562,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             _villageBotSettings = villageBotSettings;
         _villageBotTask = Task.Run(() => VillageBotLoopAsync(_cts.Token), CancellationToken.None);
         _healthRecoveryTask = Task.Run(() => HealthRecoveryLoopAsync(_cts.Token), CancellationToken.None);
+        _entertainmentDeadlineTask = Task.Run(() => EntertainmentDeadlineLoopAsync(_cts.Token), CancellationToken.None);
         await ReconcileVillageBotsAsync(cancellationToken);
         _log($"直连 TCP 服务已启动：GameAdapter={options.GameAdapterPort}，WorldAdapter={options.WorldAdapterPort}");
     }
@@ -1634,6 +1637,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         foreach (var item in items) item.Listener.Stop();
         if (cts is not null)
         {
+            var entertainmentTask = Interlocked.Exchange(ref _entertainmentDeadlineTask, null);
+            if (entertainmentTask is not null)
+            {
+                try { await entertainmentTask; }
+                catch (OperationCanceledException) { }
+                catch (Exception ex) { _log($"Stopping entertainment timer failed: {ex.Message}"); }
+            }
             var healthRecoveryTask = Interlocked.Exchange(ref _healthRecoveryTask, null);
             if (healthRecoveryTask is not null)
             {
@@ -2305,13 +2315,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 if (session.Character.TutorialCompleted)
                     await EnsureSessionStoryQuestAsync(session, token);
+                var mentorProfile = await _database.GetMentorshipProfileAsync(session.Character.Id, token);
                 var loadNecessityFrames = BuildLoadNecessityResponse(
                     frame,
                     session,
                     dungeonClearMasks,
                     dungeonBestRatings,
                     dungeonSecretBestRatings,
-                    coupleRelation);
+                    coupleRelation, mentorProfile);
                 // C355 full-frame +0xF3 is the client's persisted story-medal byte.
                 // The numeric source is the committed story-claim ledger, not C59A
                 // scratch data or a localized reward label.
@@ -5066,7 +5077,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     profileTarget.Character!.Id,
                     token) ?? profileTarget.Character;
                 _log($"{channel}:{remote} 角色资料查询成功：mode={profileQueryMode} entity={profileEntityId} nameLength={profileCharacterNameLength}");
-                return BuildNativeFrame(frame, 0xC377, BuildProfileResponsePayload(profileCharacter), session);
+                var profileRelation = await _database.GetActiveCoupleRelationAsync(profileCharacter.Id, token);
+                var profileResponse = BuildProfileResponsePayload(profileCharacter);
+                WriteProfileRelationship(profileResponse, profileCharacter, profileRelation);
+                await WriteProfileMentorshipAsync(profileResponse, profileCharacter.Id, token);
+                return BuildNativeFrame(frame, 0xC377, profileResponse, session);
 
             case 0xC4EA: // scene transition notification (client-to-adapter, no response)
                 if (!session.OnlineTracked || payload.Length != 0)
@@ -8344,11 +8359,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         || payload.Length != 0
                         || !IsStartedEntertainmentRoomMember(session, requireCountdown: true))
                         return null;
-                    if (!TryContinueEntertainmentGame(session)) return null;
+                    if (!TryContinueEntertainmentGame(session, out var continuedBoard)) return null;
                     var continued = EntertainmentProtocol.BuildPicnicPlayerState(GetSceneEntityId(session.Character), 3);
                     QueueEntertainmentBroadcast(session, 0xCF82, continued, false, "entertainment continue");
-                    return CombineNativeFrames(BuildNativeFrame(frame, 0xCF82, continued, session),
-                        BuildNativeFrame(frame, 0xCFE6, EntertainmentProtocol.BuildGameData(), session));
+                    var continueResponse = BuildNativeFrame(frame, 0xCF82, continued, session);
+                    return continuedBoard.Length == 0 ? continueResponse
+                        : CombineNativeFrames(BuildNativeFrame(frame, 0xCFE6, continuedBoard, session), continueResponse);
                 }
 
                 if (!string.Equals(channel, "WorldAdapter", StringComparison.Ordinal)
@@ -13799,19 +13815,17 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         byte[] dungeonClearMasks,
         byte[] dungeonBestRatings,
         byte[] dungeonSecretBestRatings,
-        CoupleRelationRecord? coupleRelation)
+        CoupleRelationRecord? coupleRelation,
+        (string TeacherName, int Graduates, int Students) mentorship)
     {
-        var loadNecessity = BuildNativeFrame(
-            request,
-            0xC355,
-            BuildLoadNecessityPayload(
-                session.Character,
-                dungeonClearMasks,
-                dungeonBestRatings,
-                dungeonSecretBestRatings,
-                coupleRelation,
-                UnlockAllDungeons && !IsPureNewProfile(session)),
-            session);
+        var payload = BuildLoadNecessityPayload(session.Character, dungeonClearMasks,
+            dungeonBestRatings, dungeonSecretBestRatings, coupleRelation, UnlockAllDungeons && !IsPureNewProfile(session));
+        payload[2] = mentorship.TeacherName.Length > 0 ? (byte)3
+            : mentorship.Graduates > 0 || mentorship.Students > 0 ? (byte)2 : (byte)4;
+        payload[3] = (byte)Math.Min(255, mentorship.Students);
+        payload[4] = (byte)Math.Min(255, mentorship.Graduates);
+        WriteFixedGbk(payload.AsSpan(8, 16), mentorship.TeacherName);
+        var loadNecessity = BuildNativeFrame(request, 0xC355, payload, session);
         // A pre-completion C354 still gets its native C355 response, but must
         // not initialize our configured inventories/pet inside the main guide.
         // Completion remains owned by validated C353; the next C354/C367 use
@@ -14571,10 +14585,24 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         while (await timer.WaitForNextTickAsync(token))
         {
             var nowUtc = DateTimeOffset.UtcNow;
-            await SendSessionBroadcastBatchAsync(CollectEntertainmentDeadlines(nowUtc.UtcDateTime), token);
+            var sweepRewards = nowUtc.UtcDateTime >= _nextRelationshipRewardSweepUtc;
+            if (sweepRewards) _nextRelationshipRewardSweepUtc = nowUtc.UtcDateTime.AddMinutes(1);
             foreach (var presence in _activeWorldSessions.Values.ToArray())
             {
                 var session = presence.Session;
+                if (sweepRewards && session.TownSceneActive && session.NativeDungeon is null && IsTrackedWorldSession(session))
+                {
+                    try
+                    {
+                        var gifts = await _database.ReconcileRelationshipRewardsAsync(presence.CharacterId, nowUtc.UtcDateTime, token);
+                        if (gifts > 0)
+                            await SendNativeBroadcastAsync(new PendingNativeBroadcast(presence, 0xCB25,
+                                PrivateChatProtocol.BuildMessage("系统通知", "关系纪念礼物已送达，请到商城待领取物品中领取。"),
+                                "relationship reward delivery"), token);
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+                    catch (Exception ex) { _log($"Relationship reward delivery failed: {ex.Message}"); }
+                }
                 if (!session.HealthRecovery.TryGetActiveScene(out var activeScene)
                     || !IsNonCombatRecoverySceneActive(session, activeScene)
                     || !session.HealthRecovery.TryTakeDueTick(nowUtc, out var dueScene))
@@ -14764,6 +14792,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             refreshed.ActiveCoupleRingItemCode = relation?.RingItemCode ?? 0;
             refreshed.ActiveCouplePartnerName = relation?.GetPartnerName(refreshed.Id) ?? string.Empty;
             await ReconcileLevelMentorshipsAsync(session, token);
+            if (session.NativeDungeon is null)
+                await _database.ReconcileRelationshipRewardsAsync(refreshed.Id, DateTime.UtcNow, token);
         }
     }
 
@@ -18419,6 +18449,19 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         CharacterCombatProfile.WriteProfileStats(payload, character);
         return payload;
+    }
+
+    internal static void WriteProfileRelationship(Span<byte> payload, CharacterRecord character,
+        CoupleRelationRecord? relation, DateTime? nowUtc = null)
+    {
+        payload.Slice(100, 24).Clear();
+        if (relation is null) return;
+        var now = (nowUtc ?? DateTime.UtcNow).ToLocalTime();
+        var established = relation.EstablishedAt.ToLocalTime();
+        if (established > now) established = now;
+        WriteFixedGbk(payload.Slice(100, 16), relation.GetPartnerName(character.Id));
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.Slice(116, 4), SkillSlotExpansionTime.Encode(established));
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.Slice(120, 4), SkillSlotExpansionTime.Encode(now));
     }
 
     private async Task<IReadOnlyList<ApartmentPlacementRecord>> TryGetApartmentPlacementsForSnapshotAsync(

@@ -160,7 +160,8 @@ int main(void){
             source = (ROOT/'release/components/cards'/filename).read_text('utf-8')
             start = source.index('static int card_pickup_commit(')
             end = source.index('\n}', start) + 2
-            compile_check('''#include <assert.h>
+            quantity_limit = re.search(r'^#define CARD_QUANTITY_MAX .+$', source, re.M).group(0)
+            compile_check(quantity_limit + '\n' + '''#include <assert.h>
 struct card_drop_claim {unsigned epoch,producer_kind,producer_id,code,scene_uid;unsigned char scene_bound,picked;};
 static struct card_drop_claim g_card_claims[3];
 static unsigned g_card_claim_count=3,g_card_epoch=2,g_card_counts[1];static int save_ok=1;

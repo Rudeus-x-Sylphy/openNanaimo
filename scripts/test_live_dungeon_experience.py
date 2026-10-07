@@ -56,8 +56,10 @@ int main(void){
  g_profile_hp_current=611;g_profile_mp_current=21;count=0;
  managed_bridge_handle(100,0xF10B,40,packet);
  CHECK(count==5&&g_profile_hp_current==611&&g_profile_mp_current==21&&word(frames[3],0xE)==611);
+ CHECK(word(frames[0],24)==611&&word(frames[0],26)==21);
  managed_put(packet,16,1001);count=0;managed_bridge_handle(100,0xF10B,40,packet);
  CHECK(count==5&&g_profile_hp_current==611&&g_profile_mp_current==21);
+ CHECK(word(frames[0],24)==611&&word(frames[0],26)==21);
  // One receipt crossing several levels refills the new effective caps.
  managed_put(packet,12,4);managed_put(packet,16,progression_progression_threshold(4));
  managed_put(packet,20,1660);managed_put(packet,24,140);count=0;

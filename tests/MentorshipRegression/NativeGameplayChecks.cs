@@ -23,7 +23,7 @@ internal static partial class Program
             var frame = (await Dispatch(f, f.Student, 0xC578, []))!;
             var relation = (await f.Database.GetMentorshipRelationsAsync(Actor(f.Student), true)).Single();
             Check(relation.State == (level >= 20 ? MentorshipRelationState.Graduated : MentorshipRelationState.Active), "level-only graduation threshold");
-            Check(BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(10)) == (level >= 20 ? 0 : 3), "student profile updates relationship role");
+            Check(BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(10)) == 3, "graduated student profile retains the original teacher");
             Check(!relation.GraduationRewardGranted, "course reward retains its independent completion condition");
             await Dispatch(f, f.Student, 0xC578, []);
             await InvokeMentorship<Task>(f.Service, "ReconcileLevelMentorshipsAsync", f.Student, CancellationToken.None);

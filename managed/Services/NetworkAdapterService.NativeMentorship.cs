@@ -113,13 +113,18 @@ public sealed partial class NetworkAdapterService
         var character = (await _database.GetCharacterByIdAsync(session.Character!.Id, token))!;
         var actor = CreateMentorshipActor(session);
         await ReconcileLevelMentorshipsAsync(session, token);
-        var relations = await _database.GetMentorshipRelationsAsync(actor, false, token);
+        var relations = await _database.GetMentorshipRelationsAsync(actor, true, token);
         if (!MentorshipRules.AutomaticLevelGraduation)
         {
             foreach (var relation in relations.Where(r => r.TeacherCharacterId == character.Id))
                 await GraduateMentorshipAsync(session.SessionId, relation.Id, token);
-            relations = await _database.GetMentorshipRelationsAsync(actor, false, token);
+            relations = await _database.GetMentorshipRelationsAsync(actor, true, token);
         }
+        relations = relations.Where(r => r.State != MentorshipRelationState.Released).ToArray();
+        var teaching = relations.Where(r => r.TeacherCharacterId == character.Id).ToArray();
+        relations = teaching.Length > 0
+            ? teaching.OrderBy(r => r.State).ThenByDescending(r => r.Id).ToArray()
+            : relations.Where(r => r.StudentCharacterId == character.Id).OrderByDescending(r => r.State).ThenByDescending(r => r.Id).Take(1).ToArray();
         var qualification = await _database.GetMentorshipQualificationAsync(actor, MentorshipRules, token);
         var payload = new byte[280];
         var student = relations.Any(r => r.StudentCharacterId == character.Id);
@@ -147,4 +152,20 @@ public sealed partial class NetworkAdapterService
         WriteFixedGbk(payload.AsSpan(264, 16), character.Name);
         return payload;
     }
+    private async Task WriteProfileMentorshipAsync(byte[] payload, long characterId, CancellationToken token)
+    {
+        var profile = await _database.GetMentorshipProfileAsync(characterId, token);
+        if (profile.TeacherName.Length > 0)
+        {
+            payload[45] = 3;
+            WriteFixedGbk(payload.AsSpan(76, 16), profile.TeacherName);
+        }
+        else if (profile.Graduates > 0 || profile.Students > 0)
+        {
+            payload[45] = 2;
+            payload[46] = (byte)Math.Min(255, profile.Students);
+            payload[50] = (byte)Math.Min(255, profile.Graduates);
+        }
+    }
+
 }

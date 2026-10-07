@@ -7,8 +7,95 @@ using OpenNanaimo.Adapter.Services;
 
 internal static partial class Program
 {
+    private static void CheckEntertainmentBoards()
+    {
+        for (ushort level = 0; level < 12; level++)
+        for (int first = 0; first <= 18; first += 6)
+        {
+            var page = EntertainmentProtocol.BuildGameData(level, first);
+            Check(page.Length == 508, "complete entertainment board page");
+            for (var row = 0; row < 6; row++)
+            {
+                var board = page.AsSpan(4 + 84 * row, 84);
+                var pairs = new HashSet<int>();
+                for (var i = 0; i < 35; i++)
+                {
+                    var a = board[i]; var b = board[40+i];
+                    Check(a < 16 && b < 16 && a / 4 != b / 4 && a % 4 != b % 4
+                        && pairs.Add(a * 16 + b), "every initialized cell has two valid distinct animal keys");
+                }
+                Check(board[83] < 19 && board[80] != board[81] && board[80] != board[82] && board[81] != board[82],
+                    "supported layout and distinct special cells");
+            }
+        }
+        var easy = EntertainmentProtocol.BuildGameData(0);
+        var hard = EntertainmentProtocol.BuildGameData(11);
+        Check(easy[87] == 0 && hard[87] == 16, "selected difficulty chooses its own first layout");
+        Check(EntertainmentProtocol.BuildGameData(2, 6)[87] == 6, "continued boards retain level and advance the sequence");
+    }
+
+    private static async Task CheckRelationshipRewardsAsync()
+    {
+        await using var f = await Fixture.CreateAsync();
+        var teacher = Character(f.Teacher); var student = Character(f.Student);
+        await f.Database.InitializeMentorshipAsync();
+        var now = new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc);
+        var established = now.AddDays(-365);
+        await f.ExecuteAsync("INSERT INTO CoupleRelations(Character1Id,Character2Id,RingItemCode,EstablishedAt) VALUES($a,$b,43000001,$date)",
+            ("$a", Math.Min(teacher.Id, student.Id)), ("$b", Math.Max(teacher.Id, student.Id)), ("$date", established.ToString("O")));
+        var relation = await f.Database.GetActiveCoupleRelationAsync(teacher.Id);
+        var profile = new byte[128];
+        NetworkAdapterService.WriteProfileRelationship(profile, teacher, relation, now);
+        Check(BinaryPrimitives.ReadUInt32LittleEndian(profile.AsSpan(116)) == SkillSlotExpansionTime.Encode(established.ToLocalTime())
+            && BinaryPrimitives.ReadUInt32LittleEndian(profile.AsSpan(120)) == SkillSlotExpansionTime.Encode(now.ToLocalTime()),
+            "profile publishes persisted marriage date and current calendar date");
+        Check(await f.Database.ReconcileRelationshipRewardsAsync(teacher.Id, now.AddDays(-266)) == 0,
+            "anniversary threshold waits for one hundred complete calendar days");
+        Check(await f.Database.ReconcileRelationshipRewardsAsync(teacher.Id, now) == 2, "overdue anniversaries delivered together");
+        Check(await f.Database.ReconcileRelationshipRewardsAsync(student.Id, now) == 2, "anniversary gift belongs to each partner");
+        Check(await f.Database.ReconcileRelationshipRewardsAsync(teacher.Id, now.AddDays(2)) == 0, "anniversary receipt prevents duplicate gifts");
+        Check(await f.ScalarAsync("SELECT SUM(Quantity) FROM CharacterCashInboxItems") == 4, "gifts are available in the claim inbox");
+        var teacherProfile = await f.Database.GetMentorshipProfileAsync(student.Id);
+        Check(teacherProfile.TeacherName == "", "unrelated character has an empty teacher field");
+        var ids = new[] { student.Id, Character(f.Other).Id, Character(f.Visitor).Id };
+        foreach (var id in ids)
+            await f.ExecuteAsync("INSERT INTO MentorshipRelations(TeacherCharacterId,StudentCharacterId,State,CreatedAt,EndedAt) VALUES($teacher,$student,1,$date,$date)",
+                ("$teacher", teacher.Id), ("$student", id), ("$date", now.ToString("O")));
+        teacherProfile = await f.Database.GetMentorshipProfileAsync(student.Id);
+        Check(teacherProfile.TeacherName == teacher.Name, "graduation retains teacher identity after database reload");
+        var studentProfile = new byte[128];
+        await InvokeMentorship<Task>(f.Service, "WriteProfileMentorshipAsync", studentProfile, student.Id, CancellationToken.None);
+        Check(studentProfile[45] == 3 && Encoding.GetEncoding(936).GetString(studentProfile, 76, 16).TrimEnd('\0') == teacher.Name,
+            "remote profile retains the graduated teacher");
+        var loginProfile = InvokeMentorship<byte[]>(f.Service, "BuildLoadNecessityResponse", NativeDungeonClient.Frame(0xC354, []),
+            f.Student, new byte[60], new byte[60], new byte[23], relation, teacherProfile);
+        Check(loginProfile[10] == 3 && Encoding.GetEncoding(936).GetString(loginProfile, 16, 16).TrimEnd('\0') == teacher.Name,
+            "login profile restores the local teacher identity");
+        // Repeated historical rows count a person once.
+        await f.ExecuteAsync("INSERT INTO MentorshipRelations(TeacherCharacterId,StudentCharacterId,State,CreatedAt,EndedAt) VALUES($teacher,$student,1,$date,$date)",
+            ("$teacher", teacher.Id), ("$student", student.Id), ("$date", now.ToString("O")));
+        Check((await f.Database.GetMentorshipProfileAsync(teacher.Id)).Graduates == 3, "graduate totals count distinct students");
+        for (var i = 0; i < 2; i++)
+        {
+            var extra = await f.CreateSessionAsync("graduate-extra-" + i, "Graduate" + i, 20, 1);
+            await f.ExecuteAsync("INSERT INTO MentorshipRelations(TeacherCharacterId,StudentCharacterId,State,CreatedAt,EndedAt) VALUES($teacher,$student,1,$date,$date)",
+                ("$teacher", teacher.Id), ("$student", Character(extra).Id), ("$date", now.ToString("O")));
+        }
+        var grants = await Task.WhenAll(f.Database.ReconcileRelationshipRewardsAsync(teacher.Id, now),
+            new DatabaseService(f.Root).ReconcileRelationshipRewardsAsync(teacher.Id, now));
+        Check(grants.Sum() == 1, "five graduates grant one hat across concurrent reward sweeps");
+        var hatCode = teacher.Gender == 1 ? 10130403u : 10030403u;
+        var claim = await f.Database.ClaimCashInboxItemAsync(Actor(f.Teacher).AccountId, teacher.Id, Id(f.Teacher), hatCode);
+        Check(claim.Success && claim.InventoryQuantity == 1 && claim.InboxQuantity == 0, "teacher hat can be claimed into clothing inventory");
+        Check(await f.Database.ReconcileRelationshipRewardsAsync(teacher.Id, now) == 0, "claimed milestone retains its single-award receipt");
+        foreach (var code in new uint[] { 10030403,10030404,10030405,10130403,10130404,10130405 })
+            Check(ShopCatalog.TryGet(code, out var hat) && hat.Section == InventorySection.Clothing, "teacher reward hat catalogue is usable");
+    }
+
     private static async Task CheckGameplayReviewAsync()
     {
+        CheckEntertainmentBoards();
+        await CheckRelationshipRewardsAsync();
         await using var f = await Fixture.CreateAsync();
         object Auxiliary(object world, byte game)
         {
@@ -77,9 +164,9 @@ internal static partial class Program
         Check((await Send(guest, 0xD003, new byte[4]))!.Length == 12, "life updates preserve the current board");
         Check((await Send(host, 0xD005, [10, 0, 1, 0]))!.Length == 12, "combo updates preserve the current board");
         var continued = await Send(guest, 0xCF81, []);
-        Check(continued is not null && continued.Length > 12
+        Check(continued is not null && continued.Length == 12
             && BinaryPrimitives.ReadUInt16LittleEndian(continued.AsSpan(10)) == 3,
-            "entertainment continuation restores three lives and supplies another board");
+            "entertainment continuation restores three lives while retaining its board reserve");
         Check(await Send(guest, 0xCF81, []) is null, "repeated continuation grants one replacement board");
         Set(room, "LuckyPoints", (ushort)900);
         var lucky = await Send(guest, 0xD007, [2, 2, 2, 10]);
@@ -90,9 +177,20 @@ internal static partial class Program
         Check(await Send(guest, 0xD007, [2, 2, 2, 10]) is null,
             "duplicate cell cannot duplicate a lucky award");
         Check(await Send(host, 0xCF7F, []) is null, "duplicate loading confirmation preserves the independent deadline");
+        ((IList)Get(host, "PendingSessionBroadcasts")!).Clear();
+        Check(await Send(host, 0xD007, [4, 0, 0, 0]) is not null, "completed board near reserve boundary is accepted");
+        Check(((IList)Get(host, "PendingSessionBroadcasts")!).Cast<object>().Count(x => (ushort)Get(x, "Opcode")! == 0xCFE6) == 1,
+            "board reserve refills once before exhaustion");
         Set(room, "StartedUtc", DateTime.UtcNow.AddSeconds(-105));
-        var notices = InvokeMentorship<object>(f.Service, "CollectEntertainmentDeadlines", DateTime.UtcNow);
-        Check(((IList)notices).Count == 2, "deadline ends every member without incoming gameplay requests");
+        using (var stopTimer = new CancellationTokenSource(TimeSpan.FromSeconds(2)))
+        {
+            var timer = InvokeMentorship<Task>(f.Service, "EntertainmentDeadlineLoopAsync", stopTimer.Token);
+            while (!(bool)Get(room, "EndNotificationSent")! && !stopTimer.IsCancellationRequested)
+                await Task.Delay(20);
+            Check((bool)Get(room, "EndNotificationSent")!, "independent timer ends a round without gameplay or recovery ticks");
+            stopTimer.Cancel();
+            try { await timer; } catch (OperationCanceledException) { }
+        }
         Check(((IList)InvokeMentorship<object>(f.Service, "CollectEntertainmentDeadlines", DateTime.UtcNow)).Count == 0,
             "deadline notification is emitted once per round");
         Check(await Send(host, 0xD007, [3, 3, 3, 10]) is null, "deadline freezes late scores");

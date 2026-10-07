@@ -199,6 +199,9 @@ public sealed partial class DatabaseService
                       AND (StudentCharacterId = $teacher OR StudentCharacterId = $student OR TeacherCharacterId = $student))
             """, token, ("$teacher", teacher.Id), ("$student", student.Id), ("$excluded", excludedRequestId));
         if (roleConflicts != 0) return false;
+        if (await MentorshipScalarAsync(connection, transaction,
+            "SELECT COUNT(*) FROM MentorshipRelations WHERE StudentCharacterId=$id AND State=1",
+            token, ("$id", student.Id)) != 0) return false;
         var students = await MentorshipScalarAsync(connection, transaction, """
             SELECT (SELECT COUNT(*) FROM MentorshipRelations WHERE State = 0 AND TeacherCharacterId = $teacher)
                  + (SELECT COUNT(*) FROM MentorshipRequests WHERE State = 0 AND TeacherCharacterId = $teacher AND Id <> $excluded)
@@ -221,7 +224,9 @@ public sealed partial class DatabaseService
                  + (SELECT COUNT(*) FROM MentorshipRequests WHERE StudentCharacterId = $id AND State = 0)
             """, token, ("$id", actor.CharacterId)) > 0;
         var canTeach = !isStudent && character.Level >= policy.MinimumTeacherLevel && students + reservations < policy.MaximumStudents;
-        var canStudy = !isStudent && students + reservations == 0
+        var graduated = await MentorshipScalarAsync(connection, transaction,
+            "SELECT COUNT(*) FROM MentorshipRelations WHERE StudentCharacterId=$id AND State=1", token, ("$id", actor.CharacterId)) > 0;
+        var canStudy = !isStudent && !graduated && students + reservations == 0
             && (policy.GraduationMinimumLevel is not int graduation || character.Level < graduation);
         var canGraduate = false;
         using (var query = MentorshipCommand(connection, transaction,

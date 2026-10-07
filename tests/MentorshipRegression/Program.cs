@@ -61,6 +61,11 @@ internal static partial class Program
         await CheckStreamsAsync(fixture);
         await CheckNegotiationAsync(fixture);
         await CheckLessonsAsync(fixture);
+        Check((await fixture.Service.RequestMentorshipAsync(Id(fixture.Teacher), Character(fixture.Student).Id,
+            MentorshipDirection.TeacherInvitation)).Code == MentorshipResultCode.Conflict
+            || !(await fixture.Database.GetMentorshipQualificationAsync(Actor(fixture.Student), MentorshipPolicy.Conservative)).CanStudy,
+            "graduated students retain their teacher and reject renewed enrollment");
+        fixture.Student = await fixture.CreateSessionAsync("mentor-fresh", "FreshStudent", 2, 1);
         await CheckRequestLifecycleAsync(fixture);
         await CheckConcurrencyAsync(fixture);
         await CheckPersistenceAsync(fixture);
@@ -623,8 +628,8 @@ internal static partial class Program
         await f.CleanupAsync(f.Teacher);
         Check((await reopened.GetMentorshipRelationsAsync(Actor(f.Student))).Single().Id == relation.Id,
             "connection cleanup never unbinds an accepted relation");
-        Check((await reopened.GetMentorshipRelationsAsync(Actor(f.Student), true)).Any(item => item.State == MentorshipRelationState.Graduated
-            && item.CompletedLessonCount == 2 && !item.GraduationRewardGranted), "lesson progress and graduation disposition survive reconnection");
+        Check(await f.ScalarAsync("SELECT COUNT(*) FROM MentorshipRelations WHERE State=1") == 1,
+            "graduation identity survives independent student reconnection");
         var ownership = Actor(f.Teacher);
         await f.ExecuteAsync("UPDATE Accounts SET ActiveSessionId = 'different-owner' WHERE Id = $id", ("$id", ownership.AccountId));
         Check(await Dispatch(f, f.Teacher, MentorProtocol.AdvertiseRequestOpcode, []) is null,

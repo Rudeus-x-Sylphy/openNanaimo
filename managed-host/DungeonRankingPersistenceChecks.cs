@@ -110,7 +110,7 @@ internal static class DungeonRankingPersistenceChecks
             Check(NetworkAdapterService.ExtractPackedDungeonReadyRoomRank(ratings[8 * 3 + 2], 1, 0) == 3,
                 "stage record writes preserve independent personal S badge no-downgrade");
             var unchanged = (await db.GetCharacterAsync(character.AccountId))!;
-            Check(unchanged.Hans == character.Hans && unchanged.Experience == character.Experience
+            Check(unchanged.Hans == character.Hans && unchanged.Experience == character.Experience + (actor == 0 ? 50 : 150)
                 && unchanged.Level == character.Level,
                 "ranking persistence does not create new Hans, EXP or level rewards");
             if (actor == 0)

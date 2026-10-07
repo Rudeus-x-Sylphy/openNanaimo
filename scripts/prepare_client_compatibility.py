@@ -594,6 +594,31 @@ def patch_boss_health_display(data: bytes) -> tuple[bytes, dict]:
     return data, _migration_report('patch_boss_health_display', **rows)
 
 
+def social_gameplay_patch_sites():
+    """Synchronize the picnic meter and require populated dungeon results."""
+    base = 0x006E31E0
+    code = bytearray.fromhex('9c608b5424288b89a800000085c9')
+    skip = len(code); code += b'\x74\0'
+    code += bytes.fromhex('83ec1889e78d711c89cbb906000000fcf3a5')
+    code += bytes.fromhex('c64424170089d90fb7420e3de8030000')
+    bounded = len(code); code += b'\x72\0'
+    code += bytes.fromhex('b8e7030000')
+    code[bounded + 1] = len(code) - bounded - 2
+    code += bytes.fromhex('5450')
+    code += b'\xE8' + struct.pack('<i', 0x00655C40 - (base + len(code) + 5))
+    code += bytes.fromhex('83c418')
+    code[skip + 1] = len(code) - skip - 2
+    code += bytes.fromhex('619d')
+    code += b'\xE9' + struct.pack('<i', 0x006435D0 - (base + len(code) + 5))
+    require(len(code) <= 96, 'picnic meter code exceeds reserved region')
+    return [
+        ('picnic_lucky_meter_code', base, b'\xCC' * 96, bytes(code).ljust(96, b'\xCC')),
+        ('picnic_lucky_meter_entry', 0x0040B37A, bytes.fromhex('e951822300'),
+         b'\xE9' + struct.pack('<i', base - 0x0040B37A - 5)),
+        ('dungeon_result_data_gate', 0x0066CD71, bytes.fromhex('741a'), bytes.fromhex('eb1a')),
+    ]
+
+
 def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     """Manual results and settlement-only EXP display; retain mouse and live score."""
     data, timer = _patch_site(data, SETTLEMENT_AUTO_GATE_VA,
@@ -609,6 +634,10 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     for name, va, old, new in SETTLEMENT_MEMBER_TOWN_SITES:
         data, member_town[name] = _patch_site(data, va, old, new, name,
             'the settlement member town control differs')
+    gameplay = {}
+    for name, va, old, new in social_gameplay_patch_sites():
+        data, gameplay[name] = _patch_site(data, va, old, new, 'patch_' + name,
+            'the social gameplay compatibility site differs')
     data, result_entry = dungeon_result_compat.patch(data, _patch_site)
     data, power = restore_native_power(data)
     data, experience = dungeon_experience_compat.patch_experience_preview(data, _patch_site)
@@ -617,6 +646,7 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     data, quickbar = patch_quickbar_refresh(data)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
         other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power, result_entry=result_entry,
+        social_gameplay=_migration_report('patch_social_gameplay', **gameplay),
         settlement_experience=experience, actor_level=actor_level, boss_health=boss_health, quickbar=quickbar,
         member_town=_migration_report('patch_settlement_member_town', **member_town))
 
@@ -1071,6 +1101,7 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
         expected_sites.extend((name, va, new) for name, va, _, new in BOSS_HEALTH_DISPLAY_SITES)
         expected_sites.extend((name, va, new) for name, va, _, new in quickbar_refresh_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in SETTLEMENT_MEMBER_TOWN_SITES)
+        expected_sites.extend((name, va, new) for name, va, _, new in social_gameplay_patch_sites())
         result_hook, result_code = dungeon_result_compat.encodings()
         expected_sites.extend((('dungeon_result_entry', dungeon_result_compat.HOOK_VA, result_hook),
                                ('dungeon_result_entry_code', dungeon_result_compat.CAVE_VA, result_code)))

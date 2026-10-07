@@ -69,7 +69,7 @@ static int managed_bridge_import(const unsigned char*p){
     g_skill_progress_loaded=0;skill_progress_load();g_skill_progress_sp=managed_get(p,48);g_skill_progress_sp_meat=managed_get(p,5112)>>16;
     g_skill_progress_slots[0]=managed_get(p,52);g_skill_progress_slots[1]=managed_get(p,56);
     for(i=0;i<16u;i++)g_skill_progress_grade[i]=(unsigned char)managed_get(p,160+i*4);
-    g_card_loaded=0;card_db_load();for(i=0;i<CARD_COUNT;i++)g_card_counts[i]=managed_get(p,272+i*4);
+    g_card_loaded=0;card_db_load();for(i=0;i<CARD_COUNT;i++)g_card_counts[i]=card_quantity_clamp(managed_get(p,272+i*4));
     g_card_synth_items_loaded=0;card_synth_items_load();g_card_synth_item_n=n;
     for(i=0;i<n;i++){g_card_synth_items[i].code=managed_get(p,1956+i*8);g_card_synth_items[i].count=managed_get(p,1960+i*8);}
     g_quickbar_loaded=0;quickbar_load();for(i=0;i<6u;i++){g_quickbar_code[i]=managed_get(p,224+i*8);g_quickbar_instance[i]=managed_get(p,228+i*8);}
@@ -187,7 +187,7 @@ static int managed_bridge_handle(SOCKET c,int type,int len,const unsigned char*f
         /* C57C -> 6EB6F0 is a battle-dispatch progression notification, not CF88.
            +29=255 selects the statically proven silent/default branch. */
         mkpkt(p,0xC57C,52,1);stable_put32(p,12,exp);stable_put32(p,16,st.lower);stable_put32(p,20,st.next);
-        stable_resource_put16(p,24,pet_crafting_pet_effective_hp_max());stable_resource_put16(p,26,pet_crafting_pet_effective_mp_max());
+        stable_resource_put16(p,24,g_profile_hp_current);stable_resource_put16(p,26,pet_crafting_pet_effective_mp_current());
         p[28]=(char)level;p[29]=(char)255;sendbuf(c,p,52);
         managed_bridge_broadcast_actor_level(c,level);
         send_cf72_dynamic_actor_refresh_phase(c,multiplayer_current_uid(),native_cf72_phase_for_socket(c));

@@ -151,9 +151,9 @@ internal static class InventoryDiscardRefreshChecks
             var initialRing = Find(gameRows, Code(ring));
             Check(expansionSecond.Identity != expansionFirst.Identity, "duplicate expansion identities are distinct");
             await Execute($"INSERT INTO CharacterQuickSlots(CharacterId,Slot,ItemCode,InventoryIndex,UpdatedAt) VALUES" +
-                $"({character},0,{Code(ring)},{initialRing.Identity},'fixture')," +
-                $"({character},1,{Code(expansion)},{expansionSecond.Identity},'fixture')," +
-                $"({character},2,{Code(expansion)},{expansionFirst.Identity},'fixture');");
+                $"({character},0,{Code(ring)},{gameRows.ToList().IndexOf(initialRing)},'fixture')," +
+                $"({character},1,{Code(expansion)},{gameRows.ToList().IndexOf(expansionSecond)},'fixture')," +
+                $"({character},2,{Code(expansion)},{gameRows.ToList().IndexOf(expansionFirst)},'fixture');");
             Set("Character", await db.GetCharacterAsync(account) ?? throw new InvalidDataException("quickbar fixture reload failed"));
 
             await Reject([0], "short request");

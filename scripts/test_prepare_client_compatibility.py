@@ -60,6 +60,7 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
                  character_skip=bytes.fromhex("685C030000"),
                  character_gate=bytes.fromhex("6A00")):
     sections = [
+        (0x260000, 0x10000, 0x169400),
         (0x10000, 0x11000, 0x400),
         (0x2E0000, 0x14000, 0x11400),
         (0x360000, 0x10000, 0x25400),
@@ -80,7 +81,7 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0x740000, 0x10000, 0x149400),
         (0x2F4000, 0x10000, 0x159400),
     ]
-    data = bytearray(0x169400)
+    data = bytearray(0x179400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -96,6 +97,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         offset = compat._va_offset(data, va, len(blob))
         data[offset:offset + len(blob)] = blob
         return offset
+    for _, va, old, _ in compat.social_gameplay_patch_sites():
+        put(va, old)
     for _, va, old, _ in compat.quickbar_refresh_sites():
         put(va, old)
     put(compat.dungeon7_visuals.MINIMAP_VA, compat.dungeon7_visuals.MINIMAP_OLD)

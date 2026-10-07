@@ -989,9 +989,12 @@ public sealed partial class DatabaseService
                     ("$code", 13000001 + i), ("$delta", delta)) != 1) throw new InvalidDataException("Dungeon card debit conflict.");
                 continue;
             }
+            // Album quantities are bytes. Clamp both the proposed INSERT row
+            // (SQLite validates CHECK before UPSERT) and the existing-row sum.
+            // Keep debits strict: saturation is only a reward/grant policy.
             await Execute("""
-                INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt) VALUES($id,$code,$delta,$now)
-                ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=Quantity+$delta, UpdatedAt=$now
+                INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt) VALUES($id,$code,MIN(255,$delta),$now)
+                ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=MIN(255,CharacterCards.Quantity+$delta), UpdatedAt=$now
                 """, ("$code", 13000001 + i), ("$delta", delta), ("$now", DateTime.UtcNow.ToString("O")));
         }
         var oldItems = before.Items; var newItems = after.Items;

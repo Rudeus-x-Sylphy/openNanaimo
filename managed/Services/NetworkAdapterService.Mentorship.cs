@@ -183,6 +183,7 @@ public sealed partial class NetworkAdapterService
     {
         if (result.Success && result.Relation is { } relation)
         {
+            await _database.ReconcileRelationshipRewardsAsync(relation.TeacherCharacterId, DateTime.UtcNow, token);
             if (relation.GraduationRewardGranted)
             {
                 var savedStudent = await _database.GetCharacterByIdAsync(relation.StudentCharacterId, token);

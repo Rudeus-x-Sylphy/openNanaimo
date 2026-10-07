@@ -66,9 +66,8 @@ internal static class EntertainmentProtocol
 
     private static readonly Encoding Gbk = CreateGbkEncoding();
 
-    // Retail sub_660080 writes byte-sized lookup keys, not the four-digit
-    // resource suffixes. The two client maps contain the 32 packaged animals.
-    private const byte PackagedAnimalResourceKeyCount = 32;
+    // Board keys address the 4 by 4 animal catalogue.
+    private const byte PackagedAnimalResourceKeyCount = 16;
     private static readonly (byte First, byte Second)[] ValidAnimalPairs =
         BuildValidAnimalPairs();
 
@@ -232,7 +231,18 @@ internal static class EntertainmentProtocol
         return payload;
     }
 
-    public static byte[] BuildGameData()
+    private static readonly byte[][] DifficultyLayouts =
+    [
+        [0,1,2,3,4,5,6,6,7,6], [0,1,2,3,3,4,4,6,7,6],
+        [0,2,3,4,4,6,6,7,7,6], [1,3,4,6,7,8,9,9,10,9],
+        [5,6,7,7,9,9,10,10,9,9], [8,8,9,9,10,10,9,9,10,9],
+        [5,6,7,8,9,10,11,12,13,12], [8,9,9,10,10,10,11,13,12,12],
+        [11,11,12,12,13,13,12,12,13,12], [14,14,15,15,16,17,17,18,17,17],
+        [14,14,15,14,15,17,18,17,18,17], [16,16,17,17,18,18,17,17,18,17]
+    ];
+    private static readonly byte[] LayoutCellCounts = [9,9,15,15,15,21,21,21,25,25,25,35,35,35,25,25,35,35,35];
+
+    public static byte[] BuildGameData(ushort level = 0, int firstBoard = 0)
     {
         var payload = new byte[GameDataResponseLength];
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0, 4), 1);
@@ -246,14 +256,15 @@ internal static class EntertainmentProtocol
                 record[cell] = pairs[cell].First;
                 record[40 + cell] = pairs[cell].Second;
             }
-            byte[] specialCells = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+            var layouts = DifficultyLayouts[Math.Clamp((int)level, 0, DifficultyLayouts.Length - 1)];
+            var board = firstBoard + recordIndex;
+            var layout = board < 9 ? layouts[board] : (byte)Random.Shared.Next(layouts[9], layouts[9] + 2);
+            byte[] specialCells = Enumerable.Range(0, LayoutCellCounts[layout]).Select(i => (byte)i).ToArray();
             Random.Shared.Shuffle(specialCells);
             record[80] = specialCells[0];
             record[81] = specialCells[1];
             record[82] = specialCells[2];
-            // Selector 0 is the official 3x3 layout and is the narrowest
-            // packaged board. It avoids selecting an unsupported area.
-            record[83] = 0;
+            record[83] = layout;
         }
         return payload;
     }
@@ -284,11 +295,8 @@ internal static class EntertainmentProtocol
         for (byte first = 0; first < PackagedAnimalResourceKeyCount; first++)
         for (byte second = 0; second < PackagedAnimalResourceKeyCount; second++)
         {
-            // Map order is 00x0/00x1 through 03x0/03x1. Retail generation
-            // rejects a pair when either its two-digit group or animal type
-            // matches, then rejects duplicate ordered pairs in the record.
-            if (first / 8 == second / 8
-                || first / 2 % 4 == second / 2 % 4)
+            // A pair must differ in both group and animal type.
+            if (first / 4 == second / 4 || first % 4 == second % 4)
                 continue;
             pairs.Add((first, second));
         }

@@ -23,7 +23,10 @@ internal static class Program
             && combat.GainedLevels == 0,
             "intermediate combat checkpoints cannot add character progression");
 
-        var thresholdCharacter = NewCharacter(1, 90);
+        var levelTwoThreshold = CharacterProgression.ExperienceRequiredForLevel(2);
+        var beforeExperience = levelTwoThreshold - 10;
+        var afterExperience = levelTwoThreshold + 10;
+        var thresholdCharacter = NewCharacter(1, beforeExperience);
         var settlementBefore = NativeDungeonState.Create(thresholdCharacter, [], []);
         var settlementAfterBytes = settlementBefore.Bytes.ToArray();
         Put(settlementAfterBytes, 8, 4);
@@ -34,10 +37,10 @@ internal static class Program
             StageRecordScore: 12_000, CharacterExperienceAward: 20);
         var settled = DatabaseService.ResolveNativeDungeonCharacterProgression(
             settlementBefore, settlementAfter, settlement,
-            storedLevel: 1, storedExperience: 90,
+            storedLevel: 1, storedExperience: beforeExperience,
             vitality: 0, intelligence: 0, storedMaxHp: 160, storedMaxMp: 100);
         Check(settled.AppliedExperience == 20
-            && settled.Experience == 110
+            && settled.Experience == afterExperience
             && settled.Level == 2
             && settled.GainedLevels == 1
             && settled.CurrentHp == settled.MaxHp
@@ -46,10 +49,10 @@ internal static class Program
 
         var stale = DatabaseService.ResolveNativeDungeonCharacterProgression(
             settlementBefore, settlementAfter, null,
-            storedLevel: 2, storedExperience: 110,
+            storedLevel: 2, storedExperience: afterExperience,
             vitality: 0, intelligence: 0, storedMaxHp: settled.MaxHp, storedMaxMp: settled.MaxMp);
         Check(stale.AppliedExperience == 0
-            && stale.Experience == 110
+            && stale.Experience == afterExperience
             && stale.Level == 2
             && stale.GainedLevels == 0,
             "post-settlement stale checkpoints cannot overwrite committed progression");
@@ -59,7 +62,7 @@ internal static class Program
         Put(boostedBytes, 24, 350); Put(boostedBytes, 28, 350);
         var boosted = DatabaseService.ResolveNativeDungeonCharacterProgression(
             settlementBefore, new NativeDungeonState(boostedBytes), null,
-            storedLevel: 1, storedExperience: 90, vitality: 0, intelligence: 0,
+            storedLevel: 1, storedExperience: beforeExperience, vitality: 0, intelligence: 0,
             storedMaxHp: 160, storedMaxMp: 100);
         Check(boosted.MaxHp == 1440 && boosted.MaxMp == 100
             && boosted.CurrentHp == 2500 && boosted.CurrentMp == 350,
@@ -67,19 +70,19 @@ internal static class Program
         Put(boostedBytes, 20, 9999); Put(boostedBytes, 28, 9999);
         var capped = DatabaseService.ResolveNativeDungeonCharacterProgression(
             settlementBefore, new NativeDungeonState(boostedBytes), null,
-            storedLevel: 1, storedExperience: 90, vitality: 0, intelligence: 0,
+            storedLevel: 1, storedExperience: beforeExperience, vitality: 0, intelligence: 0,
             storedMaxHp: 160, storedMaxMp: 100);
         Check(capped.CurrentHp == 2500 && capped.CurrentMp == 350,
             "current resources remain bounded by effective maxima");
 
         var legacySettlement = settlement with { CharacterExperienceAward = null };
         var legacyAfterBytes = settlementBefore.Bytes.ToArray();
-        Put(legacyAfterBytes, 12, 110);
+        Put(legacyAfterBytes, 12, checked((uint)afterExperience));
         var legacy = DatabaseService.ResolveNativeDungeonCharacterProgression(
             settlementBefore, new NativeDungeonState(legacyAfterBytes), legacySettlement,
-            storedLevel: 1, storedExperience: 90,
+            storedLevel: 1, storedExperience: beforeExperience,
             vitality: 0, intelligence: 0, storedMaxHp: 160, storedMaxMp: 100);
-        Check(legacy.AppliedExperience == 20 && legacy.Experience == 110 && legacy.Level == 2,
+        Check(legacy.AppliedExperience == 20 && legacy.Experience == afterExperience && legacy.Level == 2,
             "legacy settlement journals retain positive-delta recovery compatibility");
 
         var payload = new byte[4 + 2 * 0x34];
@@ -103,15 +106,15 @@ internal static class Program
         Check(!NetworkAdapterService.TryReadNativeDungeonSettlementFrame(malformed, 1, out _, out _, out _),
             "duplicate local identity is rejected before selecting its award");
         var untouchedRemote = frame.AsSpan(0x0C + 0x34, 0x34).ToArray();
-        var committedCharacter = NewCharacter(2, 110);
+        var committedCharacter = NewCharacter(2, afterExperience);
         Check(NetworkAdapterService.PatchNativeCharacterProgressionFrame(
                 frame, checked((uint)levelOne.Id), thresholdCharacter, committedCharacter)
             && frame[0x0C + 0x04] == 1
             && frame[0x0C + 0x0A] == 2
             && U32(frame, 0x0C + 0x0C) == 20
-            && U32(frame, 0x0C + 0x10) == 110
-            && U32(frame, 0x0C + 0x14) == 100
-            && U32(frame, 0x0C + 0x18) == 300
+            && U32(frame, 0x0C + 0x10) == afterExperience
+            && U32(frame, 0x0C + 0x14) == levelTwoThreshold
+            && U32(frame, 0x0C + 0x18) == CharacterProgression.NextExperienceThreshold(2)
             && frame.AsSpan(0x0C + 0x34, 0x34).SequenceEqual(untouchedRemote)
             && HasValidChecksum(frame),
             "CF88 client synchronization uses committed progression and preserves other members");

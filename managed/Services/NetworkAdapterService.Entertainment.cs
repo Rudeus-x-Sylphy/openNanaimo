@@ -36,6 +36,8 @@ public sealed partial class NetworkAdapterService
         public ushort Selection1 { get; set; }
         public byte[] InitialGameData { get; set; } = [];
         public bool Started { get; set; }
+        public Dictionary<string, int> BoardsDelivered { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, int> CurrentBoards { get; } = new(StringComparer.Ordinal);
         public bool EndNotificationSent { get; set; }
         public Dictionary<string, byte> CompletedCells { get; } = new(StringComparer.Ordinal);
         public Guid RoundId { get; set; }
@@ -480,7 +482,9 @@ public sealed partial class NetworkAdapterService
                 return false;
             }
 
-            room.InitialGameData = EntertainmentProtocol.BuildGameData();
+            room.InitialGameData = EntertainmentProtocol.BuildGameData(room.CreateRequest.Level);
+            room.BoardsDelivered.Clear();
+            room.CurrentBoards.Clear();
             room.Started = true;
             room.RoundId = Guid.NewGuid();
             room.EndNotificationSent = false;
@@ -496,6 +500,8 @@ public sealed partial class NetworkAdapterService
             room.PicnicLivesBySession.Clear();
             foreach (var member in room.Members.Values)
             {
+                room.BoardsDelivered[member.SessionId] = 6;
+                room.CurrentBoards[member.SessionId] = 0;
                 room.ScoresBySession[member.SessionId] = 0;
                 room.PicnicLivesBySession[member.SessionId] = 3;
             }
@@ -505,17 +511,31 @@ public sealed partial class NetworkAdapterService
         }
     }
 
-    private bool TryContinueEntertainmentGame(ConnectionSession requester)
+    private bool TryContinueEntertainmentGame(ConnectionSession requester, out byte[] gameData)
     {
+        gameData = [];
         lock (_entertainmentRoomGate)
         {
             if (!_entertainmentRooms.TryGetValue(requester.EntertainmentRoomId, out var room)
                 || !room.Started || !room.CountdownStarted || room.FinalScores is not null
                 || !room.Members.ContainsKey(requester.SessionId)
                 || room.PicnicLivesBySession.GetValueOrDefault(requester.SessionId, (ushort)3) != 0) return false;
+            var board = room.CurrentBoards.GetValueOrDefault(requester.SessionId) + 1;
+            if (board >= 294) return false;
+            room.CurrentBoards[requester.SessionId] = board;
+            gameData = RefillEntertainmentBoardsLocked(room, requester);
             room.PicnicLivesBySession[requester.SessionId] = 3;
             return true;
         }
+    }
+
+    private static byte[] RefillEntertainmentBoardsLocked(EntertainmentRoom room, ConnectionSession member)
+    {
+        var delivered = room.BoardsDelivered.GetValueOrDefault(member.SessionId, 6);
+        if (delivered - room.CurrentBoards.GetValueOrDefault(member.SessionId) > 3 || delivered >= 300) return [];
+        var page = EntertainmentProtocol.BuildGameData(room.CreateRequest.Level, delivered);
+        room.BoardsDelivered[member.SessionId] = delivered + 6;
+        return page;
     }
 
     private bool TrySetEntertainmentPicnicLives(
@@ -583,9 +603,15 @@ public sealed partial class NetworkAdapterService
                 || room.FinalScores is not null
                 || !room.Members.ContainsKey(requester.SessionId)
                 || requester.Character is null || state > 3 || completionFlag > 3
+                || cellIndex >= room.BoardsDelivered.GetValueOrDefault(requester.SessionId, 6)
                 || (room.CompletedCells.TryGetValue(requester.SessionId, out var previous) && cellIndex <= previous))
                 return false;
             room.CompletedCells[requester.SessionId] = cellIndex;
+            room.CurrentBoards[requester.SessionId] = Math.Max(room.CurrentBoards.GetValueOrDefault(requester.SessionId), cellIndex);
+            var nextBoards = RefillEntertainmentBoardsLocked(room, requester);
+            if (nextBoards.Length != 0)
+                requester.PendingSessionBroadcasts.Add(new PendingSessionBroadcast(requester, 0xCFE6,
+                    nextBoards, "entertainment board reserve", room.RoundId));
             var delta = completionFlag != 0 && completionFlag == state
                 ? state * 100 + Math.Max(0, 22 - (int)elapsedSeconds) : 0;
             var luckyTotal = room.LuckyPoints + delta;
@@ -977,6 +1003,17 @@ public sealed partial class NetworkAdapterService
             room.CountdownStarted = true;
             room.StartedUtc = DateTime.UtcNow;
             return true;
+        }
+    }
+
+    private async Task EntertainmentDeadlineLoopAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+        while (await timer.WaitForNextTickAsync(token))
+        {
+            try { await SendSessionBroadcastBatchAsync(CollectEntertainmentDeadlines(DateTime.UtcNow), token); }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+            catch (Exception ex) { _log($"Entertainment deadline delivery failed: {ex.Message}"); }
         }
     }
 

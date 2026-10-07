@@ -79,7 +79,7 @@ try
         await cmd.ExecuteNonQueryAsync();
     }
     await Set("Level=1,Experience=0,Strength=5,Vitality=5,Agility=5,Intelligence=5,Luck=5,AttributePoints=7,AttackModifier=9,DefenseFlat=11,MaxHp=1500,MaxMp=100");
-    c = (await db.GrantExperienceAsync(c.Id, 99))!;
+    c = (await db.GrantExperienceAsync(c.Id, CharacterProgression.ExperienceRequiredForLevel(2) - 1))!;
     Growth(c, 1, 5, 7);
     c = (await db.GrantExperienceAsync(c.Id, 1))!;
     Growth(c, 2, 6, 7);
@@ -87,28 +87,28 @@ try
     var exported = NativeDungeonState.Create(c, [], []);
     Check(exported.Get(NativeDungeonState.AttackModifierOffset) == 13 && c.AttackModifier == 9, "earned attack joins native combat while configured adjustment stays independent");
     Check(exported.Get(NativeDungeonState.DefenseFlatOffset) == 34, "character defense plus configured adjustment");
-    c = (await db.GrantExperienceAsync(c.Id, 500))!;
+    c = (await db.GrantExperienceAsync(c.Id, CharacterProgression.ExperienceRequiredForLevel(4) - c.Experience))!;
     Growth(c, 4, 8, 7);
     string session = Guid.NewGuid().ToString("N");
     Check(await db.BeginWorldSessionAsync(account, c.Id, session, 1, "127.0.0.1"), "session ownership");
     c = (await db.ApplyDungeonRewardAsync(account, c.Id, session, 0, 0, 0, 0,
-        0, 0, 400, 0, 0, activitySettlementKey: "growth-1"))!;
+        0, 0, checked((int)(CharacterProgression.ExperienceRequiredForLevel(5) - CharacterProgression.ExperienceRequiredForLevel(4))), 0, 0, activitySettlementKey: "growth-1"))!;
     Growth(c, 5, 9, 7);
     c = (await db.ApplyDungeonRewardAsync(account, c.Id, session, 0, 0, 0, 0,
-        0, 0, 400, 0, 0, activitySettlementKey: "growth-1"))!;
+        0, 0, checked((int)(CharacterProgression.ExperienceRequiredForLevel(5) - CharacterProgression.ExperienceRequiredForLevel(4))), 0, 0, activitySettlementKey: "growth-1"))!;
     Growth(c, 5, 9, 7);
-    Check(c.Experience == 1000, "duplicate reward is idempotent");
+    Check(c.Experience == CharacterProgression.ExperienceRequiredForLevel(5), "duplicate reward is idempotent");
     var before = NativeDungeonState.Create(c, [], []);
     var after = new NativeDungeonState(before.Bytes.ToArray());
     BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(8, 4), 1);
     BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(12, 4), 9999);
     var settlement = new NativeDungeonSettlementRecord(0, 0, 0, 0, 0,
-        DungeonRewardPolicy.ClearRatingS, 0, SettlementId: "growth-native", CharacterExperienceAward: 500);
+        DungeonRewardPolicy.ClearRatingS, 0, SettlementId: "growth-native", CharacterExperienceAward: checked((uint)(CharacterProgression.ExperienceRequiredForLevel(6) - c.Experience)));
     await db.ApplyNativeDungeonDeltaAsync(account, c.Id, session, before, after,
         CancellationToken.None, "growth-native-1", settlement: settlement);
     c = (await db.GetCharacterAsync(account))!;
     Growth(c, 6, 10, 7);
-    Check(c.Experience == 1500 && c.MaxHp == 1600 && c.MaxMp == 175, "native authoritative reward and maxima");
+    Check(c.Experience == CharacterProgression.ExperienceRequiredForLevel(6) && c.MaxHp == 1600 && c.MaxMp == 175, "native authoritative reward and maxima");
     await db.ApplyNativeDungeonDeltaAsync(account, c.Id, session, before,
         new NativeDungeonState(before.Bytes.ToArray()), CancellationToken.None,
         "growth-native-2", settlement: settlement);
@@ -118,22 +118,22 @@ try
         new NativeDungeonState(before.Bytes.ToArray()), CancellationToken.None, "growth-stale");
     c = (await db.GetCharacterAsync(account))!;
     Growth(c, 6, 10, 7);
-    Check(c.Experience == 1500, "stale checkpoint preserves experience");
+    Check(c.Experience == CharacterProgression.ExperienceRequiredForLevel(6), "stale checkpoint preserves experience");
     Check(NativeDungeonState.Create(c, [], []).Get(NativeDungeonState.DefenseFlatOffset) == 46,
         "new settlement is projected on refresh");
-    await Set("Level=98,Experience=475300,Strength=102,Vitality=102,Agility=102,Intelligence=102,Luck=102");
-    c = (await db.GrantExperienceAsync(c.Id, 9800))!;
+    await Set($"Level=98,Experience={CharacterProgression.ExperienceRequiredForLevel(98)},Strength=102,Vitality=102,Agility=102,Intelligence=102,Luck=102");
+    c = (await db.GrantExperienceAsync(c.Id, CharacterProgression.ExperienceRequiredForLevel(99) - c.Experience))!;
     Growth(c, 99, 103, 7);
     c = (await db.GrantExperienceAsync(c.Id, long.MaxValue))!;
     Growth(c, 99, 103, 7);
     Check(c.Attack == 422 && c.Defense == 314, "maximum-level stats");
     Check(c.AttackModifier == 9 && c.DefenseFlat == 11, "configured adjustments are not overwritten");
     // Existing levels and explicit attributes stay unchanged until a new earned level.
-    await Set("Level=80,Experience=316000,Strength=5,Vitality=5,Agility=5,Intelligence=5,Luck=5");
+    await Set($"Level=80,Experience={CharacterProgression.ExperienceRequiredForLevel(80)},Strength=5,Vitality=5,Agility=5,Intelligence=5,Luck=5");
     c = (await db.GrantExperienceAsync(c.Id, 1))!;
     Growth(c, 80, 5, 7);
     await Set("Strength=77,Vitality=12,Agility=9,Intelligence=8,Luck=6");
-    c = (await db.GrantExperienceAsync(c.Id, 7999))!;
+    c = (await db.GrantExperienceAsync(c.Id, CharacterProgression.ExperienceRequiredForLevel(81) - c.Experience))!;
     Check(c.Level == 81 && c.Strength == 78 && c.Vitality == 13 && c.Agility == 10
         && c.Intelligence == 9 && c.Luck == 7, "manual attributes receive only newly earned growth");
     var profile = Enumerable.Repeat((byte)0xA5, 128).ToArray();

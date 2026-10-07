@@ -17,6 +17,7 @@ internal static partial class Program
     private static async Task Main(string[] arguments)
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        await CheckCardQuantitySaturationAsync();
         CheckProtocol();
         await CheckRegistrationAsync();
         await CheckPurchaseAsync();

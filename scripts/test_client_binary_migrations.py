@@ -194,6 +194,7 @@ class UserOwnedNativeWindowTests(unittest.TestCase):
                          (0x6F5B1E, 5), (0x6F5B68, 5), (0x6E3100, 64),  # actor refresh layout
                          (0x74C19A, 3),  # score-derived EXP; full setter is guarded
                          (0x701BB4, 51),  # C60D local-actor level fallback
+                         (0x40B37A, 5), (0x6E31E0, 96), (0x66CD71, 2),  # lucky meter and result entry
                          (0x742DF3, 1), (0x742E14, 1),  # authoritative Boss health fields
                          (0xC396C0, 4), (0x513690, 192), (0x53207E, 4)):
             off = compat._va_offset(output, va, span)

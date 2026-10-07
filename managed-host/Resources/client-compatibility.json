@@ -173,6 +173,36 @@
     },
     {
       "group": "dungeon-state",
+      "va": 7221728,
+      "target": "9c608b5424288b89a800000085c9743383ec1889e78d711c89cbb906000000fcf3a5c64424170089d90fb7420e3de80300007205b8e70300005450e8202af7ff83c418619de9a603f6ffcccccccccccccccccccccccccccccccccccccccccccc",
+      "known": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "patch_picnic_lucky_meter_code",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 4240250,
+      "target": "e9617e2d00",
+      "known": [
+        "e951822300"
+      ],
+      "operation": "patch_picnic_lucky_meter_entry",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 6737265,
+      "target": "eb1a",
+      "known": [
+        "741a"
+      ],
+      "operation": "patch_dungeon_result_data_gate",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
       "va": 7221632,
       "target": "e84ceed2ff9c60e85427f8ff80780300754683b8f010000004740b83b8f0100000067534eb096a068bc8e83161f8ffe8c3bbd2ff8d700c8db80c010000b940000000fcf3a58db0100200008db820020000b904000000f3a5619dc3cccccccccc",
       "known": [
