@@ -117,5 +117,88 @@ class ExperienceInstructionTests(unittest.TestCase):
                     self.assertEqual(self.execute(exp.SETTER_NEW, bonus, stale), 0)
 
 
+
+class LocalActorLevelSiteTests(unittest.TestCase):
+    def test_exact_guard_idempotence_and_unknown_bytes(self):
+        try:
+            from .test_prepare_client_compatibility import synthetic_pe as complete_pe
+        except ImportError:
+            from test_prepare_client_compatibility import synthetic_pe as complete_pe
+        source, _ = complete_pe()
+        out, report = exp.patch_local_actor_level(source, compat._patch_site)
+        off = compat._va_offset(out, exp.LOCAL_LEVEL_VA, 51)
+        self.assertEqual(len(exp.LOCAL_LEVEL_OLD), 51)
+        self.assertEqual(len(out), len(source))
+        self.assertEqual(out[off:off+51], exp.LOCAL_LEVEL_NEW)
+        self.assertTrue(report['changed'])
+        self.assertEqual(exp.patch_local_actor_level(out, compat._patch_site)[0], out)
+        for i in range(51):
+            bad = bytearray(source); bad[off+i] ^= 0x40
+            with self.subTest(byte=i), self.assertRaises(compat.CompatibilityError):
+                exp.patch_local_actor_level(bytes(bad), compat._patch_site)
+
+    @unittest.skipIf(uc is None, 'optional isolated x86 engine unavailable')
+    def test_real_handler_local_remote_uid_and_no_reconstruction(self):
+        # Execute the original handler, with only manager/UI APIs modeled.
+        # Validation scope: isolated execution of the reviewed instruction branches.
+        import os
+        from pathlib import Path
+        client = Path(os.environ.get('NANAIMO_AUDIT_CLIENT',
+                      str(Path(__file__).resolve().parents[2] / 'game.exe')))
+        if not client.is_file(): self.skipTest('user-owned client unavailable')
+        data = client.read_bytes()
+        start, end = 0x701B40, 0x701cd8
+        off = compat._va_offset(data, start, end-start)
+        code = data[off:off+end-start]
+        patch_offset = exp.LOCAL_LEVEL_VA-start
+        self.assertIn(code[patch_offset:patch_offset+51], (exp.LOCAL_LEVEL_OLD, exp.LOCAL_LEVEL_NEW))
+        setter = bytes.fromhex('558bec51894dfc8b45fc8b4d088988ac7b00008be55dc20400')
+        getter = bytes.fromhex('558bec51894dfc8b45fc8b80ac7b00008be55dc3')
+        def run(patched, uid, remote, local_present=True):
+            m=uc.Uc(uc.UC_ARCH_X86,uc.UC_MODE_32)
+            m.mem_map(0x400000,0xA00000);m.mem_map(0x10000000,0x40000)
+            body=bytearray(code);body[patch_offset:patch_offset+51]=exp.LOCAL_LEVEL_NEW if patched else exp.LOCAL_LEVEL_OLD
+            m.mem_write(start,bytes(body));m.mem_write(0x4D8CD0,setter)
+            m.mem_write(0x41EEE8,b'\xe9'+struct.pack('<i',0x4D8CD0-0x41EEE8-5))
+            # Actor-level getter used by the nameplate draw.
+            getoff=compat._va_offset(data,0x6E7570,len(getter))
+            m.mem_write(0x6E7570,data[getoff:getoff+len(getter)])
+            local,other,packet,stack,stop=0x10000000,0x10010000,0x10020000,0x1003F000,0x600000
+            def put(a,n):m.mem_write(a,struct.pack('<I',n))
+            def word(a):return struct.unpack('<I',m.mem_read(a,4))[0]
+            for actor,actor_uid in [(local,21),(other,22)]:
+                put(actor+4,actor_uid);put(actor+0x7BAC,1)
+                for field in (0x7BB8,0x7BBC,0x7BC0,0x7BC4,0x7D70):put(actor+field,0x1234)
+            m.mem_write(packet,struct.pack('<4H HBB',0,0,12,0xC60D,uid,7,3))
+            put(stack,stop);put(stack+4,packet);m.reg_write(x86.UC_X86_REG_ESP,stack)
+            m.reg_write(x86.UC_X86_REG_ECX,0x10021000)
+            calls=[]
+            def hook(u,addr,size,_):
+                if addr==stop:u.emu_stop();return
+                returns={0x417954:0x10022000,0x411B3A:other if remote else 0,
+                         0x40870B:int(remote),0x4179BD:local if local_present else 0,0x402DE2:2,
+                         0xADA730:0,0x413B0B:0}
+                if addr==0x4021E9:returns[addr]=word(u.reg_read(x86.UC_X86_REG_ECX)+4)
+                if addr in returns:
+                    calls.append(addr);sp=u.reg_read(x86.UC_X86_REG_ESP)
+                    u.reg_write(x86.UC_X86_REG_EAX,returns[addr]);u.reg_write(x86.UC_X86_REG_ESP,sp+4)
+                    u.reg_write(x86.UC_X86_REG_EIP,word(sp))
+            m.hook_add(uc.UC_HOOK_CODE,hook);m.emu_start(start,stop,count=3000)
+            self.assertEqual(m.reg_read(x86.UC_X86_REG_EIP),stop)
+            self.assertEqual(m.reg_read(x86.UC_X86_REG_ESP),stack+8)
+            for actor in (local,other):
+                for field in (0x7BB8,0x7BBC,0x7BC0,0x7BC4,0x7D70):self.assertEqual(word(actor+field),0x1234)
+            put(stack,stop);m.reg_write(x86.UC_X86_REG_ESP,stack);m.reg_write(x86.UC_X86_REG_ECX,local)
+            m.emu_start(0x6E7570,stop,count=100)
+            self.assertEqual(m.reg_read(x86.UC_X86_REG_EAX),word(local+0x7BAC))
+            return word(local+0x7BAC),word(other+0x7BAC)
+        self.assertEqual(run(False,21,False),(1,1)) # reproduces original local omission
+        self.assertEqual(run(True,21,False),(7,1))
+        self.assertEqual(run(True,21,True),(7,1))
+        self.assertEqual(run(True,22,True),(1,7))
+        self.assertEqual(run(True,99,False),(1,1))
+        self.assertEqual(run(True,99,True),(1,1))
+        self.assertEqual(run(True,21,False,False),(1,1))
+
 if __name__ == '__main__':
     unittest.main()

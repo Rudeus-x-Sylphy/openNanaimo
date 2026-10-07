@@ -223,6 +223,16 @@
     },
     {
       "group": "dungeon-state",
+      "va": 7347124,
+      "target": "837dfc00752de8955dd1ff8bc8e8f75dd1ff85c0741d8945fc8bc8e81506d0ff8b55080fb752083bc27508ebb3909090909090",
+      "known": [
+        "837dfc00752de8955dd1ff8bc8e8f75dd1ff8bc8e81c06d0ff8b4d080fb751083bc2750fe8775dd1ff8bc8e8d95dd1ff8945fc"
+      ],
+      "operation": "patch_battle_local_level",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
       "va": 7613937,
       "target": "83b90c01000000",
       "known": [

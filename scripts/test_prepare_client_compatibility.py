@@ -99,7 +99,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
     for _, va, old, _ in compat.quickbar_refresh_sites():
         put(va, old)
     put(compat.dungeon7_visuals.MINIMAP_VA, compat.dungeon7_visuals.MINIMAP_OLD)
-    put(compat.dungeon_experience_compat.SETTER_VA, compat.dungeon_experience_compat.SETTER_OLD)
+    for _, va, old, _ in compat.dungeon_experience_compat.patch_sites():
+        put(va, old)
     for _, va, old, _ in compat.BOSS_HEALTH_DISPLAY_SITES:
         put(va, old)
     put(0xA67B73, character_skip)

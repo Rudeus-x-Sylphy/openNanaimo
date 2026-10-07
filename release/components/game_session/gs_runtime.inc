@@ -447,7 +447,8 @@ static void gs_thread(void* arg){
                         mkpkt(ack,0xF105,16,1);ack[8]=(char)(ok?1:0);ack[9]=0;ack[10]=(char)mode;ack[11]=(char)(mode>>8);ack[12]=(char)hp;ack[13]=(char)(hp>>8);ack[14]=(char)mp;ack[15]=(char)(mp>>8);sendbuf(c,ack,16);if(ok&&was_dead)game_session_broadcast_revival_current(20u);
                     } else if(managed_bridge_handle(c,type,len,(const unsigned char*)&buf[off])) {
                         /* Internal state exchange; never routed from a game client. */
-                        if(type==0xF100)combat_hp=pet_crafting_pet_effective_hp_current();
+                        /* F10B can refill on a real level crossing; keep the damage ledger current. */
+                        if(type==0xF100||type==0xF10B)combat_hp=pet_crafting_pet_effective_hp_current();
                     } else
 #endif
                     if(standalone && type==0xC351){

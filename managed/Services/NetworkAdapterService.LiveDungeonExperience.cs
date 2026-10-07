@@ -43,7 +43,9 @@ public sealed partial class NetworkAdapterService
         if (session.NativeBattleResources is { } resources)
         {
             var maximums = ResolveInventoryVitals(character);
-            // Preserve current HP/MP, death/frozen flags and Power. Only maxima grow.
+            // Update maxima now; the worker owns current HP/MP and applies a one-shot
+            // refill on a live level crossing. Its CF72 is observed before projection.
+            // Never pre-heal from a potentially stale DB/checkpoint or reset Power.
             session.NativeBattleResources = resources with
             { MaximumHp = maximums.MaximumHp, MaximumMp = maximums.MaximumMp };
             session.NativeBattleResources.ApplyTo(next);

@@ -29,7 +29,7 @@
     "derived_outputs": [
       {
         "path": "game.exe",
-        "operation": "native character-creation entry; referral-only parent confirmation guard and local input retry; reviewed furniture Index redirect; restore retired revival HUD and P-sentinel patches to native bytes; manual confirmation for both settlement controllers preserving mouse and keyboard; scoped gift-refresh preview HP/MP preservation; purchase-window type25 entry plus required no-shop C37B yield patch; complete exterior lifecycle, resources and localized text; request-bound apartment recommendation point refresh and bounded duplicate-popup lines; dungeon7 minimap release-boundary correction; zero only score-derived provisional EXP, preserving live score and CF88 settlement awards"
+        "operation": "native character-creation entry; referral-only parent confirmation guard and local input retry; reviewed furniture Index redirect; restore retired revival HUD and P-sentinel patches to native bytes; manual confirmation for both settlement controllers preserving mouse and keyboard; scoped gift-refresh preview HP/MP preservation; purchase-window type25 entry plus required no-shop C37B yield patch; complete exterior lifecycle, resources and localized text; request-bound apartment recommendation point refresh and bounded duplicate-popup lines; dungeon7 minimap release-boundary correction; zero only score-derived provisional EXP, preserving live score and CF88 settlement awards; C60D local actor level fallback with exact 51-byte guard, preserving remote actors and PET/Power"
       },
       {
         "path": "Village_map_image/Village_map_image.pack",

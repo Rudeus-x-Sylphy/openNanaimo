@@ -141,22 +141,46 @@ static int managed_bridge_couple_metadata(const unsigned char*p){
     g_managed_couple_ring[src]=ring;g_managed_couple_partner[src]=partner;g_managed_couple_partner_order[src]=order;
     return 1;
 }
+/* C60D/12 -> 6F5935 -> 701B40 -> 41EEE8/4D8CD0 writes actor+7BAC.
+   C57C only writes global progression; CF72 has no character-level field.
+   Keep this separate from PET rebuild, resource projection and settlement. */
+static void managed_bridge_broadcast_actor_level(SOCKET c,unsigned level){
+    int src=g_multi_current,target;unsigned uid=multiplayer_current_uid();char p[4096];
+    struct progression_dungeon_grade_state grade;
+    progression_dungeon_grade_snapshot_name(g_stable_name,g_stable_name_len,&grade);
+    mkpkt(p,0xC60D,12,1);stable_resource_put16(p,8,uid);p[10]=(char)level;p[11]=(char)grade.grade;
+    sendbuf(c,p,12);
+    if(src<0||src>=MULTI_MAX_PLAYERS||!g_multi_conn[src].room_active)return;
+    for(target=0;target<MULTI_MAX_PLAYERS;target++){
+        if(target==src||!g_multi_conn[target].active||!g_multi_transport_alive[target]||!g_multi_conn[target].room_active)continue;
+        multi_switch_to(target,src);
+        mkpkt(p,0xC60D,12,1);stable_resource_put16(p,8,uid);p[10]=(char)level;p[11]=(char)grade.grade;
+        sendbuf(g_multi_conn[target].socket,p,12);multi_switch_back(src,target);
+    }
+}
 static int managed_bridge_handle(SOCKET c,int type,int len,const unsigned char*f){
     if(type==0xF100){managed_bridge_snapshot(c,len==MANAGED_STATE_SIZE+8?managed_bridge_import(f+8):0u);return 1;}
     /* Managed DB has already committed this absolute progression. Never import
        an old inventory/HP snapshot and never rebuild an existing combat actor. */
     if(type==0xF10B){
-        unsigned level,exp;struct progression_progression_state st;char p[4096];
-        if(len!=40||g_multi_current<0||managed_get(f,8)!=g_multi_conn[g_multi_current].uid
+        unsigned level,exp,old_level,healed;struct progression_progression_state st;char p[4096];
+        if(len!=40||g_multi_current<0||g_multi_current>=MULTI_MAX_PLAYERS||!g_multi_conn[g_multi_current].active||managed_get(f,8)!=g_multi_conn[g_multi_current].uid
             ||managed_get(f,36)!=g_teamplay_authority.battle_epoch)return 1;
         level=managed_get(f,12);exp=managed_get(f,16);
         if(level<1u||level>99u||level<g_stable_level||exp<g_progression_profile_exp_total
             ||exp>progression_progression_next(99u)||level!=progression_progression_level_for_exp(exp)
             ||managed_get(f,20)<1u||managed_get(f,20)>65535u||managed_get(f,24)>65535u
             ||managed_get(f,32)>65535u)return 1;
+        old_level=g_stable_level;
         g_stable_level=level;g_progression_profile_exp_total=exp;
         g_profile_hp_max=managed_get(f,20);g_profile_mp_max=managed_get(f,24);
         g_profile_attack_modifier=managed_get(f,28);g_profile_defense_flat=managed_get(f,32);
+        /* Native current resources, not a stale DB/checkpoint, own liveness.
+           An absolute duplicate receipt can resync UI but never heal twice. */
+        healed=level>old_level&&g_profile_hp_current>0u
+            &&!(g_progression_settlement_epoch_valid[g_multi_current]
+                &&g_progression_settlement_epoch[g_multi_current]==progression_current_battle_epoch());
+        if(healed){g_profile_hp_current=pet_crafting_pet_effective_hp_max();g_profile_mp_current=pet_crafting_pet_effective_mp_max();}
         g_multi_conn[g_multi_current].profile.level=level;
         st.level=level;st.exp_total=exp;st.lower=progression_progression_threshold(level);st.next=progression_progression_next(level);
         progression_progression_save_name(g_stable_name,g_stable_name_len,&st);
@@ -165,8 +189,10 @@ static int managed_bridge_handle(SOCKET c,int type,int len,const unsigned char*f
         mkpkt(p,0xC57C,52,1);stable_put32(p,12,exp);stable_put32(p,16,st.lower);stable_put32(p,20,st.next);
         stable_resource_put16(p,24,pet_crafting_pet_effective_hp_max());stable_resource_put16(p,26,pet_crafting_pet_effective_mp_max());
         p[28]=(char)level;p[29]=(char)255;sendbuf(c,p,52);
+        managed_bridge_broadcast_actor_level(c,level);
         send_cf72_dynamic_actor_refresh_phase(c,multiplayer_current_uid(),native_cf72_phase_for_socket(c));
         multiplayer_broadcast_actor_resources_current();
+        printf("  [LIVE_LEVEL] actor=%u epoch=%u level=%u->%u exp=%u heal=%u hp=%u/%u mp=%u/%u C57C/C60D/CF72\n",multiplayer_current_uid(),g_teamplay_authority.battle_epoch,old_level,level,exp,healed,g_profile_hp_current,pet_crafting_pet_effective_hp_max(),g_profile_mp_current,pet_crafting_pet_effective_mp_max());fflush(0);
         return 1;
     }
     if(type==0xF109){

@@ -45,15 +45,53 @@ int main(void){
  managed_put(packet,20,1520);managed_put(packet,24,115);managed_put(packet,28,4);managed_put(packet,32,23);managed_put(packet,36,8);
  CHECK(managed_bridge_handle(100,0xF10B,40,packet));
  CHECK(g_stable_level==2&&g_progression_profile_exp_total==1000&&g_profile_attack_modifier==4&&g_profile_defense_flat==23);
- CHECK(g_profile_hp_current==711&&g_profile_mp_current==31);
- CHECK(count==3&&word(frames[0],6)==0xC57C&&sizes[0]==52);
+ CHECK(g_profile_hp_current==1520&&g_profile_mp_current==115);
+ CHECK(count==5&&word(frames[0],6)==0xC57C&&sizes[0]==52);
  CHECK(dword(frames[0],12)==1000&&dword(frames[0],16)==1000&&dword(frames[0],20)==7200);
  CHECK(frames[0][28]==2&&frames[0][29]==255&&word(frames[0],24)==1520&&word(frames[0],26)==115);
- for(i=1;i<count;i++){CHECK(word(frames[i],6)==0xCF72&&word(frames[i],0x64)==0);CHECK(word(frames[i],0xA)==1520&&word(frames[i],0xE)==711);}
+ for(i=1;i<=2;i++){CHECK(word(frames[i],6)==0xC60D&&sizes[i]==12&&word(frames[i],8)==21&&frames[i][10]==2);CHECK(sockets[i]==99+i);}
+ for(i=3;i<count;i++){CHECK(word(frames[i],6)==0xCF72&&word(frames[i],0x64)==0);CHECK(word(frames[i],8)==21&&word(frames[i],0xA)==1520&&word(frames[i],0xE)==1520&&word(frames[i],0x10)==115);}
+ CHECK(g_multi_current==0&&g_multi_conn[1].profile.level==1&&g_multi_conn[1].profile.hp_current==711);
+ // Duplicate and same-level progression resync UI with current resources.
+ g_profile_hp_current=611;g_profile_mp_current=21;count=0;
+ managed_bridge_handle(100,0xF10B,40,packet);
+ CHECK(count==5&&g_profile_hp_current==611&&g_profile_mp_current==21&&word(frames[3],0xE)==611);
+ managed_put(packet,16,1001);count=0;managed_bridge_handle(100,0xF10B,40,packet);
+ CHECK(count==5&&g_profile_hp_current==611&&g_profile_mp_current==21);
+ // One receipt crossing several levels refills the new effective caps.
+ managed_put(packet,12,4);managed_put(packet,16,progression_progression_threshold(4));
+ managed_put(packet,20,1660);managed_put(packet,24,140);count=0;
+ managed_bridge_handle(100,0xF10B,40,packet);
+ CHECK(count==5&&g_stable_level==4&&g_profile_hp_current==1660&&g_profile_mp_current==140&&frames[1][10]==4);
+ // Dead actors preserve zero HP and current MP.
+ g_profile_hp_current=0;g_profile_mp_current=17;
+ managed_put(packet,12,5);managed_put(packet,16,progression_progression_threshold(5));count=0;
+ managed_bridge_handle(100,0xF10B,40,packet);
+ CHECK(count==5&&g_stable_level==5&&g_profile_hp_current==0&&g_profile_mp_current==17);
+ g_multi_conn[1].room_active=0;count=0;managed_bridge_handle(100,0xF10B,40,packet);
+ CHECK(count==3&&sockets[0]==100&&sockets[1]==100&&sockets[2]==100);
+ g_multi_conn[1].room_active=1;g_multi_transport_alive[1]=0;count=0;managed_bridge_handle(100,0xF10B,40,packet);CHECK(count==3);
+ g_multi_transport_alive[1]=1;count=0;managed_bridge_handle(100,0xF10B,39,packet);CHECK(count==0);
  count=0;managed_put(packet,8,99);managed_bridge_handle(100,0xF10B,40,packet);CHECK(count==0);
  managed_put(packet,8,21);managed_put(packet,36,7);managed_bridge_handle(100,0xF10B,40,packet);CHECK(count==0);
  managed_put(packet,36,8);managed_put(packet,12,100);managed_bridge_handle(100,0xF10B,40,packet);CHECK(count==0);
  managed_put(packet,12,1);managed_put(packet,16,0);managed_bridge_handle(100,0xF10B,40,packet);CHECK(count==0);
+ // Frozen terminal state preserves current resources across level gains.
+ g_profile_hp_current=600;g_profile_mp_current=19;g_progression_settlement_epoch_valid[0]=1;
+ g_progression_settlement_epoch[0]=progression_current_battle_epoch();
+ managed_put(packet,12,6);managed_put(packet,16,progression_progression_threshold(6));count=0;
+ managed_bridge_handle(100,0xF10B,40,packet);CHECK(g_stable_level==6&&g_profile_hp_current==600&&g_profile_mp_current==19);
+ g_progression_settlement_epoch_valid[0]=0;
+ // Refill to effective caps including PET gems.
+ {struct pet_crafting_pet_item_row*r;g_stable_pet=15009205u;
+ r=pet_crafting_pet_row(g_stable_pet,1);CHECK(r!=0);r->gems[0]=17000566u;r->gems[1]=17000007u;r->gems[2]=0;
+ CHECK(pet_crafting_pet_state_save());
+ send_cf72_dynamic_actor_refresh_phase(100,21,NATIVE_CF72_PROFILE);multiplayer_broadcast_actor_resources_current();count=0;
+ managed_put(packet,12,7);managed_put(packet,16,progression_progression_threshold(7));
+ managed_bridge_handle(100,0xF10B,40,packet);
+ CHECK(count==5&&g_profile_hp_current==2060&&g_profile_mp_current==200);
+ CHECK(word(frames[3],0xE)==2060&&word(frames[3],0x10)==200&&word(frames[3],0x64)==0);
+ }
  for(i=1;i<=99;i++){
   unsigned lower=progression_progression_threshold(i),next=progression_progression_next(i);
   CHECK(next>lower&&progression_progression_level_for_exp(lower)==i);
@@ -73,6 +111,10 @@ class LiveDungeonExperienceTests(unittest.TestCase):
    result=subprocess.run([str(p/'check.exe')],cwd=p,capture_output=True,text=True,errors='replace')
    self.assertEqual(result.returncode,0,result.stdout[-12000:]+result.stderr)
    self.assertIn('LIVE_EXPERIENCE_NATIVE_HOST_PASS',result.stdout)
+ def test_damage_ledger_follows_live_level_receipt(self):
+  source=(ROOT/'release/components/game_session/gs_runtime.inc').read_text(encoding='utf8')
+  branch=source.split('} else if(managed_bridge_handle(c,type,len,(const unsigned char*)&buf[off])) {',1)[1].split('} else',1)[0]
+  self.assertIn('if(type==0xF100||type==0xF10B)combat_hp=pet_crafting_pet_effective_hp_current();',branch)
  def test_generated_curve(self):
   subprocess.run(['python','-X','utf8',str(ROOT/'scripts/generate_character_experience.py'),'--check'],check=True)
 if __name__=='__main__':unittest.main()

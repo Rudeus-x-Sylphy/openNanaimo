@@ -16,8 +16,8 @@
       "sha256": "E0047C24B1C8627E8EE89582DE5FC5F538607EAF670159C4A38A6FCADFE41C4D"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 22514688,
-      "sha256": "4B6D78E1E5C324D02483A4EA8676C5EA55F43ABE1B989586E62EC0851B0D8042"
+      "size": 22515712,
+      "sha256": "BD9D41CB9883E1307D45DBE69CB0CD933FF92993A85BD87E14A5E1A281AB8A4D"
     }
   },
   "files": [
@@ -283,8 +283,8 @@
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
-      "size": 47333,
-      "sha256": "32C043D37DBE96BD34BD6C9DDE872510060FB9CA8567F763D76EE78105929EDD"
+      "size": 47732,
+      "sha256": "9B59D0B37D6A63370B96AF1DBCB8B92ABAE32E094026565097B2F5C6C326586D"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -888,8 +888,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.LiveDungeonExperience.cs",
-      "size": 4089,
-      "sha256": "929CFBE25738BC9BC60899F221A238000563E87648177D1B9AE653ADAFD724C8"
+      "size": 4262,
+      "sha256": "08DA0A240847B7ACD815E9D1E161A7317DD0598503D7A2E80DA6F20400C14F47"
     },
     {
       "path": "managed/Services/NetworkAdapterService.ManagedCouples.cs",
@@ -1338,13 +1338,13 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 146837,
-      "sha256": "EBB0DEB22E5CA86A242617661E4E1E850C68E4F40D8A1478355D151AE0D1DC66"
+      "size": 146955,
+      "sha256": "4E9DCC8313941A30C295B830D28F9557704EA80CE8EFE571ED4D1821540229FB"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
-      "size": 16600,
-      "sha256": "6199AEB453CB6DC643AF7495CA75F2AA49B80689A0FFAC843059D6551206B636"
+      "size": 18760,
+      "sha256": "4EB473DA837BA76FC6A515E8FE44C29DF281F9F6C76ACF0C0A5A384488503E35"
     },
     {
       "path": "release/components/game_session/revival_runtime.inc",

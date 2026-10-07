@@ -612,11 +612,12 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     data, result_entry = dungeon_result_compat.patch(data, _patch_site)
     data, power = restore_native_power(data)
     data, experience = dungeon_experience_compat.patch_experience_preview(data, _patch_site)
+    data, actor_level = dungeon_experience_compat.patch_local_actor_level(data, _patch_site)
     data, boss_health = patch_boss_health_display(data)
     data, quickbar = patch_quickbar_refresh(data)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
         other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power, result_entry=result_entry,
-        settlement_experience=experience, boss_health=boss_health, quickbar=quickbar,
+        settlement_experience=experience, actor_level=actor_level, boss_health=boss_health, quickbar=quickbar,
         member_town=_migration_report('patch_settlement_member_town', **member_town))
 
 
