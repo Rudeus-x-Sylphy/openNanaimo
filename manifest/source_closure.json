@@ -618,8 +618,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.EventCards.cs",
-      "size": 8260,
-      "sha256": "B94A647EF330EBA798C108A8F5AA625F471D5E0552E71B37046C7338037D6556"
+      "size": 13520,
+      "sha256": "051C65D85F56128C2C2E32E43E89239050A77C7ED384B12E01F9D10FA69C572D"
     },
     {
       "path": "managed/Services/DatabaseService.ExperienceCards.cs",
@@ -663,8 +663,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.LuckyCards.cs",
-      "size": 12583,
-      "sha256": "02BB53D1E2BAD15CB9D62D0CD6AC59C92DDFBD9BD1E6F3C3E5223E3BE551CDBC"
+      "size": 14106,
+      "sha256": "84B22A2AEF2FDB5D1EB2246FE65FD098EAAB730B94B01B6BBF600159C3526D02"
     },
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",
@@ -768,8 +768,8 @@
     },
     {
       "path": "managed/Services/EventCardPolicy.cs",
-      "size": 4627,
-      "sha256": "A3F12C84845D49043FDAF6494411710212D707C6020174634C74DD111CF74A8F"
+      "size": 7546,
+      "sha256": "AEFD3DEFEC2877F1181D45169A4B60241505C5E9CC32A78B20AF39D67ECD33F0"
     },
     {
       "path": "managed/Services/ExperienceCardPolicy.cs",
@@ -803,8 +803,8 @@
     },
     {
       "path": "managed/Services/LuckyCardPolicy.cs",
-      "size": 5214,
-      "sha256": "46D59ED0AA827D93E6C6E4AF59CD8A18E3EB9B4F404F77EC9A45D986A2E8C520"
+      "size": 5487,
+      "sha256": "7D15DF6B50385BD4CE355111745888B66A77B5E1ACFCF4810BB8E67BCAE1161B"
     },
     {
       "path": "managed/Services/MentorProtocol.cs",
@@ -1048,8 +1048,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 987370,
-      "sha256": "B54BC22C7008A44FFEED3089090906B1F57CBD120DA6612F5749983E1156805F"
+      "size": 987388,
+      "sha256": "9E94964CB139359A807DAAA2C15A14FC83CED0807F44F9166F4A16D5A02D3869"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

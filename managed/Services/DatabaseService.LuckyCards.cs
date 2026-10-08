@@ -185,12 +185,33 @@ public sealed partial class DatabaseService
         else
         {
             if (!ShopCatalog.TryGet(reward, out var item)) return false;
+            // Timed clothing must never be granted as a permanent row: extend from the
+            // stored expiration the same way the shop purchase path does, and keep one
+            // row per code so a repeated draw stacks days instead of duplicate pieces.
+            var clothing = item.Section == InventorySection.Clothing;
+            var currentExpiration = 0u;
+            if (clothing)
+            {
+                await using var current = connection.CreateCommand();
+                current.Transaction = tx;
+                current.CommandText = "SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=$reward";
+                current.Parameters.AddWithValue("$id", id);
+                current.Parameters.AddWithValue("$reward", reward);
+                var stored = await current.ExecuteScalarAsync(token);
+                if (stored is not null) currentExpiration = checked((uint)Convert.ToInt64(stored));
+            }
+            var expiration = clothing ? ClothingExpirationTime.Extend(currentExpiration, item.DurationDays, DateTime.Now) : 0u;
             command.Parameters.AddWithValue("$stage", item.Section == InventorySection.Pet && !item.IsPetMaterial ? item.PetModelStage : 0);
             command.Parameters.AddWithValue("$maximumStage", item.Section == InventorySection.Pet && !item.IsPetMaterial ? item.PetUpgradeStage : 0);
+            command.Parameters.AddWithValue("$expiration", expiration);
+            command.Parameters.AddWithValue("$stackDays", clothing ? 1 : 0);
             command.CommandText = """
-                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,PetCurrentStage,PetMaximumStage,PetLevel,PetExperience,UpdatedAt)
-                VALUES($id,$reward,1,$stage,$maximumStage,0,0,$now)
-                ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET Quantity=Quantity+1,UpdatedAt=excluded.UpdatedAt
+                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,ItemExpiration,PetCurrentStage,PetMaximumStage,PetLevel,PetExperience,UpdatedAt)
+                VALUES($id,$reward,1,$expiration,$stage,$maximumStage,0,0,$now)
+                ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET
+                    Quantity = CASE WHEN $stackDays = 1 THEN MAX(Quantity, 1) ELSE Quantity + 1 END,
+                    ItemExpiration = CASE WHEN $stackDays = 1 THEN excluded.ItemExpiration ELSE CharacterItems.ItemExpiration END,
+                    UpdatedAt = excluded.UpdatedAt
                 """;
         }
         return await command.ExecuteNonQueryAsync(token) == 1;

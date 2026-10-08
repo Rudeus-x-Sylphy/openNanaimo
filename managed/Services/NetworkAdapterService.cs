@@ -4249,7 +4249,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             {
                 if (!session.OnlineTracked || session.Character is null) return null;
                 if (!EventCardPolicy.TryParse(payload, out var page))
-                    return BuildNativeFrame(frame, 0xC3FE, EventCardPolicy.Result(0, "Invalid request"), session);
+                    return BuildNativeFrame(frame, 0xC3FE, EventCardPolicy.Result(0, EventCardPolicy.Fit("请求无效")), session);
                 var requestId = session.EventCardRequests.Get(BinaryPrimitives.ReadUInt16LittleEndian(frame), page, DateTime.UtcNow);
                 var result = await _database.RedeemEventCardAsync(session.AccountId, session.Character.Id,
                     session.SessionId, requestId, page, token);

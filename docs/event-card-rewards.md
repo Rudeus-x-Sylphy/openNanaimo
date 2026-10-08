@@ -32,8 +32,24 @@ Page P consumes one of each of the ten codes starting at `50000001 + (P - 1) * 1
 - Unique-pet conflicts preserve the pending prize and card set. Materials stack and consume capacity by quantity.
 - Reward-distribution changes with pending draws require administrative review.
 - A committed `(character, session, request ID)` receipt returns its original reward, including after the page is disabled. Request correlation uses a ten-second window with at most256 entries; persistent receipts enforce committed transaction identity.
-- Responses use fixed printable ASCII text, at most23 bytes, followed by an explicit NUL terminator. The accepted alphabet excludes percent signs and embedded NULs.
+- Responses carry fixed operator-facing text encoded as GBK (the client's own text encoding), at most 23 encoded bytes, followed by an explicit NUL terminator. Control characters, percent signs and characters outside GBK are rejected; longer text is truncated to the byte budget instead of failing the response.
 
 ## Validation scope
 
 `CardUseRegression` covers parser and dispatcher behavior, session authorization, atomic inventory transactions, capacity preservation, retries and configured redemption using isolated databases and synthetic reward pools. These checks establish adapter behavior; client interaction has its own acceptance record in knowledge topic09.
+## Shipped default pool
+
+The reviewed default for both card-use flows ships with the repository at
+`release/components/cards/event-card-rewards.json` (page 1-4 pools: boss pet by
+duration, whole warrior outfit set, three warrior gems, whole warrior decoration
+set, bread plus drink, and a direct 200-Hans grant). It is registered in
+`manifest/open_release_manifest.json` and the patch allowlist, but it is **not**
+auto-installed: copy it beside the active database before starting the adapter.
+
+```powershell
+Copy-Item release/components/cards/event-card-rewards.json <install-root>/adapter_data/event-card-rewards.json
+```
+
+Groups (`Bundle`) grant every listed code in one redemption, clothing codes are
+resolved to the character's gender, `Hans` grants gold instead of an item, and
+timed clothing extends its stored expiration instead of becoming permanent.

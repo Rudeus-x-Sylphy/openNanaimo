@@ -34,7 +34,8 @@ var luckyWire=LuckyCardPolicy.Result(900,46000008); var expWire=ExperienceCardPo
 Check(luckyWire.Length==8&&U32(luckyWire)==900&&U32(luckyWire,4)==46000008&&expWire.Length==16&&U32(expWire)==800&&U32(expWire,12)==2099123123,"distinct initialized 900/800 response layouts");
 Check(U32(ExperienceCardPolicy.BuildActivationResult(false,default))==0,"EXP rejection never masquerades as capacity");
 var evtWire=EventCardPolicy.Result(0,"Not configured"); Check(evtWire.Length==28&&evtWire[27]==0&&U32(evtWire)==0,"bounded NUL-terminated C3FE construction");
-foreach(string unsafeText in new[]{"%s","a\0b",new string('x',24),"\u00e9"}) Reject(()=>EventCardPolicy.Result(0,unsafeText),"C3FE rejects unsafe text");
+foreach(string unsafeText in new[]{"%s","a\0b",new string('x',24),new string('\u91d1',12)}) Reject(()=>EventCardPolicy.Result(0,unsafeText),"C3FE rejects unsafe text");
+Check(EventCardPolicy.Result(0,"200\u91d1\u5e01").AsSpan(4,7).SequenceEqual(Encoding.GetEncoding(936).GetBytes("200\u91d1\u5e01")),"C3FE carries GBK prize text");
 var window=new LuckyCardRequestWindow(); var time=new DateTime(2026,10,7,12,0,0,DateTimeKind.Utc); var rid=window.Get(7,22000011,time);
 Check(window.Get(7,22000011,time.AddSeconds(9))==rid&&window.Get(7,22000012,time)!=rid&&window.Get(7,22000011,time.AddSeconds(10))!=rid,"bounded request identity expires at ten seconds");
 for(ushort i=0;i<300;i++) window.Get(i,22000011,time);
