@@ -138,6 +138,13 @@ await Seed(22000011);var extended=await Draw(22000011,9970);
 Check(extended.Success&&extended.Reward==15009016&&await Items(15009016)==1&&await Cards(22000011)==1,"duration pet repeat draw extends without a duplicate instance");
 Check(ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016"),out var secondPetExpiry)
     &&secondPetExpiry-firstPetExpiry>=TimeSpan.FromDays(14),"duration pet extension adds the authored days");
+// The lucky-card path shares the grant, so a permanently owned copy keeps its row
+// permanent there too while the card and key are still charged.
+await Sql("UPDATE CharacterItems SET ItemExpiration=0 WHERE CharacterId=$id AND ItemCode=15009016");
+await Seed(22000011);var luckyPermanent=await Draw(22000011,9970);
+Check(luckyPermanent.Success&&luckyPermanent.Error=="permanently owned copy; draw grants nothing"
+    &&await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016")==0
+    &&await Cards(22000011)==1&&await Items(15009016)==1,"permanently owned copy keeps the permanent row on the lucky path");
 await Reset();await Seed(22000018);await Item(11420304,84);Check((await Draw(22000018,8890)).Result==100,"furniture capacity 84");
 await Reset();await Seed(22000011);await Item(48000004,1);
 await Sql("INSERT INTO CharacterQuickSlots(CharacterId,Slot,ItemCode,InventoryIndex,UpdatedAt) VALUES($id,0,48000004,0,'test')");
@@ -220,6 +227,15 @@ await SeedSet(1);Check((await Redeem()).Success&&await Items(15009016)==1,"event
 Check(ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016"),out var extendedEventExpiry)
     &&ClothingExpirationTime.TryDecode((uint)eventPetExpiration,out var firstEventExpiry)
     &&extendedEventExpiry-firstEventExpiry>=TimeSpan.FromDays(14),"event duration pet extension adds the authored days");
+// A permanently owned copy of a duration pet is never downgraded to a countdown:
+// the set is consumed and the draw grants nothing, so the row keeps no expiry.
+Config(15009016);await Reset();await SeedSet(1);await Item(15009016,1);
+var permanentCopy=await Redeem();
+Check(permanentCopy.Success&&permanentCopy.Message=="已拥有该奖励"
+    &&await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016")==0
+    &&await Items(15009016)==1&&await Sql("SELECT COUNT(*) FROM CharacterCards WHERE CharacterId=$id")==0,"permanently owned pet copy stays permanent and consumes the set");
+Check(await Sql("SELECT COUNT(*) FROM EventCardPendingDraws WHERE CharacterId=$id")==0,"blank draw does not pin the page");
+Check(WirePetExpiration(NetworkAdapterService.BuildPetInventoryPayload((await db.GetCharacterAsync(account))!),15009016)==ClothingExpirationTime.PermanentExpiration,"permanently owned pet keeps the permanent wire expiration");
 Config(15000004);await Reset();await SeedSet(1);await Item(15000004,1);
 var permanentPet=await Redeem();
 Check(!permanentPet.Success&&permanentPet.Message=="已拥有该奖励"&&await Cards(50000001)==1&&await Items(15000004)==1,"permanent pet duplicate keeps the fixed already-owned text");
