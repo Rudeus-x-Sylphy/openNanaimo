@@ -241,6 +241,29 @@ static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,un
     printf("  S0xD010 INJURY_RESOURCE injury actor=%u hp=%u damage=%u target_damage=%u terminal=%d score=%u meta=%u kind=%u len=36 t=%lds\n",local_uid,hp,damage,target_damage,terminal,battle_score,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),(unsigned char)p[0x1D],sec());fflush(0);
 }
 
+/* MEAT_BOSS_CONTACT_NUMBER: a Boss contact arrives as kind40, whose D010 branch
+   reads BYTE+0x1F (child) and WORD+0x20 (ordinal) and never WORD+0x22 - see
+   0x6EF3BB/0x6EF43B in knowledge/authority/08.  The contact damage number the
+   client pops over the target is consumed on the kind20/30 branch instead
+   (0x6EF241/0x6EF4E5), and the reference capture populates WORD+0x22 on 51 of
+   51 kind20 frames while leaving it zero on every kind10 frame.
+
+   A Boss meat hit therefore publishes the number on its own kind20-styled
+   contact frame: WORD+0x1A keeps the request's contact index (the field the
+   kind20 branch reads for attribution), WORD+0x12 stays 0 because the player
+   is inside the meat window and takes no damage, and WORD+0x0A stays 100 so
+   the terminal side effects remain owned by the kind40 frame and the D012
+   Boss sync that already ran.  BOSS 肉弹命中不再只有血条变化而没有数字。 */
+static void send_d010_boss_meat_contact_number(SOCKET c,const unsigned char*req,unsigned local_uid,unsigned hp,unsigned target_damage){
+    char p[4096];mkpkt(p,0xD010,0x24,1);
+    stable_resource_put16(p,0x08,local_uid);stable_resource_put16(p,0x0A,100u);
+    stable_put32(p,0x0C,teamplay_current_score());stable_resource_put16(p,0x10,hp);stable_resource_put16(p,0x12,0u);
+    p[0x1A]=req[0x12];p[0x1B]=req[0x13];p[0x1D]=20u;
+    stable_resource_put16(p,0x22,target_damage);
+    sendbuf(c,p,0x24);multiplayer_broadcast_raw(0xD010,(const unsigned char*)p,0x24);
+    printf("  S0xD010 BOSS_MEAT_CONTACT_NUMBER actor=%u hp=%u target_damage=%u index=%u kind=20 len=36 t=%lds\n",local_uid,hp,target_damage,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),sec());fflush(0);
+}
+
 /* Player injury settlement for D00F projectile, exact associated scene, and
  * contact routes. Applied routes share the authoritative combat HP ledger,
  * battle epoch, immunity gates and death latch. */
@@ -1015,6 +1038,9 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                                     shop_catalogs_send_boss_result(c,&meat_boss_result,score_ctx.total,&boss_final_retire_sent);
                                                 }
                                                 if(meat_boss_result.applied_damage)inventory_migration_apply_absorb(c,meat_boss_result.applied_damage,&combat_hp,&injury_dead,score_ctx.total,&lifesteal_remainder,&mp_absorb_remainder,"D00F-meat-boss");
+                                                /* The Boss HP sync above owns the bar; this frame owns the damage
+                                                   number the player expects to see pop over the Boss. */
+                                                send_d010_boss_meat_contact_number(c,(const unsigned char*)&buf[off],multiplayer_current_uid(),combat_hp,meat_boss_result.applied_damage);
                                                 if(pending_super_cf87&&boss_hp_sync_final_terminal_seen(&boss_ctx)&&pending_super_cf87_epoch==boss_ctx.battle_epoch){select_reply_control0(pending_super_cf87_low);teamplay_send_cf88_room_playable(c,score_ctx.total);settlement_sent=1;pending_super_cf87=0;boss_hp_sync_mark_settled(&boss_ctx);}
                                             }
                                         }
