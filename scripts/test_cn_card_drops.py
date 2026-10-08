@@ -144,7 +144,7 @@ static unsigned g_rnd(void){g_calls++;return g_value_index<g_value_count?g_value
 #define CARD_ORDINARY_DROP_MIN_HP 0u
 static unsigned combat_economy_coin_amount_for_hp(unsigned hp){return hp/100u;}
 struct hp_sync_profile_def{unsigned hd_id,stage_id,dungeon_id,stage_index,slot_index;};
-struct hp_sync_target_def{unsigned reward_kind,raw_hp,target_type;};
+struct hp_sync_target_def{unsigned reward_kind,raw_hp,target_type,selector,placement_selector_start;};
 static int terminal_item_drop_is_authored(const struct hp_sync_target_def*t,const struct hp_sync_profile_def*p){return 0;}
 static void teamplay_note_drop(unsigned n){}
 static int flight_items_coin_index(void){return 0;}

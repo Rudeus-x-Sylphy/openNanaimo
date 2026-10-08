@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 351,
+  "count": 352,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -233,8 +233,8 @@
     },
     {
       "path": "managed-host/LiveDungeonExperienceChecks.cs",
-      "size": 9887,
-      "sha256": "E49BAAC790398DDDA42F2002E4ECAEB9E03E01ADD15CAD2E12F95A75780F8EB1"
+      "size": 11777,
+      "sha256": "0E822596FE769AB36DBB1ADF872FD6644853502C24BDD4564ED39ABFED203075"
     },
     {
       "path": "managed-host/LumineosChecks.cs",
@@ -293,8 +293,8 @@
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
-      "size": 53301,
-      "sha256": "25B5690C60FD656A845D2F8F898A67455861286367CD93BD226FDD364F84ADF2"
+      "size": 54361,
+      "sha256": "9276363B7B95D68C1118C9E6C5E8C1ACEBD17F651829A520B5ED95599FAA697B"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -898,8 +898,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.DungeonRanking.cs",
-      "size": 12169,
-      "sha256": "A65463C74D5CE953DBF08649589785CF2A033C2B12ADC62E98AB01DFC4C04093"
+      "size": 12220,
+      "sha256": "31DB7D6944B13339F0989B427D45E0593542A54A0B585E5DBD01B88E06A6FC59"
     },
     {
       "path": "managed/Services/NetworkAdapterService.Entertainment.cs",
@@ -938,8 +938,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.LiveDungeonExperience.cs",
-      "size": 4453,
-      "sha256": "9116C302DE72CC2DE0D5E8FD393FBD5A4B773D0158D41EE5B5C31E79A8DCDAB5"
+      "size": 4981,
+      "sha256": "5A07F9C705449DF56ED6305DABD2CE2D496DC2DCE9B76CBE8FB634BB35E30BB0"
     },
     {
       "path": "managed/Services/NetworkAdapterService.ManagedCouples.cs",
@@ -963,8 +963,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 93197,
-      "sha256": "98E39F5898DDC24DF96FA470A3C0D0B7FD1CDF7C55910A415DBDB6D09ECA6083"
+      "size": 93199,
+      "sha256": "BEB33B2D27BAB2115E72C11C8D9C4EE9701FF69A2CD6AF0E97599857423BF58A"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
@@ -1000,6 +1000,11 @@
       "path": "managed/Services/NetworkAdapterService.NativePartyLoading.cs",
       "size": 4997,
       "sha256": "F486842B87A22AA270A391A7B964019846429000E6B44360A07CD7E7D10CB8E9"
+    },
+    {
+      "path": "managed/Services/NetworkAdapterService.NativePartySettlement.cs",
+      "size": 10939,
+      "sha256": "BD01C6062784BF88207DC15EC9070B7CEE173403E1D5F293297716EB82B79F57"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeRoomSelection.cs",
@@ -1138,8 +1143,8 @@
     },
     {
       "path": "release/components/adapter_core/teamplay_adapter.inc",
-      "size": 16516,
-      "sha256": "0BE3196F3CCDF963D10647EBA2FE12D2E0F34055D9D2E9BD4251435E42D603C5"
+      "size": 17836,
+      "sha256": "4C4A1092E4AF64B2E47B450CC55940BC6B8CC7CDD9AB639A9B04F18522743E9B"
     },
     {
       "path": "release/components/apartments/apartment_runtime.inc",

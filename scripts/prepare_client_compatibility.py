@@ -1110,7 +1110,7 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
         expected_sites.extend((name, va, new) for name, va, _, new in SETTLEMENT_MEMBER_TOWN_SITES)
         expected_sites.extend((name, va, new) for name, va, _, new in social_gameplay_patch_sites())
         expected_sites.extend((name, va, new) for name, va, _, new
-                              in dungeon_result_compat.continuation_sites())
+                              in dungeon_result_compat.continuation_sites() + dungeon_result_compat.sorting_sites())
         result_hook, result_code = dungeon_result_compat.encodings()
         expected_sites.extend((('dungeon_result_entry', dungeon_result_compat.HOOK_VA, result_hook),
                                ('dungeon_result_entry_code', dungeon_result_compat.CAVE_VA, result_code)))

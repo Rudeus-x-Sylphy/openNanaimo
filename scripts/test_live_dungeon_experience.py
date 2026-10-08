@@ -43,6 +43,12 @@ int main(void){
  send_cf72_dynamic_actor_refresh_phase(100,21,NATIVE_CF72_PROFILE);multiplayer_broadcast_actor_resources_current();count=0;
  memset(packet,0,sizeof(packet));managed_put(packet,8,3);managed_put(packet,12,48);managed_put(packet,16,3);managed_put(packet,20,21);managed_put(packet,24,2);managed_put64(packet,28,progression_progression_threshold(2));
  managed_put(packet,36,1520);managed_put(packet,40,115);managed_put(packet,44,4);managed_put(packet,48,23);managed_put(packet,52,8);
+ // Reproduce the production schema4 leak: the worker intentionally accepts
+ // F10B v3 only. A rejected discriminator must not publish or mutate resources.
+ managed_put(packet,8,MANAGED_STATE_VERSION);
+ CHECK(managed_bridge_handle(100,0xF10B,56,packet));
+ CHECK(count==0&&g_stable_level==1&&g_progression_profile_exp_total==0&&g_profile_hp_current==711&&g_profile_mp_current==31);
+ managed_put(packet,8,3);
  CHECK(managed_bridge_handle(100,0xF10B,56,packet));
  CHECK(g_stable_level==2&&g_progression_profile_exp_total==progression_progression_threshold(2)&&g_profile_attack_modifier==4&&g_profile_defense_flat==23);
  CHECK(g_profile_hp_current==1520&&g_profile_mp_current==115);
@@ -117,6 +123,10 @@ class LiveDungeonExperienceTests(unittest.TestCase):
   source=(ROOT/'release/components/game_session/gs_runtime.inc').read_text(encoding='utf8')
   branch=source.split('} else if(managed_bridge_handle(c,type,len,(const unsigned char*)&buf[off])) {',1)[1].split('} else',1)[0]
   self.assertIn('if(type==0xF100||type==0xF10B)combat_hp=pet_crafting_pet_effective_hp_current();',branch)
+ def test_control_version_is_not_inventory_schema(self):
+  source=(ROOT/'managed/Services/NetworkAdapterService.LiveDungeonExperience.cs').read_text(encoding='utf8')
+  self.assertNotIn('Field(0, NativeDungeonState.ProtocolVersion)',source,
+   'F10B remains v3/48; inventory F100/F102 schema4 must not change its discriminator')
  def test_generated_curve(self):
   subprocess.run(['python','-X','utf8',str(ROOT/'scripts/generate_character_experience.py'),'--check'],check=True)
 if __name__=='__main__':unittest.main()

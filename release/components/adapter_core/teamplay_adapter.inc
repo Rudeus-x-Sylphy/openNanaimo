@@ -24,6 +24,20 @@ static int card_terminal_policy_card_denied_name(const char*name){
 static unsigned card_ordinary_drop_basis_points(unsigned rate,unsigned bonus){
     return card_cn_basis_points(rate,bonus,flight_items_flight_card_percent());
 }
+/* Bounded resource-row policy: these positive-HP arrows are not reward
+ * producers. Both sexes have a body at row4; the extra arrow is row23 for
+ * C_man and row24 for C_woman, plus rows25..36 in both resources. Do not infer
+ * a global MMO+0x19 meaning, use an HP/type cutoff, or merge all placement
+ * rows into one reward. The HP terminal path still destroys each arrow. */
+static int combat_economy_terminal_is_ep02_c_arrow(const struct hp_sync_target_def*td,const char*resource){
+    unsigned row;int male,female;
+    if(!td||!resource||td->selector<td->placement_selector_start)return 0;
+    male=card_cn_name_compare(resource,"ep02_mb_C_man.mmo")==0;
+    female=card_cn_name_compare(resource,"ep02_mb_C_woman.mmo")==0;
+    if(!male&&!female)return 0;
+    row=(unsigned)td->selector-(unsigned)td->placement_selector_start;
+    return (row>=25u&&row<=36u)||(male&&row==23u)||(female&&row==24u);
+}
 static void combat_economy_select_ordinary_terminal_reward(const struct hp_sync_target_def*td,const struct hp_sync_profile_def*profile,const char*resource,unsigned selector,
         unsigned old_hp,unsigned new_hp,unsigned monster_hp,unsigned*subtype,unsigned*code){
     unsigned basis_points=0u,hans=0u;int eligible,card_won=0;int ci=flight_items_coin_index();const struct card_cn_pool*pool=0;*subtype=0u;*code=0u;
@@ -33,6 +47,12 @@ static void combat_economy_select_ordinary_terminal_reward(const struct hp_sync_
     if(old_hp>0u&&new_hp==0u&&terminal_item_drop_is_authored(td,profile)){
         teamplay_note_drop(0x80000000u|selector);
         printf("  [TERMINAL_ITEM] offer selector=%u resource=%s field=MMO+0x1A kind=5 hp=%u->0\n",selector,resource?resource:"<unknown>",old_hp);fflush(0);
+        return;
+    }
+    /* Exclude before both the card roll and Hans fallback. This is a drop
+       gate only: damage, terminal D00E and object cleanup remain unchanged. */
+    if(combat_economy_terminal_is_ep02_c_arrow(td,resource)){
+        printf("  [ECONOMY] terminal-arrow-no-drop selector=%u resource=%s row=%u\n",selector,resource,(unsigned)td->selector-(unsigned)td->placement_selector_start);fflush(0);
         return;
     }
     eligible=(td&&td->reward_kind==0u&&td->raw_hp>0u&&td->target_type!=4u&&old_hp>0u&&new_hp==0u&&!card_terminal_policy_card_denied_name(resource));

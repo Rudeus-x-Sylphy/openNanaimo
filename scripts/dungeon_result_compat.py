@@ -51,7 +51,7 @@ def patch(data, patch_site, migrate_site=None):
     data, entry = patch_site(data, HOOK_VA, HOOK_OLD, hook,
         'patch_dungeon_result_entry', 'the native result sorting call differs')
     continuation = {}
-    for name, va, old, new in continuation_sites():
+    for name, va, old, new in continuation_sites() + sorting_sites():
         data, continuation[name] = patch_site(data, va, old, new,
             'patch_' + name, 'the continuation cleanup site differs')
     return data, dict(code=body, entry=entry, continuation=continuation,
@@ -97,4 +97,37 @@ def continuation_sites():
          bytes(code).ljust(CONTINUE_CAVE_SPAN, b'\xCC')),
         ('dungeon_continuation_cleanup_entry', CONTINUE_HOOK_VA, CONTINUE_HOOK_OLD,
          b'\xE8' + struct.pack('<i', base - CONTINUE_HOOK_VA - 5)),
+    ]
+
+
+# CF88 rows are UID-bound by 761C90. The native 762180 sorter otherwise
+# prioritizes rating, regardless of packet ordering. Keep ready/incomplete row
+# semantics, and use its existing swap/draw paths with total-score ordering.
+SORT_PRIMARY_VA = 0x00762230
+SORT_PRIMARY_OLD = bytes.fromhex('0f8da1000000')
+SORT_COMPARE_VA = 0x007622D7
+SORT_COMPARE_OLD = bytes.fromhex('8b45fc69c0ac0000008b8d68feffff83bc01e80400000074368b55fc69d2ac0000008b8568feffff0fb68c10ec0400008b55f869d2ac0000008b8568feffff0fb69410ec0400003bca0f85e70000008b45fc69c0ac0000008b8d68feffff83bc01e80400000074328b55fc69d2ac0000008b45f869c0ac0000008b8d68feffff8bb568feffff8b9411bc0400003b9406bc0400000f839c000000')
+SORT_SWAP_VA = 0x00762371
+SORT_KEEP_VA = 0x0076240D
+
+
+def sorting_sites():
+    code = bytearray.fromhex('8b45fc69c0ac0000008b55f869d2ac0000008b8d68feffff')
+    def branch(opcode, target):
+        code.extend(opcode + struct.pack('<i', target - (SORT_COMPARE_VA + len(code) + len(opcode) + 4)))
+    # EAX/EDX are i/j row offsets; ECX is the existing result controller.
+    code.extend(bytes.fromhex('83bc11e804000000'))  # peer record is incomplete
+    branch(b'\x0F\x84', SORT_KEEP_VA)
+    code.extend(bytes.fromhex('8bb401bc0400003bb411bc040000'))
+    branch(b'\x0F\x87', SORT_KEEP_VA)  # larger unsigned final score stays first
+    branch(b'\x0F\x82', SORT_SWAP_VA)
+    code.extend(bytes.fromhex('8bb401480400003bb41148040000'))
+    branch(b'\x0F\x86', SORT_KEEP_VA)  # equal score: smaller UID stays first
+    branch(b'\xE9', SORT_SWAP_VA)
+    if len(code) > len(SORT_COMPARE_OLD): raise ValueError('result comparator exceeds its original region')
+    primary = b'\xE9' + struct.pack('<i', SORT_COMPARE_VA - (SORT_PRIMARY_VA + 5)) + b'\x90'
+    return [
+        ('dungeon_result_score_order_entry', SORT_PRIMARY_VA, SORT_PRIMARY_OLD, primary),
+        ('dungeon_result_score_order_compare', SORT_COMPARE_VA, SORT_COMPARE_OLD,
+         bytes(code).ljust(len(SORT_COMPARE_OLD), b'\x90')),
     ]

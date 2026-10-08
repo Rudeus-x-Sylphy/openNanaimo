@@ -9,6 +9,7 @@ internal static class LiveDungeonExperienceChecks
 {
     public static async Task RunAsync()
     {
+        CheckLiveExperienceControlFrame();
         await CheckControlDuringExchangeAsync();
         for (int level=1;level<=200;level++)
         {
@@ -96,6 +97,35 @@ internal static class LiveDungeonExperienceChecks
         }
         finally { SqliteConnection.ClearAllPools(); Directory.Delete(root,true); }
     }
+    private static void CheckLiveExperienceControlFrame()
+    {
+        // Use the production sender with a real schema4 checkpoint, not a
+        // hand-authored v3 frame: that missed the inventory-version regression.
+        var character = new CharacterRecord
+        {
+            Id = 21, Name = "ControlFrame", Level = 200,
+            Experience = CharacterProgression.ExperienceRequiredForLevel(200) + 123,
+            MaxHp = 21500, MaxMp = 2100, CurrentHp = 711, CurrentMp = 31
+        };
+        var checkpoint = NativeDungeonState.Create(character, [], []);
+        var before = checkpoint.Bytes.ToArray();
+        var frame = NetworkAdapterService.BuildNativeLiveExperienceFrame(checkpoint, 7);
+        uint Field(int offset) => BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(offset));
+        Check(frame.Length == 56 && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4)) == 56
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6)) == 0xF10B,
+            "production F10B opcode and full length");
+        Check(checkpoint.Get(0) == 4 && Field(8) == 3 && Field(12) == 48 && Field(16) == 3,
+            "F10B v3 remains independent of inventory schema4");
+        Check(Field(20) == 21 && Field(24) == 200
+            && BinaryPrimitives.ReadUInt64LittleEndian(frame.AsSpan(28)) == (ulong)character.Experience,
+            "F10B identity, level and full 64-bit EXP");
+        Check(Field(36) == 21500 && Field(40) == 2100
+            && Field(44) == checkpoint.Get(NativeDungeonState.AttackModifierOffset)
+            && Field(48) == checkpoint.Get(NativeDungeonState.DefenseFlatOffset) && Field(52) == 7,
+            "F10B base maxima, combat stats and native epoch offsets");
+        Check(checkpoint.Bytes.SequenceEqual(before), "F10B construction preserves inventory and current resources");
+    }
+
     private static async Task CheckControlDuringExchangeAsync()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));

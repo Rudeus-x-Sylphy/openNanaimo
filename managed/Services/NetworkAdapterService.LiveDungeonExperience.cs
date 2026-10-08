@@ -51,15 +51,25 @@ public sealed partial class NetworkAdapterService
             session.NativeBattleResources.ApplyTo(next);
         }
         session.NativeCheckpoint = next;
-        var payload = new byte[48];
-        void Field(int offset, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset), value);
-        Field(0, NativeDungeonState.ProtocolVersion); Field(4, 48); Field(8, CharacterProgression.CurveVersion);
-        Field(12, next.Get(4)); Field(16, checked((uint)character.Level));
-        BinaryPrimitives.WriteUInt64LittleEndian(payload.AsSpan(20), checked((ulong)character.Experience));
-        Field(28, (uint)character.MaxHp); Field(32, (uint)character.MaxMp);
-        Field(36, attack); Field(40, defense); Field(44, nativeEpoch);
         // Also resynchronize on duplicate receipts: a prior send may have failed
         // after the DB transaction committed. It must never grant EXP twice.
-        await worker.SendControlAsync(NativeDungeonClient.Frame(0xF10B, payload), token);
+        await worker.SendControlAsync(BuildNativeLiveExperienceFrame(next, nativeEpoch), token);
+    }
+
+    // F10B owns its v3/48-byte progression contract. Inventory F100/F102 schema
+    // changes must not change this discriminator or the worker silently drops it.
+    internal static byte[] BuildNativeLiveExperienceFrame(NativeDungeonState checkpoint, uint nativeEpoch)
+    {
+        const uint protocolVersion = 3;
+        const int payloadLength = 48;
+        var payload = new byte[payloadLength];
+        void Field(int offset, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset), value);
+        Field(0, protocolVersion); Field(4, payloadLength); Field(8, CharacterProgression.CurveVersion);
+        Field(12, checkpoint.Get(4)); Field(16, checkpoint.Get(8));
+        BinaryPrimitives.WriteUInt64LittleEndian(payload.AsSpan(20), checked((ulong)checkpoint.TotalExperience64));
+        Field(28, checkpoint.Get(16)); Field(32, checkpoint.Get(24));
+        Field(36, checkpoint.Get(NativeDungeonState.AttackModifierOffset));
+        Field(40, checkpoint.Get(NativeDungeonState.DefenseFlatOffset)); Field(44, nativeEpoch);
+        return NativeDungeonClient.Frame(0xF10B, payload);
     }
 }

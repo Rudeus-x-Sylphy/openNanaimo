@@ -8,7 +8,7 @@ using Microsoft.Data.Sqlite;
 using OpenNanaimo.Adapter.Models;
 using OpenNanaimo.Adapter.Services;
 
-internal static class Program
+internal static partial class Program
 {
     const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
     static readonly CancellationToken Token = CancellationToken.None;
@@ -286,6 +286,8 @@ internal static class Program
                     "dead viewer exit is accepted directly from the failure screen");
             }
             finally { Set(viewer, "NativeDungeon", null); Set(viewer, "NativeLease", null); }
+            await CheckSharedPartyResults(db, service, root, Session, pool,
+                args.Contains("--zero-kill-requester-probe", StringComparer.Ordinal));
             Console.WriteLine($"NATIVE_PARTY_SETTLEMENT_PASS checks={checks}");
         }
         finally

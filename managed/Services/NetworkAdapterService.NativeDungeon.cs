@@ -1034,7 +1034,7 @@ public sealed partial class NetworkAdapterService
         exchange = new NativeDungeonExchangeResult(exchange.State, exchange.Frames.Where(response =>
             response.Length < 8 || BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) != 0xF10A).ToArray());
         foreach (var response in exchange.Frames)
-            await ApplyNativeCoupleExperienceAsync(session, response, token);
+            await PrepareNativePartySettlementAsync(session, response, token);
         exchange = new NativeDungeonExchangeResult(
             exchange.State,
             FilterNativeDungeonCheckpointFrames(requestOpcode, exchange.Frames));
@@ -1384,7 +1384,7 @@ public sealed partial class NetworkAdapterService
                     out _, out _, out _)) return;
             // A teammate's low rating must not hide this member's result.
             // Leaderboard eligibility is independent of result publication.
-            await ApplyNativeCoupleExperienceAsync(session, response, token);
+            await PrepareNativePartySettlementAsync(session, response, token);
             RememberNativeDungeonRanking(session, response);
             RememberNativeDungeonPersonalSettlement(session, response);
             await CommitNativeDungeonDeferredSettlementAsync(session, response, token);

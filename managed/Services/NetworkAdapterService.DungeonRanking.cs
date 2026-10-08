@@ -162,6 +162,7 @@ public sealed partial class NetworkAdapterService
                 PatchNativeCharacterProgressionFrame(response, checkpoint.Get(4), character, character);
             memo.Published = true;
         }
+        PatchNativePartySettlementFrame(response);
     }
 
     // Deferred results are persisted before publication. This path performs only
