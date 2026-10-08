@@ -3749,13 +3749,16 @@ public sealed partial class DatabaseService
         var newQuantity = checked((ushort)(currentQuantity + quantity));
         var purchaseTime = DateTime.Now;
         var expiration = currentExpiration;
-        if (catalogItem.Section == InventorySection.Clothing)
+        if (catalogItem.HasExpiry)
             for (var index = 0; index < quantity; index++)
                 expiration = ClothingExpirationTime.Extend(expiration, catalogItem.DurationDays, purchaseTime);
         else
             expiration = 0;
-        await using (var inventory = connection.CreateCommand())
+        // Buying another life variant of an owned pet extends that pet instead of adding a
+        // second instance of it; a permanently owned pet simply gains nothing.
+        if (!await TryMergePetFamilyGrantAsync(connection, transaction, characterId, catalogItem, quantity, purchaseTime, cancellationToken))
         {
+            await using var inventory = connection.CreateCommand();
             inventory.Transaction = transaction;
             inventory.CommandText = """
                 INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, ItemExpiration, UpdatedAt)
@@ -4192,7 +4195,7 @@ public sealed partial class DatabaseService
 
         var newQuantity = checked((ushort)(currentQuantity + quantity));
         var expiration = currentExpiration;
-        if (catalogItem.Section == InventorySection.Clothing)
+        if (catalogItem.HasExpiry)
             for (var index = 0; index < quantity; index++)
                 expiration = ClothingExpirationTime.Extend(expiration, catalogItem.DurationDays, purchaseTime);
         else
@@ -4649,7 +4652,7 @@ public sealed partial class DatabaseService
 
         var newQuantity = checked((ushort)(currentQuantity + quantity));
         var expiration = currentExpiration;
-        if (catalogItem.Section == InventorySection.Clothing)
+        if (catalogItem.HasExpiry)
             for (var index = 0; index < quantity; index++)
                 expiration = ClothingExpirationTime.Extend(expiration, catalogItem.DurationDays, purchaseTime);
         else
@@ -4785,8 +4788,11 @@ public sealed partial class DatabaseService
             await updateInbox.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await using (var updateInventory = connection.CreateCommand())
+        // Claiming another life variant of an owned pet extends that pet instead of adding a
+        // second instance of it; a permanently owned pet simply gains nothing.
+        if (!await TryMergePetFamilyGrantAsync(connection, transaction, characterId, claimedItem, 1, DateTime.Now, cancellationToken))
         {
+            await using var updateInventory = connection.CreateCommand();
             updateInventory.Transaction = transaction;
             updateInventory.CommandText = """
                 INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, ItemExpiration, UpdatedAt)

@@ -34,7 +34,8 @@ var luckyWire=LuckyCardPolicy.Result(900,46000008); var expWire=ExperienceCardPo
 Check(luckyWire.Length==8&&U32(luckyWire)==900&&U32(luckyWire,4)==46000008&&expWire.Length==16&&U32(expWire)==800&&U32(expWire,12)==2099123123,"distinct initialized 900/800 response layouts");
 Check(U32(ExperienceCardPolicy.BuildActivationResult(false,default))==0,"EXP rejection never masquerades as capacity");
 var evtWire=EventCardPolicy.Result(0,"Not configured"); Check(evtWire.Length==28&&evtWire[27]==0&&U32(evtWire)==0,"bounded NUL-terminated C3FE construction");
-foreach(string unsafeText in new[]{"%s","a\0b",new string('x',24),"\u00e9"}) Reject(()=>EventCardPolicy.Result(0,unsafeText),"C3FE rejects unsafe text");
+foreach(string unsafeText in new[]{"%s","a\0b",new string('x',24),new string('\u91d1',12)}) Reject(()=>EventCardPolicy.Result(0,unsafeText),"C3FE rejects unsafe text");
+Check(EventCardPolicy.Result(0,"200\u91d1\u5e01").AsSpan(4,7).SequenceEqual(Encoding.GetEncoding(936).GetBytes("200\u91d1\u5e01")),"C3FE carries GBK prize text");
 var window=new LuckyCardRequestWindow(); var time=new DateTime(2026,10,7,12,0,0,DateTimeKind.Utc); var rid=window.Get(7,22000011,time);
 Check(window.Get(7,22000011,time.AddSeconds(9))==rid&&window.Get(7,22000012,time)!=rid&&window.Get(7,22000011,time.AddSeconds(10))!=rid,"bounded request identity expires at ten seconds");
 for(ushort i=0;i<300;i++) window.Get(i,22000011,time);
@@ -74,6 +75,18 @@ async Task SeedSet(uint page,int qty=1,int count=10) { for(uint i=0;i<count;i++)
 var config=Path.Combine(root,EventCardPolicy.FileName);
 void Config(uint code=46000008,int weight=10000,int quantity=1,uint page=1)=>File.WriteAllText(config,JsonSerializer.Serialize(new {Version=1,Pages=new[]{new {Page=page,Rewards=new[]{new {Code=code,Quantity=quantity,Weight=weight}}}}}));
 Task<EventCardRedeemResult> Redeem(uint page=1,int ticket=0,string? request=null)=>db.RedeemEventCardAsync(account,character,sessionId,request??Id(),page,nextTicket:_=>ticket);
+uint WirePetExpiration(byte[] payload,uint code)
+{
+    // C44C carries petItems.Length + materials.Length 36-byte records from frame+4;
+    // a pet record stores its wire expiration at +4.
+    for(var index=0;index<payload[2]&&4+(index+1)*36<=payload.Length;index++)
+    {
+        var record=payload.AsSpan(4+index*36,36);
+        if(BinaryPrimitives.ReadUInt32LittleEndian(record)==code)
+            return BinaryPrimitives.ReadUInt32LittleEndian(record.Slice(4,4));
+    }
+    return 0;
+}
 
 // Every resource reward is actually committed; checking lazy initialization alone is insufficient.
 foreach(var pool in LuckyCardPolicy.All.Values)
@@ -114,8 +127,33 @@ await Reset();await Seed(22000012);await Seed(22000001,255);Check((await Draw(22
 await Reset();await Seed(22000011);await Item(17000072,55);
 Check((await Draw(22000011,9970)).Result==100,"pets and materials share 56 slots including starter pet");
 await Item(17000072,54);Check((await Draw(22000011,0)).Reward==15009016,"pet capacity edge grants original pet");
-await Seed(22000011);var duplicate=await Draw(22000011,9970);
-Check(duplicate.Result==0&&duplicate.Error.StartsWith("DuplicatePet")&&await Items(15009016)==1&&await Cards(22000011)==2,"duplicate pet refused without false full-inventory result");
+// 15009016 is a 15-day pet: the grant must carry a real wire expiration, and a
+// repeated draw extends that remaining period instead of being refused as a
+// duplicate instance (the permanent pet case is asserted on the event path below).
+var petExpiration=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016");
+var firstPetIsTimed=ClothingExpirationTime.TryDecode((uint)petExpiration,out var firstPetExpiry);
+Check(petExpiration!=ClothingExpirationTime.PermanentExpiration&&firstPetIsTimed
+    &&firstPetExpiry>DateTime.Now.AddDays(14),"duration pet grants a wire expiration, not a permanent row");
+await Seed(22000011);var extended=await Draw(22000011,9970);
+Check(extended.Success&&extended.Reward==15009016&&await Items(15009016)==1&&await Cards(22000011)==1,"duration pet repeat draw extends without a duplicate instance");
+Check(ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016"),out var secondPetExpiry)
+    &&secondPetExpiry-firstPetExpiry>=TimeSpan.FromDays(14),"duration pet extension adds the authored days");
+// A lapsed pet stops being owned: it is not published, does not block the draw, and the
+// drawn copy takes a fresh term instead of inheriting a past date.
+await Reset();await Seed(22000011);await Item(15009016,1);
+await Sql("UPDATE CharacterItems SET ItemExpiration=$e WHERE CharacterId=$id AND ItemCode=15009016",("$e",ClothingExpirationTime.Encode(new DateTime(2020,1,1,0,0,0))));
+Check(WirePetExpiration(NetworkAdapterService.BuildPetInventoryPayload((await db.GetCharacterAsync(account))!),15009016)==0,"lapsed pet is not published as owned");
+var lapsed=await Draw(22000011,9970);
+Check(lapsed.Success
+    &&ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016"),out var lapsedUntil)
+    &&lapsedUntil>DateTime.Now.AddDays(14),"lapsed pet takes a fresh term from the draw");
+// A duration pet with no stored expiry (legacy rows and pre-fix grants) starts its
+// lifespan from the grant, exactly like timed clothing, so the draw is never blank.
+await Sql("UPDATE CharacterItems SET ItemExpiration=0 WHERE CharacterId=$id AND ItemCode=15009016");
+await Seed(22000011);var legacyRow=await Draw(22000011,9970);
+Check(legacyRow.Success
+    &&await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016")!=0
+    &&await Cards(22000011)==1&&await Items(15009016)==1,"lifespan starts from the grant when no expiry was stored");
 await Reset();await Seed(22000018);await Item(11420304,84);Check((await Draw(22000018,8890)).Result==100,"furniture capacity 84");
 await Reset();await Seed(22000011);await Item(48000004,1);
 await Sql("INSERT INTO CharacterQuickSlots(CharacterId,Slot,ItemCode,InventoryIndex,UpdatedAt) VALUES($id,0,48000004,0,'test')");
@@ -187,6 +225,73 @@ foreach(uint page in Enumerable.Range(1,10).Select(x=>(uint)x))
     Config(page:page);await Reset();await SeedSet(page);
     Check((await Redeem(page)).Success&&await Sql("SELECT COUNT(*) FROM CharacterCards WHERE CharacterId=$id")==0,"configured event page "+page);
 }
+// Duration pets extend through C3FD/C3FE as well. A permanent pet (no catalog
+// duration) keeps the fixed already-owned text and preserves the whole set.
+Config(15009016);await Reset();await SeedSet(1);
+var eventPetGrant=await Redeem();
+var eventPetExpiration=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016");
+Check(eventPetGrant.Success&&await Items(15009016)==1&&eventPetExpiration!=ClothingExpirationTime.PermanentExpiration,"event duration pet granted with a wire expiration");
+Check(WirePetExpiration(NetworkAdapterService.BuildPetInventoryPayload((await db.GetCharacterAsync(account))!),15009016)==(uint)eventPetExpiration,"C44C pet record carries the stored expiration");
+await SeedSet(1);Check((await Redeem()).Success&&await Items(15009016)==1,"event duration pet repeat draw extends");
+Check(ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016"),out var extendedEventExpiry)
+    &&ClothingExpirationTime.TryDecode((uint)eventPetExpiration,out var firstEventExpiry)
+    &&extendedEventExpiry-firstEventExpiry>=TimeSpan.FromDays(14),"event duration pet extension adds the authored days");
+// A pet row without an expiry (legacy or pre-fix grants) takes a real lifespan from
+// the event-card draw too, and a repeated draw is never answered with the fixed
+// already-owned text and never pins the page.
+Config(15009016);await Reset();await SeedSet(1);await Item(15009016,1);
+var legacyCopy=await Redeem();
+var legacyExpiration=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016");
+Check(legacyCopy.Success&&legacyCopy.Message!="已拥有该奖励"
+    &&legacyExpiration!=0&&legacyExpiration!=ClothingExpirationTime.PermanentExpiration
+    &&await Items(15009016)==1&&await Sql("SELECT COUNT(*) FROM CharacterCards WHERE CharacterId=$id")==0,"legacy pet row takes a real lifespan from the event-card draw");
+Check(WirePetExpiration(NetworkAdapterService.BuildPetInventoryPayload((await db.GetCharacterAsync(account))!),15009016)==(uint)legacyExpiration,"C44C reports the lifespan written by a legacy-row draw");
+Check(await Sql("SELECT COUNT(*) FROM EventCardPendingDraws WHERE CharacterId=$id")==0,"lifespan draw does not pin the page");
+// A legacy row already displays its catalog lifetime, so a repeat draw stacks onto that term
+// instead of replacing it: 15 days shown plus 15 days drawn leaves 30 days.
+Config(15009238);await Reset();await SeedSet(1);await Item(15009238,1);
+Check((await Redeem()).Success,"legacy row drawn again");
+Check(ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238"),out var stacked)
+    &&stacked>DateTime.Now.AddDays(29)&&stacked<DateTime.Now.AddDays(31),"a legacy row stacks the drawn days onto the term it displayed");
+// A pet authored with duration zero that is already owned settles as a blank draw: the
+// set is consumed, nothing is granted, and the page is not left pinned.
+Config(15000004);await Reset();await SeedSet(1);await Item(15000004,1);
+var permanentPet=await Redeem();
+Check(permanentPet.Success&&permanentPet.Message=="已拥有该奖励"
+    &&await Cards(50000001)==0&&await Items(15000004)==1
+    &&await Sql("SELECT COUNT(*) FROM EventCardPendingDraws WHERE CharacterId=$id")==0,"permanently owned pet settles as a blank draw and consumes the set");
+// One authored creature is one pet: a longer life variant of an owned family extends the
+// same row instead of adding a second instance of the same animal.
+Config(15009238);await Reset();await SeedSet(1);
+Check((await Redeem()).Success&&await Items(15009238)==1,"family life variant granted");
+var firstTerm=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238");
+Config(15009246);await SeedSet(1);Check((await Redeem()).Success,"longer family variant drawn");
+Check(await Sql("SELECT COUNT(*) FROM CharacterItems WHERE CharacterId=$id AND ItemCode/1000000=15")==1
+    &&await Items(15009238)==1&&await Items(15009246)==0,"a longer variant merges into the owned pet's row");
+Check(ClothingExpirationTime.TryDecode((uint)firstTerm,out var termBefore)
+    &&ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238"),out var termAfter)
+    &&termAfter-termBefore>=TimeSpan.FromDays(90),"merged term adds the drawn variant's authored days");
+// A drawn permanent variant makes the whole family permanent.
+Config(15009337);await Reset();await SeedSet(1);Check((await Redeem()).Success,"timed family variant drawn");
+Config(15003362);await SeedSet(1);Check((await Redeem()).Success,"permanent family variant drawn");
+Check(await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009337")==0
+    &&await Items(15003362)==0&&await Sql("SELECT COUNT(*) FROM CharacterItems WHERE CharacterId=$id AND ItemCode/1000000=15")==1,"a drawn permanent variant makes the owned pet permanent");
+// Buying another life variant of an owned pet extends that pet's term; a pet with no owned
+// family still lands as its own row.
+await Reset();await Sql("UPDATE Characters SET Hans=99999999,Cash=99999999 WHERE Id=$id");
+await Item(15009238,1);
+await Sql("UPDATE CharacterItems SET ItemExpiration=$e WHERE CharacterId=$id AND ItemCode=15009238",("$e",ClothingExpirationTime.Encode(DateTime.Now.AddDays(10))));
+var beforeBuy=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238");
+Check(ShopCatalog.TryGet(15009246,out var shopPet),"shop pet catalogued");
+var bought=await db.PurchaseShopItemForAccountAsync(account,15009246,1,shopPet.PurchasePrice,shopPet.PaysWithCash);
+Check(bought.Success&&await Sql("SELECT COUNT(*) FROM CharacterItems WHERE CharacterId=$id AND ItemCode/1000000=15")==1
+    &&await Items(15009238)==1&&await Items(15009246)==0,"shop life variant merges into the owned pet's row");
+Check(ClothingExpirationTime.TryDecode((uint)beforeBuy,out var buyBefore)
+    &&ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238"),out var buyAfter)
+    &&buyAfter-buyBefore>=TimeSpan.FromDays(90),"shop purchase adds the bought variant's authored days");
+await Reset();var freshBuy=await db.PurchaseShopItemForAccountAsync(account,15009246,1,shopPet.PurchasePrice,shopPet.PaysWithCash);
+Check(freshBuy.Success&&await Items(15009246)==1,"shop pet with no owned family lands as its own row");
+Config();
 File.WriteAllText(config,JsonSerializer.Serialize(new {Version=1,Pages=new[]{new {Page=1,Rewards=new[]{new {Code=46000008,Quantity=1,Weight=2500},new {Code=46000002,Quantity=1,Weight=7500}}}}}));
 var weighted=EventCardPolicy.Load(config)[1];
 Check(EventCardPolicy.Pick(weighted,2499)==46000008&&EventCardPolicy.Pick(weighted,2500)==46000002&&EventCardPolicy.Pick(weighted,9999)==46000002,"explicit event weight interval edges");

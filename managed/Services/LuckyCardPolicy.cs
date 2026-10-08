@@ -7,7 +7,10 @@ namespace OpenNanaimo.Adapter.Services;
 
 internal static class LuckyCardPolicy
 {
-    internal readonly record struct Reward(uint Code, int UpperBound);
+    // Bundle: explicit multi-code grant (a whole outfit/decor set); Code is the
+    // bundle's first member so C3FE's non-zero success value stays meaningful.
+    // Hans: > 0 grants that much gold instead of an item.
+    internal readonly record struct Reward(uint Code, int UpperBound, int Hans = 0, IReadOnlyList<uint>? Bundle = null);
     internal sealed record Pool(uint Card, string Version, IReadOnlyList<Reward> Rewards);
     private static readonly Lazy<IReadOnlyDictionary<uint, Pool>> Pools = new(Load);
     internal static IReadOnlyDictionary<uint, Pool> All => Pools.Value;

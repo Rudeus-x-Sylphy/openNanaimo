@@ -64,6 +64,29 @@ public sealed class ShopCatalogItem
     public uint HansGiftValue { get; init; }
     public bool IsHansGiftCertificate => Category == 46 && HansGiftValue > 0;
 
+    // Timed entries carry a wire expiration: clothing, and pets whose catalog row authors
+    // a life (pi._D7 field 34). Every other entry is permanent and stores no expiry.
+    public bool HasExpiry => Section == InventorySection.Clothing
+        || Section == InventorySection.Pet && !IsPetMaterial && DurationDays > 0;
+    // One authored creature per appearance: the catalog's life and level variants reuse the
+    // same icon and name, so a family key groups them. A trailing single-digit icon suffix is
+    // the model stage and a trailing "(n)" is the level variant; neither starts a new pet.
+    public string PetFamilyKey
+    {
+        get
+        {
+            if (Section != InventorySection.Pet || IsPetMaterial) return string.Empty;
+            var stem = Path.GetFileNameWithoutExtension(IconPath);
+            var cut = stem.LastIndexOf('_');
+            if (cut > 0 && stem.Length - cut == 2 && stem[cut + 1] is >= '0' and <= '9') stem = stem[..cut];
+            var name = Name.Trim();
+            var open = name.LastIndexOf('(');
+            if (open > 0 && name.EndsWith(')')
+                && name.AsSpan(open + 1, name.Length - open - 2).ToString().All(character => character is >= '0' and <= '9'))
+                name = name[..open].Trim();
+            return stem + "|" + name;
+        }
+    }
     public bool IsPurchasable => HansPrice > 0 || CashPrice > 0;
     public bool PaysWithCash => CashPrice > 0 && HansPrice == 0;
     public uint PurchasePrice => PaysWithCash ? CashPrice : HansPrice;

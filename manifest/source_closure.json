@@ -393,8 +393,8 @@
     },
     {
       "path": "managed/Models/CharacterRecord.cs",
-      "size": 6798,
-      "sha256": "21C46F4BE71487B53C8992AB19E47EDD7415F2D4CC371C87C35971698951E842"
+      "size": 6833,
+      "sha256": "2D1A3B15A2A65513910BEC6D58883F3D0E125F7E86E8EE0996463368E3DB7AE3"
     },
     {
       "path": "managed/Models/CharacterRuntimeState.cs",
@@ -608,8 +608,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.CardPageUnion.cs",
-      "size": 5150,
-      "sha256": "14455E0BD9B68B7DF91F527866ECBB0120E3B170D39173F9CBDF033946A657B0"
+      "size": 5176,
+      "sha256": "7B04F03F938410CCC0CD1F03235767F44668FF5A6864B696C7F2EAB2BCC4FDDF"
     },
     {
       "path": "managed/Services/DatabaseService.CoupleBenefits.cs",
@@ -618,8 +618,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.EventCards.cs",
-      "size": 8260,
-      "sha256": "B94A647EF330EBA798C108A8F5AA625F471D5E0552E71B37046C7338037D6556"
+      "size": 14722,
+      "sha256": "F306F0DE585767DCAE5A0FA9BAD8215D3311B025561CE41FFD28C435C5036556"
     },
     {
       "path": "managed/Services/DatabaseService.ExperienceCards.cs",
@@ -663,8 +663,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.LuckyCards.cs",
-      "size": 12583,
-      "sha256": "02BB53D1E2BAD15CB9D62D0CD6AC59C92DDFBD9BD1E6F3C3E5223E3BE551CDBC"
+      "size": 22005,
+      "sha256": "67553C46DA55695AA24173D79AA7BF4D2BC4DA682D4F092B848435800E6BD609"
     },
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",
@@ -723,8 +723,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 589801,
-      "sha256": "A8F987A2A10D56B332511F5238B4989BFE6267DBAD01D058F2D953BFE20D2285"
+      "size": 590349,
+      "sha256": "0529B6F9AB20D780AF747D1DFBB95F98D975EF350352C0A5DB1F7AF3A2D89224"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -768,8 +768,8 @@
     },
     {
       "path": "managed/Services/EventCardPolicy.cs",
-      "size": 4627,
-      "sha256": "A3F12C84845D49043FDAF6494411710212D707C6020174634C74DD111CF74A8F"
+      "size": 7546,
+      "sha256": "AEFD3DEFEC2877F1181D45169A4B60241505C5E9CC32A78B20AF39D67ECD33F0"
     },
     {
       "path": "managed/Services/ExperienceCardPolicy.cs",
@@ -803,8 +803,8 @@
     },
     {
       "path": "managed/Services/LuckyCardPolicy.cs",
-      "size": 5214,
-      "sha256": "46D59ED0AA827D93E6C6E4AF59CD8A18E3EB9B4F404F77EC9A45D986A2E8C520"
+      "size": 5487,
+      "sha256": "7D15DF6B50385BD4CE355111745888B66A77B5E1ACFCF4810BB8E67BCAE1161B"
     },
     {
       "path": "managed/Services/MentorProtocol.cs",
@@ -1048,8 +1048,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 987370,
-      "sha256": "B54BC22C7008A44FFEED3089090906B1F57CBD120DA6612F5749983E1156805F"
+      "size": 988232,
+      "sha256": "1F5615E650EDD225F53A63104410361AC00BE57B65AA906C71393E31F78A179F"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1068,8 +1068,8 @@
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
-      "size": 45877,
-      "sha256": "E9753E7E6EB523836F8F4A739591CC7CB979E64657EF0617374875408270D5D0"
+      "size": 47202,
+      "sha256": "4134FBF00DB3AD16F65BFC694CE4A70218AEF5B635F199E64673302DF4BB29BA"
     },
     {
       "path": "managed/Services/PrivateChatProtocol.cs",

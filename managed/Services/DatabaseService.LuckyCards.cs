@@ -115,7 +115,8 @@ public sealed partial class DatabaseService
         }
         command.CommandText = "UPDATE Characters SET CardMysteryKeyCount=CardMysteryKeyCount-1,LastSavedAt=$now WHERE Id=$id AND CardMysteryKeyCount>0";
         if (await command.ExecuteNonQueryAsync(token) != 1) return new(0, 0, "key balance changed");
-        if (!await GrantCardRewardAsync(connection, transaction, characterId, reward, token))
+        var grant = await GrantCardRewardAsync(connection, transaction, characterId, reward, token);
+        if (grant == CardRewardGrant.Failed)
             return new(0, 0, "reward write failed");
         if (!await ReindexGameQuickSlotsAfterGrantAsync(connection, transaction, characterId, gameBefore, token)
             || !await RemapApartmentPlacementsAfterInsertionAsync(connection, transaction, characterId, furnitureBefore, token))
@@ -127,10 +128,14 @@ public sealed partial class DatabaseService
             """;
         await command.ExecuteNonQueryAsync(token);
         await transaction.CommitAsync(token);
-        return new(900, reward, string.Empty);
+        // A permanently owned copy still consumes the card and key; the draw grants
+        // nothing, which the operator log records under its own tag.
+        return new(900, reward, grant == CardRewardGrant.AlreadyOwned
+            ? "permanent copy already owned; blank draw" : string.Empty);
     }
 
-    private enum CardRewardCapacity { Available, Full, DuplicatePet, Unsupported }
+    private enum CardRewardCapacity { Available, Full, PermanentCopy, Unsupported }
+    private enum CardRewardGrant { Granted, AlreadyOwned, Failed }
 
     private static async Task<CardRewardCapacity> CheckCardRewardCapacityAsync(SqliteConnection connection, SqliteTransaction tx,
         long id, uint reward, int petVariant, CancellationToken token)
@@ -144,17 +149,36 @@ public sealed partial class DatabaseService
                 ? CardRewardCapacity.Available : CardRewardCapacity.Full;
         }
         if (!ShopCatalog.TryGet(reward, out var item)) return CardRewardCapacity.Unsupported;
-        read.CommandText = "SELECT ItemCode,Quantity FROM CharacterItems WHERE CharacterId=$id AND Quantity>0";
+        // One authored creature is one pet: the catalog's life and level variants merge into
+        // the same row, so a repeat draw extends the owned pet instead of adding an instance.
+        var family = item.PetFamilyKey;
+        read.CommandText = "SELECT ItemCode,Quantity,ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND Quantity>0";
         long occupied = 0; var petCodes = new HashSet<uint>();
-        if (petVariant is >= 1 and <= 3) petCodes.Add(15000000u + (uint)petVariant);
+        bool? familyPermanent = null;
+        if (petVariant is >= 1 and <= 3)
+        {
+            var starter = 15000000u + (uint)petVariant;
+            petCodes.Add(starter);
+            // The tutorial pet has no row but is owned: its family can never gain a second
+            // instance through a draw either.
+            if (family.Length > 0 && ShopCatalog.TryGet(starter, out var starterItem)
+                && starterItem.PetFamilyKey == family) familyPermanent = true;
+        }
         bool petBox = item.Section == InventorySection.Pet || item.IsPetMaterial;
         await using var rows = await read.ExecuteReaderAsync(token);
         while (await rows.ReadAsync(token))
         {
             var code = checked((uint)rows.GetInt64(0)); var count = rows.GetInt64(1);
-            if (code == reward && item.Section == InventorySection.Pet && !item.IsPetMaterial) return CardRewardCapacity.DuplicatePet;
-            if (code == reward && count >= ushort.MaxValue) return CardRewardCapacity.Full;
+            var expiration = checked((uint)rows.GetInt64(2));
             if (!ShopCatalog.TryGet(code, out var owned)) continue;
+            // The family row is reused even when it has lapsed, so the pet is revived rather
+            // than duplicated.
+            if (family.Length > 0 && owned.PetFamilyKey == family) familyPermanent = owned.DurationDays == 0;
+            // A lapsed pet is no longer owned: it neither blocks the draw nor occupies a
+            // slot. Permanent rows carry no expiry and stay active.
+            if (owned.Section == InventorySection.Pet && !owned.IsPetMaterial
+                && !ClothingExpirationTime.IsActive(expiration, DateTime.Now)) continue;
+            if (code == reward && count >= ushort.MaxValue) return CardRewardCapacity.Full;
             if (petBox)
             {
                 if (owned.IsPetMaterial) occupied += count;
@@ -165,13 +189,81 @@ public sealed partial class DatabaseService
                 || item.IsGameInventoryItem && owned.IsGameInventoryItem
                 || item.IsShoppingCoupon && owned.IsShoppingCoupon) occupied += count;
         }
-        if (petBox) return petCodes.Contains(reward) ? CardRewardCapacity.DuplicatePet
-            : occupied + petCodes.Count < 56 ? CardRewardCapacity.Available : CardRewardCapacity.Full;
+        if (petBox)
+            return familyPermanent is bool permanent
+                // A permanently authored copy can only be settled as a blank draw; a timed one
+                // extends, including a legacy row that never carried a term.
+                ? permanent ? CardRewardCapacity.PermanentCopy : CardRewardCapacity.Available
+                : occupied + petCodes.Count < 56 ? CardRewardCapacity.Available : CardRewardCapacity.Full;
         int cap = item.Section == InventorySection.Clothing ? 56 : item.IsShoppingCoupon ? 256 : 84;
         return occupied < cap ? CardRewardCapacity.Available : CardRewardCapacity.Full;
     }
+    /** The owned row for a drawn pet's family, of which a character keeps one. Lapsed rows are
+     *  returned too so a repeat draw revives the pet rather than creating a second instance of
+     *  it; the tutorial pet has no row but reports as a permanently owned family.
+     *  Permanent is decided by the owned code's authored duration, not by the stored value: a
+     *  zero expiration on a duration pet is a legacy row that has simply never carried a term. */
+    private static async Task<(uint Code, uint Expiration, bool Permanent, ushort Days)?> FindPetFamilyRowAsync(
+        SqliteConnection connection, SqliteTransaction tx, long id, ShopCatalogItem item, CancellationToken token)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.Parameters.AddWithValue("$id", id);
+        command.CommandText = "SELECT ItemCode,ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND Quantity>0 AND ItemCode/1000000=15";
+        await using (var rows = await command.ExecuteReaderAsync(token))
+            while (await rows.ReadAsync(token))
+            {
+                var code = checked((uint)rows.GetInt64(0));
+                if (ShopCatalog.TryGet(code, out var owned) && owned.PetFamilyKey == item.PetFamilyKey)
+                    return (code, checked((uint)rows.GetInt64(1)), owned.DurationDays == 0, owned.DurationDays);
+            }
+        await using var variant = connection.CreateCommand();
+        variant.Transaction = tx;
+        variant.Parameters.AddWithValue("$id", id);
+        variant.CommandText = "SELECT PetVariant FROM Characters WHERE Id=$id";
+        var value = await variant.ExecuteScalarAsync(token);
+        if (value is null || Convert.ToInt32(value) is not (>= 1 and <= 3)) return null;
+        var starter = 15000000u + (uint)Convert.ToInt32(value);
+        return ShopCatalog.TryGet(starter, out var starterItem) && starterItem.PetFamilyKey == item.PetFamilyKey
+            ? (starter, 0u, true, starterItem.DurationDays) : null;
+    }
+
+    /** The term a family row takes when an item lands on it. A legacy row carries no stored value
+     *  because nothing ever wrote one, while the client already shows its catalog lifetime: the
+     *  grant therefore stacks onto that authored term so a repeat draw adds days instead of
+     *  replacing the term the player could already see. A zero-duration item makes it permanent. */
+    private static uint MergedPetTerm((uint Code, uint Expiration, bool Permanent, ushort Days) family,
+        ShopCatalogItem item, int quantity, DateTime grantTime)
+        => item.DurationDays > 0
+            ? ClothingExpirationTime.Extend(
+                family.Expiration != 0 ? family.Expiration : ClothingExpirationTime.Extend(0, family.Days, grantTime),
+                (ushort)Math.Min(ushort.MaxValue, item.DurationDays * Math.Max(1, quantity)), grantTime)
+            : 0u;
+
+    /** Grants a pet onto the row of its authored family instead of inserting another instance of
+     *  the same animal, and reports whether the family row satisfied the grant. A permanently
+     *  owned pet keeps its term and gains nothing: the paid flows deliberately settle that as a
+     *  spent purchase rather than refunding it. */
+    private static async Task<bool> TryMergePetFamilyGrantAsync(SqliteConnection connection, SqliteTransaction tx,
+        long characterId, ShopCatalogItem item, int quantity, DateTime grantTime, CancellationToken token)
+    {
+        if (item.PetFamilyKey.Length == 0) return false;
+        var owned = await FindPetFamilyRowAsync(connection, tx, characterId, item, token);
+        if (owned is not { } family) return false;
+        if (family.Permanent) return true;
+        var term = MergedPetTerm(family, item, quantity, grantTime);
+        await using var update = connection.CreateCommand();
+        update.Transaction = tx;
+        update.CommandText = "UPDATE CharacterItems SET ItemExpiration=$term,UpdatedAt=$now WHERE CharacterId=$id AND ItemCode=$code";
+        update.Parameters.AddWithValue("$term", term);
+        update.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+        update.Parameters.AddWithValue("$id", characterId);
+        update.Parameters.AddWithValue("$code", family.Code);
+        return await update.ExecuteNonQueryAsync(token) == 1;
+    }
+
     // Shared transactional grant for explicitly configured event rewards and resource-authored lucky rewards.
-    private static async Task<bool> GrantCardRewardAsync(SqliteConnection connection, SqliteTransaction tx,
+    private static async Task<CardRewardGrant> GrantCardRewardAsync(SqliteConnection connection, SqliteTransaction tx,
         long id, uint reward, CancellationToken token)
     {
         await using var command = connection.CreateCommand(); command.Transaction = tx;
@@ -184,16 +276,63 @@ public sealed partial class DatabaseService
                 """;
         else
         {
-            if (!ShopCatalog.TryGet(reward, out var item)) return false;
+            if (!ShopCatalog.TryGet(reward, out var item)) return CardRewardGrant.Failed;
+            // One authored creature is one pet: a drawn life or level variant extends the
+            // owned row for that family instead of adding a second instance of it.
+            if (item.PetFamilyKey.Length > 0)
+            {
+                var owned = await FindPetFamilyRowAsync(connection, tx, id, item, token);
+                if (owned is { } row)
+                {
+                    // A permanently authored pet copy can never be granted again, and a timed
+                    // draw never downgrades it; the caller still settles and consumes the draw
+                    // so the page is not left pinned.
+                    if (row.Permanent) return CardRewardGrant.AlreadyOwned;
+                    var term = MergedPetTerm(row, item, 1, DateTime.Now);
+                    command.Parameters.AddWithValue("$owned", row.Code);
+                    command.CommandText = "UPDATE CharacterItems SET ItemExpiration=$term,UpdatedAt=$now WHERE CharacterId=$id AND ItemCode=$owned";
+                    command.Parameters.AddWithValue("$term", term);
+                    return await command.ExecuteNonQueryAsync(token) == 1
+                        ? CardRewardGrant.Granted : CardRewardGrant.Failed;
+                }
+            }
+            // Timed grants must never become a permanent row: clothing and duration pets
+            // extend from the stored expiration the same way the shop purchase path does,
+            // and keep one row per code so a repeated draw stacks days instead of
+            // duplicate pieces or duplicate pet instances.
+            var timed = item.HasExpiry;
+            var currentExpiration = 0u;
+            if (timed)
+            {
+                await using var current = connection.CreateCommand();
+                current.Transaction = tx;
+                current.CommandText = "SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=$reward";
+                current.Parameters.AddWithValue("$id", id);
+                current.Parameters.AddWithValue("$reward", reward);
+                var value = await current.ExecuteScalarAsync(token);
+                if (value is not null) currentExpiration = checked((uint)Convert.ToInt64(value));
+            }
+            // A duration pet keeps a lifespan exactly like timed clothing: a row with no
+            // stored expiry counts from this grant instead of staying permanent, so the
+            // remaining term stays visible and a repeat draw adds to it.
+            var expiration = timed
+                ? ClothingExpirationTime.Extend(currentExpiration, item.DurationDays, DateTime.Now)
+                : 0u;
             command.Parameters.AddWithValue("$stage", item.Section == InventorySection.Pet && !item.IsPetMaterial ? item.PetModelStage : 0);
             command.Parameters.AddWithValue("$maximumStage", item.Section == InventorySection.Pet && !item.IsPetMaterial ? item.PetUpgradeStage : 0);
+            command.Parameters.AddWithValue("$expiration", expiration);
+            command.Parameters.AddWithValue("$stackDays", timed ? 1 : 0);
             command.CommandText = """
-                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,PetCurrentStage,PetMaximumStage,PetLevel,PetExperience,UpdatedAt)
-                VALUES($id,$reward,1,$stage,$maximumStage,0,0,$now)
-                ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET Quantity=Quantity+1,UpdatedAt=excluded.UpdatedAt
+                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,ItemExpiration,PetCurrentStage,PetMaximumStage,PetLevel,PetExperience,UpdatedAt)
+                VALUES($id,$reward,1,$expiration,$stage,$maximumStage,0,0,$now)
+                ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET
+                    Quantity = CASE WHEN $stackDays = 1 THEN MAX(Quantity, 1) ELSE Quantity + 1 END,
+                    ItemExpiration = CASE WHEN $stackDays = 1 THEN excluded.ItemExpiration ELSE CharacterItems.ItemExpiration END,
+                    UpdatedAt = excluded.UpdatedAt
                 """;
         }
-        return await command.ExecuteNonQueryAsync(token) == 1;
+        return await command.ExecuteNonQueryAsync(token) == 1
+            ? CardRewardGrant.Granted : CardRewardGrant.Failed;
     }
 
 }

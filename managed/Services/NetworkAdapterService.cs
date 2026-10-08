@@ -4249,7 +4249,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             {
                 if (!session.OnlineTracked || session.Character is null) return null;
                 if (!EventCardPolicy.TryParse(payload, out var page))
-                    return BuildNativeFrame(frame, 0xC3FE, EventCardPolicy.Result(0, "Invalid request"), session);
+                    return BuildNativeFrame(frame, 0xC3FE, EventCardPolicy.Result(0, EventCardPolicy.Fit("请求无效")), session);
                 var requestId = session.EventCardRequests.Get(BinaryPrimitives.ReadUInt16LittleEndian(frame), page, DateTime.UtcNow);
                 var result = await _database.RedeemEventCardAsync(session.AccountId, session.Character.Id,
                     session.SessionId, requestId, page, token);
@@ -17469,7 +17469,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             var record = payload.AsSpan(4 + index * PetInventoryRecordLength, PetInventoryRecordLength);
             var state = PetProgression.GetState(character, petItems[index]);
             BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(0, 4), petItems[index]);
-            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4, 4), PermanentItemExpiration);
+            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4, 4), GetPetWireExpiration(character, petItems[index]));
             BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(8, 2), checked((ushort)index));
             record[10] = state.CurrentStage;
             record[11] = state.MaximumStage;
@@ -17494,6 +17494,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
+    // Duration pets use the same wire expiration encoding as timed clothing, and the
+    // C44C/C452/C379 pet records read it. A permanent pet, the starter pet and legacy
+    // rows without a stored value keep the far-future sentinel instead of an epoch date.
+    private static uint GetPetWireExpiration(CharacterRecord? character, uint itemCode)
+        => ClothingExpirationTime.Effective(
+            character?.Items.FirstOrDefault(item => item.ItemCode == itemCode)?.ItemExpiration ?? 0);
+
     internal static uint[] GetPetWireItemCodes(CharacterRecord? character)
     {
         var owned = GetOwnedPetItemCodes(character).Distinct().ToArray();
@@ -17514,7 +17521,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             yield return 15_000_000u + (uint)character.PetVariant;
         foreach (var item in character.Items)
         {
-            if (item.Quantity > 0 && item.ItemCode / 1_000_000 == 15)
+            // A lapsed pet stops being owned, the same way timed clothing leaves the
+            // wardrobe when its wire expiration passes. Permanent rows carry none.
+            if (item.Quantity > 0 && item.ItemCode / 1_000_000 == 15
+                && ClothingExpirationTime.IsActive(item.ItemExpiration, DateTime.Now))
                 yield return item.ItemCode;
         }
     }
@@ -17823,7 +17833,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             BinaryPrimitives.WriteUInt32LittleEndian(pet.Slice(24, 4), state.Accessory2);
             BinaryPrimitives.WriteUInt32LittleEndian(
                 pet.Slice(28, 4),
-                PermanentItemExpiration);
+                GetPetWireExpiration(character, equippedPetItemCode));
             BinaryPrimitives.WriteUInt32LittleEndian(pet.Slice(32, 4), state.Level);
         }
 
@@ -17959,7 +17969,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var record = payload.AsSpan(4 + index * PetInventoryRecordLength, PetInventoryRecordLength);
                 var state = PetProgression.GetState(character, petItems[index]);
                 BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(0, 4), petItems[index]);
-                BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4, 4), PermanentItemExpiration);
+                BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4, 4), GetPetWireExpiration(character, petItems[index]));
                 BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(8, 2), checked((ushort)index));
                 record[10] = state.CurrentStage;
                 record[11] = state.MaximumStage;

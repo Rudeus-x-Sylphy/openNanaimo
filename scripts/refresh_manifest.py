@@ -42,6 +42,7 @@ REPOSITORY_FILES = [
     'scripts/test_basic_gameplay_boundaries.py',
     'scripts/test_gameplay_bugfixes.py',
     'scripts/generate_scene_hazard_catalog.py',
+    'release/components/cards/event-card-rewards.json',
     'release/components/stage_damage/scene_hazard_registry.json',
     'scripts/verify_client_baseline.py',
     'scripts/prepare_client_compatibility.py',
