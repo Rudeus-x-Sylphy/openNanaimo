@@ -144,6 +144,10 @@ public sealed partial class DatabaseService
                 ? CardRewardCapacity.Available : CardRewardCapacity.Full;
         }
         if (!ShopCatalog.TryGet(reward, out var item)) return CardRewardCapacity.Unsupported;
+        // A pet with an authored catalog duration is time-limited, so a repeated draw
+        // extends its remaining period instead of being a duplicate instance. Only a
+        // permanent pet (duration zero) is a hard per-character conflict.
+        bool extendablePet = item.Section == InventorySection.Pet && !item.IsPetMaterial && item.DurationDays > 0;
         read.CommandText = "SELECT ItemCode,Quantity FROM CharacterItems WHERE CharacterId=$id AND Quantity>0";
         long occupied = 0; var petCodes = new HashSet<uint>();
         if (petVariant is >= 1 and <= 3) petCodes.Add(15000000u + (uint)petVariant);
@@ -152,7 +156,8 @@ public sealed partial class DatabaseService
         while (await rows.ReadAsync(token))
         {
             var code = checked((uint)rows.GetInt64(0)); var count = rows.GetInt64(1);
-            if (code == reward && item.Section == InventorySection.Pet && !item.IsPetMaterial) return CardRewardCapacity.DuplicatePet;
+            if (code == reward && item.Section == InventorySection.Pet && !item.IsPetMaterial && !extendablePet)
+                return CardRewardCapacity.DuplicatePet;
             if (code == reward && count >= ushort.MaxValue) return CardRewardCapacity.Full;
             if (!ShopCatalog.TryGet(code, out var owned)) continue;
             if (petBox)
@@ -165,7 +170,8 @@ public sealed partial class DatabaseService
                 || item.IsGameInventoryItem && owned.IsGameInventoryItem
                 || item.IsShoppingCoupon && owned.IsShoppingCoupon) occupied += count;
         }
-        if (petBox) return petCodes.Contains(reward) ? CardRewardCapacity.DuplicatePet
+        if (petBox) return petCodes.Contains(reward)
+            ? extendablePet ? CardRewardCapacity.Available : CardRewardCapacity.DuplicatePet
             : occupied + petCodes.Count < 56 ? CardRewardCapacity.Available : CardRewardCapacity.Full;
         int cap = item.Section == InventorySection.Clothing ? 56 : item.IsShoppingCoupon ? 256 : 84;
         return occupied < cap ? CardRewardCapacity.Available : CardRewardCapacity.Full;
@@ -185,12 +191,14 @@ public sealed partial class DatabaseService
         else
         {
             if (!ShopCatalog.TryGet(reward, out var item)) return false;
-            // Timed clothing must never be granted as a permanent row: extend from the
-            // stored expiration the same way the shop purchase path does, and keep one
-            // row per code so a repeated draw stacks days instead of duplicate pieces.
-            var clothing = item.Section == InventorySection.Clothing;
+            // Timed grants must never become a permanent row: clothing and duration
+            // pets extend from the stored expiration the same way the shop purchase
+            // path does, and keep one row per code so a repeated draw stacks days
+            // instead of duplicate pieces or duplicate pet instances.
+            var timed = item.Section == InventorySection.Clothing
+                || item.Section == InventorySection.Pet && !item.IsPetMaterial && item.DurationDays > 0;
             var currentExpiration = 0u;
-            if (clothing)
+            if (timed)
             {
                 await using var current = connection.CreateCommand();
                 current.Transaction = tx;
@@ -200,11 +208,11 @@ public sealed partial class DatabaseService
                 var stored = await current.ExecuteScalarAsync(token);
                 if (stored is not null) currentExpiration = checked((uint)Convert.ToInt64(stored));
             }
-            var expiration = clothing ? ClothingExpirationTime.Extend(currentExpiration, item.DurationDays, DateTime.Now) : 0u;
+            var expiration = timed ? ClothingExpirationTime.Extend(currentExpiration, item.DurationDays, DateTime.Now) : 0u;
             command.Parameters.AddWithValue("$stage", item.Section == InventorySection.Pet && !item.IsPetMaterial ? item.PetModelStage : 0);
             command.Parameters.AddWithValue("$maximumStage", item.Section == InventorySection.Pet && !item.IsPetMaterial ? item.PetUpgradeStage : 0);
             command.Parameters.AddWithValue("$expiration", expiration);
-            command.Parameters.AddWithValue("$stackDays", clothing ? 1 : 0);
+            command.Parameters.AddWithValue("$stackDays", timed ? 1 : 0);
             command.CommandText = """
                 INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,ItemExpiration,PetCurrentStage,PetMaximumStage,PetLevel,PetExperience,UpdatedAt)
                 VALUES($id,$reward,1,$expiration,$stage,$maximumStage,0,0,$now)

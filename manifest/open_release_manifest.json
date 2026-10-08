@@ -931,8 +931,8 @@
   },
   "critical_files": {
     "docs/event-card-rewards.md": {
-      "size": 4057,
-      "sha256": "D14A0C722F91956CC7142E8D715721B071CCBD7422CEB808CC92D7B02CF2113B"
+      "size": 4318,
+      "sha256": "43A8C06FABDC7229CF7F7F6293712B2E42FAEF958A68EA3DDF4785F0C3E6C528"
     },
     "docs/level200/README.md": {
       "size": 4710,
@@ -3327,8 +3327,8 @@
       "sha256": "15CF4E3CE8D04B61316F3A6A60D6CAF1EBDBEF04DC3BBB0F26EEEF4458820A70"
     },
     "tests/CardUseRegression/Program.cs": {
-      "size": 22973,
-      "sha256": "C0359FD80839A93BD9296EC36C62830D5F2233329F760A190E172A9BF8EC8E25"
+      "size": 25944,
+      "sha256": "E921E179EA45AB7993B9C5C02B9B457254226F4ADBEAE8C037AFC01FA015D0C9"
     },
     "adapter_runtime/Microsoft.CSharp.dll": {
       "size": 1005392,

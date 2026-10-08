@@ -393,8 +393,8 @@
     },
     {
       "path": "managed/Models/CharacterRecord.cs",
-      "size": 6798,
-      "sha256": "21C46F4BE71487B53C8992AB19E47EDD7415F2D4CC371C87C35971698951E842"
+      "size": 6833,
+      "sha256": "2D1A3B15A2A65513910BEC6D58883F3D0E125F7E86E8EE0996463368E3DB7AE3"
     },
     {
       "path": "managed/Models/CharacterRuntimeState.cs",
@@ -663,8 +663,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.LuckyCards.cs",
-      "size": 14106,
-      "sha256": "84B22A2AEF2FDB5D1EB2246FE65FD098EAAB730B94B01B6BBF600159C3526D02"
+      "size": 14722,
+      "sha256": "6293BE805C9AC21FA4C74520C2B66D0E36CF426681DA88286624C247A34CC456"
     },
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",
@@ -1048,8 +1048,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 987388,
-      "sha256": "9E94964CB139359A807DAAA2C15A14FC83CED0807F44F9166F4A16D5A02D3869"
+      "size": 987973,
+      "sha256": "3C181F614A58ACAEE6F74D5B4039D157B619749EA3BEAFC8717C61C30B8DC3EC"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

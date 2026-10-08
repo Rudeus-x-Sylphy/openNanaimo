@@ -17469,7 +17469,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             var record = payload.AsSpan(4 + index * PetInventoryRecordLength, PetInventoryRecordLength);
             var state = PetProgression.GetState(character, petItems[index]);
             BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(0, 4), petItems[index]);
-            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4, 4), PermanentItemExpiration);
+            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4, 4), GetPetWireExpiration(character, petItems[index]));
             BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(8, 2), checked((ushort)index));
             record[10] = state.CurrentStage;
             record[11] = state.MaximumStage;
@@ -17493,6 +17493,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(2020, 4), expansionExpiration);
         return payload;
     }
+
+    // Duration pets use the same wire expiration encoding as timed clothing, and the
+    // C44C/C452/C379 pet records read it. A permanent pet, the starter pet and legacy
+    // rows without a stored value keep the far-future sentinel instead of an epoch date.
+    private static uint GetPetWireExpiration(CharacterRecord? character, uint itemCode)
+        => ClothingExpirationTime.Effective(
+            character?.Items.FirstOrDefault(item => item.ItemCode == itemCode)?.ItemExpiration ?? 0);
 
     internal static uint[] GetPetWireItemCodes(CharacterRecord? character)
     {
@@ -17823,7 +17830,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             BinaryPrimitives.WriteUInt32LittleEndian(pet.Slice(24, 4), state.Accessory2);
             BinaryPrimitives.WriteUInt32LittleEndian(
                 pet.Slice(28, 4),
-                PermanentItemExpiration);
+                GetPetWireExpiration(character, equippedPetItemCode));
             BinaryPrimitives.WriteUInt32LittleEndian(pet.Slice(32, 4), state.Level);
         }
 
@@ -17959,7 +17966,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var record = payload.AsSpan(4 + index * PetInventoryRecordLength, PetInventoryRecordLength);
                 var state = PetProgression.GetState(character, petItems[index]);
                 BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(0, 4), petItems[index]);
-                BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4, 4), PermanentItemExpiration);
+                BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(4, 4), GetPetWireExpiration(character, petItems[index]));
                 BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(8, 2), checked((ushort)index));
                 record[10] = state.CurrentStage;
                 record[11] = state.MaximumStage;

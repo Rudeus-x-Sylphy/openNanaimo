@@ -75,6 +75,18 @@ async Task SeedSet(uint page,int qty=1,int count=10) { for(uint i=0;i<count;i++)
 var config=Path.Combine(root,EventCardPolicy.FileName);
 void Config(uint code=46000008,int weight=10000,int quantity=1,uint page=1)=>File.WriteAllText(config,JsonSerializer.Serialize(new {Version=1,Pages=new[]{new {Page=page,Rewards=new[]{new {Code=code,Quantity=quantity,Weight=weight}}}}}));
 Task<EventCardRedeemResult> Redeem(uint page=1,int ticket=0,string? request=null)=>db.RedeemEventCardAsync(account,character,sessionId,request??Id(),page,nextTicket:_=>ticket);
+uint WirePetExpiration(byte[] payload,uint code)
+{
+    // C44C carries petItems.Length + materials.Length 36-byte records from frame+4;
+    // a pet record stores its wire expiration at +4.
+    for(var index=0;index<payload[2]&&4+(index+1)*36<=payload.Length;index++)
+    {
+        var record=payload.AsSpan(4+index*36,36);
+        if(BinaryPrimitives.ReadUInt32LittleEndian(record)==code)
+            return BinaryPrimitives.ReadUInt32LittleEndian(record.Slice(4,4));
+    }
+    return 0;
+}
 
 // Every resource reward is actually committed; checking lazy initialization alone is insufficient.
 foreach(var pool in LuckyCardPolicy.All.Values)
@@ -115,8 +127,17 @@ await Reset();await Seed(22000012);await Seed(22000001,255);Check((await Draw(22
 await Reset();await Seed(22000011);await Item(17000072,55);
 Check((await Draw(22000011,9970)).Result==100,"pets and materials share 56 slots including starter pet");
 await Item(17000072,54);Check((await Draw(22000011,0)).Reward==15009016,"pet capacity edge grants original pet");
-await Seed(22000011);var duplicate=await Draw(22000011,9970);
-Check(duplicate.Result==0&&duplicate.Error.StartsWith("DuplicatePet")&&await Items(15009016)==1&&await Cards(22000011)==2,"duplicate pet refused without false full-inventory result");
+// 15009016 is a 15-day pet: the grant must carry a real wire expiration, and a
+// repeated draw extends that remaining period instead of being refused as a
+// duplicate instance (the permanent pet case is asserted on the event path below).
+var petExpiration=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016");
+var firstPetIsTimed=ClothingExpirationTime.TryDecode((uint)petExpiration,out var firstPetExpiry);
+Check(petExpiration!=ClothingExpirationTime.PermanentExpiration&&firstPetIsTimed
+    &&firstPetExpiry>DateTime.Now.AddDays(14),"duration pet grants a wire expiration, not a permanent row");
+await Seed(22000011);var extended=await Draw(22000011,9970);
+Check(extended.Success&&extended.Reward==15009016&&await Items(15009016)==1&&await Cards(22000011)==1,"duration pet repeat draw extends without a duplicate instance");
+Check(ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016"),out var secondPetExpiry)
+    &&secondPetExpiry-firstPetExpiry>=TimeSpan.FromDays(14),"duration pet extension adds the authored days");
 await Reset();await Seed(22000018);await Item(11420304,84);Check((await Draw(22000018,8890)).Result==100,"furniture capacity 84");
 await Reset();await Seed(22000011);await Item(48000004,1);
 await Sql("INSERT INTO CharacterQuickSlots(CharacterId,Slot,ItemCode,InventoryIndex,UpdatedAt) VALUES($id,0,48000004,0,'test')");
@@ -188,6 +209,21 @@ foreach(uint page in Enumerable.Range(1,10).Select(x=>(uint)x))
     Config(page:page);await Reset();await SeedSet(page);
     Check((await Redeem(page)).Success&&await Sql("SELECT COUNT(*) FROM CharacterCards WHERE CharacterId=$id")==0,"configured event page "+page);
 }
+// Duration pets extend through C3FD/C3FE as well. A permanent pet (no catalog
+// duration) keeps the fixed already-owned text and preserves the whole set.
+Config(15009016);await Reset();await SeedSet(1);
+var eventPetGrant=await Redeem();
+var eventPetExpiration=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016");
+Check(eventPetGrant.Success&&await Items(15009016)==1&&eventPetExpiration!=ClothingExpirationTime.PermanentExpiration,"event duration pet granted with a wire expiration");
+Check(WirePetExpiration(NetworkAdapterService.BuildPetInventoryPayload((await db.GetCharacterAsync(account))!),15009016)==(uint)eventPetExpiration,"C44C pet record carries the stored expiration");
+await SeedSet(1);Check((await Redeem()).Success&&await Items(15009016)==1,"event duration pet repeat draw extends");
+Check(ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016"),out var extendedEventExpiry)
+    &&ClothingExpirationTime.TryDecode((uint)eventPetExpiration,out var firstEventExpiry)
+    &&extendedEventExpiry-firstEventExpiry>=TimeSpan.FromDays(14),"event duration pet extension adds the authored days");
+Config(15000004);await Reset();await SeedSet(1);await Item(15000004,1);
+var permanentPet=await Redeem();
+Check(!permanentPet.Success&&permanentPet.Message=="已拥有该奖励"&&await Cards(50000001)==1&&await Items(15000004)==1,"permanent pet duplicate keeps the fixed already-owned text");
+Config();
 File.WriteAllText(config,JsonSerializer.Serialize(new {Version=1,Pages=new[]{new {Page=1,Rewards=new[]{new {Code=46000008,Quantity=1,Weight=2500},new {Code=46000002,Quantity=1,Weight=7500}}}}}));
 var weighted=EventCardPolicy.Load(config)[1];
 Check(EventCardPolicy.Pick(weighted,2499)==46000008&&EventCardPolicy.Pick(weighted,2500)==46000002&&EventCardPolicy.Pick(weighted,9999)==46000002,"explicit event weight interval edges");
