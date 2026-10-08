@@ -247,9 +247,18 @@ internal static class CardSynthesisChecks
                 && CardCatalog.TryGet(12_000_020u, out var meatTen)
                 && meatTen.Page == 2 && meatTen.SkillPointValue == 10,
                 "SP card catalog keeps projectile and meat families separate");
-            Check(CardCatalog.TryResolveSkillPointUnion(0, 12_000_011u, 12_000_011u, 12_000_011u, out var meatToken)
-                && meatToken == 0xFFF0BDCBu,
-                "SP card union resolves the meat-card token without changing its value");
+            Check(CardCatalog.TryResolveSkillPointUnion(
+                    0, 12_000_011u, 12_000_011u, 12_000_011u, out var meatToken, out var meatSlots)
+                && meatToken == 0xFFF0BDCBu && meatSlots.SequenceEqual([12_000_011u, 12_000_011u, 12_000_011u]),
+                "SP card union keeps one submitted slot per selected card");
+            Check(CardCatalog.TryResolveSkillPointUnion(
+                    0xFFF0BDC1u, 12_000_001u, 0, 0, out var singleToken, out var singleSlots)
+                && singleToken == 0xFFF0BDC1u && singleSlots.SequenceEqual([12_000_001u]),
+                "a single filled SP slot converts that one card");
+            Check(CardCatalog.TryResolveSkillPointUnion(0xFFF0BDC1u, 0, 0, 0, out var tokenOnly, out var tokenOnlySlots)
+                && tokenOnly == 0xFFF0BDC1u && tokenOnlySlots.SequenceEqual([12_000_001u])
+                && !CardCatalog.TryResolveSkillPointUnion(0, 12_000_001u, 12_000_001u, 12_000_011u, out _, out _),
+                "SP card union falls back to the slotless token and refuses mixed families");
             await SetSkillPointStateAsync(database.DatabasePath, characterId, 10, 20);
             await UpsertCardAsync(database.DatabasePath, characterId, 12_000_001u, 1);
             await UpsertCardAsync(database.DatabasePath, characterId, 12_000_010u, 1);
@@ -267,26 +276,53 @@ internal static class CardSynthesisChecks
                 NetworkAdapterService.BuildSkillPointSynthesisResultPayload(true, 0).AsSpan(4)) == 0,
                 "SP retry carries a zero credit delta");
 
-            var projectileUse = await database.SynthesizeSkillPointCardAsync(
-                accountId, characterId, sessionId, 0xFFF0BDC1u, CancellationToken.None);
-            var projectileTenUse = await database.SynthesizeSkillPointCardAsync(
-                accountId, characterId, sessionId, 0xFFF0BDCAu, CancellationToken.None);
-            var meatUse = await database.SynthesizeSkillPointCardAsync(
-                accountId, characterId, sessionId, meatToken, CancellationToken.None);
-            var meatTenUse = await database.SynthesizeSkillPointCardAsync(
-                accountId, characterId, sessionId, 0xFFF0BDD4u, CancellationToken.None);
+            var projectileUse = await database.SynthesizeSkillPointCardsAsync(
+                accountId, characterId, sessionId, [12_000_001u], CancellationToken.None);
+            var projectileTenUse = await database.SynthesizeSkillPointCardsAsync(
+                accountId, characterId, sessionId, [12_000_010u], CancellationToken.None);
+            var meatUse = await database.SynthesizeSkillPointCardsAsync(
+                accountId, characterId, sessionId, [12_000_011u], CancellationToken.None);
+            var meatTenUse = await database.SynthesizeSkillPointCardsAsync(
+                accountId, characterId, sessionId, [12_000_020u], CancellationToken.None);
             state = (await database.GetCharacterAsync(accountId, CancellationToken.None))!;
             remainingCards = await ReadCardQuantitiesAsync(database.DatabasePath, characterId);
-            Check(projectileUse.Success && projectileUse.OutputCode == 12_000_001u
-                && projectileTenUse.Success && projectileTenUse.OutputCode == 12_000_010u
-                && meatUse.Success && meatUse.OutputCode == 12_000_011u
-                && meatTenUse.Success && meatTenUse.OutputCode == 12_000_020u
+            Check(projectileUse.Success && projectileUse.OutputCode == 12_000_001u && projectileUse.Credit == 1
+                && projectileTenUse.Success && projectileTenUse.OutputCode == 12_000_010u && projectileTenUse.Credit == 10
+                && meatUse.Success && meatUse.OutputCode == 12_000_011u && meatUse.Credit == 1
+                && meatTenUse.Success && meatTenUse.OutputCode == 12_000_020u && meatTenUse.Credit == 10
                 && state.SkillPoints == 21 && state.SkillPointsMeat == 31
                 && !remainingCards.ContainsKey(12_000_001u)
                 && !remainingCards.ContainsKey(12_000_010u)
                 && !remainingCards.ContainsKey(12_000_011u)
                 && !remainingCards.ContainsKey(12_000_020u),
                 "SP card synthesis consumes the card and adds its face value to the matching skill-family slot");
+
+            // The client submits one card slot per selected SP card, so three
+            // selected +10 cards convert all three and credit their summed value.
+            await SetSkillPointStateAsync(database.DatabasePath, characterId, 40, 50);
+            await UpsertCardAsync(database.DatabasePath, characterId, 12_000_010u, 3);
+            await UpsertCardAsync(database.DatabasePath, characterId, 12_000_020u, 2);
+            var tripleTen = await database.SynthesizeSkillPointCardsAsync(
+                accountId, characterId, sessionId, [12_000_010u, 12_000_010u, 12_000_010u], CancellationToken.None);
+            var pairTen = await database.SynthesizeSkillPointCardsAsync(
+                accountId, characterId, sessionId, [12_000_020u, 12_000_020u], CancellationToken.None);
+            state = (await database.GetCharacterAsync(accountId, CancellationToken.None))!;
+            remainingCards = await ReadCardQuantitiesAsync(database.DatabasePath, characterId);
+            Check(tripleTen.Success && tripleTen.Credit == 30 && tripleTen.SkillPoints == 70
+                && pairTen.Success && pairTen.Credit == 20 && pairTen.SkillPoints == 70
+                && state.SkillPoints == 70 && state.SkillPointsMeat == 70
+                && !remainingCards.ContainsKey(12_000_010u) && !remainingCards.ContainsKey(12_000_020u),
+                "three submitted SP slots credit their summed face value and consume one card per slot");
+
+            // Every submitted slot is owned-checked; a shortfall rolls back all of them.
+            await UpsertCardAsync(database.DatabasePath, characterId, 12_000_010u, 2);
+            var shortfall = await database.SynthesizeSkillPointCardsAsync(
+                accountId, characterId, sessionId, [12_000_010u, 12_000_010u, 12_000_010u], CancellationToken.None);
+            state = (await database.GetCharacterAsync(accountId, CancellationToken.None))!;
+            remainingCards = await ReadCardQuantitiesAsync(database.DatabasePath, characterId);
+            Check(!shortfall.Success && state.SkillPoints == 70
+                && remainingCards.GetValueOrDefault(12_000_010u) == 2,
+                "a submitted slot beyond the owned quantity rolls back every card and the credit");
 
             await database.EndWorldSessionAsync(
                 accountId, characterId, sessionId,
@@ -299,7 +335,7 @@ internal static class CardSynthesisChecks
             catch { }
         }
 
-        Console.WriteLine("CARD_SYNTHESIS_CHECKS_PASS recipes=41002 c3ed=PASS c3ea=PASS c3e8=PASS c3f0=PASS transaction=PASS domains=14/15/17/19/21/41 sp-families=projectile/meat keys=free-normal-gold-mystery guide=idempotent");
+        Console.WriteLine("CARD_SYNTHESIS_CHECKS_PASS recipes=41002 c3ed=PASS c3ea=PASS c3e8=PASS c3f0=PASS transaction=PASS domains=14/15/17/19/21/41 sp-families=projectile/meat sp-slots=1-3 keys=free-normal-gold-mystery guide=idempotent");
     }
 
     private static void CheckRecipe(uint token, uint input0, uint input1, uint input2, uint output)

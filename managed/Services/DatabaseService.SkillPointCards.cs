@@ -4,6 +4,10 @@ namespace OpenNanaimo.Adapter.Services;
 
 public sealed partial class DatabaseService
 {
+    // The synthesis controller exposes three card slots and submits one card per
+    // filled slot, so one SP request converts between one and three cards.
+    private const int MaxSkillPointSynthesisCards = 3;
+
     private static async Task MigrateSkillPointCardsAsync(
         SqliteConnection connection,
         CancellationToken cancellationToken)
@@ -40,52 +44,70 @@ public sealed partial class DatabaseService
         await transaction.CommitAsync(cancellationToken);
     }
 
-    public Task<(bool Success, string Error, uint OutputCode, ushort SkillPoints)>
-        SynthesizeSkillPointCardAsync(
+    public Task<(bool Success, string Error, uint OutputCode, ushort SkillPoints, ushort Credit)>
+        SynthesizeSkillPointCardsAsync(
             long accountId,
             long characterId,
             string sessionId,
-            uint recipeToken,
+            IReadOnlyList<uint> cardCodes,
             CancellationToken cancellationToken = default)
-        => ConsumeSkillPointCardAsync(
+        => ConsumeSkillPointCardsAsync(
             accountId,
             characterId,
             sessionId,
-            CardCatalog.TryGetSkillPointToken(recipeToken, out var code) ? code : 0u,
+            cardCodes,
             requireKey: true,
             cancellationToken);
 
-    public Task<(bool Success, string Error, uint OutputCode, ushort SkillPoints)>
+    public Task<(bool Success, string Error, uint OutputCode, ushort SkillPoints, ushort Credit)>
         UseSkillPointCardAsync(
             long accountId,
             long characterId,
             string sessionId,
             uint code,
             CancellationToken cancellationToken = default)
-        => ConsumeSkillPointCardAsync(
+        => ConsumeSkillPointCardsAsync(
             accountId,
             characterId,
             sessionId,
-            code,
+            [code],
             requireKey: false,
             cancellationToken);
 
-    private async Task<(bool Success, string Error, uint OutputCode, ushort SkillPoints)>
-        ConsumeSkillPointCardAsync(
+    private async Task<(bool Success, string Error, uint OutputCode, ushort SkillPoints, ushort Credit)>
+        ConsumeSkillPointCardsAsync(
             long accountId,
             long characterId,
             string sessionId,
-            uint code,
+            IReadOnlyList<uint> cardCodes,
             bool requireKey,
             CancellationToken cancellationToken)
     {
         if (accountId <= 0
             || characterId <= 0
             || string.IsNullOrEmpty(sessionId)
-            || !CardCatalog.IsSkillPointCard(code)
-            || !CardCatalog.TryGet(code, out var card)
-            || card.SkillPointValue == 0)
-            return (false, "Invalid SP card.", 0, 0);
+            || cardCodes.Count is < 1 or > MaxSkillPointSynthesisCards)
+            return (false, "Invalid SP card.", 0, 0, 0);
+
+        // One submitted slot is one card: the client fills a slot per selected
+        // SP card, so the credited amount is the sum of the submitted face values
+        // and every submitted card is consumed. The C3EE completion reports a
+        // single delta against one family counter, so the cards must share a page.
+        var page = 0;
+        long credit = 0;
+        for (var index = 0; index < cardCodes.Count; index++)
+        {
+            if (!CardCatalog.IsSkillPointCard(cardCodes[index])
+                || !CardCatalog.TryGet(cardCodes[index], out var submitted)
+                || submitted.SkillPointValue == 0
+                || index > 0 && submitted.Page != page)
+                return (false, "Invalid SP card.", 0, 0, 0);
+            if (index == 0)
+                page = submitted.Page;
+            credit += submitted.SkillPointValue;
+        }
+
+        var code = cardCodes[0];
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction(deferred: false);
@@ -121,17 +143,17 @@ public sealed partial class DatabaseService
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
             if (!await reader.ReadAsync(cancellationToken))
-                return (false, "Invalid online session.", 0, 0);
+                return (false, "Invalid online session.", 0, 0, 0);
 
-            points = reader.GetInt64(card.Page == 2 ? 5 : 0);
+            points = reader.GetInt64(page == 2 ? 5 : 0);
             normalKeys = reader.GetInt64(1);
             goldenKeys = reader.GetInt64(2);
             mysteryKeys = reader.GetInt64(3);
             freeMagicExpiration = reader.GetInt64(4);
         }
 
-        if (points < 0 || points + card.SkillPointValue > ushort.MaxValue)
-            return (false, "SP limit reached.", 0, checked((ushort)Math.Clamp(points, 0, ushort.MaxValue)));
+        if (points < 0 || points + credit > ushort.MaxValue)
+            return (false, "SP limit reached.", 0, checked((ushort)Math.Clamp(points, 0, ushort.MaxValue)), 0);
 
         string? keyColumn = null;
         if (requireKey
@@ -145,27 +167,37 @@ public sealed partial class DatabaseService
                         ? "CardMysteryKeyCount"
                         : null;
             if (keyColumn is null)
-                return (false, "No magic key.", 0, checked((ushort)points));
+                return (false, "No magic key.", 0, checked((ushort)points), 0);
         }
 
-        command.CommandText = """
-            DELETE FROM CharacterCards
-            WHERE CharacterId = $characterId AND CardCode = $cardCode AND Quantity = 1
-            """;
-        if (await command.ExecuteNonQueryAsync(cancellationToken) == 0)
+        // Each submitted slot consumes one card. A repeated code consumes that
+        // many units of the same row; any shortfall rolls the whole request back.
+        var take = command.CreateParameter();
+        take.ParameterName = "$take";
+        command.Parameters.Add(take);
+        foreach (var submittedGroup in cardCodes.GroupBy(submitted => submitted))
         {
+            take.Value = submittedGroup.Count();
+            command.Parameters["$cardCode"].Value = submittedGroup.Key;
             command.CommandText = """
-                UPDATE CharacterCards
-                SET Quantity = Quantity - 1, UpdatedAt = $now
-                WHERE CharacterId = $characterId AND CardCode = $cardCode AND Quantity > 1
+                DELETE FROM CharacterCards
+                WHERE CharacterId = $characterId AND CardCode = $cardCode AND Quantity = $take
                 """;
-            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
-                return (false, "SP card not owned.", 0, checked((ushort)points));
+            if (await command.ExecuteNonQueryAsync(cancellationToken) == 0)
+            {
+                command.CommandText = """
+                    UPDATE CharacterCards
+                    SET Quantity = Quantity - $take, UpdatedAt = $now
+                    WHERE CharacterId = $characterId AND CardCode = $cardCode AND Quantity > $take
+                    """;
+                if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+                    return (false, "SP card not owned.", 0, checked((ushort)points), 0);
+            }
         }
 
         command.Parameters.AddWithValue("$oldPoints", points);
-        command.Parameters.AddWithValue("$newPoints", points + card.SkillPointValue);
-        var pointsColumn = card.Page == 2 ? "SkillPointsMeat" : "SkillPoints";
+        command.Parameters.AddWithValue("$newPoints", points + credit);
+        var pointsColumn = page == 2 ? "SkillPointsMeat" : "SkillPoints";
         command.CommandText = $"""
             UPDATE Characters
             SET {pointsColumn} = $newPoints,
@@ -179,9 +211,9 @@ public sealed partial class DatabaseService
               {(keyColumn is null ? string.Empty : $"AND {keyColumn} > 0")}
             """;
         if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
-            return (false, "SP or key changed.", 0, checked((ushort)points));
+            return (false, "SP or key changed.", 0, checked((ushort)points), 0);
 
         await transaction.CommitAsync(cancellationToken);
-        return (true, string.Empty, code, checked((ushort)(points + card.SkillPointValue)));
+        return (true, string.Empty, code, checked((ushort)(points + credit)), checked((ushort)credit));
     }
 }
