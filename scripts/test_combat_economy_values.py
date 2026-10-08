@@ -33,7 +33,7 @@ int main(void){
         p=combat_economy_score_profile(&boss);CHECK(p);sum=0;
         for(j=0;j<h->target_count;j++){
             unsigned row=h->first_row+j;
-            if(hp_sync_target_defs[row].reward_kind==5u)CHECK(combat_score_target_scores[row]==0u);
+            if(hp_sync_target_defs[row].reward_kind==5u||hp_sync_target_defs[row].target_type==4u)CHECK(combat_score_target_scores[row]==0u);
             sum+=combat_score_target_scores[row];
         }
         CHECK(sum==p->hit_max);CHECK(p->total_max==sum+p->boss_bonus);
@@ -114,6 +114,81 @@ int main(void){
 '''
 
 
+REACHABILITY_HARNESS = r"""
+/* Deterministic scoring-eligibility coverage with every scoring target available. */
+#define main unused_server_main
+#include "adapter/nanaimo_gameplay_bridge.c"
+#undef main
+#define CHECK(x) do {if(!(x)){printf("FAIL %d: %s\n",__LINE__,#x);return 1;}}while(0)
+static struct hp_sync_context hp;
+int main(void){
+    unsigned pi,i,positive=0,type4=0,affected=0;
+    struct crate_drop_policy_context crate;
+    struct stable_monster_hp_attack attack;
+    struct stable_monster_hp_decision d;
+    struct battle_score_context score;
+    struct boss_hp_sync_context boss;
+    struct boss_hp_sync_result terminal;
+    memset(&attack,0,sizeof(attack));attack.have_value=1;attack.value=100000000;
+    g_multi_current=-1;battle_score_init(&score);
+    for(pi=0;pi<HP_SYNC_PROFILE_COUNT;pi++){
+        const struct hp_sync_profile_def*p=&hp_sync_profiles[pi];
+        const struct combat_score_profile_def*sp;
+        unsigned reachable=0,is_affected=(p->stage_id==1u&&p->stage_index==0u&&
+            ((p->hd_id==0u&&p->dungeon_id==0u)||(p->hd_id==1u&&p->dungeon_id==1u)));
+        hp_sync_init(&hp);
+        CHECK(hp_sync_select_resource_domain(&hp,p->hd_id,p->stage_id,p->dungeon_id,p->stage_index,p->difficulty));
+        CHECK(hp_sync_select_segment(&hp,p->segment));CHECK(hp.profile==p);
+        crate_drop_policy_init(&crate,CRATE_DROP_MODE_SINGLE_VISUAL);
+        battle_score_begin(&score,pi+1u);teamplay_score_begin(pi+1u);
+        memset(&boss,0,sizeof(boss));boss.hd=p->hd_id;boss.stage=p->stage_id;
+        boss.dungeon=p->dungeon_id;boss.stage_index=p->stage_index;boss.absolute_slot=p->slot_index;
+        sp=combat_economy_score_profile(&boss);CHECK(sp);
+        for(i=0;i<p->target_count;i++){
+            const struct hp_sync_target_def*t=&hp_sync_target_defs[p->first_row+i];
+            unsigned value=combat_score_target_scores[p->first_row+i],before=score.total;
+            if(t->target_type==4u){
+                type4++;CHECK(value==0u);
+                stable_monster_hp_apply_report(&hp,&crate,p->stage_id,i,1,1,&attack,10,&d);
+                CHECK(d.hit.old_hp==d.hit.new_hp);
+                CHECK(combat_economy_score_ordinary_terminal(&score,&hp,i,d.hit.old_hp,d.hit.new_hp)==before);
+                continue;
+            }
+            if(!value)continue;
+            positive++;
+            stable_monster_hp_apply_report(&hp,&crate,p->stage_id,i,1,1,&attack,10,&d);
+            CHECK(d.hit.old_hp>0&&d.hit.new_hp==0);reachable+=value;
+            if(is_affected){
+                CHECK(combat_economy_score_ordinary_terminal(&score,&hp,i,d.hit.old_hp,d.hit.new_hp)==before+value);
+                stable_monster_hp_apply_report(&hp,&crate,p->stage_id,i,1,1,&attack,11,&d);
+                CHECK(combat_economy_score_ordinary_terminal(&score,&hp,i,d.hit.old_hp,d.hit.new_hp)==before+value);
+            }
+        }
+        CHECK(reachable==sp->hit_max);
+        CHECK(combat_economy_rating(reachable+sp->boss_bonus,1,&boss)==5u);
+        if(is_affected){
+            affected++;CHECK(score.total==reachable);
+            memset(&terminal,0,sizeof(terminal));terminal.first_terminal=1;
+            CHECK(combat_economy_score_boss_terminal(&score,&boss,&terminal)==sp->total_max);
+            terminal.first_terminal=0;
+            CHECK(combat_economy_score_boss_terminal(&score,&boss,&terminal)==sp->total_max);
+            if(p->hd_id==1u)CHECK(sp->total_max==135000u);
+            else if(p->slot_index==6u)CHECK(sp->total_max==31790u);
+        }
+        *multiplayer_shared_boss_context()=boss;
+        CHECK(teamplay_settlement_member_rating(1,1,1,sp->total_max,0)==5u);
+        CHECK(teamplay_settlement_member_rating(1,1,50000,sp->total_max,0)==5u);
+        CHECK(teamplay_settlement_member_rating(0,1,1,sp->total_max,0)==5u);
+        CHECK(teamplay_settlement_member_rating(0,1,50000,sp->total_max,0)==5u);
+        CHECK(teamplay_settlement_member_rating(1,0,0,sp->total_max,0)==0u);
+    }
+    CHECK(HP_SYNC_PROFILE_COUNT==864u&&positive==308623u&&affected==18u&&type4==132028u);
+    printf("COMBAT_SCORE_REACHABILITY_PASS profiles=%u scoring_rows=%u type4=%u affected=%u\n",HP_SYNC_PROFILE_COUNT,positive,type4,affected);
+    return 0;
+}
+"""
+
+
 def numeric_rows(text, name):
     body=text.split(name,1)[1].split("};",1)[0]
     return [list(map(int,re.findall(r"-?\d+",row))) for row in re.findall(r"\{([-\d,u]+)\}",body)]
@@ -128,6 +203,16 @@ class CombatEconomyValueTests(unittest.TestCase):
                 result=subprocess.run(command,cwd=work,capture_output=True,text=True,errors="replace",timeout=120)
                 self.assertEqual(result.returncode,0,result.stdout+result.stderr)
             self.assertIn("COMBAT_SCORE_SYNC_PASS",result.stdout)
+
+    def test_full_catalog_production_hp_upper_bound(self):
+        with tempfile.TemporaryDirectory(prefix="combat-score-reachability-") as td:
+            work = Path(td); source = work / "check.c"; exe = work / "check.exe"
+            source.write_text(REACHABILITY_HARNESS, encoding="utf8")
+            for command in ([str(TCC), "-I", str(ROOT), str(source), "-o", str(exe)], [str(exe)]):
+                result = subprocess.run(command, cwd=work, capture_output=True, text=True,
+                                        errors="replace", timeout=120)
+                self.assertEqual(result.returncode, 0, result.stdout[-10000:] + result.stderr)
+            self.assertIn("COMBAT_SCORE_REACHABILITY_PASS", result.stdout)
 
     def test_generated_table_matches_every_catalog_target_and_boss(self):
         catalog=Path(os.environ.get("NANAIMO_SCORE_CATALOG", ROOT/"adapter_runtime/资源/数据/dungeon_combat_catalog.bin"))
@@ -149,16 +234,25 @@ class CombatEconomyValueTests(unittest.TestCase):
         actual=list(map(int,re.findall(r'(\d+)u',generated.split('static const unsigned combat_score_target_scores',1)[1].split('};',1)[0])))
         self.assertEqual(len(actual),len(targets));self.assertEqual(len(profiles),864)
         max_rows={tuple(row[:5]):row[8:] for row in numeric_rows(generated,'static const struct combat_score_profile_def')}
-        matched=set()
+        matched=set(); excluded_rows=0; excluded_points={}
         for p in profiles:
             key=(p[1],p[0],p[2],p[3],p[6]);total=0
             for index in range(p[9],p[9]+p[10]):
                 t=targets[index];target_key=key+(t[6],)
                 if target_key in scores:matched.add(target_key)
-                expected=0 if t[9]==5 else scores.get(target_key,0)
+                authored=scores.get(target_key,0)
+                if t[8]==4 and t[9]!=5 and authored:
+                    excluded_rows+=1
+                    excluded_points[key]=excluded_points.get(key,0)+authored
+                expected=0 if t[8]==4 or t[9]==5 else authored
                 self.assertEqual(actual[index],expected,(key,index));total+=expected
             bonus=bonuses.get(key,0);self.assertEqual(max_rows[key],[total,bonus,total+bonus])
         self.assertEqual(matched,set(scores))
+        self.assertEqual(excluded_rows,243)
+        self.assertEqual(excluded_points, {
+            **{(0,1,0,0,slot):2880 for slot in range(9)},
+            **{(1,1,1,0,slot):45000 for slot in range(9)},
+        })
 
     def test_d010_uses_personal_score_not_shared_total(self):
         source=(ROOT/'release/components/game_session/gs_runtime.inc').read_text('utf8')

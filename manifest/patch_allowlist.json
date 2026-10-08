@@ -131,8 +131,8 @@
     {
       "path": "docs/\u6784\u5efa\u4e0e\u9a8c\u8bc1.md",
       "layer": "docs",
-      "size": 21727,
-      "sha256": "74a8ae86d2d689b97455617b49a6920f7b1d77176dc81fb94adb911c2fcd00a3",
+      "size": 22019,
+      "sha256": "7b0883dc9d2f6596122a8f6caf01fa7552f1cc81331fcfc3c502d22040035370",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -291,8 +291,8 @@
     {
       "path": "knowledge/authority/07-\u62fe\u53d6\u7ed3\u7b97\u4e0e\u5956\u52b1.md",
       "layer": "knowledge",
-      "size": 44535,
-      "sha256": "1731177b9128845f858ae7390ec880c95d10832d9f21fa97059fc8f6f29eff2e",
+      "size": 46851,
+      "sha256": "c3b880d85508d3b8008cd81967295d674824483c9fe5980d92689587475f9698",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -307,16 +307,16 @@
     {
       "path": "knowledge/authority/09-\u8fd0\u884c\u914d\u7f6e\u4e0e\u9a8c\u8bc1.md",
       "layer": "knowledge",
-      "size": 47258,
-      "sha256": "60a5018fdf2203e327b67705622d6a2a9ec42925b06c4e6adbbf87b121bc2b0e",
+      "size": 48121,
+      "sha256": "8bf31c1bcedff622a5207102953b7a996f23d098fae25bd5b3c1e8bb13f23609",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/\u77e5\u8bc6\u5e93\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 18722,
-      "sha256": "4585adb137085084400a63f0aef819a2a8616a9b79e262deced60cdb054eb8ea",
+      "size": 18871,
+      "sha256": "094be7ff46e3ae22a8044c6bd42222e6aa31f3c2dbccbe5bdaf6cbe034fac690",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2116,7 +2116,7 @@
       "path": "manifest/source_closure.json",
       "layer": "source",
       "size": 64588,
-      "sha256": "0dfcdc7d1326676abb11d73e40f0b9aac3a2bc6daf3b99401c6e8eb5da5ad09a",
+      "sha256": "482f979798ec3cb0601355e30f29b9c3100dff6d2d203b142a2d1ae422c8773b",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2443,8 +2443,8 @@
     {
       "path": "release/components/combat_economy/combat_score_resource_data.inc",
       "layer": "source",
-      "size": 1981926,
-      "sha256": "cf1a5c27fccb4e72550a8fd16cab8581c97d46c37b3f319c59c7eee5a6545689",
+      "size": 1981197,
+      "sha256": "82c2244357edd36de0744c128e962aba9ee5daa0637ad3c9dc36649df93e2003",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3171,8 +3171,8 @@
     {
       "path": "scripts/combat-score-generator/Program.cs",
       "layer": "source",
-      "size": 11950,
-      "sha256": "668647cdc6cca42dc574f792f16acb2d45f931d53afe5f9b684cebe3a0020b20",
+      "size": 12190,
+      "sha256": "a1ec6dda5712ac9cfebe4630d3a75b22653e68150294cf32212fc17bed3f78ad",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

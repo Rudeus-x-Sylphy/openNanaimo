@@ -9,15 +9,15 @@
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
       "size": 23542784,
-      "sha256": "8625886CB710326C0C5D18240D27D8F57589A94B38F792F5060F9E6BF0B35C78"
+      "sha256": "2A174FB24DCD14CDCC710ECDA6DB3DE41DAB384D4115DEED84C29DDD6DFEDA47"
     },
     "adapter/nanaimo_adapter_testports.exe": {
       "size": 23542784,
-      "sha256": "EDE6E28E6C16AAB145018F3610B4E19F001686924BBBF5FE301BF57247CEB851"
+      "sha256": "9BD2876A50B9EC331AEEAEE3B67653A3383CC22CCD9A08B6D0DD3C0ADDA78838"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
       "size": 23624192,
-      "sha256": "185ADBC0431FE9C9C73F7403112F32E3B59E951AEE99E577AE9E4B9A6F402A7A"
+      "sha256": "4183E47858FD9D6744D065AE4071F230ADC0A7E2713D4FC886A74FA5FF525EAE"
     }
   },
   "files": [
@@ -1323,8 +1323,8 @@
     },
     {
       "path": "release/components/combat_economy/combat_score_resource_data.inc",
-      "size": 1981926,
-      "sha256": "CF1A5C27FCCB4E72550A8FD16CAB8581C97D46C37B3F319C59C7EEE5A6545689"
+      "size": 1981197,
+      "sha256": "82C2244357EDD36DE0744C128E962ABA9EE5DAA0637AD3C9DC36649DF93E2003"
     },
     {
       "path": "release/components/combat_economy/incoming_pon_attack_data.inc",
@@ -1743,8 +1743,8 @@
     },
     {
       "path": "scripts/combat-score-generator/Program.cs",
-      "size": 11950,
-      "sha256": "668647CDC6CCA42DC574F792F16ACB2D45F931D53AFE5F9B684CEBE3A0020B20"
+      "size": 12190,
+      "sha256": "A1EC6DDA5712AC9CFEBE4630D3A75B22653E68150294CF32212FC17BED3F78AD"
     },
     {
       "path": "scripts/generate_character_experience.py",

@@ -197,12 +197,15 @@ static HpData ReadHpData(string path, IReadOnlyDictionary<CombatTargetKey, uint>
         var rowIndex = checked((uint)targetScores.Count);
         var profile = FindProfile(profiles, rowIndex);
         var selector = checked((ushort)values[6]);
+        var targetType = checked((byte)values[8]);
         var rewardKind = checked((byte)values[9]);
         var targetKey = new CombatTargetKey(profile.Key, selector);
         var score = runtimeScores.GetValueOrDefault(targetKey);
         if (runtimeScores.ContainsKey(targetKey))
             matchedRuntimeKeys.Add(targetKey);
-        if (rewardKind == 5)
+        // Type4 preserves HP on hits; only HP-terminal targets contribute kill score.
+        // Keep key coverage separate from eligibility, just as for random crates.
+        if (targetType == 4 || rewardKind == 5)
             score = 0;
         targetScores.Add(score);
         effectiveHitMaximums[profile.Key] = checked(
