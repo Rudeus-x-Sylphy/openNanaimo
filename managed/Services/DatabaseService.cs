@@ -4751,7 +4751,7 @@ public sealed partial class DatabaseService
             return (false, "正式背包中的物品数量已达到上限。", checked((ushort)inboxQuantity), ushort.MaxValue);
         }
 
-        if (claimedItem.Section == InventorySection.Clothing
+        if (claimedItem.HasExpiry
             && !ClothingExpirationTime.IsActive(inboxExpiration, DateTime.Now))
         {
             await transaction.RollbackAsync(cancellationToken);
@@ -4768,7 +4768,7 @@ public sealed partial class DatabaseService
             return (false, "Furniture inventory is full.", checked((ushort)inboxQuantity), checked((ushort)inventoryQuantity));
         var newInboxQuantity = checked((ushort)(inboxQuantity - 1));
         var newInventoryQuantity = checked((ushort)(inventoryQuantity + 1));
-        var itemExpiration = claimedItem.Section == InventorySection.Clothing
+        var itemExpiration = claimedItem.HasExpiry
             ? ClothingExpirationTime.Combine(inventoryExpiration, inboxExpiration)
             : 0u;
         var now = DateTime.UtcNow.ToString("O");

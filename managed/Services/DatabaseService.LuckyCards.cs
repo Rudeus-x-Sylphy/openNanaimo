@@ -174,10 +174,9 @@ public sealed partial class DatabaseService
             // The family row is reused even when it has lapsed, so the pet is revived rather
             // than duplicated.
             if (family.Length > 0 && owned.PetFamilyKey == family) familyPermanent = owned.DurationDays == 0;
-            // A lapsed pet is no longer owned: it neither blocks the draw nor occupies a
-            // slot. Permanent rows carry no expiry and stay active.
-            if (owned.Section == InventorySection.Pet && !owned.IsPetMaterial
-                && !ClothingExpirationTime.IsActive(expiration, DateTime.Now)) continue;
+            // A lapsed timed entry is no longer owned: it neither blocks the draw nor occupies
+            // a slot. Permanent rows carry no expiry and stay active.
+            if (owned.HasExpiry && !ClothingExpirationTime.IsActive(expiration, DateTime.Now)) continue;
             if (code == reward && count >= ushort.MaxValue) return CardRewardCapacity.Full;
             if (petBox)
             {

@@ -64,9 +64,11 @@ public sealed class ShopCatalogItem
     public uint HansGiftValue { get; init; }
     public bool IsHansGiftCertificate => Category == 46 && HansGiftValue > 0;
 
-    // Timed entries carry a wire expiration: clothing, and pets whose catalog row authors
-    // a life (pi._D7 field 34). Every other entry is permanent and stores no expiry.
+    // Timed entries carry a wire expiration: clothing, furniture with an authored usage period
+    // (inter._D3 field 5) and pets whose catalog row authors a life (pi._D7 field 34). Every
+    // other entry is permanent and stores no expiry.
     public bool HasExpiry => Section == InventorySection.Clothing
+        || Section == InventorySection.Furniture && DurationDays > 0
         || Section == InventorySection.Pet && !IsPetMaterial && DurationDays > 0;
     // One authored creature per appearance: the catalog's life and level variants reuse the
     // same icon and name, so a family key groups them. A trailing single-digit icon suffix is

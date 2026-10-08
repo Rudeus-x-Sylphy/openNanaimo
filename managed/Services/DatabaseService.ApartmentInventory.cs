@@ -135,7 +135,7 @@ public sealed partial class DatabaseService
         await using var read = connection.CreateCommand();
         read.Transaction = transaction;
         read.CommandText = """
-            SELECT ItemCode, Quantity FROM CharacterItems
+            SELECT ItemCode, Quantity, ItemExpiration FROM CharacterItems
             WHERE CharacterId = $characterId AND Quantity > 0 ORDER BY ItemCode
             """;
         read.Parameters.AddWithValue("$characterId", characterId);
@@ -144,6 +144,9 @@ public sealed partial class DatabaseService
         {
             var code = checked((uint)reader.GetInt64(0));
             if (!ShopCatalog.TryGet(code, out var item) || item.Section != InventorySection.Furniture)
+                continue;
+            // A lapsed furniture item leaves the visible inventory the way timed clothing does.
+            if (item.HasExpiry && !ClothingExpirationTime.IsActive(checked((uint)reader.GetInt64(2)), DateTime.Now))
                 continue;
             var visible = (int)Math.Min(reader.GetInt64(1), 84 - result.Count);
             for (var i = 0; i < visible; i++) result.Add(code);

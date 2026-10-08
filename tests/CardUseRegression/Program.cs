@@ -75,6 +75,13 @@ async Task SeedSet(uint page,int qty=1,int count=10) { for(uint i=0;i<count;i++)
 var config=Path.Combine(root,EventCardPolicy.FileName);
 void Config(uint code=46000008,int weight=10000,int quantity=1,uint page=1)=>File.WriteAllText(config,JsonSerializer.Serialize(new {Version=1,Pages=new[]{new {Page=page,Rewards=new[]{new {Code=code,Quantity=quantity,Weight=weight}}}}}));
 Task<EventCardRedeemResult> Redeem(uint page=1,int ticket=0,string? request=null)=>db.RedeemEventCardAsync(account,character,sessionId,request??Id(),page,nextTicket:_=>ticket);
+bool InteriorPublishes(byte[] payload,uint code)
+{
+    // Interior inventory: byte count at frame+3, then 12-byte records carrying the item code.
+    for(var index=0;index<payload[3]&&4+(index+1)*12<=payload.Length;index++)
+        if(BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4+index*12,4))==code) return true;
+    return false;
+}
 uint WirePetExpiration(byte[] payload,uint code)
 {
     // C44C carries petItems.Length + materials.Length 36-byte records from frame+4;
@@ -291,6 +298,19 @@ Check(ClothingExpirationTime.TryDecode((uint)beforeBuy,out var buyBefore)
     &&buyAfter-buyBefore>=TimeSpan.FromDays(90),"shop purchase adds the bought variant's authored days");
 await Reset();var freshBuy=await db.PurchaseShopItemForAccountAsync(account,15009246,1,shopPet.PurchasePrice,shopPet.PaysWithCash);
 Check(freshBuy.Success&&await Items(15009246)==1,"shop pet with no owned family lands as its own row");
+// Furniture holds its authored usage period on the same terms: a reward writes a real term, a
+// repeat grant extends it, and a lapsed item stops being published.
+Check(ShopCatalog.TryGet(11000043,out var timedFurniture)&&timedFurniture.DurationDays>0,"timed furniture catalogued");
+Config(11000043);await Reset();await SeedSet(1);
+Check((await Redeem()).Success,"furniture reward granted");
+var furnitureTerm=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=11000043");
+await SeedSet(1);Check((await Redeem()).Success,"furniture repeat grant");
+Check(furnitureTerm!=0
+    &&ClothingExpirationTime.TryDecode((uint)furnitureTerm,out var furnitureBefore)
+    &&ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=11000043"),out var furnitureAfter)
+    &&furnitureAfter-furnitureBefore>=TimeSpan.FromDays(29),"furniture grant extends the term by the authored period");
+await Sql("UPDATE CharacterItems SET ItemExpiration=$e WHERE CharacterId=$id AND ItemCode=11000043",("$e",ClothingExpirationTime.Encode(new DateTime(2020,1,1,0,0,0))));
+Check(!InteriorPublishes(NetworkAdapterService.BuildInteriorInventoryPayload(0,(await db.GetCharacterAsync(account))!),11000043),"lapsed furniture is not published");
 Config();
 File.WriteAllText(config,JsonSerializer.Serialize(new {Version=1,Pages=new[]{new {Page=1,Rewards=new[]{new {Code=46000008,Quantity=1,Weight=2500},new {Code=46000002,Quantity=1,Weight=7500}}}}}));
 var weighted=EventCardPolicy.Load(config)[1];
