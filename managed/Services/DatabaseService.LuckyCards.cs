@@ -115,8 +115,7 @@ public sealed partial class DatabaseService
         }
         command.CommandText = "UPDATE Characters SET CardMysteryKeyCount=CardMysteryKeyCount-1,LastSavedAt=$now WHERE Id=$id AND CardMysteryKeyCount>0";
         if (await command.ExecuteNonQueryAsync(token) != 1) return new(0, 0, "key balance changed");
-        var grant = await GrantCardRewardAsync(connection, transaction, characterId, reward, token);
-        if (grant == CardRewardGrant.Failed)
+        if (!await GrantCardRewardAsync(connection, transaction, characterId, reward, token))
             return new(0, 0, "reward write failed");
         if (!await ReindexGameQuickSlotsAfterGrantAsync(connection, transaction, characterId, gameBefore, token)
             || !await RemapApartmentPlacementsAfterInsertionAsync(connection, transaction, characterId, furnitureBefore, token))
@@ -128,10 +127,7 @@ public sealed partial class DatabaseService
             """;
         await command.ExecuteNonQueryAsync(token);
         await transaction.CommitAsync(token);
-        // A permanently owned copy still consumes the card and key; the draw simply
-        // grants nothing, which the operator log records under a distinct tag.
-        return new(900, reward, grant == CardRewardGrant.AlreadyPermanent
-            ? "permanently owned copy; draw grants nothing" : string.Empty);
+        return new(900, reward, string.Empty);
     }
 
     private enum CardRewardCapacity { Available, Full, DuplicatePet, Unsupported }
@@ -181,9 +177,7 @@ public sealed partial class DatabaseService
         return occupied < cap ? CardRewardCapacity.Available : CardRewardCapacity.Full;
     }
     // Shared transactional grant for explicitly configured event rewards and resource-authored lucky rewards.
-    internal enum CardRewardGrant { Granted, AlreadyPermanent, Failed }
-
-    private static async Task<CardRewardGrant> GrantCardRewardAsync(SqliteConnection connection, SqliteTransaction tx,
+    private static async Task<bool> GrantCardRewardAsync(SqliteConnection connection, SqliteTransaction tx,
         long id, uint reward, CancellationToken token)
     {
         await using var command = connection.CreateCommand(); command.Transaction = tx;
@@ -196,14 +190,14 @@ public sealed partial class DatabaseService
                 """;
         else
         {
-            if (!ShopCatalog.TryGet(reward, out var item)) return CardRewardGrant.Failed;
+            if (!ShopCatalog.TryGet(reward, out var item)) return false;
             // Timed grants must never become a permanent row: clothing and duration
             // pets extend from the stored expiration the same way the shop purchase
             // path does, and keep one row per code so a repeated draw stacks days
             // instead of duplicate pieces or duplicate pet instances.
             var durationPet = item.Section == InventorySection.Pet && !item.IsPetMaterial && item.DurationDays > 0;
             var timed = item.Section == InventorySection.Clothing || durationPet;
-            uint? stored = null;
+            var currentExpiration = 0u;
             if (timed)
             {
                 await using var current = connection.CreateCommand();
@@ -212,14 +206,13 @@ public sealed partial class DatabaseService
                 current.Parameters.AddWithValue("$id", id);
                 current.Parameters.AddWithValue("$reward", reward);
                 var value = await current.ExecuteScalarAsync(token);
-                if (value is not null) stored = checked((uint)Convert.ToInt64(value));
+                if (value is not null) currentExpiration = checked((uint)Convert.ToInt64(value));
             }
-            // A copy that is already permanently owned must never be downgraded: a zero
-            // expiration means the pet has no attributable expiry, so the draw yields
-            // nothing instead of starting a countdown on the permanent row.
-            if (durationPet && stored is 0u) return CardRewardGrant.AlreadyPermanent;
+            // A duration pet keeps a lifespan exactly like timed clothing: a row with no
+            // stored expiry counts from this grant instead of staying permanent, so the
+            // remaining term stays visible and a repeat draw adds to it.
             var expiration = timed
-                ? ClothingExpirationTime.Extend(stored ?? 0u, item.DurationDays, DateTime.Now)
+                ? ClothingExpirationTime.Extend(currentExpiration, item.DurationDays, DateTime.Now)
                 : 0u;
             command.Parameters.AddWithValue("$stage", item.Section == InventorySection.Pet && !item.IsPetMaterial ? item.PetModelStage : 0);
             command.Parameters.AddWithValue("$maximumStage", item.Section == InventorySection.Pet && !item.IsPetMaterial ? item.PetUpgradeStage : 0);
@@ -234,8 +227,7 @@ public sealed partial class DatabaseService
                     UpdatedAt = excluded.UpdatedAt
                 """;
         }
-        return await command.ExecuteNonQueryAsync(token) == 1
-            ? CardRewardGrant.Granted : CardRewardGrant.Failed;
+        return await command.ExecuteNonQueryAsync(token) == 1;
     }
 
 }

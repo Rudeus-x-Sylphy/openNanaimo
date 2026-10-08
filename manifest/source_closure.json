@@ -608,8 +608,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.CardPageUnion.cs",
-      "size": 5176,
-      "sha256": "7B04F03F938410CCC0CD1F03235767F44668FF5A6864B696C7F2EAB2BCC4FDDF"
+      "size": 5150,
+      "sha256": "14455E0BD9B68B7DF91F527866ECBB0120E3B170D39173F9CBDF033946A657B0"
     },
     {
       "path": "managed/Services/DatabaseService.CoupleBenefits.cs",
@@ -618,8 +618,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.EventCards.cs",
-      "size": 14523,
-      "sha256": "78B2A5AD6FC8A27DA672F13C25308F04269E37A42C533A0D93C9E309215D8534"
+      "size": 14084,
+      "sha256": "3CCD8580FD76B4D427137708D0152A7BA16965B8417B018A64F2B8396F1D6F5E"
     },
     {
       "path": "managed/Services/DatabaseService.ExperienceCards.cs",
@@ -663,8 +663,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.LuckyCards.cs",
-      "size": 15592,
-      "sha256": "8F70811FA91BC7040256EC92A4E6BA3B9C6A17587C24DDC720843BD07E09BB24"
+      "size": 15036,
+      "sha256": "6C56E6C855320C1045640D715BC68D7DD5C63D57D80E33E47A4A5924AA6E90AA"
     },
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",

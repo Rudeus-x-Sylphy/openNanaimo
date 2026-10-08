@@ -70,7 +70,7 @@ public sealed partial class DatabaseService
         command.CommandText = "UPDATE CharacterCards SET Quantity=Quantity-1,UpdatedAt=$now WHERE CharacterId=$id AND CardCode BETWEEN $first AND $last AND Quantity>1";
         if (removed + await command.ExecuteNonQueryAsync(token) != 20)
             return new(false, 0, "material balance changed");
-        if (await GrantCardRewardAsync(connection, transaction, characterId, recipe.Reward, token) != CardRewardGrant.Granted)
+        if (!await GrantCardRewardAsync(connection, transaction, characterId, recipe.Reward, token))
             return new(false, 0, "reward write failed");
         command.CommandText = """
             INSERT INTO CardPageUnionReceipts(CharacterId,SessionId,RequestId,PageToken,RewardCode,CreatedAt)

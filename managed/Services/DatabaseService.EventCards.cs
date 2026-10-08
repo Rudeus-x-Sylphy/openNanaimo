@@ -132,14 +132,9 @@ public sealed partial class DatabaseService
         consumed += await command.ExecuteNonQueryAsync(token);
         if (consumed != 10) return new(0, EventCardPolicy.Fit("请重试"), "set balance changed");
         var granted = hans == 0 || await CreditCharacterHansAsync(connection, transaction, characterId, hans, token);
-        var permanentOnly = hans == 0;
         if (granted && hans == 0)
             foreach (var code in codes)
-            {
-                var grant = await GrantCardRewardAsync(connection, transaction, characterId, code, token);
-                if (grant == CardRewardGrant.Failed) { granted = false; break; }
-                if (grant == CardRewardGrant.Granted) permanentOnly = false;
-            }
+                if (!await GrantCardRewardAsync(connection, transaction, characterId, code, token)) { granted = false; break; }
         if (!granted
             || !await ReindexGameQuickSlotsAfterGrantAsync(connection, transaction, characterId, gameBefore, token)
             || !await RemapApartmentPlacementsAfterInsertionAsync(connection, transaction, characterId, furnitureBefore, token))
@@ -150,10 +145,7 @@ public sealed partial class DatabaseService
             DELETE FROM EventCardPendingDraws WHERE CharacterId=$id AND Page=$page;
             """;
         await command.ExecuteNonQueryAsync(token); await transaction.CommitAsync(token);
-        // A set whose members were all already permanently owned is still consumed, and
-        // the operator-facing text says so instead of naming a prize nothing granted.
-        return new(reward, hans > 0 ? EventCardPolicy.Fit(hans + "金币")
-            : EventCardPolicy.Fit(permanentOnly ? "已拥有该奖励" : PrizeName(codes)), string.Empty);
+        return new(reward, hans > 0 ? EventCardPolicy.Fit(hans + "金币") : EventCardPolicy.Fit(PrizeName(codes)), string.Empty);
     }
 
     /** Operator-facing prize name: the granted catalog names, de-duplicated and joined
