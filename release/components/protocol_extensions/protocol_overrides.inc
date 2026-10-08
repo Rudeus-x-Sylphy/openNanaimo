@@ -70,6 +70,9 @@ static void teamplay_send_d013_boss_child_retire(SOCKET c,unsigned child,unsigne
 }
 #if TEAMPLAY_FEATURE_BOSS_MONOTONIC_CHILD_PHASE || TEAMPLAY_FEATURE_BOSS_SMOOTH_CHILD_PHASE || TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
 static void teamplay_send_d013_boss_result_retirements(SOCKET c,const struct boss_hp_sync_result*r){unsigned child;
+#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+if(r->gate_frame_retired)teamplay_send_d013_boss_child_retire(c,0u,0u,r->hp);
+#endif
 #if TEAMPLAY_FEATURE_BOSS_MONOTONIC_CHILD_PHASE
 for(child=0u;child<BOSS_HP_SYNC_MAX_CHILDREN;child++)if(boss_hp_sync_result_auto_retired(r,child))teamplay_send_d013_boss_child_retire(c,child,0u,r->hp);if(r->child_first_terminal&&!boss_hp_sync_result_auto_retired(r,r->retire_child))teamplay_send_d013_boss_child_retire(c,r->retire_child,0u,r->hp);
 #elif TEAMPLAY_FEATURE_BOSS_SMOOTH_CHILD_PHASE

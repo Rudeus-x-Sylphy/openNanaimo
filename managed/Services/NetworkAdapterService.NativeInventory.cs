@@ -9,7 +9,11 @@ public sealed partial class NetworkAdapterService
             || session.ApartmentOwnerCharacterId > 0;
 
     private static bool IsNativeReadyRoomInventory(ConnectionSession session)
-        => session.NativeDungeon is not null && session.NativeDungeonSelectionValid
+        // A joined member can request/receive its ready roster before the owner
+        // selects a map. Inventory/vitals belong to that room, not to a valid
+        // combat-selection tuple; do not silently omit its F108 broadcast.
+        => session.NativeDungeon is not null
+            && (session.NativeDungeonSelectionValid || session.NativeContinuationRosterRequested)
             && !session.NativeCoupleStartRequested && !session.NativeDungeonSettlementAwaitingAction
             && !session.NativeDungeonNextTransitionAuthorized && !session.NativeDungeonTownTransitionAuthorized;
 

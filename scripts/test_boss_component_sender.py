@@ -45,6 +45,47 @@ static int contact(unsigned mode,unsigned child,unsigned ordinal,unsigned damage
     if(final){CHECK(frames[count-1][0x24]==20 && frames[count-1][0x3C]==combat_economy_rating(teamplay_current_score(),1u,multiplayer_shared_boss_context()));CHECK(boss_hp_sync_get32(frames[count-1],0x28)==0);}
     return 0;
 }
+static int gate_hit(unsigned child,unsigned ordinal,unsigned contact_hit,struct boss_hp_sync_result*r){
+    struct boss_hp_sync_context*c=multiplayer_shared_boss_context();unsigned char req[32];int rc;
+    memset(req,0,sizeof(req));count=0;
+    if(contact_hit){boss_hp_sync_put16(req,8,40u);req[0x11]=(unsigned char)child;boss_hp_sync_put16(req,0x12,ordinal);
+        rc=boss_hp_sync_apply_external_contact(c,req,28u,1000000u,r);
+    }else{req[0x13]=(unsigned char)child;boss_hp_sync_put32(req,0x14,ordinal);
+        rc=boss_hp_sync_apply_d011_attack(c,req,32u,1000000u,1u,r);}
+    CHECK(rc==BOSS_HP_SYNC_OK);
+    if(!r->scripted_report_suppressed){teamplay_send_d013_boss_result_retirements(100,r);shop_catalogs_send_boss_result(100,r,0,&scalar_retired);}
+    return 0;
+}
+static int gate_lifecycle(void){
+    struct boss_hp_sync_context*c=multiplayer_shared_boss_context();struct boss_hp_sync_result r;
+    unsigned difficulty,stage,contact_hit,reverse,adds_first,initial,adds_hp,k;
+    for(difficulty=0;difficulty<3;difficulty++)for(stage=0;stage<3;stage++)
+    for(contact_hit=0;contact_hit<2;contact_hit++)for(reverse=0;reverse<2;reverse++)for(adds_first=0;adds_first<2;adds_first++){
+        boss_hp_sync_begin_game_domain(c,2u,0u,2u,0u,difficulty,difficulty*3u+stage);scalar_retired=0;
+        CHECK(c->profile&&c->profile->stage_index==0u&&c->positive_child_count==2u);
+        initial=c->hp;adds_hp=c->child_hp[2];
+        CHECK(!gate_hit(0,0,0,&r));CHECK(r.zero_hp_gate&&r.scripted_report_suppressed&&count==0&&c->hp==initial&&!c->component_terminal_sent[0]);
+        if(adds_first)for(k=0;k<3;k++){CHECK(!gate_hit(2,k,contact_hit,&r));CHECK(!r.gate_frame_retired&&!c->child_terminal_sent[0]);}
+        CHECK(!gate_hit(1,reverse,contact_hit,&r));CHECK(!r.gate_frame_retired&&!c->child_terminal_sent[0]);
+        CHECK(!gate_hit(0,0,0,&r));CHECK(count==0&&r.scripted_report_suppressed);
+        CHECK(!gate_hit(1,1u-reverse,contact_hit,&r));
+        CHECK(r.gate_frame_retired&&c->child_terminal_sent[0]&&c->component_terminal_sent[0]);
+        CHECK(c->hp==(adds_first?0u:adds_hp)&&r.final_terminal==adds_first);
+        CHECK(count==3&&sizes[0]==96u&&sizes[1]==96u);
+        CHECK(boss_hp_sync_get16(frames[0],6)==0xD013&&boss_hp_sync_get16(frames[0],12)==0u);
+        CHECK(boss_hp_sync_get16(frames[1],6)==0xD013&&boss_hp_sync_get16(frames[1],12)==1u);
+        CHECK(boss_hp_sync_get16(frames[2],6)==0xD012&&boss_hp_sync_get32(frames[2],0x28)==c->hp);
+        if(!adds_first){
+            CHECK(!gate_hit(0,0,0,&r));CHECK(count==0&&!r.gate_frame_retired);
+            for(k=0;k<3;k++){CHECK(!gate_hit(2,k,contact_hit,&r));CHECK(!r.gate_frame_retired);}
+            CHECK(c->final_terminal_seen&&c->hp==0u);
+        }
+    }
+    /* Other zero-HP targets retain their existing retirement policy. */
+    boss_hp_sync_begin_game_domain(c,2u,0u,1u,0u,0u,0u);
+    CHECK(!boss_hp_sync_is_gate_frame_profile(c));
+    return 0;
+}
 int main(void){
     struct boss_hp_sync_context*c=multiplayer_shared_boss_context();unsigned i;struct boss_hp_sync_result r;
     pSd=capture;pT=(void*)clock_fixed;g_account_name[0]=0;g_multi_current=0;
@@ -72,6 +113,7 @@ int main(void){
         CHECK(c->mode_index==1 && !c->awaiting_next_mode);
     }
     CHECK(!contact(1,0,2,1000000,1,0,1,0));
+    CHECK(!gate_lifecycle());
     return 0;
 }
 '''

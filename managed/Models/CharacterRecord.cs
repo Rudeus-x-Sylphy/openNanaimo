@@ -135,6 +135,10 @@ public sealed class CharacterItemRecord
 {
     public uint ItemCode { get; set; }
     public ushort Quantity { get; set; }
+    // Wire-format expiration for timed inventory entries. Zero means legacy
+    // data without an attributable expiry; clothing treats it as permanent
+    // until a new purchase writes a real value.
+    public uint ItemExpiration { get; set; }
     public short? PetDurability { get; set; }
     public byte PetCurrentStage { get; set; }
     public byte PetMaximumStage { get; set; }

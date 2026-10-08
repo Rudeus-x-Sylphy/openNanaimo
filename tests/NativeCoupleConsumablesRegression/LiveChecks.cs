@@ -32,13 +32,15 @@ internal static class LiveChecks
         return result;
     }
 
-    internal static async Task RunAsync(DatabaseService database, NetworkAdapterService service, string root, Action<bool,string> check, uint consumableCode = 14000001)
+    internal static async Task RunAsync(DatabaseService database, NetworkAdapterService service, string root, Action<bool,string> check, uint consumableCode = 14000001, bool readyRoomOnly = false)
     {
         var executable = Environment.GetEnvironmentVariable("NANAIMO_SOCIAL_BRIDGE");
         if (string.IsNullOrWhiteSpace(executable)) throw new InvalidOperationException("Set NANAIMO_SOCIAL_BRIDGE to an isolated current build.");
         service.NativeDungeonEnabled = true;
         var sessions = new List<object>();
-        foreach (var name in consumableCode == 14000001 ? new[] { "ShareA", "ShareB" } : new[] { "FullA", "FullB" })
+        foreach (var name in readyRoomOnly
+            ? (consumableCode == 14000001 ? new[] { "ReadyA", "ReadyB" } : new[] { "ReadyFullA", "ReadyFullB" })
+            : (consumableCode == 14000001 ? new[] { "ShareA", "ShareB" } : new[] { "FullA", "FullB" }))
         {
             var account = await database.OpenLocalAccountAsync(name);
             await database.CreateLocalCharacterAsync(account, name, 0);
@@ -65,7 +67,7 @@ internal static class LiveChecks
         await database.GrantInventoryItemToAccountAsync(owner.AccountId, 43000002, 1);
         check((await database.CreateCoupleRelationAsync(owner.AccountId, owner.Id, Get<string>(first, "SessionId"), peer.Id,
             43000002, CancellationToken.None, Get<string>(second, "SessionId"))).Success, "live sharing relationship");
-        await using var pool = new NativeDungeonPool(Path.GetFullPath(executable), Path.Combine(root, consumableCode == 14000001 ? "native" : "native-full"));
+        await using var pool = new NativeDungeonPool(Path.GetFullPath(executable), Path.Combine(root, (readyRoomOnly ? "ready-" : "") + (consumableCode == 14000001 ? "native" : "native-full")));
         await using var reservation = await pool.AcquireAsync("reserve", CancellationToken.None);
         await using var leaseA = await pool.AcquireAsync("shared", CancellationToken.None);
         await using var leaseB = await pool.AcquireAsync("shared", CancellationToken.None);
@@ -176,6 +178,70 @@ internal static class LiveChecks
                     && (await database.GetCharacterByIdAsync(character.Id))!.EquippedPetItemCode == 0,
                     "live ready room pet deselection survives backpack reopening " + character.Name);
                 typeof(NetworkAdapterService).GetMethod("ArmNativeDungeonRevivalCycle", Private)!.Invoke(service, [session]);
+            }
+            if (readyRoomOnly)
+            {
+                var readyGate = typeof(NetworkAdapterService).GetMethod("IsNativeReadyRoomInventory", BindingFlags.Static | BindingFlags.NonPublic)!;
+                bool CanRefresh(object member) => (bool)readyGate.Invoke(null, [member])!;
+                Set(second, "NativeDungeonSelectionValid", false);
+                Set(second, "NativeContinuationRosterRequested", false);
+                check(!CanRefresh(second), "no inventory room broadcast before a room-selection/roster request");
+                Set(second, "NativeContinuationRosterRequested", true);
+                check(CanRefresh(second), "ready roster authorizes inventory without borrowing a map selection");
+                foreach (var boundary in new[] { "NativeCoupleStartRequested", "NativeDungeonSettlementAwaitingAction",
+                    "NativeDungeonNextTransitionAuthorized", "NativeDungeonTownTransitionAuthorized" })
+                {
+                    Set(second, boundary, true);
+                    check(!CanRefresh(second), "inventory refresh remains gated at " + boundary);
+                    Set(second, boundary, false);
+                }
+                // A ready-room food use must publish the changed actor to the other
+                // viewer, not merely return the consumer's inventory completion.
+                foreach (var index in new[] { 1, 0 })
+                {
+                    var consumer = sessions[index]; var viewer = sessions[1 - index];
+                    if (index == 1) Set(consumer, "NativeDungeonSelectionValid", false);
+                    foreach (var member in sessions) Drain(member);
+                    var viewerBefore = Get<BattleResourceSnapshot>(viewer, "NativeBattleResources");
+                    var inventory = (await Call<byte[]?>(service, "HandleNativeFrameAsync",
+                        NativeDungeonClient.Frame(0xC42F, []), (ushort)0xC42F, "WorldAdapter", "127.0.0.1", "127.0.0.1", consumer, CancellationToken.None))!;
+                    var identity = BinaryPrimitives.ReadUInt16LittleEndian(inventory.AsSpan(16));
+                    var eat = new byte[8]; BinaryPrimitives.WriteUInt32LittleEndian(eat, consumableCode);
+                    BinaryPrimitives.WriteUInt16LittleEndian(eat.AsSpan(4), identity);
+                    ushort useOpcode = index == 1 ? (ushort)0xC46D : (ushort)0xC43D;
+                    var completion = (await Call<byte[]?>(service, "HandleNativeFrameAsync",
+                        NativeDungeonClient.Frame(useOpcode, eat), useOpcode, "WorldAdapter", "127.0.0.1", "127.0.0.1", consumer, CancellationToken.None))!;
+                    await clients[1 - index].ExchangeAsync(null, null, CancellationToken.None);
+                    var uid = Get<NativeDungeonState>(consumer, "NativeCheckpoint").Get(4);
+                    var viewerFrames = Drain(viewer);
+                    check(viewerFrames.All(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) != 0xCF71),
+                        "ready inventory does not recreate the remote actor");
+                    var readyRemote = viewerFrames.Where(f => f.Length == 0x74 && BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF72
+                        && BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(8)) == uid).ToArray();
+                    var current = Get<BattleResourceSnapshot>(consumer, "NativeBattleResources");
+                    var localFrames = new List<byte[]>();
+                    for (var offset = 0; offset < completion.Length;)
+                    {
+                        var length = BinaryPrimitives.ReadUInt16LittleEndian(completion.AsSpan(offset + 4));
+                        localFrames.Add(completion.AsSpan(offset, length).ToArray()); offset += length;
+                    }
+                    check(localFrames.Count > 1 && BinaryPrimitives.ReadUInt16LittleEndian(localFrames[0].AsSpan(6))
+                        == (useOpcode == 0xC46D ? 0xC46E : 0xC43E)
+                        && localFrames[^1].Length == 0x74 && BinaryPrimitives.ReadUInt16LittleEndian(localFrames[^1].AsSpan(6)) == 0xCF72
+                        && BinaryPrimitives.ReadUInt16LittleEndian(localFrames[^1].AsSpan(8)) == uid
+                        && BinaryPrimitives.ReadUInt16LittleEndian(localFrames[^1].AsSpan(14)) == current.CurrentHp,
+                        "consumer inventory acknowledgement precedes its authoritative room snapshot");
+                    check(Get<BattleResourceSnapshot>(viewer, "NativeBattleResources") == viewerBefore,
+                        "food broadcast leaves the viewer's own HP/MP unchanged");
+                    var savedConsumer = (await database.GetCharacterByIdAsync(Get<CharacterRecord>(consumer, "Character").Id))!;
+                    check(savedConsumer.CurrentHp == current.CurrentHp && savedConsumer.CurrentMp == current.CurrentMp
+                        && savedConsumer.Items.Single(i => i.ItemCode == consumableCode).Quantity == 2,
+                        "ready food persists resources and exactly one item debit");
+                    check(readyRemote.Length == 1 && BinaryPrimitives.ReadUInt16LittleEndian(readyRemote[0].AsSpan(14)) == current.CurrentHp
+                        && BinaryPrimitives.ReadUInt16LittleEndian(readyRemote[0].AsSpan(16)) == current.CurrentMp && current.CurrentHp > 10,
+                        $"ready-room food broadcasts current resources consumer={index} frames={readyRemote.Length} hp={current.CurrentHp}");
+                }
+                return;
             }
             foreach (var session in sessions)
             {

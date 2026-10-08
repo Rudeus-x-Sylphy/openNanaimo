@@ -234,6 +234,7 @@ public sealed partial class DatabaseService
                     CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
                     ItemCode INTEGER NOT NULL,
                     Quantity INTEGER NOT NULL DEFAULT 0 CHECK (Quantity BETWEEN 0 AND 65535),
+                    ItemExpiration INTEGER NOT NULL DEFAULT 0 CHECK (ItemExpiration BETWEEN 0 AND 4294967295),
                     PetDurability INTEGER NULL,
                     PetCurrentStage INTEGER NOT NULL DEFAULT 0,
                     PetMaximumStage INTEGER NOT NULL DEFAULT 0,
@@ -249,6 +250,7 @@ public sealed partial class DatabaseService
                     CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
                     ItemCode INTEGER NOT NULL,
                     Quantity INTEGER NOT NULL DEFAULT 0 CHECK (Quantity BETWEEN 0 AND 65535),
+                    ItemExpiration INTEGER NOT NULL DEFAULT 0 CHECK (ItemExpiration BETWEEN 0 AND 4294967295),
                     UpdatedAt TEXT NOT NULL,
                     PRIMARY KEY (CharacterId, ItemCode)
                 );
@@ -652,6 +654,8 @@ public sealed partial class DatabaseService
         await EnsureColumnAsync(connection, "Characters", "LastSavedAt", "TEXT NULL", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "Hans", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "Cash", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "CharacterItems", "ItemExpiration", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "CharacterCashInboxItems", "ItemExpiration", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "CharacterItems", "PetDurability", "INTEGER NULL", cancellationToken);
         await EnsureColumnAsync(connection, "CharacterItems", "PetCurrentStage", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "CharacterItems", "PetMaximumStage", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
@@ -3715,13 +3719,24 @@ public sealed partial class DatabaseService
         }
 
         long currentQuantity;
+        uint currentExpiration;
         await using (var current = connection.CreateCommand())
         {
             current.Transaction = transaction;
-            current.CommandText = "SELECT Quantity FROM CharacterItems WHERE CharacterId = $characterId AND ItemCode = $itemCode";
+            current.CommandText = "SELECT Quantity, ItemExpiration FROM CharacterItems WHERE CharacterId = $characterId AND ItemCode = $itemCode";
             current.Parameters.AddWithValue("$characterId", characterId);
             current.Parameters.AddWithValue("$itemCode", itemCode);
-            currentQuantity = Convert.ToInt64(await current.ExecuteScalarAsync(cancellationToken) ?? 0L);
+            await using var reader = await current.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                currentQuantity = reader.GetInt64(0);
+                currentExpiration = checked((uint)reader.GetInt64(1));
+            }
+            else
+            {
+                currentQuantity = 0;
+                currentExpiration = 0;
+            }
         }
         if (currentQuantity + quantity > ushort.MaxValue)
         {
@@ -3732,19 +3747,28 @@ public sealed partial class DatabaseService
         }
 
         var newQuantity = checked((ushort)(currentQuantity + quantity));
+        var purchaseTime = DateTime.Now;
+        var expiration = currentExpiration;
+        if (catalogItem.Section == InventorySection.Clothing)
+            for (var index = 0; index < quantity; index++)
+                expiration = ClothingExpirationTime.Extend(expiration, catalogItem.DurationDays, purchaseTime);
+        else
+            expiration = 0;
         await using (var inventory = connection.CreateCommand())
         {
             inventory.Transaction = transaction;
             inventory.CommandText = """
-                INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, UpdatedAt)
-                VALUES($characterId, $itemCode, $quantity, $now)
+                INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, ItemExpiration, UpdatedAt)
+                VALUES($characterId, $itemCode, $quantity, $expiration, $now)
                 ON CONFLICT(CharacterId, ItemCode) DO UPDATE SET
                     Quantity = excluded.Quantity,
+                    ItemExpiration = excluded.ItemExpiration,
                     UpdatedAt = excluded.UpdatedAt
                 """;
             inventory.Parameters.AddWithValue("$characterId", characterId);
             inventory.Parameters.AddWithValue("$itemCode", itemCode);
             inventory.Parameters.AddWithValue("$quantity", newQuantity);
+            inventory.Parameters.AddWithValue("$expiration", expiration);
             inventory.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
             await inventory.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -3966,21 +3990,31 @@ public sealed partial class DatabaseService
             return (false, true, "Insufficient NaNa/Cash balance.", [], hans, cash);
         }
 
-        var purchasedItems = new List<(uint ItemCode, ushort NewQuantity)>(items.Count);
+        var purchaseTime = DateTime.Now;
+        var purchasedItems = new List<(uint ItemCode, ushort NewQuantity, uint Expiration)>(items.Count);
         foreach (var item in items)
         {
             await using var current = connection.CreateCommand();
             current.Transaction = transaction;
-            current.CommandText = "SELECT Quantity FROM CharacterItems WHERE CharacterId = $characterId AND ItemCode = $itemCode";
+            current.CommandText = "SELECT Quantity, ItemExpiration FROM CharacterItems WHERE CharacterId = $characterId AND ItemCode = $itemCode";
             current.Parameters.AddWithValue("$characterId", characterId);
             current.Parameters.AddWithValue("$itemCode", item.ItemCode);
-            var currentQuantity = Convert.ToInt64(await current.ExecuteScalarAsync(cancellationToken) ?? 0L);
+            await using var reader = await current.ExecuteReaderAsync(cancellationToken);
+            var currentQuantity = 0L;
+            var currentExpiration = 0u;
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                currentQuantity = reader.GetInt64(0);
+                currentExpiration = checked((uint)reader.GetInt64(1));
+            }
             if (currentQuantity >= ushort.MaxValue)
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return (false, false, "NaNa avatar quantity exceeds the client inventory limit.", [], hans, cash);
             }
-            purchasedItems.Add((item.ItemCode, checked((ushort)(currentQuantity + 1))));
+            ShopCatalog.TryGet(item.ItemCode, out var catalogItem);
+            var expiration = ClothingExpirationTime.Extend(currentExpiration, catalogItem.DurationDays, purchaseTime);
+            purchasedItems.Add((item.ItemCode, checked((ushort)(currentQuantity + 1)), expiration));
         }
 
         var now = DateTime.UtcNow.ToString("O");
@@ -4025,21 +4059,23 @@ public sealed partial class DatabaseService
             await using var inventory = connection.CreateCommand();
             inventory.Transaction = transaction;
             inventory.CommandText = """
-                INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, UpdatedAt)
-                VALUES($characterId, $itemCode, $quantity, $now)
+                INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, ItemExpiration, UpdatedAt)
+                VALUES($characterId, $itemCode, $quantity, $expiration, $now)
                 ON CONFLICT(CharacterId, ItemCode) DO UPDATE SET
                     Quantity = excluded.Quantity,
+                    ItemExpiration = excluded.ItemExpiration,
                     UpdatedAt = excluded.UpdatedAt
                 """;
             inventory.Parameters.AddWithValue("$characterId", characterId);
             inventory.Parameters.AddWithValue("$itemCode", item.ItemCode);
             inventory.Parameters.AddWithValue("$quantity", item.NewQuantity);
+            inventory.Parameters.AddWithValue("$expiration", item.Expiration);
             inventory.Parameters.AddWithValue("$now", now);
             await inventory.ExecuteNonQueryAsync(cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);
-        return (true, false, string.Empty, purchasedItems, hans, cash);
+        return (true, false, string.Empty, purchasedItems.Select(item => (item.ItemCode, item.NewQuantity)).ToArray(), hans, cash);
     }
 
     public async Task<(bool Success, bool InsufficientBalance, string Error, ushort NewQuantity, long Hans, long Cash)> PurchaseShopItemAsync(
@@ -4064,17 +4100,29 @@ public sealed partial class DatabaseService
             return (false, false, "商城付款参数无效。", 0, 0, 0);
 
         var totalPrice = checked((long)quantity * unitPrice);
+        var purchaseTime = DateTime.Now;
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction();
 
         long currentQuantity;
+        uint currentExpiration;
         await using (var quantityCommand = connection.CreateCommand())
         {
             quantityCommand.Transaction = transaction;
-            quantityCommand.CommandText = "SELECT Quantity FROM CharacterCashInboxItems WHERE CharacterId = $characterId AND ItemCode = $itemCode";
+            quantityCommand.CommandText = "SELECT Quantity, ItemExpiration FROM CharacterCashInboxItems WHERE CharacterId = $characterId AND ItemCode = $itemCode";
             quantityCommand.Parameters.AddWithValue("$characterId", characterId);
             quantityCommand.Parameters.AddWithValue("$itemCode", itemCode);
-            currentQuantity = Convert.ToInt64(await quantityCommand.ExecuteScalarAsync(cancellationToken) ?? 0L);
+            await using var quantityReader = await quantityCommand.ExecuteReaderAsync(cancellationToken);
+            if (await quantityReader.ReadAsync(cancellationToken))
+            {
+                currentQuantity = quantityReader.GetInt64(0);
+                currentExpiration = checked((uint)quantityReader.GetInt64(1));
+            }
+            else
+            {
+                currentQuantity = 0;
+                currentExpiration = 0;
+            }
         }
         if (currentQuantity + quantity > ushort.MaxValue)
         {
@@ -4143,19 +4191,27 @@ public sealed partial class DatabaseService
         }
 
         var newQuantity = checked((ushort)(currentQuantity + quantity));
+        var expiration = currentExpiration;
+        if (catalogItem.Section == InventorySection.Clothing)
+            for (var index = 0; index < quantity; index++)
+                expiration = ClothingExpirationTime.Extend(expiration, catalogItem.DurationDays, purchaseTime);
+        else
+            expiration = 0;
         await using (var inventory = connection.CreateCommand())
         {
             inventory.Transaction = transaction;
             inventory.CommandText = """
-                INSERT INTO CharacterCashInboxItems(CharacterId, ItemCode, Quantity, UpdatedAt)
-                VALUES($characterId, $itemCode, $quantity, $now)
+                INSERT INTO CharacterCashInboxItems(CharacterId, ItemCode, Quantity, ItemExpiration, UpdatedAt)
+                VALUES($characterId, $itemCode, $quantity, $expiration, $now)
                 ON CONFLICT(CharacterId, ItemCode) DO UPDATE SET
                     Quantity = excluded.Quantity,
+                    ItemExpiration = excluded.ItemExpiration,
                     UpdatedAt = excluded.UpdatedAt
                 """;
             inventory.Parameters.AddWithValue("$characterId", characterId);
             inventory.Parameters.AddWithValue("$itemCode", itemCode);
             inventory.Parameters.AddWithValue("$quantity", newQuantity);
+            inventory.Parameters.AddWithValue("$expiration", expiration);
             inventory.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
             await inventory.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -4452,6 +4508,7 @@ public sealed partial class DatabaseService
             || requiredRecipientGender is < 0 or > 1)
             return (false, true, false, false, false, "商城赠送参数无效。", 0, 0, 0);
 
+        var purchaseTime = DateTime.Now;
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction(deferred: false);
 
@@ -4516,13 +4573,24 @@ public sealed partial class DatabaseService
         }
 
         long currentQuantity;
+        uint currentExpiration;
         await using (var current = connection.CreateCommand())
         {
             current.Transaction = transaction;
-            current.CommandText = "SELECT Quantity FROM CharacterCashInboxItems WHERE CharacterId = $characterId AND ItemCode = $itemCode";
+            current.CommandText = "SELECT Quantity, ItemExpiration FROM CharacterCashInboxItems WHERE CharacterId = $characterId AND ItemCode = $itemCode";
             current.Parameters.AddWithValue("$characterId", recipientCharacterId);
             current.Parameters.AddWithValue("$itemCode", itemCode);
-            currentQuantity = Convert.ToInt64(await current.ExecuteScalarAsync(cancellationToken) ?? 0L);
+            await using var reader = await current.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                currentQuantity = reader.GetInt64(0);
+                currentExpiration = checked((uint)reader.GetInt64(1));
+            }
+            else
+            {
+                currentQuantity = 0;
+                currentExpiration = 0;
+            }
         }
         if (currentQuantity + quantity > ushort.MaxValue)
         {
@@ -4580,19 +4648,27 @@ public sealed partial class DatabaseService
         }
 
         var newQuantity = checked((ushort)(currentQuantity + quantity));
+        var expiration = currentExpiration;
+        if (catalogItem.Section == InventorySection.Clothing)
+            for (var index = 0; index < quantity; index++)
+                expiration = ClothingExpirationTime.Extend(expiration, catalogItem.DurationDays, purchaseTime);
+        else
+            expiration = 0;
         await using (var inbox = connection.CreateCommand())
         {
             inbox.Transaction = transaction;
             inbox.CommandText = """
-                INSERT INTO CharacterCashInboxItems(CharacterId, ItemCode, Quantity, UpdatedAt)
-                VALUES($characterId, $itemCode, $quantity, $now)
+                INSERT INTO CharacterCashInboxItems(CharacterId, ItemCode, Quantity, ItemExpiration, UpdatedAt)
+                VALUES($characterId, $itemCode, $quantity, $expiration, $now)
                 ON CONFLICT(CharacterId, ItemCode) DO UPDATE SET
                     Quantity = excluded.Quantity,
+                    ItemExpiration = excluded.ItemExpiration,
                     UpdatedAt = excluded.UpdatedAt
                 """;
             inbox.Parameters.AddWithValue("$characterId", recipientCharacterId);
             inbox.Parameters.AddWithValue("$itemCode", itemCode);
             inbox.Parameters.AddWithValue("$quantity", newQuantity);
+            inbox.Parameters.AddWithValue("$expiration", expiration);
             inbox.Parameters.AddWithValue("$now", now);
             await inbox.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -4638,21 +4714,27 @@ public sealed partial class DatabaseService
         }
 
         long inboxQuantity;
+        uint inboxExpiration;
         long inventoryQuantity;
+        uint inventoryExpiration;
         await using (var quantities = connection.CreateCommand())
         {
             quantities.Transaction = transaction;
             quantities.CommandText = """
                 SELECT
                     COALESCE((SELECT Quantity FROM CharacterCashInboxItems WHERE CharacterId = $characterId AND ItemCode = $itemCode), 0),
-                    COALESCE((SELECT Quantity FROM CharacterItems WHERE CharacterId = $characterId AND ItemCode = $itemCode), 0)
+                    COALESCE((SELECT ItemExpiration FROM CharacterCashInboxItems WHERE CharacterId = $characterId AND ItemCode = $itemCode), 0),
+                    COALESCE((SELECT Quantity FROM CharacterItems WHERE CharacterId = $characterId AND ItemCode = $itemCode), 0),
+                    COALESCE((SELECT ItemExpiration FROM CharacterItems WHERE CharacterId = $characterId AND ItemCode = $itemCode), 0)
                 """;
             quantities.Parameters.AddWithValue("$characterId", characterId);
             quantities.Parameters.AddWithValue("$itemCode", itemCode);
             await using var reader = await quantities.ExecuteReaderAsync(cancellationToken);
             await reader.ReadAsync(cancellationToken);
             inboxQuantity = reader.GetInt64(0);
-            inventoryQuantity = reader.GetInt64(1);
+            inboxExpiration = checked((uint)reader.GetInt64(1));
+            inventoryQuantity = reader.GetInt64(2);
+            inventoryExpiration = checked((uint)reader.GetInt64(3));
         }
 
         if (inboxQuantity <= 0)
@@ -4666,6 +4748,13 @@ public sealed partial class DatabaseService
             return (false, "正式背包中的物品数量已达到上限。", checked((ushort)inboxQuantity), ushort.MaxValue);
         }
 
+        if (claimedItem.Section == InventorySection.Clothing
+            && !ClothingExpirationTime.IsActive(inboxExpiration, DateTime.Now))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return (false, "Clothing item has expired.", checked((ushort)inboxQuantity), checked((ushort)inventoryQuantity));
+        }
+
         var inventoryBefore = claimedItem.IsGameInventoryItem
             ? await GetGameInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken)
             : null;
@@ -4676,6 +4765,9 @@ public sealed partial class DatabaseService
             return (false, "Furniture inventory is full.", checked((ushort)inboxQuantity), checked((ushort)inventoryQuantity));
         var newInboxQuantity = checked((ushort)(inboxQuantity - 1));
         var newInventoryQuantity = checked((ushort)(inventoryQuantity + 1));
+        var itemExpiration = claimedItem.Section == InventorySection.Clothing
+            ? ClothingExpirationTime.Combine(inventoryExpiration, inboxExpiration)
+            : 0u;
         var now = DateTime.UtcNow.ToString("O");
         await using (var updateInbox = connection.CreateCommand())
         {
@@ -4697,14 +4789,16 @@ public sealed partial class DatabaseService
         {
             updateInventory.Transaction = transaction;
             updateInventory.CommandText = """
-                INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, UpdatedAt)
-                VALUES($characterId, $itemCode, 1, $now)
+                INSERT INTO CharacterItems(CharacterId, ItemCode, Quantity, ItemExpiration, UpdatedAt)
+                VALUES($characterId, $itemCode, 1, $expiration, $now)
                 ON CONFLICT(CharacterId, ItemCode) DO UPDATE SET
                     Quantity = CharacterItems.Quantity + 1,
+                    ItemExpiration = MAX(CharacterItems.ItemExpiration, excluded.ItemExpiration),
                     UpdatedAt = excluded.UpdatedAt
                 """;
             updateInventory.Parameters.AddWithValue("$characterId", characterId);
             updateInventory.Parameters.AddWithValue("$itemCode", itemCode);
+            updateInventory.Parameters.AddWithValue("$expiration", itemExpiration);
             updateInventory.Parameters.AddWithValue("$now", now);
             await updateInventory.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -11501,7 +11595,7 @@ public sealed partial class DatabaseService
         var result = new List<CharacterItemRecord>();
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT ItemCode, Quantity, PetDurability,
+            SELECT ItemCode, Quantity, ItemExpiration, PetDurability,
                    PetCurrentStage, PetMaximumStage, PetLevel, PetExperience,
                    PetAccessory0, PetAccessory1, PetAccessory2
             FROM CharacterItems
@@ -11516,14 +11610,15 @@ public sealed partial class DatabaseService
             {
                 ItemCode = checked((uint)reader.GetInt64(0)),
                 Quantity = checked((ushort)reader.GetInt32(1)),
-                PetDurability = reader.IsDBNull(2) ? null : checked((short)reader.GetInt32(2)),
-                PetCurrentStage = checked((byte)reader.GetInt32(3)),
-                PetMaximumStage = checked((byte)reader.GetInt32(4)),
-                PetLevel = checked((uint)reader.GetInt64(5)),
-                PetExperience = checked((uint)reader.GetInt64(6)),
-                PetAccessory0 = checked((uint)reader.GetInt64(7)),
-                PetAccessory1 = checked((uint)reader.GetInt64(8)),
-                PetAccessory2 = checked((uint)reader.GetInt64(9))
+                ItemExpiration = checked((uint)reader.GetInt64(2)),
+                PetDurability = reader.IsDBNull(3) ? null : checked((short)reader.GetInt32(3)),
+                PetCurrentStage = checked((byte)reader.GetInt32(4)),
+                PetMaximumStage = checked((byte)reader.GetInt32(5)),
+                PetLevel = checked((uint)reader.GetInt64(6)),
+                PetExperience = checked((uint)reader.GetInt64(7)),
+                PetAccessory0 = checked((uint)reader.GetInt64(8)),
+                PetAccessory1 = checked((uint)reader.GetInt64(9)),
+                PetAccessory2 = checked((uint)reader.GetInt64(10))
             });
         }
         return result;
@@ -11563,7 +11658,7 @@ public sealed partial class DatabaseService
     {
         var result = new List<CharacterItemRecord>();
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT ItemCode, Quantity FROM CharacterCashInboxItems WHERE CharacterId = $characterId ORDER BY ItemCode";
+        command.CommandText = "SELECT ItemCode, Quantity, ItemExpiration FROM CharacterCashInboxItems WHERE CharacterId = $characterId ORDER BY ItemCode";
         command.Parameters.AddWithValue("$characterId", characterId);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
@@ -11571,7 +11666,8 @@ public sealed partial class DatabaseService
             result.Add(new CharacterItemRecord
             {
                 ItemCode = checked((uint)reader.GetInt64(0)),
-                Quantity = checked((ushort)reader.GetInt32(1))
+                Quantity = checked((ushort)reader.GetInt32(1)),
+                ItemExpiration = checked((uint)reader.GetInt64(2))
             });
         }
         return result;

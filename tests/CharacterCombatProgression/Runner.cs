@@ -168,6 +168,27 @@ try
     await Set($"Level=98,Experience={CharacterProgression.ExperienceRequiredForLevel(98)},Strength=102,Vitality=102,Agility=102,Intelligence=102,Luck=102");
     c = (await db.GrantExperienceAsync(c.Id, CharacterProgression.ExperienceRequiredForLevel(99) - CharacterProgression.ExperienceRequiredForLevel(98)))!;
     Growth(c, 99, 102, 7);
+    // Reproduce the reported boundary through the actual live-kill transaction,
+    // not just CalculateLevel: one EXP from 99 to 100, then a duplicate receipt.
+    await Set($"Experience={CharacterProgression.ExperienceRequiredForLevel(100) - 1},InitialAttackMode=2");
+    c = (await db.GetCharacterAsync(account))!;
+    var petBeforeLevel100 = (c.EquippedPetItemCode, c.PetLevel, c.PetExperience, c.PetVariant);
+    var level100Receipt = await db.ApplyLiveDungeonExperienceAsync(account, c.Id, session, "growth-99-to-100", 4);
+    Check(level100Receipt.Authorized && level100Receipt.AddedExperience == 1, "99 to 100 live receipt grants exactly one EXP");
+    c = (await db.GetCharacterAsync(account))!;
+    Growth(c, 100, 102, 7);
+    Check(c.Experience == CharacterProgression.ExperienceRequiredForLevel(100), "level 100 persists without wrapping");
+    Check(c.InitialAttackMode == 2 && (c.EquippedPetItemCode, c.PetLevel, c.PetExperience, c.PetVariant) == petBeforeLevel100,
+        "level 100 preserves attack mode and pet progression");
+    var level100Checkpoint = NativeDungeonState.Create(c, [], []);
+    var level100Frame = NetworkAdapterService.BuildNativeLiveExperienceFrame(level100Checkpoint, 7);
+    Check(level100Checkpoint.Get(8) == 100 && BinaryPrimitives.ReadUInt32LittleEndian(level100Frame.AsSpan(24)) == 100,
+        "level 100 survives checkpoint and live-control serialization");
+    var level100Duplicate = await db.ApplyLiveDungeonExperienceAsync(account, c.Id, session, "growth-99-to-100", 4);
+    Check(level100Duplicate.Authorized && level100Duplicate.AddedExperience == 0, "level 100 duplicate is idempotent");
+    c = (await db.GetCharacterAsync(account))!;
+    Growth(c, 100, 102, 7);
+    Check(c.InitialAttackMode == 2, "duplicate does not increment attack mode");
     c = (await db.GrantExperienceAsync(c.Id, long.MaxValue))!;
     Growth(c, 200, 102, 7);
     Check(c.Attack == 208 && c.Defense == 210, "maximum-level stats");

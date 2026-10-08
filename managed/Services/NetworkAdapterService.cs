@@ -17306,7 +17306,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(0, 4), items[index].ItemCode);
             BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(4, 2), items[index].Equipped);
             BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(6, 2), items[index].Slot);
-            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(8, 4), PermanentItemExpiration);
+            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(8, 4), items[index].Expiration);
         }
         if (expansionExpiration != 0)
             BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(676, 4), expansionExpiration);
@@ -17411,9 +17411,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // it does not slice C474 locally. Sort before expanding duplicate instances.
         var itemCodes = character.CashInboxItems
             .Where(item => item.Quantity > 0
-                && ShopCatalog.TryGet(item.ItemCode, out _))
+                && ShopCatalog.TryGet(item.ItemCode, out var catalog)
+                && (catalog.Section != InventorySection.Clothing
+                    || ClothingExpirationTime.IsActive(item.ItemExpiration, DateTime.Now)))
             .OrderBy(item => item.ItemCode)
-            .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
+            .SelectMany(item => Enumerable.Repeat(
+                (Code: item.ItemCode, Expiration: ClothingExpirationTime.Effective(item.ItemExpiration)),
+                item.Quantity))
             .Skip((page - 1) * CashInventoryPageSize)
             .Take(CashInventoryPageSize)
             .ToArray();
@@ -17428,8 +17432,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         for (var index = 0; index < itemCodes.Length; index++)
         {
             var record = payload.AsSpan(4 + index * 8, 8);
-            BinaryPrimitives.WriteUInt32LittleEndian(record[..4], itemCodes[index]);
-            BinaryPrimitives.WriteUInt32LittleEndian(record[4..], PermanentItemExpiration);
+            BinaryPrimitives.WriteUInt32LittleEndian(record[..4], itemCodes[index].Code);
+            BinaryPrimitives.WriteUInt32LittleEndian(record[4..], itemCodes[index].Expiration);
         }
         return payload;
     }
@@ -18771,10 +18775,23 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var equippedPetItemCode = GetEquippedPetItemCode(character);
         // Offset +32 is the client avatar gender selector (0=female, 1=male).
         // Clearing this field makes every inventory action look cross-gender.
-        return DatabaseService.NormalizeAppearanceForGender(
+        var appearance = DatabaseService.NormalizeAppearanceForGender(
             character.Appearance,
             character.Gender,
             equippedPetItemCode);
+        ReadOnlySpan<int> clothingOffsets = [0, 8, 12, 16, 20, 24];
+        foreach (var offset in clothingOffsets)
+        {
+            var itemCode = BinaryPrimitives.ReadUInt32LittleEndian(appearance.AsSpan(offset, 4));
+            if (itemCode != 0
+                && ShopCatalog.TryGet(itemCode, out var catalog)
+                && catalog.Section == InventorySection.Clothing
+                && !ClothingExpirationTime.IsActive(
+                    character.Items.FirstOrDefault(item => item.ItemCode == itemCode)?.ItemExpiration ?? 0,
+                    DateTime.Now))
+                BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(offset, 4), 0);
+        }
+        return appearance;
     }
 
     internal static byte[] BuildRoomEnterPayload(

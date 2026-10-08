@@ -184,8 +184,13 @@ try
     await Observe(failedEffect, 4);
     Check(ReferenceEquals(retried, Get<BattleResourceSnapshot>("NativeBattleResources")),
         "successfully retried recovery is committed once");
-    await LiveChecks.RunAsync(database, service, root, Check);
-    await LiveChecks.RunAsync(database, service, root, Check, 14002486);
+    if (!args.Contains("--ready-room-only"))
+    {
+        await LiveChecks.RunAsync(database, service, root, Check);
+        await LiveChecks.RunAsync(database, service, root, Check, 14002486);
+    }
+    await LiveChecks.RunAsync(database, service, root, Check, readyRoomOnly: true);
+    await LiveChecks.RunAsync(database, service, root, Check, 14002486, readyRoomOnly: true);
 }
 finally
 {

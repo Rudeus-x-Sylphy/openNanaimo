@@ -314,10 +314,8 @@ static int hp_sync_bind_runtime(struct hp_sync_context *ctx, unsigned selector,
 }
 
 static const struct preloaded_target_def *hp_sync_preloaded_def(const struct hp_sync_context *ctx,unsigned selector){
-    unsigned i;if(!ctx->profile)return 0;
-    for(i=0;i<PRELOADED_TARGET_COUNT;i++)if(preloaded_targets[i].profile_row==ctx->profile->first_row
-        &&preloaded_targets[i].selector==selector)return &preloaded_targets[i];
-    return 0;
+    if(!ctx->profile)return 0;
+    return preloaded_target_find(ctx->profile->first_row,selector);
 }
 
 static struct hp_sync_target_state *hp_sync_state_for(struct hp_sync_context *ctx, unsigned selector) {

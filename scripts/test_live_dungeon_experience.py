@@ -43,8 +43,8 @@ int main(void){
  send_cf72_dynamic_actor_refresh_phase(100,21,NATIVE_CF72_PROFILE);multiplayer_broadcast_actor_resources_current();count=0;
  memset(packet,0,sizeof(packet));managed_put(packet,8,3);managed_put(packet,12,48);managed_put(packet,16,3);managed_put(packet,20,21);managed_put(packet,24,2);managed_put64(packet,28,progression_progression_threshold(2));
  managed_put(packet,36,1520);managed_put(packet,40,115);managed_put(packet,44,4);managed_put(packet,48,23);managed_put(packet,52,8);
- // Reproduce the production schema4 leak: the worker intentionally accepts
- // F10B v3 only. A rejected discriminator must not publish or mutate resources.
+ // Exercise the production discriminator: the worker accepts F10B v3.
+ // Other versions preserve the current published resources.
  managed_put(packet,8,MANAGED_STATE_VERSION);
  CHECK(managed_bridge_handle(100,0xF10B,56,packet));
  CHECK(count==0&&g_stable_level==1&&g_progression_profile_exp_total==0&&g_profile_hp_current==711&&g_profile_mp_current==31);
@@ -99,6 +99,37 @@ int main(void){
  managed_bridge_handle(100,0xF10B,56,packet);
  CHECK(count==5&&g_profile_hp_current==2060&&g_profile_mp_current==200);
  CHECK(word(frames[3],0xE)==2060&&word(frames[3],0x10)==200&&word(frames[3],0x64)==0);
+ }
+ // Exercise the real F10B -> C57C/C60D/CF72 path across every remaining
+ // level, especially 99 -> 100 and signed-byte boundaries. A level gain is
+ // not a PET change and must never request a Power-resetting rebuild.
+ for(i=8;i<=200;i++){
+  unsigned j,pet=g_stable_pet,stage=g_stable_pet_age_a,cap=g_stable_pet_age_b;
+  struct progression_progression_state persisted;
+  managed_put(packet,24,i);managed_put64(packet,28,progression_progression_threshold(i));
+  managed_put(packet,36,1600u+100u*(i-1u));managed_put(packet,40,100u+10u*i);
+  g_profile_hp_current=611;g_profile_mp_current=21;count=0;
+  CHECK(managed_bridge_handle(100,0xF10B,56,packet));
+  CHECK(count==5&&g_stable_level==i&&g_multi_conn[0].profile.level==i);
+  CHECK(g_stable_pet==pet&&g_stable_pet_age_a==stage&&g_stable_pet_age_b==cap);
+  CHECK(word(frames[0],6)==0xC57C&&frames[0][28]==i&&frames[0][29]==255);
+  CHECK(dword(frames[0],12)==0&&dword(frames[0],16)==0);
+  CHECK(dword(frames[0],20)==progression_progression_next(i)-progression_progression_threshold(i));
+  for(j=1;j<=2;j++)CHECK(word(frames[j],6)==0xC60D&&frames[j][10]==i&&word(frames[j],8)==21);
+  for(j=3;j<count;j++){
+   CHECK(word(frames[j],6)==0xCF72&&word(frames[j],0x64)==0);
+   CHECK(dword(frames[j],0x30)==pet&&frames[j][0x66]==stage&&frames[j][0x67]==cap);
+   CHECK(word(frames[j],0xE)==pet_crafting_pet_effective_hp_max());
+   CHECK(word(frames[j],0x10)==pet_crafting_pet_effective_mp_max());
+  }
+  CHECK(progression_progression_read_name(g_stable_name,g_stable_name_len,1,&persisted,0));
+  CHECK(persisted.level==i&&persisted.exp_total==progression_progression_threshold(i));
+  CHECK(g_multi_conn[1].profile.level==1&&g_multi_conn[1].profile.hp_current==711);
+  // Retried absolute receipts cannot heal, rebuild or broadcast again.
+  g_profile_hp_current=611;g_profile_mp_current=21;count=0;
+  managed_bridge_handle(100,0xF10B,56,packet);
+  CHECK(count==1&&word(frames[0],6)==0xC57C&&frames[0][28]==i);
+  CHECK(g_stable_level==i&&g_profile_hp_current==611&&g_profile_mp_current==21);
  }
  for(i=1;i<200;i++){
   unsigned long long lower=progression_progression_threshold(i),next=progression_progression_next(i);

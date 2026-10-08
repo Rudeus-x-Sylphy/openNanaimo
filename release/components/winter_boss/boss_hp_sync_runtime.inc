@@ -89,6 +89,7 @@ struct boss_hp_sync_result {
     unsigned scripted_component_topology,scripted_shell_child,scripted_terminal_child,scripted_report_suppressed,scripted_ignored_damage,scripted_terminal_start;
     unsigned component_slot,component_max_hp,component_hp,component_first_terminal,component_repeated_terminal;
     unsigned completion_shell_retired,completion_shell_child,completion_shell_residual,completion_shell_retire_mask[8];
+    unsigned gate_frame_retired;
     unsigned recording_damage,completion_shell_projection_started,completion_shell_projected_damage;
     /* D012 DWORD+0x28 feeds both the visible boss bar and the native
        mode-completion gate. The current mode ledger sums every live component
@@ -367,6 +368,24 @@ static int boss_hp_sync_defer_winter_body(const struct boss_hp_sync_context*c,co
         c->profile->dungeon==0u&&c->profile->stage_index==0u&&c->mode_index==0u&&
         def->child==0u&&def->ordinal<=22u&&def->target_type==4u&&def->scaled_hp==0u;
 }
+/* UI 3-3: the zero-HP child0 frame belongs to the two child1 emitters,
+   not to the independent child2 summons. Keep the authored HP/reward ledgers. */
+static int boss_hp_sync_is_gate_frame_profile(const struct boss_hp_sync_context*c){
+    return c&&c->profile&&c->profile->hd==0u&&c->profile->episode==2u&&
+        c->profile->dungeon==2u&&c->profile->stage_index==0u&&c->mode_index==0u;
+}
+static int boss_hp_sync_defer_gate_frame(const struct boss_hp_sync_context*c,const struct boss_component_boss_component*def){
+    return boss_hp_sync_is_gate_frame_profile(c)&&def&&def->child==0u&&def->ordinal==0u&&def->target_type==4u&&def->scaled_hp==0u;
+}
+#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+static void boss_hp_sync_retire_gate_frame(struct boss_hp_sync_context*c,struct boss_hp_sync_result*r){
+    unsigned slot;
+    if(!boss_hp_sync_is_gate_frame_profile(c)||!r->child_first_terminal||r->retire_child!=1u||c->child_terminal_sent[0])return;
+    for(slot=0u;slot<c->component_count;slot++)if(boss_hp_sync_defer_gate_frame(c,&boss_component_boss_components[c->component_def_index[slot]])){
+        c->component_terminal_sent[slot]=1u;c->child_terminal_sent[0]=1u;r->gate_frame_retired=1u;return;
+    }
+}
+#endif
 static int boss_hp_sync_apply_d011_attack(struct boss_hp_sync_context*c,const unsigned char*req,unsigned len,unsigned attack_value,unsigned have_attack,struct boss_hp_sync_result*r){
     unsigned damage=0u,loaded_slot=0u,aggregate_before=0u;const struct boss_component_boss_component*def=0;
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
@@ -419,11 +438,11 @@ static int boss_hp_sync_apply_d011_attack(struct boss_hp_sync_context*c,const un
            - zero-HP type4 rows sharing a positive-HP child are attachments;
              they retire with that child's positive root and must not receive
              an independent D012;
-           - except the scoped winter-body retention above, type4 rows in a zero-total-HP child are independently adapter-
+           - except the scoped winter-body and gate-frame retention, type4 rows in a zero-total-HP child are independently adapter-
              retired objects. Their first D011 receives one D012 routed to
              the exact child/ordinal while the Boss recording HP is unchanged.
            Repeats are suppressed by the per-mode component ledger. */
-        if(def->target_type==4u&&c->child_max_hp[def->child]==0u&&!boss_hp_sync_defer_winter_body(c,def)){
+        if(def->target_type==4u&&c->child_max_hp[def->child]==0u&&!boss_hp_sync_defer_winter_body(c,def)&&!boss_hp_sync_defer_gate_frame(c,def)){
             if(!c->component_terminal_sent[loaded_slot]){c->component_terminal_sent[loaded_slot]=1u;r->component_first_terminal=1u;}
             else{r->component_repeated_terminal=1u;r->scripted_report_suppressed=1u;}
         }else r->scripted_report_suppressed=1u;
@@ -507,6 +526,7 @@ aggregate_before=c->hp;
     r->child_hp=c->child_hp[def->child];r->child_max_hp=c->child_max_hp[def->child];
     if(c->positive_child_count>1u&&c->child_max_hp[def->child]>0u&&c->child_hp[def->child]==0u&&!c->child_terminal_sent[def->child]){c->child_terminal_sent[def->child]=1u;r->child_first_terminal=1u;}
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+    boss_hp_sync_retire_gate_frame(c,r);
     boss_hp_sync_completion_shell_finish_if_complete(c,r);if(r->intermediate_terminal&&boss_hp_sync_mode_transition_needs_component_retire(c,r))r->phase_transition_retire=1u;
 #endif
 #endif

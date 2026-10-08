@@ -154,7 +154,7 @@ class LocalActorLevelSiteTests(unittest.TestCase):
         self.assertIn(code[patch_offset:patch_offset+51], (exp.LOCAL_LEVEL_OLD, exp.LOCAL_LEVEL_NEW))
         setter = bytes.fromhex('558bec51894dfc8b45fc8b4d088988ac7b00008be55dc20400')
         getter = bytes.fromhex('558bec51894dfc8b45fc8b80ac7b00008be55dc3')
-        def run(patched, uid, remote, local_present=True):
+        def run(patched, uid, remote, local_present=True, level=7):
             m=uc.Uc(uc.UC_ARCH_X86,uc.UC_MODE_32)
             m.mem_map(0x400000,0xA00000);m.mem_map(0x10000000,0x40000)
             body=bytearray(code);body[patch_offset:patch_offset+51]=exp.LOCAL_LEVEL_NEW if patched else exp.LOCAL_LEVEL_OLD
@@ -168,8 +168,8 @@ class LocalActorLevelSiteTests(unittest.TestCase):
             def word(a):return struct.unpack('<I',m.mem_read(a,4))[0]
             for actor,actor_uid in [(local,21),(other,22)]:
                 put(actor+4,actor_uid);put(actor+0x7BAC,1)
-                for field in (0x7BB8,0x7BBC,0x7BC0,0x7BC4,0x7D70):put(actor+field,0x1234)
-            m.mem_write(packet,struct.pack('<4H HBB',0,0,12,0xC60D,uid,7,3))
+                for field in (0x7BA8,0x7BB4,0x7BB8,0x7BBC,0x7BC0,0x7BC4,0x7D70):put(actor+field,0x1234)
+            m.mem_write(packet,struct.pack('<4H HBB',0,0,12,0xC60D,uid,level,3))
             put(stack,stop);put(stack+4,packet);m.reg_write(x86.UC_X86_REG_ESP,stack)
             m.reg_write(x86.UC_X86_REG_ECX,0x10021000)
             calls=[]
@@ -187,7 +187,7 @@ class LocalActorLevelSiteTests(unittest.TestCase):
             self.assertEqual(m.reg_read(x86.UC_X86_REG_EIP),stop)
             self.assertEqual(m.reg_read(x86.UC_X86_REG_ESP),stack+8)
             for actor in (local,other):
-                for field in (0x7BB8,0x7BBC,0x7BC0,0x7BC4,0x7D70):self.assertEqual(word(actor+field),0x1234)
+                for field in (0x7BA8,0x7BB4,0x7BB8,0x7BBC,0x7BC0,0x7BC4,0x7D70):self.assertEqual(word(actor+field),0x1234)
             put(stack,stop);m.reg_write(x86.UC_X86_REG_ESP,stack);m.reg_write(x86.UC_X86_REG_ECX,local)
             m.emu_start(0x6E7570,stop,count=100)
             self.assertEqual(m.reg_read(x86.UC_X86_REG_EAX),word(local+0x7BAC))
@@ -199,6 +199,13 @@ class LocalActorLevelSiteTests(unittest.TestCase):
         self.assertEqual(run(True,99,False),(1,1))
         self.assertEqual(run(True,99,True),(1,1))
         self.assertEqual(run(True,21,False,False),(1,1))
+        # Character level, PET stage and Power are distinct actor fields.
+        # Three-digit levels must not wrap to 1 or increment either P field.
+        for level in (98,99,100,101,127,128,199,200):
+            with self.subTest(level=level):
+                self.assertEqual(run(True,21,False,level=level),(level,1))
+                self.assertEqual(run(True,21,True,level=level),(level,1))
+                self.assertEqual(run(True,22,True,level=level),(1,level))
 
 if __name__ == '__main__':
     unittest.main()

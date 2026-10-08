@@ -224,6 +224,48 @@ internal static class QuestSystemChecks
                 new QuestRunRestrictions(false, false, false, true, 0, 0, 1, 5000));
             Check(noRevival.NewlyCompleted, "no-revival quest accepts the matching clean clear");
 
+            // Characterization of current adapter policy, not proof of original-server rules.
+            var expectedThresholds = new uint[] { 5000, 15000, 55000, 90000, 220000, 270000,
+                360000, 420000, 630000, 750000, 820000, 1000000, 1100000, 1200000, 1300000, 1450000 };
+            for (var episode = 0; episode < expectedThresholds.Length; episode++)
+            {
+                Check(QuestCatalog.TryGetQuest(70_000_071u + (uint)episode, out var scoreQuest)
+                    && scoreQuest.Objectives.Count == 1
+                    && QuestCatalog.TryGetScoreTarget(scoreQuest.Objectives[0], out var targetEpisode, out var threshold)
+                    && targetEpisode == episode && threshold == expectedThresholds[episode],
+                    $"QT score target episode {episode + 1} preserves its catalog threshold");
+            }
+            await PurchaseAndActivate(70_000_071u); // Epi 1 >= 5000
+            async Task<bool> ScoreReady() => (await db.GetCharacterTasksAsync(account, characterId, sessionId))
+                .Single(task => task.QuestId == 70_000_071u).Progress1 != 0;
+            await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true,
+                new QuestRunRestrictions(false, false, false, true, 1, 0, 0, 5000));
+            Check(!await ScoreReady(), "score-target policy rejects a different episode");
+            await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true,
+                new QuestRunRestrictions(false, false, false, false, 0, 0, 0, 5000));
+            Check(!await ScoreReady(), "score-target policy rejects a failed/non-clear result");
+            await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true, QuestRunRestrictions.None);
+            Check(!await ScoreReady(), "passive refresh cannot complete score-target policy");
+            await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true,
+                new QuestRunRestrictions(false, false, false, true, 0, 0, 0, 3000));
+            await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true,
+                new QuestRunRestrictions(false, false, false, true, 0, 0, 1, 2000));
+            Check(!await ScoreReady(), "current score-target policy does not add separate-stage settlements");
+            var scoreSingleRun = await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true,
+                new QuestRunRestrictions(false, false, false, true, 0, 0, 1, 5000));
+            Check(scoreSingleRun.NewlyCompleted && await ScoreReady(),
+                "current score-target policy completes from one input score at the threshold");
+            var repeatedScore = await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true,
+                new QuestRunRestrictions(false, false, false, true, 0, 0, 1, 5000));
+            Check(!repeatedScore.NewlyCompleted && await ScoreReady(), "score-target completion is idempotent");
+            var reopened = new DatabaseService(root);
+            await reopened.InitializeAsync();
+            Check(await reopened.BeginWorldSessionAsync(account, characterId, sessionId, 1, "127.0.0.1"),
+                "database reinitialization requires a newly authorized world session");
+            Check((await reopened.GetCharacterTasksAsync(account, characterId, sessionId))
+                .Single(task => task.QuestId == 70_000_071u).Progress1 == 1,
+                "completed score objective persists across database reopen");
+
             await SetStory(71_000_010u);
             var lowSkill = await db.AdvanceQuestActionAsync(account, characterId, sessionId, 52_000_000u, 1, false);
             var gradeTwo = await db.AdvanceQuestActionAsync(account, characterId, sessionId, 52_000_000u, 2, false);

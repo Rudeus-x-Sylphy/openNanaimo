@@ -63,7 +63,42 @@ internal static class AvatarInventoryIdentityChecks
                     == character.AvatarInventoryExpansionExpires, "expansion tail preserved");
         }
         Check(NetworkAdapterService.GetAvatarInventoryRows(null).Count == 0, "null snapshot empty");
-        Console.WriteLine("AVATAR_INVENTORY_IDENTITY_PASS sparse_masks=64 (host construction, not UI acceptance)");
+
+        var now = DateTime.Now;
+        foreach (var days in new ushort[] { 15, 30, 90 })
+        {
+            var expiration = ClothingExpirationTime.Extend(0, days, now);
+            Check(ClothingExpirationTime.TryDecode(expiration, out var decoded)
+                && decoded == new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0).AddDays(days),
+                $"duration tier {days} encodes a real expiration");
+        }
+
+        var timed = ShopCatalog.All.First(item => item.Section == InventorySection.Clothing
+            && item.DurationDays is 15 or 30 or 90);
+        var timedExpiration = ClothingExpirationTime.Encode(now.AddDays(30));
+        var timedCharacter = new CharacterRecord
+        {
+            Gender = 1,
+            Items = [new() { ItemCode = timed.ItemCode, Quantity = 1, ItemExpiration = timedExpiration }]
+        };
+        var timedList = (byte[])buildList.Invoke(null, [timedCharacter])!;
+        Check(BinaryPrimitives.ReadUInt32LittleEndian(timedList.AsSpan(12)) == timedExpiration,
+            "C3CC carries the persisted clothing expiration");
+        BinaryPrimitives.WriteUInt32LittleEndian(timedCharacter.Appearance.AsSpan(0), timed.ItemCode);
+        var normalizedEquippedCode = BinaryPrimitives.ReadUInt32LittleEndian(
+            NetworkAdapterService.BuildBoxInfoPayload(timedCharacter).AsSpan(4));
+        timedCharacter.Items.Add(new CharacterItemRecord
+        { ItemCode = normalizedEquippedCode, Quantity = 1, ItemExpiration = timedExpiration });
+        var timedBox = NetworkAdapterService.BuildBoxInfoPayload(timedCharacter);
+        Check(BinaryPrimitives.ReadUInt32LittleEndian(timedBox.AsSpan(12)) == timedExpiration,
+            "C379 carries the persisted equipped clothing expiration");
+        timedCharacter.Items[0].ItemExpiration = ClothingExpirationTime.Encode(now.AddHours(-1));
+        timedCharacter.Items[^1].ItemExpiration = ClothingExpirationTime.Encode(now.AddHours(-1));
+        Check(((byte[])buildList.Invoke(null, [timedCharacter])!).AsSpan(2, 2).SequenceEqual(new byte[] { 0, 0 })
+            && BinaryPrimitives.ReadUInt32LittleEndian(NetworkAdapterService.BuildBoxInfoPayload(timedCharacter).AsSpan(124)) == 0,
+            "expired clothing is omitted from inventory and appearance snapshots");
+
+        Console.WriteLine("AVATAR_INVENTORY_IDENTITY_PASS sparse_masks=64 clothing_expiry=15,30,90 (host construction, not UI acceptance)");
     }
 
     private static void Check(bool value, string message)

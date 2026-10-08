@@ -114,6 +114,21 @@ internal static class ShopCurrencyRoutingChecks
             CheckReply(reply, opcode, item.PaysWithCash ? (byte)50 : (byte)40, mode, before.Hans, before.Cash);
             Check(await f.State() == before, $"insufficient funds no mutation {item.ItemCode}");
         }
+        var timedClothing = ShopCatalog.All.First(item => item.IsPurchasable
+            && item.Category == 10 && item.DurationDays is 15 or 30 or 90);
+        await f.Reset(timedClothing.PaysWithCash ? 0 : timedClothing.PurchasePrice,
+            timedClothing.PaysWithCash ? timedClothing.PurchasePrice : 0);
+        var timedReply = await f.Buy(0xC431, timedClothing.ItemCode,
+            timedClothing.PaysWithCash ? (ushort)4 : (ushort)0, 1, 10);
+        CheckReply(timedReply, 0xC431, 10, timedClothing.PaysWithCash ? (ushort)4 : (ushort)0,
+            timedClothing.PaysWithCash ? 0 : 0, timedClothing.PaysWithCash ? 0 : 0);
+        var timedReload = (await new DatabaseService(f.Root).GetCharacterAsync(f.Account))!;
+        var timedStored = timedReload.CashInboxItems.Single(item => item.ItemCode == timedClothing.ItemCode);
+        Check(timedStored.ItemExpiration != 0
+            && ClothingExpirationTime.TryDecode(timedStored.ItemExpiration, out var timedUntil)
+            && timedUntil > DateTime.Now.AddDays(timedClothing.DurationDays - 1),
+            $"clothing purchase persists {timedClothing.DurationDays}-day expiration");
+
         foreach (uint code in new[] { 43_000_001u, 43_100_001u, 43_000_002u, 43_100_002u })
         {
             var item = Get(code);
@@ -149,7 +164,7 @@ internal static class ShopCurrencyRoutingChecks
         var disabled = ShopCatalog.All.First(i => i.Category is 42 or 44 or 45 or 47 or 48 && !i.IsPurchasable);
         Check((await f.Buy(0xC46F, disabled.ItemCode, 4, 1))[8] == 40, "disabled special item");
         Check(await f.State() == initial, "rejected catalog selections are atomic");
-        await f.Execute($"INSERT INTO CharacterCashInboxItems VALUES ({f.CharacterId},43000001,65535,'2026-09-26');");
+        await f.Execute($"INSERT INTO CharacterCashInboxItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES ({f.CharacterId},43000001,65535,'2026-09-26');");
         initial = await f.State();
         Check((await f.Buy(0xC46F, 43_000_001, 0, 1))[8] == 40, "quantity overflow rejected");
         Check(await f.State() == initial, "quantity overflow does not debit");

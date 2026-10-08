@@ -148,10 +148,9 @@ static const struct hp_sync_profile_def *stage_damage_find_target_profile(const 
 /* Preloaded placements have their own selectors after the ordinary table.
  * Contact remains active independently of the final form's zero durability. */
 static const struct preloaded_target_def *stage_damage_preloaded_find(const struct stage_damage_damage_context *ctx,unsigned selector){
-    const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);unsigned i;
+    const struct hp_sync_profile_def *profile=stage_damage_find_target_profile(ctx);
     if(!profile)return 0;
-    for(i=0u;i<PRELOADED_TARGET_COUNT;i++)if(preloaded_targets[i].profile_row==profile->first_row&&preloaded_targets[i].selector==selector)return &preloaded_targets[i];
-    return 0;
+    return preloaded_target_find(profile->first_row,selector);
 }
 static unsigned stage_damage_preloaded_scene_lookup(const struct stage_damage_damage_context *ctx,unsigned selector,struct stage_damage_damage_lookup *out){
     const struct preloaded_target_def *child=stage_damage_preloaded_find(ctx,selector),*root;unsigned damage;
