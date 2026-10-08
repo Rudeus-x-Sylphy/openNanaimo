@@ -24,9 +24,9 @@
         "2": "熊猫男孩(0)",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:39 槽:3 耐久:100"
+        "18": "数值基础攻击:39 槽:3 寿命:100"
       },
-      "localized_row_sha256": "a1b68aeab8ecf061c5dcbb400ece1ca3e5fd9b9d8068ece97f0f36d5a9fb5ff2",
+      "localized_row_sha256": "c4ba8cdd7335d4fcef8eb89b361c90ac8065961209c20a8f5e64026252962163",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -43,9 +43,9 @@
         "2": "熊猫男孩(11)",
         "16": "角色11级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:92 槽:3 耐久:100"
+        "18": "数值基础攻击:92 槽:3 寿命:100"
       },
-      "localized_row_sha256": "e24f709431a5fef0bf5d613b07314d5e0e6ac6e0dd59a108bc7b2cb2bc8b2981",
+      "localized_row_sha256": "63b9b8bd7d9cb3ec13ab92e7f798738b66f397741205e4ee5a4dbbcfc1e6b2bd",
       "name_is_local_translation": true,
       "source_required_level": 11
     },
@@ -62,9 +62,9 @@
         "2": "熊猫男孩(21)",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:180 槽:3 耐久:100"
+        "18": "数值基础攻击:180 槽:3 寿命:100"
       },
-      "localized_row_sha256": "d46172fb43285244723736b339ccf2e61f3e7a64e1c162c63ba887e2e01f2229",
+      "localized_row_sha256": "00c5006ef4073bf593f72e389fbc606b7205de37163456e34a57cad45cac7cb6",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -81,9 +81,9 @@
         "2": "熊猫男孩(31)",
         "16": "角色31级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:268 槽:3 耐久:100"
+        "18": "数值基础攻击:268 槽:3 寿命:100"
       },
-      "localized_row_sha256": "7afb99c5fed4e30231a9c6b99f721f9823109d680d9a3a10cead4fc91b75159a",
+      "localized_row_sha256": "9617a1816bfdd0aef87fcbe74450d06a02a22f7103b8c81a455787e3d844eff8",
       "name_is_local_translation": true,
       "source_required_level": 31
     },
@@ -100,9 +100,9 @@
         "2": "熊猫男孩(41)",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:356 槽:3 耐久:100"
+        "18": "数值基础攻击:356 槽:3 寿命:100"
       },
-      "localized_row_sha256": "0a29717ea171241efc4389ba5d7a575843663399e3bb0d15b69f73d9d18128d4",
+      "localized_row_sha256": "356cbf21ca14eba482bb04945c433a571a4a903f0adce197d9a97fa45c6139d9",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -119,9 +119,9 @@
         "2": "熊猫男孩(51)",
         "16": "角色51级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:443 槽:3 耐久:100"
+        "18": "数值基础攻击:443 槽:3 寿命:100"
       },
-      "localized_row_sha256": "39e7974b3692a7e7386a4eb7ba03664ad044bd04dfd544d85d353a6c6b3bd12f",
+      "localized_row_sha256": "f42d74928b4f5e6d413bd3d39c2d895a51cab7fb1fdfe343441a11297cb28ba6",
       "name_is_local_translation": true,
       "source_required_level": 51
     },
@@ -138,9 +138,9 @@
         "2": "熊猫男孩(61)",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:531 槽:3 耐久:100"
+        "18": "数值基础攻击:531 槽:3 寿命:100"
       },
-      "localized_row_sha256": "d3acad0f7a958f72ee641e4d402426f3913a55ed74cb84bb5e331ef621cb717e",
+      "localized_row_sha256": "d7141c123d89be33f0050b9c82a8b1108ffaea110bf48e4d0786db2fb05b1bd6",
       "name_is_local_translation": true,
       "source_required_level": 61
     },
@@ -157,9 +157,9 @@
         "2": "熊猫男孩(71)",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:617 槽:3 耐久:100"
+        "18": "数值基础攻击:617 槽:3 寿命:100"
       },
-      "localized_row_sha256": "c5b5a0d7fd38028cebc47879906917e7b2ac5499f8331a1de539b87c1c8c51b7",
+      "localized_row_sha256": "2bb041a83de3baeeb4460cc64ef779f5eccc788bda1f700307d5889540fcbd94",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -176,9 +176,9 @@
         "2": "熊猫男孩(81)",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:100"
+        "18": "数值基础攻击:723 槽:3 寿命:100"
       },
-      "localized_row_sha256": "23080d1a3fe79fb9f928786a72998283d2ed419e46c9401e7c865788e89b2b4a",
+      "localized_row_sha256": "0e45744ecfc62cd3bc425919d419820e170ef71c8cef2598c092e81791e78d92",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -195,9 +195,9 @@
         "2": "熊猫女孩(0)",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:39 槽:3 耐久:100"
+        "18": "数值基础攻击:39 槽:3 寿命:100"
       },
-      "localized_row_sha256": "dbd14cf76ae23621af7dd073a7345f41b42315fc79ad6eb438d553016f692c9f",
+      "localized_row_sha256": "52827e9a415e3332871a6abcb3f78feb2541f74a494a619da9ce0d9e9853c333",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -214,9 +214,9 @@
         "2": "熊猫女孩(11)",
         "16": "角色11级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:92 槽:3 耐久:100"
+        "18": "数值基础攻击:92 槽:3 寿命:100"
       },
-      "localized_row_sha256": "21a6b226fddc2f3e079b6a8e1ac44bf81bb2011effaa478d414ab93caf7c4fe3",
+      "localized_row_sha256": "3a5fe8055af23b6638b5d28af1acd3db5da2bf1c972ba22139e8a23e699f4054",
       "name_is_local_translation": true,
       "source_required_level": 11
     },
@@ -233,9 +233,9 @@
         "2": "熊猫女孩(21)",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:180 槽:3 耐久:100"
+        "18": "数值基础攻击:180 槽:3 寿命:100"
       },
-      "localized_row_sha256": "d450c3903edb594131726dedb8eb5d5454c418a995eea7255fb2fb1bc55b845b",
+      "localized_row_sha256": "d6eb8e986832929967a3f1a9e5d80addb338a5710c1cd15f913f4ccae43c4134",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -252,9 +252,9 @@
         "2": "熊猫女孩(31)",
         "16": "角色31级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:268 槽:3 耐久:100"
+        "18": "数值基础攻击:268 槽:3 寿命:100"
       },
-      "localized_row_sha256": "45b8d2d0fc788a794af07a6ce866ed756003199e219366d7310cd95d8ab2b254",
+      "localized_row_sha256": "4285297c2cb3b76b8e24691a71e88ba340f4123ed6616dfb2005dcd20fceb21b",
       "name_is_local_translation": true,
       "source_required_level": 31
     },
@@ -271,9 +271,9 @@
         "2": "熊猫女孩(41)",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:356 槽:3 耐久:100"
+        "18": "数值基础攻击:356 槽:3 寿命:100"
       },
-      "localized_row_sha256": "e04ccb94e40189012b069bf520e73f2578ce0e909b3b658b3453a42dd892a25f",
+      "localized_row_sha256": "887d2c0d6bfde0d2f88f5ae165210dd4bf17eda27e473b15e12c4412a4ade510",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -290,9 +290,9 @@
         "2": "熊猫女孩(51)",
         "16": "角色51级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:443 槽:3 耐久:100"
+        "18": "数值基础攻击:443 槽:3 寿命:100"
       },
-      "localized_row_sha256": "b18fb64aed1b20f38be71580e8498e1d4842caaf4023a7b84e89bffbdd0212f9",
+      "localized_row_sha256": "f7df29846dfe5732063571f942f11fc006447f1a63e8ad5c16c22e96490e0e97",
       "name_is_local_translation": true,
       "source_required_level": 51
     },
@@ -309,9 +309,9 @@
         "2": "熊猫女孩(61)",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:531 槽:3 耐久:100"
+        "18": "数值基础攻击:531 槽:3 寿命:100"
       },
-      "localized_row_sha256": "07cdf1f84d48cc3ec1f3e118d512290d573a172932e5cd2349b181e20040d5f6",
+      "localized_row_sha256": "3dd8100535065e7d027ae67066b4ef71a987c376c7b43b883ce9e44ceefab787",
       "name_is_local_translation": true,
       "source_required_level": 61
     },
@@ -328,9 +328,9 @@
         "2": "熊猫女孩(71)",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:617 槽:3 耐久:100"
+        "18": "数值基础攻击:617 槽:3 寿命:100"
       },
-      "localized_row_sha256": "8e43a5e5b5974cfa2088d769e06c992690695da43c4f4728d61630c145ec2558",
+      "localized_row_sha256": "c3b4ea57a2241a15acca0f67ae4e8f8593bab2e1dee3c86eba4579a48b7146b4",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -347,9 +347,9 @@
         "2": "熊猫女孩(81)",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:100"
+        "18": "数值基础攻击:723 槽:3 寿命:100"
       },
-      "localized_row_sha256": "f4846af60ded739b7a59359dc41cbda2bf85fe5340394dea16fab5c795bc2ed1",
+      "localized_row_sha256": "2597ded1b050ba00ecc35308fd7fe94bc0396bee32f1a14fd9366819c8eb98e7",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -366,9 +366,9 @@
         "2": "直升机1号",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "8e2dd89fe57aafc7ea24b92483d7c9737d7a186da4b9dff6d217ef53554cb6dc",
+      "localized_row_sha256": "5099181efc317fb3beb7f2198bc4b230eed91a367ad40367848c494967a148ae",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -385,9 +385,9 @@
         "2": "直升机2号",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "70c669944a5a9b64f2282de725d0bfaf6c5c9caa1fed87d3a23a82f3b0de12f9",
+      "localized_row_sha256": "1f13b6c3407f36d3acd8e2b74be55cd420bcb2572ad7f8fea148683d66cd794a",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -404,9 +404,9 @@
         "2": "直升机3号",
         "16": "角色36级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "970271abba5a70183770e4a2950a3eb2ca2f3fd0c632b98a00eb5234ab4e6a48",
+      "localized_row_sha256": "05eed3dc79dda458b441e4992ca19a5d987f64c2e9207c5544eb9bade9949747",
       "name_is_local_translation": true,
       "source_required_level": 36
     },
@@ -423,9 +423,9 @@
         "2": "直升机4号",
         "16": "角色56级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:596 槽:3 耐久:-1"
+        "18": "数值基础攻击:596 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "40f7cd3257980dcc1bd11a764a7d722087dd2a79237124cdc09687acdbf7543d",
+      "localized_row_sha256": "21af598d432440b8990f48465e66e7586a39b9fbad7c9da1de0e5d85eafd0f0d",
       "name_is_local_translation": true,
       "source_required_level": 56
     },
@@ -442,9 +442,9 @@
         "2": "直升机5号",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:-1"
+        "18": "数值基础攻击:723 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "1aee05dcdca1d61aac153652ffe478ab0772f73910529d5009724a4d89dfd731",
+      "localized_row_sha256": "1727791bf8f32fff98bcb22b9665b66de18810debdaf60a8fd6eda2cfe911f63",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -461,9 +461,9 @@
         "2": "直升机1号",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "759945e6d86943c6cbee76acf65f7287e566c42b9db7d588caf1c57c03235e75",
+      "localized_row_sha256": "cbe40590020aa861424fda16e0ea91cd9455fb0b18b1c84699b8bace2d8e3c8f",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -480,9 +480,9 @@
         "2": "直升机2号",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "751f6122692e84060bea58cd60edafb8ac702fa9cba91ba6df754c208598a4dd",
+      "localized_row_sha256": "28f9bca9c5b71c09d8965f509e009348a7574055696854b77235c8aba6b04de2",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -499,9 +499,9 @@
         "2": "直升机3号",
         "16": "角色36级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "257a65ae5092281f742f901f67067b22708520e60f4e54e3348c26b78bb8ca44",
+      "localized_row_sha256": "99560c1b454d8b06c7799869b0677be82b8c1a0085929528c8ce6c3050a6ccdc",
       "name_is_local_translation": true,
       "source_required_level": 36
     },
@@ -518,9 +518,9 @@
         "2": "直升机4号",
         "16": "角色56级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:596 槽:3 耐久:-1"
+        "18": "数值基础攻击:596 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "e7fe6e796da68373849dc837404d6acbe35c83b23b38f28fdb40bb114e872bfc",
+      "localized_row_sha256": "1138ba77f5f437a1d19219390b6ac4c47766cad8248c4abe02d54acbc4556837",
       "name_is_local_translation": true,
       "source_required_level": 56
     },
@@ -537,9 +537,9 @@
         "2": "直升机5号",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:-1"
+        "18": "数值基础攻击:723 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "89d6fa2ea716dc7e69d2cfe766487f8ddd5b6cd6b4c182293c74c47852c03a0b",
+      "localized_row_sha256": "bd64b7794be60d71b4de5e45e58175c4e447e80884505ed05aa5aa6d8f8a1126",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -556,9 +556,9 @@
         "2": "直升机1号",
         "16": "角色22级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:-1"
       },
-      "localized_row_sha256": "f62753d705175d58aa5301a967c5a28c0277cc1beb4bc662d04bab86b93177df",
+      "localized_row_sha256": "14b6f3137eba8cc56864f4355bebd3844b02c1f5b7074a4ad639f3bd48cfdc64",
       "name_is_local_translation": true,
       "source_required_level": 22
     },
@@ -575,9 +575,9 @@
         "2": "直升机1号",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "7d4e506a31acf85682d8631b7ecb5869465afbbe3fd54b6a1c1c5fbe87ea7c80",
+      "localized_row_sha256": "04ee5a574dc4329ed092a0ca111bebf2481f1d6c4ad7a06801537b9527e8e1f4",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -594,9 +594,9 @@
         "2": "直升机2号",
         "16": "角色45级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:-1"
       },
-      "localized_row_sha256": "5ef0fede4b8bb9dd0a37ad36dca0ac91506a6464206b01cbdd452dd411aebdc7",
+      "localized_row_sha256": "a48c9be640d7e4b8809a02da6b695963828814ad35a02e17d565e7b081a2299a",
       "name_is_local_translation": true,
       "source_required_level": 45
     },
@@ -613,9 +613,9 @@
         "2": "直升机2号",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "63848066637a33deab6a5c4e304242030c64c1546a62a9188d9581aae93a70cc",
+      "localized_row_sha256": "1c8188aabd305866198331983f85cb4f9b29dc7b20cecd5a7cb960c90049cea5",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -632,9 +632,9 @@
         "2": "直升机3号",
         "16": "角色55级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:-1"
       },
-      "localized_row_sha256": "5830a25ce92c4ea160a6bb77adbce0c657d438b5a8250b6c4bcfec76c77d8b21",
+      "localized_row_sha256": "94bbef63e81239917f03d0e07ab6bb8bbed60e35e36f4a8215778af760152bdd",
       "name_is_local_translation": true,
       "source_required_level": 55
     },
@@ -651,9 +651,9 @@
         "2": "直升机3号",
         "16": "角色36级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "7b1b546b5a0a406608247d6966a3dd8782d841dbe361a31465bce6f59384fdae",
+      "localized_row_sha256": "64399a63ccad261d081ac4f5b6053c28ab4d5f4070bfad3c72b402ab7425177c",
       "name_is_local_translation": true,
       "source_required_level": 36
     },
@@ -670,9 +670,9 @@
         "2": "直升机4号",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:596 槽:3 耐久:-1"
+        "18": "数值基础攻击:596 槽:3 寿命:-1"
       },
-      "localized_row_sha256": "afa090ea8d8d8d5c5230887b7fb7aa9113fee39105c430dcfb603d2776f5a1db",
+      "localized_row_sha256": "be6845cd83f4439f966994426010f9a438b2ee0f5058f93f9a64ee24490995d3",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -689,9 +689,9 @@
         "2": "直升机4号",
         "16": "角色56级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:596 槽:3 耐久:-1"
+        "18": "数值基础攻击:596 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "df71aea0b8ac26adf8ff7451d761ca9497f36ae74229761907e0cb75accb691f",
+      "localized_row_sha256": "8b7b28b3bc6b4016d581038057342ffcb017b5c209a0fd350bcd292ff9a09503",
       "name_is_local_translation": true,
       "source_required_level": 56
     },
@@ -708,9 +708,9 @@
         "2": "直升机5号",
         "16": "角色99级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:-1"
+        "18": "数值基础攻击:723 槽:3 寿命:-1"
       },
-      "localized_row_sha256": "5e2ef4205ba9a062abc4cbfc8f31974c947a76b587c853f739253b6ecf97f3ef",
+      "localized_row_sha256": "e952fb285f5ce83abd7f70b74cd20d4b9f44d3a93d7466eddba937bbf0e5c842",
       "name_is_local_translation": true,
       "source_required_level": 99
     },
@@ -727,9 +727,9 @@
         "2": "直升机5号",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:-1"
+        "18": "数值基础攻击:723 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "0194d1f57acf951835b37cfd513aff89b9bc7a961dd35a1e69a1579f0bed160f",
+      "localized_row_sha256": "049cd9abd2ecd0a2045906a31ec767e2a0bb92430292614e9b5ee9a76253b76e",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -746,9 +746,9 @@
         "2": "北极狐狸",
         "16": "角色16级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:332 槽:3 耐久:-1"
+        "18": "数值基础攻击:332 槽:3 寿命:1天"
       },
-      "localized_row_sha256": "8a6d309c7a4689b9b09122396929fcf6517488aca41c93540938e84b17e8cede",
+      "localized_row_sha256": "c7ffd573113bee2d6147aebbad3bd090fc855aabf157257d7b7f2931f45f2b32",
       "name_is_local_translation": true,
       "source_required_level": 16
     },
@@ -765,9 +765,9 @@
         "2": "银骑士",
         "16": "角色36级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:1天"
       },
-      "localized_row_sha256": "ed99667f6cd9b8a212069cf51007a82090ebdd5b90bee869206d785a0421862c",
+      "localized_row_sha256": "e3cbc2b7fe82d3be6af722d649ab1975bf008d0629e9d9572e07fc7e152d7fc0",
       "name_is_local_translation": true,
       "source_required_level": 36
     },
@@ -784,9 +784,9 @@
         "2": "机械鱼头马",
         "16": "角色46级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:513 槽:3 耐久:-1"
+        "18": "数值基础攻击:513 槽:3 寿命:1天"
       },
-      "localized_row_sha256": "833d18e253f69141ffb75ea4b2e1993383316947003212f65d048199fbdca837",
+      "localized_row_sha256": "d2331d150bcf151d9d9f76a6cc19424358b69467d9ba7c09eebe5ae77eee2a11",
       "name_is_local_translation": true,
       "source_required_level": 46
     },
@@ -803,9 +803,9 @@
         "2": "绿蝶公主",
         "16": "角色36级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:7天"
       },
-      "localized_row_sha256": "eec069f1857b721398493106267ddc3040cb38c05fbe0d7533dc6a784f8bb8e7",
+      "localized_row_sha256": "d0c8ed03a103f988599e7a7bca2cc87a9012ce0e1fce5bd26e608f0425e19321",
       "name_is_local_translation": true,
       "source_required_level": 36
     },
@@ -822,9 +822,9 @@
         "2": "NaNa机器人3号",
         "16": "角色36级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:7天"
       },
-      "localized_row_sha256": "d1e5eae7e6d6e0d00e93c8a1759adc12551930bd28d5b7af8506f3cb296349b2",
+      "localized_row_sha256": "9c85b1d159018422f0b4d71a265b1a7ca94c489a9a4bf37214c3e2a4a9291552",
       "name_is_local_translation": true,
       "source_required_level": 36
     },
@@ -841,9 +841,9 @@
         "2": "白骑士",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "33e64cfeace1142b96a99327cca59857ce01b997443712057a3b9d87e59dff6a",
+      "localized_row_sha256": "def180d42eb2a3ef2c41fccae333b424e3ac6d92301c47eea3259fffcd02a474",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -860,9 +860,9 @@
         "2": "黑骑士",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "a84e990a4d9b8a9e05e61411f710df010f31fdd50e90a0ae90b1515ef56bbf03",
+      "localized_row_sha256": "fce1707e7a68e0320cd995fb4aa47a28cb6b3cbde1dff9a449bca7dd3e472835",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -879,9 +879,9 @@
         "2": "赤骑士",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:498 槽:3 耐久:-1"
+        "18": "数值基础攻击:498 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "05d736e91e76a3b6fa5b5ceaa4b25b104c78fbb0d2798c3613f78713511a8655",
+      "localized_row_sha256": "9f21c41b5f56adf5d733188104715ca181851ea9aa9eedaa8c14c3e1cc995264",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -898,9 +898,9 @@
         "2": "黄金骑士",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:-1"
+        "18": "数值基础攻击:723 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "75630a497dd5889762a37be72e66dfcb1fb6939f6b6c0c4b2f16b852171d335c",
+      "localized_row_sha256": "28cd1a2f652ac5c224a6f5bcfbfb4b881cf5b49128c4c66150c2c2284115cabc",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -917,9 +917,9 @@
         "2": "白骑士",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "eec4c61a46b0e59459df657a1f55364b1d84dfd90ee557ad14aba78a2a175dd3",
+      "localized_row_sha256": "7df415c591445f771e8633a1afeebcbf02dd6b86784a1baa21bb6f989d88c6a8",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -936,9 +936,9 @@
         "2": "黑骑士",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "256e8168f9c936634cc7da4832b750449291ce21488a1e94131aefad344a4b71",
+      "localized_row_sha256": "cd1dd7b575099765d57cd0273c458b96e071cf9f925b692d8d76edd5f82c74ac",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -955,9 +955,9 @@
         "2": "赤骑士",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:498 槽:3 耐久:-1"
+        "18": "数值基础攻击:498 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "d62fa9ea575349161552904868631904eabc4601d874500af925b6ef2f775a24",
+      "localized_row_sha256": "9db07f4363db8cbd73a52aa7f421b526a5896ee20e7a617e3a313e064464a6b9",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -974,9 +974,9 @@
         "2": "黄金骑士",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:-1"
+        "18": "数值基础攻击:723 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "eee9ea64d0d1f9fba26f6c0ce22c68ed74942cee8f74f5833be024f60d7f11cf",
+      "localized_row_sha256": "99dfb319f45e72385b1583287a037da477f3dfedff2acba0d45231e1d406e020",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -993,9 +993,9 @@
         "2": "白骑士",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "2367fb3f37f9de352d620c425c4b1399ed0b9551d03d3cdee4727a1e01c53ae8",
+      "localized_row_sha256": "6ef6e6b87a81ab58c29a6734eda02ca114fff6fee186563bb27209a12a3c57b4",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -1012,9 +1012,9 @@
         "2": "黑骑士",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "ea3f98d42d62705c9f2c3adece1d3026c9d3eb3d56cdd5988c99813ce7f52ba7",
+      "localized_row_sha256": "9231664d29e2208c5b85c84f3991cf3111b5972214630891c950d318ee52d378",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -1031,9 +1031,9 @@
         "2": "赤骑士",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:498 槽:3 耐久:-1"
+        "18": "数值基础攻击:498 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "f8e7045758921c86d7cc63c2d64badfed2b53eb1af42e37ed4c7d871dabc9fb2",
+      "localized_row_sha256": "eb13a4e8e639cbaf3f22affa7375b3f81b71db1614490ffb6d141563cafb1d37",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -1050,9 +1050,9 @@
         "2": "黄金骑士",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:-1"
+        "18": "数值基础攻击:723 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "add1bfb68f0ade00d531bdad81455919b3201d186a9b1dde12abd2ddf0fffee2",
+      "localized_row_sha256": "1316ca3c6f41118adfbbe854f14329ccfe38ab25e9c5916d4a35388a4142dbdc",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -1069,9 +1069,9 @@
         "2": "舞狮(0)",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "347e4b231699725097553dc019342c20ab7c9d79f588f3126e347740cb526d00",
+      "localized_row_sha256": "29e82fed2a289ba12ad44d6b6796d7a6b62a1d0c955c6d4c2a43d709fb087871",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -1088,9 +1088,9 @@
         "2": "舞狮(0)",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "b238e9f9ffc5d829a95f161066058a715a91e3dd365406b04a499914c1d1bf5e",
+      "localized_row_sha256": "58614ac4d53703a52592456d82bf17fdd80e0de8159a4e8ed1a4c60dd036716b",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -1107,9 +1107,9 @@
         "2": "舞狮(0)",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "78f1e377a7c3ddce9e834753de8a611c0222ce5a00a2a8b864d5a0a94bf28fdc",
+      "localized_row_sha256": "d8dc36b0ace13b02feb82dc3f6eb4a81f6d7913981e565d17a91a3a7e17c98d9",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -1126,9 +1126,9 @@
         "2": "舞狮(21)",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "8ee12e3aa508c24f711f88ab8319ddd1c2837b787b76e9dbd81b2d0897518d3e",
+      "localized_row_sha256": "009e647f8c7f7b8d3cbe81fa1243de8acd18fc6385b988a46e62faa0fd7759a8",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -1145,9 +1145,9 @@
         "2": "舞狮(21)",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "cf833832dbddc1953b7237db700903c85f719e20a027e4b6781e338b8f8221ab",
+      "localized_row_sha256": "696465eacaf6e9cb144e4f1bf085f829de909db2576adb261dd8f751cb6a6ffd",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -1164,9 +1164,9 @@
         "2": "舞狮(21)",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "f9ec2e341245565d582af057a3e2f1759152073021d4f97dda6753e8acdb8af3",
+      "localized_row_sha256": "4ca5d740e6c886e0b501fc3777ab9f85ea244aa96f2b11a63c455fd129bcd37d",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -1183,9 +1183,9 @@
         "2": "舞狮(41)",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:498 槽:3 耐久:-1"
+        "18": "数值基础攻击:498 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "528ec4044cde9406d61bfdbc4d0f169e477043c2976f0d6d7158d240309511ba",
+      "localized_row_sha256": "2301ebeaf1cdb1c3a8ab84932d62760b6c40f441f1d58c543f79affc0608ed9f",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -1202,9 +1202,9 @@
         "2": "舞狮(41)",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:498 槽:3 耐久:-1"
+        "18": "数值基础攻击:498 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "dc81b01dd4a2d9a19579d7e5d9b6bc3569dfe8731d31851e98598348f1ac221b",
+      "localized_row_sha256": "086b289ad823e5b043e86472ca646b52d2a77b60a5ace04d4df6022c291ddfa1",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -1221,9 +1221,9 @@
         "2": "舞狮(41)",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:498 槽:3 耐久:-1"
+        "18": "数值基础攻击:498 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "6bf6e0f855a6bcb777e4bf56fd4dccb9b261380405fba2312a3e25b178a6787e",
+      "localized_row_sha256": "831a77424161e1e5f7e60b461eb976c45ac3ec77ae555a4efcf96adfc3cace77",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -1240,9 +1240,9 @@
         "2": "舞狮(61)",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:629 槽:3 耐久:-1"
+        "18": "数值基础攻击:629 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "994ad3fd8e2e55be2191a23280e9141b82c564332f6fe92ea9f0595c7376a11a",
+      "localized_row_sha256": "7e378ff3932333dfa66169b90f3995b2cf6f5630589fd985c05a42d77a4ef912",
       "name_is_local_translation": true,
       "source_required_level": 61
     },
@@ -1259,9 +1259,9 @@
         "2": "舞狮(61)",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:629 槽:3 耐久:-1"
+        "18": "数值基础攻击:629 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "852257cee15a8de1d33ed2e56ec421052ac517a54f0cd5449baeaffd4a357f01",
+      "localized_row_sha256": "3bd582627c5778dc25e97967b8ecfa5d5ee31cf46d44a4d120bbf6cf6aaf82a7",
       "name_is_local_translation": true,
       "source_required_level": 61
     },
@@ -1278,9 +1278,9 @@
         "2": "舞狮(61)",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:629 槽:3 耐久:-1"
+        "18": "数值基础攻击:629 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "128477d9b32ffa0033722768b08889b904c3762614345bcbdd0636b13d6fb2e4",
+      "localized_row_sha256": "b57f10a69c386a9738fe2f06c36a9ac4fdf239faf98bddcdc8e6ff3024f81639",
       "name_is_local_translation": true,
       "source_required_level": 61
     },
@@ -1297,9 +1297,9 @@
         "2": "舞狮(81)",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:763 槽:3 耐久:-1"
+        "18": "数值基础攻击:763 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "bec0e7939e47baa66754bb450305e2fa6552ff2bcb2254abd9682c3a1b42ec95",
+      "localized_row_sha256": "bcc00acbc7fdb3f07460078fad313116198d1e9065c3ba0dafd2b6ee4fa43d45",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -1316,9 +1316,9 @@
         "2": "舞狮(81)",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:763 槽:3 耐久:-1"
+        "18": "数值基础攻击:763 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "20b9e5d169b4f692ef2394877c97b8d62ff6d3a1a4537b247d63c2f491cd4657",
+      "localized_row_sha256": "0400be79e85205fba6d31dd1c025b177b165b4694ef4e604f323cb335e541255",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -1335,9 +1335,9 @@
         "2": "舞狮(81)",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:763 槽:3 耐久:-1"
+        "18": "数值基础攻击:763 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "0d46bd56826d4b427128b1e6c19fcc41c07df851a5f576e16e32479020fe18d0",
+      "localized_row_sha256": "9c4d5a44a752fbdf8bcddfaa0f418fc51e6ecb3dbc5e10c55b190552d19641bb",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -1354,9 +1354,9 @@
         "2": "娜娜跑车1号",
         "16": "角色11级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:324 槽:3 耐久:-1"
+        "18": "数值基础攻击:324 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "631b5ff22cff7963513a759687a637831e8721beaea1a909b6d8d0e46b0aecb7",
+      "localized_row_sha256": "97efcf760ed22071780f22c941c82ba1d1998c31d507c9af171f317b1c17905a",
       "name_is_local_translation": true,
       "source_required_level": 11
     },
@@ -1373,9 +1373,9 @@
         "2": "娜娜跑车1号",
         "16": "角色11级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:324 槽:3 耐久:-1"
+        "18": "数值基础攻击:324 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "62cf3880a3af5450b8c227ce6da493bec7b1a38c6efab09a690edd412ae6405b",
+      "localized_row_sha256": "88b3e0653c7a62f6c7164a40a5781d467bfb2136f77e23f86245f8090628a5b3",
       "name_is_local_translation": true,
       "source_required_level": 11
     },
@@ -1392,9 +1392,9 @@
         "2": "娜娜跑车1号",
         "16": "角色11级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:324 槽:3 耐久:-1"
+        "18": "数值基础攻击:324 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "8bd46263a101c7c56e9bfd961adb33c429afa4005bf35ffe67ba8009b218b825",
+      "localized_row_sha256": "278b43ac7070d3562f18b30cfafd9bff59691b1358862f1122b93e4b79ee714f",
       "name_is_local_translation": true,
       "source_required_level": 11
     },
@@ -1411,9 +1411,9 @@
         "2": "娜娜跑车2号",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "8e73d3cab00868afbc805e8319c984baa416b5ae02123df555ce73ef1a79ba13",
+      "localized_row_sha256": "dc23671df9da45cd8a0acd154b0f3dc7bff56a6b5d930e7c23dbc303e6d515cd",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -1430,9 +1430,9 @@
         "2": "娜娜跑车2号",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "0a6fd069d4522de7a6ee04787f6e89724443538237d8fa0efcfd27c5f63a8c7c",
+      "localized_row_sha256": "a62f66de405d4ee34582b4f370a3515e97ae23e0e044821c576b599bbceed87f",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -1449,9 +1449,9 @@
         "2": "娜娜跑车2号",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "ac2b6db2a9ec7d1afb3cdccdd52775f084c0d10bcdcb7e50601120b5048fcd76",
+      "localized_row_sha256": "5e39a7133eebde470bf5c595608bb10c4d2c5723024e5cde6c55a5e4867bf4ee",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -1468,9 +1468,9 @@
         "2": "娜娜跑车3号",
         "16": "角色36级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "f9de67840956b816a2b3e4ee20af467b7f4b52c23de2a8866d0962720f62fa50",
+      "localized_row_sha256": "f734de553859b0d17eedf345f75d07461e0034d1f542c26a476e573e45d4d3f5",
       "name_is_local_translation": true,
       "source_required_level": 36
     },
@@ -1487,9 +1487,9 @@
         "2": "娜娜跑车3号",
         "16": "角色36级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "07b9dbd3caf0d54386f968c076de5eb0601c386857bdaad437c9824b48aafecf",
+      "localized_row_sha256": "f01013007c8842e543a7c59ff169e03b9176b5fb5ad68ab83eeb6e0e536f07f6",
       "name_is_local_translation": true,
       "source_required_level": 36
     },
@@ -1506,9 +1506,9 @@
         "2": "娜娜跑车3号",
         "16": "角色36级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:484 槽:3 耐久:-1"
+        "18": "数值基础攻击:484 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "ddaac51d3980babd640b270bc866e0394b342ec01447641fb251bf84ae7d0f9b",
+      "localized_row_sha256": "4012cb8c2c322e4f1c51fbd1be7d54b17f06cfd1a18db22a979aa5cacb24081b",
       "name_is_local_translation": true,
       "source_required_level": 36
     },
@@ -1525,9 +1525,9 @@
         "2": "娜娜跑车4号",
         "16": "角色56级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:596 槽:3 耐久:-1"
+        "18": "数值基础攻击:596 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "9e26be61617a531194271cfacb0671d2db6d8da202dcb5019a212767e3a1a927",
+      "localized_row_sha256": "66d61bae9c476fa039c132d61d553ba259570dc492476954d87868bf3e634d0f",
       "name_is_local_translation": true,
       "source_required_level": 56
     },
@@ -1544,9 +1544,9 @@
         "2": "娜娜跑车4号",
         "16": "角色56级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:596 槽:3 耐久:-1"
+        "18": "数值基础攻击:596 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "f7dec2831b12d97e97f043d2135b0036678fd916e9612d37d97cc797cd190a94",
+      "localized_row_sha256": "87f79548dc646c74e05f289ddc7ed966f7bee466f67d64c3cacf05b5e8b9a73a",
       "name_is_local_translation": true,
       "source_required_level": 56
     },
@@ -1563,9 +1563,9 @@
         "2": "娜娜跑车4号",
         "16": "角色56级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:596 槽:3 耐久:-1"
+        "18": "数值基础攻击:596 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "7a82bf026c6563119cea1d10bf8c2d7510fc6aa4b5196116a7ea0e5e268a14dd",
+      "localized_row_sha256": "10e056413f0a9781cde580a687e8d547cd9c905f7491c295a44c108de17e03e4",
       "name_is_local_translation": true,
       "source_required_level": 56
     },
@@ -1582,9 +1582,9 @@
         "2": "娜娜跑车5号",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:763 槽:3 耐久:-1"
+        "18": "数值基础攻击:763 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "6022539ee888b2c60df37aeb31fa1e5ad5d34f7e281d24f684f2b0a36af85dd8",
+      "localized_row_sha256": "3be15cd7615b7b9acc04d92a4d17587e383c41a9ff1255ab8b30c6682a75a0c4",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -1601,9 +1601,9 @@
         "2": "娜娜跑车5号",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:763 槽:3 耐久:-1"
+        "18": "数值基础攻击:763 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "306e4ef041b0828721ddcf4477047a054dbfafbec85b3737fc5b65bc670771fc",
+      "localized_row_sha256": "23b17001d9330ec1779649091e9af976f968ffa7a94644aa65df95500b2de70c",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -1620,9 +1620,9 @@
         "2": "娜娜跑车5号",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:763 槽:3 耐久:-1"
+        "18": "数值基础攻击:763 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "b14e5f9e63d1bb7802c667ae0685ef6854af0cc23082b936334b33c0a0fdc9d4",
+      "localized_row_sha256": "898217530e0f2015415b9147e86a31bc6c01b5aa9362c83a09f619b9e7a8379c",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -1639,9 +1639,9 @@
         "2": "海洋熊猫",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "d4ea2339c74fb3c0439f5774505161fa6f7b3cb5247b09386044e6f49d16de21",
+      "localized_row_sha256": "6b3b0be268ad528bcef53443ee9740f6d08b648025357c3a8bcb5c01ca9c122d",
       "name_is_local_translation": true,
       "source_required_level": 0,
       "localization_basis": "오션 对应 ocean；蓝色造型及海星饰物，按海洋主题意译。"
@@ -1659,9 +1659,9 @@
         "2": "海洋熊猫",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "c8473a5f3b31231d134ad66eeafb316f903acec39c0c0c86f6add059273dd74d",
+      "localized_row_sha256": "a2f46f99c7bc3e279f454ec9d2ba43b7c9e554afcba33953fabd0b6dc9667490",
       "name_is_local_translation": true,
       "source_required_level": 0,
       "localization_basis": "오션 对应 ocean；蓝色造型及海星饰物，按海洋主题意译。"
@@ -1679,9 +1679,9 @@
         "2": "海洋熊猫",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:235 槽:3 耐久:-1"
+        "18": "数值基础攻击:235 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "c47df10bcaadbd342de029cb358fcadbdcb79e57f5b671f346c0c5ad65215349",
+      "localized_row_sha256": "b718a5f79615976af9d0525e12759eb488a245a27c6bcd7a8e29834768a7ad9e",
       "name_is_local_translation": true,
       "source_required_level": 0,
       "localization_basis": "오션 对应 ocean；蓝色造型及海星饰物，按海洋主题意译。"
@@ -1699,9 +1699,9 @@
         "2": "花冠熊猫",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "8d8287bdcc0ee9c05a549e3047e31a74586f7e7a010faef867b10a9a89dff5fd",
+      "localized_row_sha256": "0ea8774caec25832ae09c4157089e3a813bc868476d226540832de4bbecce734",
       "name_is_local_translation": true,
       "source_required_level": 21,
       "localization_basis": "레알팡 为未确认词源的自造名；据花朵、绿叶头饰命名，不再臆定为皇家。"
@@ -1719,9 +1719,9 @@
         "2": "花冠熊猫",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "ce6d7e75ba8fa2d6cc9be25cea8920f3eab5dc7bc2b95ae2ae7f2ee4fe456ed3",
+      "localized_row_sha256": "e5998b8458b5d321d0da22c15dc5de585735399e86c22ac23faef001aa78303b",
       "name_is_local_translation": true,
       "source_required_level": 21,
       "localization_basis": "레알팡 为未确认词源的自造名；据花朵、绿叶头饰命名，不再臆定为皇家。"
@@ -1739,9 +1739,9 @@
         "2": "花冠熊猫",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:340 槽:3 耐久:-1"
+        "18": "数值基础攻击:340 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "45b1f02b89ae2b14f324d7e35656ca3d186077c7b5b5bde517b9136929b6839d",
+      "localized_row_sha256": "2b510f15f4350fe15def8c9baa552cd4a1f94ae47cfb1b1fe309593d45ffcb30",
       "name_is_local_translation": true,
       "source_required_level": 21,
       "localization_basis": "레알팡 为未确认词源的自造名；据花朵、绿叶头饰命名，不再臆定为皇家。"
@@ -1759,9 +1759,9 @@
         "2": "烈焰熊猫",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:498 槽:3 耐久:-1"
+        "18": "数值基础攻击:498 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "2f9e00b881eb5d090f1e20a87b5f667975c5e658f13d5075fbc35cc55a011e8c",
+      "localized_row_sha256": "f6242c57c904ec099d3f20322463b6d753ad41825f0f2745902a9619de92c98c",
       "name_is_local_translation": true,
       "source_required_level": 41,
       "localization_basis": "판이글 为未确认词源的自造名；据火焰头饰命名，不把 이글 武断解释成 eagle。"
@@ -1779,9 +1779,9 @@
         "2": "烈焰熊猫",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:498 槽:3 耐久:-1"
+        "18": "数值基础攻击:498 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "5752ba4d1c01160a4a9867cb69008036ce5d32706bc5f663f589b065f1c1b41d",
+      "localized_row_sha256": "164e90b19bbb790d44fab15949df53ff1615754a5e6ebcb4ac9b8b781cd3ccec",
       "name_is_local_translation": true,
       "source_required_level": 41,
       "localization_basis": "판이글 为未确认词源的自造名；据火焰头饰命名，不把 이글 武断解释成 eagle。"
@@ -1799,9 +1799,9 @@
         "2": "烈焰熊猫",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:498 槽:3 耐久:-1"
+        "18": "数值基础攻击:498 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "619807144b0f2379b4df2d00e01af1c3c4ac0cf8de83a6a0df1f378096d03286",
+      "localized_row_sha256": "6705d200afd80ee26638f1b9e241763f6866402743091e7fce9f63fded37f954",
       "name_is_local_translation": true,
       "source_required_level": 41,
       "localization_basis": "판이글 为未确认词源的自造名；据火焰头饰命名，不把 이글 武断解释成 eagle。"
@@ -1819,9 +1819,9 @@
         "2": "宝冠熊猫",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:629 槽:3 耐久:-1"
+        "18": "数值基础攻击:629 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "b9114a97b043893d943c5a904b66ad2fd117ffe1c87d7c2651c0ce87fa7e6ba4",
+      "localized_row_sha256": "f77f700f3c5d1bc2d383d7a28ae05ce51548be90c8fea9a357b9715123ecaf9a",
       "name_is_local_translation": true,
       "source_required_level": 61,
       "localization_basis": "엘펜 为未确认词源的自造名；据宝石冠饰命名，不把词尾硬译为潘。"
@@ -1839,9 +1839,9 @@
         "2": "宝冠熊猫",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:629 槽:3 耐久:-1"
+        "18": "数值基础攻击:629 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "08a153e012e42203adf3014778d2cdfb40f6146aca2568e55533a5fa47f966ea",
+      "localized_row_sha256": "5c61bb59f8065411d568c651014594782c2c0ec8790279b34db8f3c0a004b237",
       "name_is_local_translation": true,
       "source_required_level": 61,
       "localization_basis": "엘펜 为未确认词源的自造名；据宝石冠饰命名，不把词尾硬译为潘。"
@@ -1859,9 +1859,9 @@
         "2": "宝冠熊猫",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:629 槽:3 耐久:-1"
+        "18": "数值基础攻击:629 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "b05144073d44dff718ec1c4e31cf08a67fbc7aecd066d3c05c93de220b7894f3",
+      "localized_row_sha256": "529de3fb36c949a198b5895971a9f3931fd44aa56fa9c61dffeaf04aa588db23",
       "name_is_local_translation": true,
       "source_required_level": 61,
       "localization_basis": "엘펜 为未确认词源的自造名；据宝石冠饰命名，不把词尾硬译为潘。"
@@ -1879,9 +1879,9 @@
         "2": "翠绿熊猫",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:763 槽:3 耐久:-1"
+        "18": "数值基础攻击:763 槽:3 寿命:15天"
       },
-      "localized_row_sha256": "49fa02ce5d9f8c60bd886d0d99f43632bd812128d9da9ffe7945172f19c0aefe",
+      "localized_row_sha256": "967ba5ff9920bacfdab0cd7a2aa6e6e13c66d8984b4180dfafc0c1d4a1afc6e8",
       "name_is_local_translation": true,
       "source_required_level": 81,
       "localization_basis": "그린 对应 green；绿色熊猫造型，按颜色意译。"
@@ -1899,9 +1899,9 @@
         "2": "翠绿熊猫",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:763 槽:3 耐久:-1"
+        "18": "数值基础攻击:763 槽:3 寿命:30天"
       },
-      "localized_row_sha256": "25c11f4eabe3895eaad088a6862ae8f4d0bdf14107d1fd53849d1512f7620fff",
+      "localized_row_sha256": "e356d1669a15830c8a725cac080472cb01c0660fcdc7aa49f5876edebc16fe3d",
       "name_is_local_translation": true,
       "source_required_level": 81,
       "localization_basis": "그린 对应 green；绿色熊猫造型，按颜色意译。"
@@ -1919,9 +1919,9 @@
         "2": "翠绿熊猫",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:763 槽:3 耐久:-1"
+        "18": "数值基础攻击:763 槽:3 寿命:90天"
       },
-      "localized_row_sha256": "9814a3307817b42c6d3bf29c15d05149ad28f3cd6fb20e913a9efde59b4d8ee4",
+      "localized_row_sha256": "01a777b7928ac911e88828197c22fe93e5f06adc99c13d9ad865ee54dc793fda",
       "name_is_local_translation": true,
       "source_required_level": 81,
       "localization_basis": "그린 对应 green；绿色熊猫造型，按颜色意译。"
@@ -1939,9 +1939,9 @@
         "2": "泰迪先生(0)",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:39 槽:3 耐久:100"
+        "18": "数值基础攻击:39 槽:3 寿命:100"
       },
-      "localized_row_sha256": "67a6738d60165f377ee8700ba78ab958fd4bc79728a9b3880349b6e75bbcf3da",
+      "localized_row_sha256": "e1bbc544cc30d599ff541528b2fceaf388b52318579278f4c12d4dcfa97db750",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -1958,9 +1958,9 @@
         "2": "泰迪女士(0)",
         "16": "无角色等级限制；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:39 槽:3 耐久:100"
+        "18": "数值基础攻击:39 槽:3 寿命:100"
       },
-      "localized_row_sha256": "2e510a1227834eb506df79c3e3aa10d9d9cebc4f1c3d92c74bde383cf8604d13",
+      "localized_row_sha256": "93fdc632db320f200f38832269723fe51a35ea4dd6ffb342e550dc2c55e946b2",
       "name_is_local_translation": true,
       "source_required_level": 0
     },
@@ -1977,9 +1977,9 @@
         "2": "泰迪先生(11)",
         "16": "角色11级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:92 槽:3 耐久:100"
+        "18": "数值基础攻击:92 槽:3 寿命:100"
       },
-      "localized_row_sha256": "014823f38e6d94cd60c9bb67f88c0e0f356bc3362e50400041ab1feb6fdaab76",
+      "localized_row_sha256": "e61248e167b8903609393fa742f54fd354b6c74c2210bddc7295842159fc0e76",
       "name_is_local_translation": true,
       "source_required_level": 11
     },
@@ -1996,9 +1996,9 @@
         "2": "泰迪女士(11)",
         "16": "角色11级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:92 槽:3 耐久:100"
+        "18": "数值基础攻击:92 槽:3 寿命:100"
       },
-      "localized_row_sha256": "7d0a3490502f2858e4b2cf91eee4fe4ac8b5cb27d5b18d295de57a1a9d766e0b",
+      "localized_row_sha256": "db8df29912b3f30ffd97857b53160f6473181df50d2467bb223d124d06617ac3",
       "name_is_local_translation": true,
       "source_required_level": 11
     },
@@ -2015,9 +2015,9 @@
         "2": "泰迪先生(21)",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:180 槽:3 耐久:100"
+        "18": "数值基础攻击:180 槽:3 寿命:100"
       },
-      "localized_row_sha256": "8dfd71a03c54485cf655d2e7c3318af2474b994a90685bd77972738fe951ef75",
+      "localized_row_sha256": "12ea84b999002af3d998a3c29db56bbcfb6a8a644a41901240aaf65ccb7fb717",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -2034,9 +2034,9 @@
         "2": "泰迪女士(21)",
         "16": "角色21级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:180 槽:3 耐久:100"
+        "18": "数值基础攻击:180 槽:3 寿命:100"
       },
-      "localized_row_sha256": "d981c61360121e24ddc04bef304b0dc7412d0d5ba3242c48e6c00af524bb2a1a",
+      "localized_row_sha256": "d7e3bd1df905bb915c60c911732d6f3f9e2837266d3d04ba60ea8a5259bc964d",
       "name_is_local_translation": true,
       "source_required_level": 21
     },
@@ -2053,9 +2053,9 @@
         "2": "泰迪先生(31)",
         "16": "角色31级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:268 槽:3 耐久:100"
+        "18": "数值基础攻击:268 槽:3 寿命:100"
       },
-      "localized_row_sha256": "fc6a0a3b0bc7311aa327e1068498913cf8b849e6c059e8b1ec7bd7dfb57f0df9",
+      "localized_row_sha256": "283bfb75c60010c509341ca643f5c81cc90b45a2cbc7113851e8769b6693838b",
       "name_is_local_translation": true,
       "source_required_level": 31
     },
@@ -2072,9 +2072,9 @@
         "2": "泰迪女士(31)",
         "16": "角色31级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:268 槽:3 耐久:100"
+        "18": "数值基础攻击:268 槽:3 寿命:100"
       },
-      "localized_row_sha256": "e0c379cc896b39f681852e2723ef701f6dfcdc27e22e0f49f31aa9bd6635c810",
+      "localized_row_sha256": "b690fe71e33a4e9da8106e07ebb6e0cacd4a6d01fe0a88975070665c0c540c57",
       "name_is_local_translation": true,
       "source_required_level": 31
     },
@@ -2091,9 +2091,9 @@
         "2": "泰迪先生(41)",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:356 槽:3 耐久:100"
+        "18": "数值基础攻击:356 槽:3 寿命:100"
       },
-      "localized_row_sha256": "18a54a69b88f068fef14189614a0797f9d97fb9591488701da0260c577c2e227",
+      "localized_row_sha256": "dd93db72d07d5771e1f13d863578efb3ccb32494b69df191b6832f65ff1fd881",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -2110,9 +2110,9 @@
         "2": "泰迪女士(41)",
         "16": "角色41级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:356 槽:3 耐久:100"
+        "18": "数值基础攻击:356 槽:3 寿命:100"
       },
-      "localized_row_sha256": "d0e8ab22945d8f31ba61461659b498f21f8442b600b2ac5e05a49f2b3fd8710c",
+      "localized_row_sha256": "283e1a95a75a8698525f8ae846fa0665a71e6cedf77a44507370252446ab827a",
       "name_is_local_translation": true,
       "source_required_level": 41
     },
@@ -2129,9 +2129,9 @@
         "2": "泰迪先生(51)",
         "16": "角色51级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:443 槽:3 耐久:100"
+        "18": "数值基础攻击:443 槽:3 寿命:100"
       },
-      "localized_row_sha256": "5e1e2f33aba97b337eae2168c8cfa24815cf0f9050845f069d02ef7ac986dd68",
+      "localized_row_sha256": "46128772b277ce0f746f230ce3c6b24dc8ac656b1d1629dcadcf9dd242b4f03e",
       "name_is_local_translation": true,
       "source_required_level": 51
     },
@@ -2148,9 +2148,9 @@
         "2": "泰迪女士(51)",
         "16": "角色51级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:443 槽:3 耐久:100"
+        "18": "数值基础攻击:443 槽:3 寿命:100"
       },
-      "localized_row_sha256": "62be5bac66d54cddf10ee0fc5aaf1159cb29ba0752c89b69e08b46d0686952d1",
+      "localized_row_sha256": "f9c788f939224d4cf4812676b10db3007a9b3e52bb792be2417a8c1171e206bb",
       "name_is_local_translation": true,
       "source_required_level": 51
     },
@@ -2167,9 +2167,9 @@
         "2": "泰迪先生(61)",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:531 槽:3 耐久:100"
+        "18": "数值基础攻击:531 槽:3 寿命:100"
       },
-      "localized_row_sha256": "b69bd57b919e8df0fa6d8d76ede07eda2011775e4f358e735a8a1f31c91c91e6",
+      "localized_row_sha256": "d68b466e19555b825395191567811d433adc79fb0f8f458cd2945039d77833e5",
       "name_is_local_translation": true,
       "source_required_level": 61
     },
@@ -2186,9 +2186,9 @@
         "2": "泰迪女士(61)",
         "16": "角色61级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:531 槽:3 耐久:100"
+        "18": "数值基础攻击:531 槽:3 寿命:100"
       },
-      "localized_row_sha256": "6b13bac88279b59a11555cc4c3fa0f295d88081553003f2a2706c67f4e68c84f",
+      "localized_row_sha256": "de28513353c6081597b4c8b2725bca386e2c8e053cc2555dd9d8f51f4b569b34",
       "name_is_local_translation": true,
       "source_required_level": 61
     },
@@ -2205,9 +2205,9 @@
         "2": "泰迪先生(71)",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:617 槽:3 耐久:100"
+        "18": "数值基础攻击:617 槽:3 寿命:100"
       },
-      "localized_row_sha256": "ba3ea268aeada281a87422747685712f8436ee727af8ec63d7c38193310225a0",
+      "localized_row_sha256": "db5029f45d149039daf10ff8c0a54cfad536e61424dd90ba0955936c4c0b1131",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -2224,9 +2224,9 @@
         "2": "泰迪女士(71)",
         "16": "角色71级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:617 槽:3 耐久:100"
+        "18": "数值基础攻击:617 槽:3 寿命:100"
       },
-      "localized_row_sha256": "a2a36f45c00c3f6960e9dbc825d3a05a6cdfbaefede21b1d18177a5e3af87373",
+      "localized_row_sha256": "f830065629ca9c8e32e575f8b245e39220ca25da2dfeffbb82301c432a226c92",
       "name_is_local_translation": true,
       "source_required_level": 71
     },
@@ -2243,9 +2243,9 @@
         "2": "泰迪先生(81)",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:100"
+        "18": "数值基础攻击:723 槽:3 寿命:100"
       },
-      "localized_row_sha256": "90b1cb83218b794357199d4d92c64a312b0bb6196d58d2c672155b354042ca0d",
+      "localized_row_sha256": "fd82939ba1c48ec685277637edaf51d221def5ed9ac807a0ae74843c0407ba7c",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -2262,9 +2262,9 @@
         "2": "泰迪女士(81)",
         "16": "角色81级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:723 槽:3 耐久:100"
+        "18": "数值基础攻击:723 槽:3 寿命:100"
       },
-      "localized_row_sha256": "19561cd4b1e6591508b07facc16a67822b798837f2a75b01d6c2911451aabedd",
+      "localized_row_sha256": "23bdb8aae1519d60f545e80cc3da7d85de11dbee695091b5fe5010cf59a6f9db",
       "name_is_local_translation": true,
       "source_required_level": 81
     },
@@ -2281,9 +2281,9 @@
         "2": "战斗龙",
         "16": "角色110级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:915 槽:3 耐久:100"
+        "18": "数值基础攻击:915 槽:3 寿命:100"
       },
-      "localized_row_sha256": "064e69dcbfced80877e2fbfcadeca4c8b428a93df29c4f8f7a687a8ce9a81782",
+      "localized_row_sha256": "04a853639bd57145affc8d605d0b25604467c89b98aa70a0b75fb908df8239db",
       "name_is_local_translation": true,
       "source_required_level": 110
     },
@@ -2300,9 +2300,9 @@
         "2": "斗战龙",
         "16": "角色110级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:915 槽:3 耐久:100"
+        "18": "数值基础攻击:915 槽:3 寿命:100"
       },
-      "localized_row_sha256": "f5cd5f67903ea55c1fb3edabe231a613916bc4a210d9b424421ed9fdb2b6a70a",
+      "localized_row_sha256": "4191724809110e80e0eaa7a7bce4215d2c563b30fdbec08e0444fdef48c68288",
       "name_is_local_translation": true,
       "source_required_level": 110
     },
@@ -2319,9 +2319,9 @@
         "2": "冠军龙",
         "16": "角色110级可装备；三阶外观。",
         "17": "成长:3岁",
-        "18": "数值基础攻击:915 槽:3 耐久:100"
+        "18": "数值基础攻击:915 槽:3 寿命:100"
       },
-      "localized_row_sha256": "eb3201634e66ec35ceaabf6539cadd456943063ba106a2989e6dbabee10e8618",
+      "localized_row_sha256": "3d210146e2a52a4456da471defef802222567e5e506054003ea12a437f311ee7",
       "name_is_local_translation": true,
       "source_required_level": 110
     }
@@ -14539,8 +14539,8 @@
   ],
   "policy": "Preserve the original 868 CN rows, growth, attacks, BOO and shared assets. All 122 imported pets use original Korean field1 level requirements (character cap 200); no level downscaling. Chinese names are project translations; panda theme names use source text and resource icons, not asserted official etymologies. Existing catalogs migrate only by exact reviewed catalog/row identities.",
   "installed_catalog": {
-    "size": 550352,
-    "sha256": "46d8433559eb5a2a933bd619a3e704fd3374fb5250b3012cdaab4687090ec162"
+    "size": 550496,
+    "sha256": "0e3bd4c5b7d3647bd4bfc5544df43d1285f4c249ccaf0cf61748b9439f86a698"
   },
   "catalog_migrations": [
     {
@@ -19467,6 +19467,984 @@
         }
       ],
       "receipt_recipe_sha256": "aa3c7cd682366676719fbf6916029b96ebfe2468cf51c23b4a094dadd11774db"
+    },
+    {
+      "reason": "unify the imported Korean pet description text: 耐久 -> 寿命, and duration pets show the authored days with 天",
+      "before": {
+        "size": 550352,
+        "sha256": "46d8433559eb5a2a933bd619a3e704fd3374fb5250b3012cdaab4687090ec162"
+      },
+      "row_replacements": [
+        {
+          "code": 15003340,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "a1b68aeab8ecf061c5dcbb400ece1ca3e5fd9b9d8068ece97f0f36d5a9fb5ff2",
+          "after_row_sha256": "c4ba8cdd7335d4fcef8eb89b361c90ac8065961209c20a8f5e64026252962163"
+        },
+        {
+          "code": 15003341,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "e24f709431a5fef0bf5d613b07314d5e0e6ac6e0dd59a108bc7b2cb2bc8b2981",
+          "after_row_sha256": "63b9b8bd7d9cb3ec13ab92e7f798738b66f397741205e4ee5a4dbbcfc1e6b2bd"
+        },
+        {
+          "code": 15003342,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "d46172fb43285244723736b339ccf2e61f3e7a64e1c162c63ba887e2e01f2229",
+          "after_row_sha256": "00c5006ef4073bf593f72e389fbc606b7205de37163456e34a57cad45cac7cb6"
+        },
+        {
+          "code": 15003343,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "7afb99c5fed4e30231a9c6b99f721f9823109d680d9a3a10cead4fc91b75159a",
+          "after_row_sha256": "9617a1816bfdd0aef87fcbe74450d06a02a22f7103b8c81a455787e3d844eff8"
+        },
+        {
+          "code": 15003344,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "0a29717ea171241efc4389ba5d7a575843663399e3bb0d15b69f73d9d18128d4",
+          "after_row_sha256": "356cbf21ca14eba482bb04945c433a571a4a903f0adce197d9a97fa45c6139d9"
+        },
+        {
+          "code": 15003345,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "39e7974b3692a7e7386a4eb7ba03664ad044bd04dfd544d85d353a6c6b3bd12f",
+          "after_row_sha256": "f42d74928b4f5e6d413bd3d39c2d895a51cab7fb1fdfe343441a11297cb28ba6"
+        },
+        {
+          "code": 15003346,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "d3acad0f7a958f72ee641e4d402426f3913a55ed74cb84bb5e331ef621cb717e",
+          "after_row_sha256": "d7141c123d89be33f0050b9c82a8b1108ffaea110bf48e4d0786db2fb05b1bd6"
+        },
+        {
+          "code": 15003347,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "c5b5a0d7fd38028cebc47879906917e7b2ac5499f8331a1de539b87c1c8c51b7",
+          "after_row_sha256": "2bb041a83de3baeeb4460cc64ef779f5eccc788bda1f700307d5889540fcbd94"
+        },
+        {
+          "code": 15003348,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "23080d1a3fe79fb9f928786a72998283d2ed419e46c9401e7c865788e89b2b4a",
+          "after_row_sha256": "0e45744ecfc62cd3bc425919d419820e170ef71c8cef2598c092e81791e78d92"
+        },
+        {
+          "code": 15003349,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "dbd14cf76ae23621af7dd073a7345f41b42315fc79ad6eb438d553016f692c9f",
+          "after_row_sha256": "52827e9a415e3332871a6abcb3f78feb2541f74a494a619da9ce0d9e9853c333"
+        },
+        {
+          "code": 15003350,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "21a6b226fddc2f3e079b6a8e1ac44bf81bb2011effaa478d414ab93caf7c4fe3",
+          "after_row_sha256": "3a5fe8055af23b6638b5d28af1acd3db5da2bf1c972ba22139e8a23e699f4054"
+        },
+        {
+          "code": 15003351,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "d450c3903edb594131726dedb8eb5d5454c418a995eea7255fb2fb1bc55b845b",
+          "after_row_sha256": "d6eb8e986832929967a3f1a9e5d80addb338a5710c1cd15f913f4ccae43c4134"
+        },
+        {
+          "code": 15003352,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "45b8d2d0fc788a794af07a6ce866ed756003199e219366d7310cd95d8ab2b254",
+          "after_row_sha256": "4285297c2cb3b76b8e24691a71e88ba340f4123ed6616dfb2005dcd20fceb21b"
+        },
+        {
+          "code": 15003353,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "e04ccb94e40189012b069bf520e73f2578ce0e909b3b658b3453a42dd892a25f",
+          "after_row_sha256": "887d2c0d6bfde0d2f88f5ae165210dd4bf17eda27e473b15e12c4412a4ade510"
+        },
+        {
+          "code": 15003354,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "b18fb64aed1b20f38be71580e8498e1d4842caaf4023a7b84e89bffbdd0212f9",
+          "after_row_sha256": "f7df29846dfe5732063571f942f11fc006447f1a63e8ad5c16c22e96490e0e97"
+        },
+        {
+          "code": 15003355,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "07cdf1f84d48cc3ec1f3e118d512290d573a172932e5cd2349b181e20040d5f6",
+          "after_row_sha256": "3dd8100535065e7d027ae67066b4ef71a987c376c7b43b883ce9e44ceefab787"
+        },
+        {
+          "code": 15003356,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "8e43a5e5b5974cfa2088d769e06c992690695da43c4f4728d61630c145ec2558",
+          "after_row_sha256": "c3b4ea57a2241a15acca0f67ae4e8f8593bab2e1dee3c86eba4579a48b7146b4"
+        },
+        {
+          "code": 15003357,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "f4846af60ded739b7a59359dc41cbda2bf85fe5340394dea16fab5c795bc2ed1",
+          "after_row_sha256": "2597ded1b050ba00ecc35308fd7fe94bc0396bee32f1a14fd9366819c8eb98e7"
+        },
+        {
+          "code": 15009337,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "8e2dd89fe57aafc7ea24b92483d7c9737d7a186da4b9dff6d217ef53554cb6dc",
+          "after_row_sha256": "5099181efc317fb3beb7f2198bc4b230eed91a367ad40367848c494967a148ae"
+        },
+        {
+          "code": 15009338,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "70c669944a5a9b64f2282de725d0bfaf6c5c9caa1fed87d3a23a82f3b0de12f9",
+          "after_row_sha256": "1f13b6c3407f36d3acd8e2b74be55cd420bcb2572ad7f8fea148683d66cd794a"
+        },
+        {
+          "code": 15009339,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "970271abba5a70183770e4a2950a3eb2ca2f3fd0c632b98a00eb5234ab4e6a48",
+          "after_row_sha256": "05eed3dc79dda458b441e4992ca19a5d987f64c2e9207c5544eb9bade9949747"
+        },
+        {
+          "code": 15009340,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "40f7cd3257980dcc1bd11a764a7d722087dd2a79237124cdc09687acdbf7543d",
+          "after_row_sha256": "21af598d432440b8990f48465e66e7586a39b9fbad7c9da1de0e5d85eafd0f0d"
+        },
+        {
+          "code": 15009341,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "1aee05dcdca1d61aac153652ffe478ab0772f73910529d5009724a4d89dfd731",
+          "after_row_sha256": "1727791bf8f32fff98bcb22b9665b66de18810debdaf60a8fd6eda2cfe911f63"
+        },
+        {
+          "code": 15009342,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "759945e6d86943c6cbee76acf65f7287e566c42b9db7d588caf1c57c03235e75",
+          "after_row_sha256": "cbe40590020aa861424fda16e0ea91cd9455fb0b18b1c84699b8bace2d8e3c8f"
+        },
+        {
+          "code": 15009343,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "751f6122692e84060bea58cd60edafb8ac702fa9cba91ba6df754c208598a4dd",
+          "after_row_sha256": "28f9bca9c5b71c09d8965f509e009348a7574055696854b77235c8aba6b04de2"
+        },
+        {
+          "code": 15009344,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "257a65ae5092281f742f901f67067b22708520e60f4e54e3348c26b78bb8ca44",
+          "after_row_sha256": "99560c1b454d8b06c7799869b0677be82b8c1a0085929528c8ce6c3050a6ccdc"
+        },
+        {
+          "code": 15009345,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "e7fe6e796da68373849dc837404d6acbe35c83b23b38f28fdb40bb114e872bfc",
+          "after_row_sha256": "1138ba77f5f437a1d19219390b6ac4c47766cad8248c4abe02d54acbc4556837"
+        },
+        {
+          "code": 15009346,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "89d6fa2ea716dc7e69d2cfe766487f8ddd5b6cd6b4c182293c74c47852c03a0b",
+          "after_row_sha256": "bd64b7794be60d71b4de5e45e58175c4e447e80884505ed05aa5aa6d8f8a1126"
+        },
+        {
+          "code": 15003362,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "f62753d705175d58aa5301a967c5a28c0277cc1beb4bc662d04bab86b93177df",
+          "after_row_sha256": "14b6f3137eba8cc56864f4355bebd3844b02c1f5b7074a4ad639f3bd48cfdc64"
+        },
+        {
+          "code": 15009347,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "7d4e506a31acf85682d8631b7ecb5869465afbbe3fd54b6a1c1c5fbe87ea7c80",
+          "after_row_sha256": "04ee5a574dc4329ed092a0ca111bebf2481f1d6c4ad7a06801537b9527e8e1f4"
+        },
+        {
+          "code": 15003363,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "5ef0fede4b8bb9dd0a37ad36dca0ac91506a6464206b01cbdd452dd411aebdc7",
+          "after_row_sha256": "a48c9be640d7e4b8809a02da6b695963828814ad35a02e17d565e7b081a2299a"
+        },
+        {
+          "code": 15009348,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "63848066637a33deab6a5c4e304242030c64c1546a62a9188d9581aae93a70cc",
+          "after_row_sha256": "1c8188aabd305866198331983f85cb4f9b29dc7b20cecd5a7cb960c90049cea5"
+        },
+        {
+          "code": 15003364,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "5830a25ce92c4ea160a6bb77adbce0c657d438b5a8250b6c4bcfec76c77d8b21",
+          "after_row_sha256": "94bbef63e81239917f03d0e07ab6bb8bbed60e35e36f4a8215778af760152bdd"
+        },
+        {
+          "code": 15009349,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "7b1b546b5a0a406608247d6966a3dd8782d841dbe361a31465bce6f59384fdae",
+          "after_row_sha256": "64399a63ccad261d081ac4f5b6053c28ab4d5f4070bfad3c72b402ab7425177c"
+        },
+        {
+          "code": 15003365,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "afa090ea8d8d8d5c5230887b7fb7aa9113fee39105c430dcfb603d2776f5a1db",
+          "after_row_sha256": "be6845cd83f4439f966994426010f9a438b2ee0f5058f93f9a64ee24490995d3"
+        },
+        {
+          "code": 15009350,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "df71aea0b8ac26adf8ff7451d761ca9497f36ae74229761907e0cb75accb691f",
+          "after_row_sha256": "8b7b28b3bc6b4016d581038057342ffcb017b5c209a0fd350bcd292ff9a09503"
+        },
+        {
+          "code": 15003366,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "5e2ef4205ba9a062abc4cbfc8f31974c947a76b587c853f739253b6ecf97f3ef",
+          "after_row_sha256": "e952fb285f5ce83abd7f70b74cd20d4b9f44d3a93d7466eddba937bbf0e5c842"
+        },
+        {
+          "code": 15009351,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "0194d1f57acf951835b37cfd513aff89b9bc7a961dd35a1e69a1579f0bed160f",
+          "after_row_sha256": "049cd9abd2ecd0a2045906a31ec767e2a0bb92430292614e9b5ee9a76253b76e"
+        },
+        {
+          "code": 15009352,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "8a6d309c7a4689b9b09122396929fcf6517488aca41c93540938e84b17e8cede",
+          "after_row_sha256": "c7ffd573113bee2d6147aebbad3bd090fc855aabf157257d7b7f2931f45f2b32"
+        },
+        {
+          "code": 15009353,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "ed99667f6cd9b8a212069cf51007a82090ebdd5b90bee869206d785a0421862c",
+          "after_row_sha256": "e3cbc2b7fe82d3be6af722d649ab1975bf008d0629e9d9572e07fc7e152d7fc0"
+        },
+        {
+          "code": 15009354,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "833d18e253f69141ffb75ea4b2e1993383316947003212f65d048199fbdca837",
+          "after_row_sha256": "d2331d150bcf151d9d9f76a6cc19424358b69467d9ba7c09eebe5ae77eee2a11"
+        },
+        {
+          "code": 15009355,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "eec069f1857b721398493106267ddc3040cb38c05fbe0d7533dc6a784f8bb8e7",
+          "after_row_sha256": "d0c8ed03a103f988599e7a7bca2cc87a9012ce0e1fce5bd26e608f0425e19321"
+        },
+        {
+          "code": 15009356,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "d1e5eae7e6d6e0d00e93c8a1759adc12551930bd28d5b7af8506f3cb296349b2",
+          "after_row_sha256": "9c85b1d159018422f0b4d71a265b1a7ca94c489a9a4bf37214c3e2a4a9291552"
+        },
+        {
+          "code": 15009325,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "33e64cfeace1142b96a99327cca59857ce01b997443712057a3b9d87e59dff6a",
+          "after_row_sha256": "def180d42eb2a3ef2c41fccae333b424e3ac6d92301c47eea3259fffcd02a474"
+        },
+        {
+          "code": 15009326,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "a84e990a4d9b8a9e05e61411f710df010f31fdd50e90a0ae90b1515ef56bbf03",
+          "after_row_sha256": "fce1707e7a68e0320cd995fb4aa47a28cb6b3cbde1dff9a449bca7dd3e472835"
+        },
+        {
+          "code": 15009327,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "05d736e91e76a3b6fa5b5ceaa4b25b104c78fbb0d2798c3613f78713511a8655",
+          "after_row_sha256": "9f21c41b5f56adf5d733188104715ca181851ea9aa9eedaa8c14c3e1cc995264"
+        },
+        {
+          "code": 15009328,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "75630a497dd5889762a37be72e66dfcb1fb6939f6b6c0c4b2f16b852171d335c",
+          "after_row_sha256": "28cd1a2f652ac5c224a6f5bcfbfb4b881cf5b49128c4c66150c2c2284115cabc"
+        },
+        {
+          "code": 15009329,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "eec4c61a46b0e59459df657a1f55364b1d84dfd90ee557ad14aba78a2a175dd3",
+          "after_row_sha256": "7df415c591445f771e8633a1afeebcbf02dd6b86784a1baa21bb6f989d88c6a8"
+        },
+        {
+          "code": 15009330,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "256e8168f9c936634cc7da4832b750449291ce21488a1e94131aefad344a4b71",
+          "after_row_sha256": "cd1dd7b575099765d57cd0273c458b96e071cf9f925b692d8d76edd5f82c74ac"
+        },
+        {
+          "code": 15009331,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "d62fa9ea575349161552904868631904eabc4601d874500af925b6ef2f775a24",
+          "after_row_sha256": "9db07f4363db8cbd73a52aa7f421b526a5896ee20e7a617e3a313e064464a6b9"
+        },
+        {
+          "code": 15009332,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "eee9ea64d0d1f9fba26f6c0ce22c68ed74942cee8f74f5833be024f60d7f11cf",
+          "after_row_sha256": "99dfb319f45e72385b1583287a037da477f3dfedff2acba0d45231e1d406e020"
+        },
+        {
+          "code": 15009333,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "2367fb3f37f9de352d620c425c4b1399ed0b9551d03d3cdee4727a1e01c53ae8",
+          "after_row_sha256": "6ef6e6b87a81ab58c29a6734eda02ca114fff6fee186563bb27209a12a3c57b4"
+        },
+        {
+          "code": 15009334,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "ea3f98d42d62705c9f2c3adece1d3026c9d3eb3d56cdd5988c99813ce7f52ba7",
+          "after_row_sha256": "9231664d29e2208c5b85c84f3991cf3111b5972214630891c950d318ee52d378"
+        },
+        {
+          "code": 15009335,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "f8e7045758921c86d7cc63c2d64badfed2b53eb1af42e37ed4c7d871dabc9fb2",
+          "after_row_sha256": "eb13a4e8e639cbaf3f22affa7375b3f81b71db1614490ffb6d141563cafb1d37"
+        },
+        {
+          "code": 15009336,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "add1bfb68f0ade00d531bdad81455919b3201d186a9b1dde12abd2ddf0fffee2",
+          "after_row_sha256": "1316ca3c6f41118adfbbe854f14329ccfe38ab25e9c5916d4a35388a4142dbdc"
+        },
+        {
+          "code": 15009310,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "347e4b231699725097553dc019342c20ab7c9d79f588f3126e347740cb526d00",
+          "after_row_sha256": "29e82fed2a289ba12ad44d6b6796d7a6b62a1d0c955c6d4c2a43d709fb087871"
+        },
+        {
+          "code": 15009315,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "b238e9f9ffc5d829a95f161066058a715a91e3dd365406b04a499914c1d1bf5e",
+          "after_row_sha256": "58614ac4d53703a52592456d82bf17fdd80e0de8159a4e8ed1a4c60dd036716b"
+        },
+        {
+          "code": 15009320,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "78f1e377a7c3ddce9e834753de8a611c0222ce5a00a2a8b864d5a0a94bf28fdc",
+          "after_row_sha256": "d8dc36b0ace13b02feb82dc3f6eb4a81f6d7913981e565d17a91a3a7e17c98d9"
+        },
+        {
+          "code": 15009311,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "8ee12e3aa508c24f711f88ab8319ddd1c2837b787b76e9dbd81b2d0897518d3e",
+          "after_row_sha256": "009e647f8c7f7b8d3cbe81fa1243de8acd18fc6385b988a46e62faa0fd7759a8"
+        },
+        {
+          "code": 15009316,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "cf833832dbddc1953b7237db700903c85f719e20a027e4b6781e338b8f8221ab",
+          "after_row_sha256": "696465eacaf6e9cb144e4f1bf085f829de909db2576adb261dd8f751cb6a6ffd"
+        },
+        {
+          "code": 15009321,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "f9ec2e341245565d582af057a3e2f1759152073021d4f97dda6753e8acdb8af3",
+          "after_row_sha256": "4ca5d740e6c886e0b501fc3777ab9f85ea244aa96f2b11a63c455fd129bcd37d"
+        },
+        {
+          "code": 15009312,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "528ec4044cde9406d61bfdbc4d0f169e477043c2976f0d6d7158d240309511ba",
+          "after_row_sha256": "2301ebeaf1cdb1c3a8ab84932d62760b6c40f441f1d58c543f79affc0608ed9f"
+        },
+        {
+          "code": 15009317,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "dc81b01dd4a2d9a19579d7e5d9b6bc3569dfe8731d31851e98598348f1ac221b",
+          "after_row_sha256": "086b289ad823e5b043e86472ca646b52d2a77b60a5ace04d4df6022c291ddfa1"
+        },
+        {
+          "code": 15009322,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "6bf6e0f855a6bcb777e4bf56fd4dccb9b261380405fba2312a3e25b178a6787e",
+          "after_row_sha256": "831a77424161e1e5f7e60b461eb976c45ac3ec77ae555a4efcf96adfc3cace77"
+        },
+        {
+          "code": 15009313,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "994ad3fd8e2e55be2191a23280e9141b82c564332f6fe92ea9f0595c7376a11a",
+          "after_row_sha256": "7e378ff3932333dfa66169b90f3995b2cf6f5630589fd985c05a42d77a4ef912"
+        },
+        {
+          "code": 15009318,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "852257cee15a8de1d33ed2e56ec421052ac517a54f0cd5449baeaffd4a357f01",
+          "after_row_sha256": "3bd582627c5778dc25e97967b8ecfa5d5ee31cf46d44a4d120bbf6cf6aaf82a7"
+        },
+        {
+          "code": 15009323,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "128477d9b32ffa0033722768b08889b904c3762614345bcbdd0636b13d6fb2e4",
+          "after_row_sha256": "b57f10a69c386a9738fe2f06c36a9ac4fdf239faf98bddcdc8e6ff3024f81639"
+        },
+        {
+          "code": 15009314,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "bec0e7939e47baa66754bb450305e2fa6552ff2bcb2254abd9682c3a1b42ec95",
+          "after_row_sha256": "bcc00acbc7fdb3f07460078fad313116198d1e9065c3ba0dafd2b6ee4fa43d45"
+        },
+        {
+          "code": 15009319,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "20b9e5d169b4f692ef2394877c97b8d62ff6d3a1a4537b247d63c2f491cd4657",
+          "after_row_sha256": "0400be79e85205fba6d31dd1c025b177b165b4694ef4e604f323cb335e541255"
+        },
+        {
+          "code": 15009324,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "0d46bd56826d4b427128b1e6c19fcc41c07df851a5f576e16e32479020fe18d0",
+          "after_row_sha256": "9c4d5a44a752fbdf8bcddfaa0f418fc51e6ecb3dbc5e10c55b190552d19641bb"
+        },
+        {
+          "code": 15009295,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "631b5ff22cff7963513a759687a637831e8721beaea1a909b6d8d0e46b0aecb7",
+          "after_row_sha256": "97efcf760ed22071780f22c941c82ba1d1998c31d507c9af171f317b1c17905a"
+        },
+        {
+          "code": 15009300,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "62cf3880a3af5450b8c227ce6da493bec7b1a38c6efab09a690edd412ae6405b",
+          "after_row_sha256": "88b3e0653c7a62f6c7164a40a5781d467bfb2136f77e23f86245f8090628a5b3"
+        },
+        {
+          "code": 15009305,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "8bd46263a101c7c56e9bfd961adb33c429afa4005bf35ffe67ba8009b218b825",
+          "after_row_sha256": "278b43ac7070d3562f18b30cfafd9bff59691b1358862f1122b93e4b79ee714f"
+        },
+        {
+          "code": 15009296,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "8e73d3cab00868afbc805e8319c984baa416b5ae02123df555ce73ef1a79ba13",
+          "after_row_sha256": "dc23671df9da45cd8a0acd154b0f3dc7bff56a6b5d930e7c23dbc303e6d515cd"
+        },
+        {
+          "code": 15009301,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "0a6fd069d4522de7a6ee04787f6e89724443538237d8fa0efcfd27c5f63a8c7c",
+          "after_row_sha256": "a62f66de405d4ee34582b4f370a3515e97ae23e0e044821c576b599bbceed87f"
+        },
+        {
+          "code": 15009306,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "ac2b6db2a9ec7d1afb3cdccdd52775f084c0d10bcdcb7e50601120b5048fcd76",
+          "after_row_sha256": "5e39a7133eebde470bf5c595608bb10c4d2c5723024e5cde6c55a5e4867bf4ee"
+        },
+        {
+          "code": 15009297,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "f9de67840956b816a2b3e4ee20af467b7f4b52c23de2a8866d0962720f62fa50",
+          "after_row_sha256": "f734de553859b0d17eedf345f75d07461e0034d1f542c26a476e573e45d4d3f5"
+        },
+        {
+          "code": 15009302,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "07b9dbd3caf0d54386f968c076de5eb0601c386857bdaad437c9824b48aafecf",
+          "after_row_sha256": "f01013007c8842e543a7c59ff169e03b9176b5fb5ad68ab83eeb6e0e536f07f6"
+        },
+        {
+          "code": 15009307,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "ddaac51d3980babd640b270bc866e0394b342ec01447641fb251bf84ae7d0f9b",
+          "after_row_sha256": "4012cb8c2c322e4f1c51fbd1be7d54b17f06cfd1a18db22a979aa5cacb24081b"
+        },
+        {
+          "code": 15009298,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "9e26be61617a531194271cfacb0671d2db6d8da202dcb5019a212767e3a1a927",
+          "after_row_sha256": "66d61bae9c476fa039c132d61d553ba259570dc492476954d87868bf3e634d0f"
+        },
+        {
+          "code": 15009303,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "f7dec2831b12d97e97f043d2135b0036678fd916e9612d37d97cc797cd190a94",
+          "after_row_sha256": "87f79548dc646c74e05f289ddc7ed966f7bee466f67d64c3cacf05b5e8b9a73a"
+        },
+        {
+          "code": 15009308,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "7a82bf026c6563119cea1d10bf8c2d7510fc6aa4b5196116a7ea0e5e268a14dd",
+          "after_row_sha256": "10e056413f0a9781cde580a687e8d547cd9c905f7491c295a44c108de17e03e4"
+        },
+        {
+          "code": 15009299,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "6022539ee888b2c60df37aeb31fa1e5ad5d34f7e281d24f684f2b0a36af85dd8",
+          "after_row_sha256": "3be15cd7615b7b9acc04d92a4d17587e383c41a9ff1255ab8b30c6682a75a0c4"
+        },
+        {
+          "code": 15009304,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "306e4ef041b0828721ddcf4477047a054dbfafbec85b3737fc5b65bc670771fc",
+          "after_row_sha256": "23b17001d9330ec1779649091e9af976f968ffa7a94644aa65df95500b2de70c"
+        },
+        {
+          "code": 15009309,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "b14e5f9e63d1bb7802c667ae0685ef6854af0cc23082b936334b33c0a0fdc9d4",
+          "after_row_sha256": "898217530e0f2015415b9147e86a31bc6c01b5aa9362c83a09f619b9e7a8379c"
+        },
+        {
+          "code": 15009280,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "d4ea2339c74fb3c0439f5774505161fa6f7b3cb5247b09386044e6f49d16de21",
+          "after_row_sha256": "6b3b0be268ad528bcef53443ee9740f6d08b648025357c3a8bcb5c01ca9c122d"
+        },
+        {
+          "code": 15009285,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "c8473a5f3b31231d134ad66eeafb316f903acec39c0c0c86f6add059273dd74d",
+          "after_row_sha256": "a2f46f99c7bc3e279f454ec9d2ba43b7c9e554afcba33953fabd0b6dc9667490"
+        },
+        {
+          "code": 15009290,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "c47df10bcaadbd342de029cb358fcadbdcb79e57f5b671f346c0c5ad65215349",
+          "after_row_sha256": "b718a5f79615976af9d0525e12759eb488a245a27c6bcd7a8e29834768a7ad9e"
+        },
+        {
+          "code": 15009281,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "8d8287bdcc0ee9c05a549e3047e31a74586f7e7a010faef867b10a9a89dff5fd",
+          "after_row_sha256": "0ea8774caec25832ae09c4157089e3a813bc868476d226540832de4bbecce734"
+        },
+        {
+          "code": 15009286,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "ce6d7e75ba8fa2d6cc9be25cea8920f3eab5dc7bc2b95ae2ae7f2ee4fe456ed3",
+          "after_row_sha256": "e5998b8458b5d321d0da22c15dc5de585735399e86c22ac23faef001aa78303b"
+        },
+        {
+          "code": 15009291,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "45b1f02b89ae2b14f324d7e35656ca3d186077c7b5b5bde517b9136929b6839d",
+          "after_row_sha256": "2b510f15f4350fe15def8c9baa552cd4a1f94ae47cfb1b1fe309593d45ffcb30"
+        },
+        {
+          "code": 15009282,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "2f9e00b881eb5d090f1e20a87b5f667975c5e658f13d5075fbc35cc55a011e8c",
+          "after_row_sha256": "f6242c57c904ec099d3f20322463b6d753ad41825f0f2745902a9619de92c98c"
+        },
+        {
+          "code": 15009287,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "5752ba4d1c01160a4a9867cb69008036ce5d32706bc5f663f589b065f1c1b41d",
+          "after_row_sha256": "164e90b19bbb790d44fab15949df53ff1615754a5e6ebcb4ac9b8b781cd3ccec"
+        },
+        {
+          "code": 15009292,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "619807144b0f2379b4df2d00e01af1c3c4ac0cf8de83a6a0df1f378096d03286",
+          "after_row_sha256": "6705d200afd80ee26638f1b9e241763f6866402743091e7fce9f63fded37f954"
+        },
+        {
+          "code": 15009283,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "b9114a97b043893d943c5a904b66ad2fd117ffe1c87d7c2651c0ce87fa7e6ba4",
+          "after_row_sha256": "f77f700f3c5d1bc2d383d7a28ae05ce51548be90c8fea9a357b9715123ecaf9a"
+        },
+        {
+          "code": 15009288,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "08a153e012e42203adf3014778d2cdfb40f6146aca2568e55533a5fa47f966ea",
+          "after_row_sha256": "5c61bb59f8065411d568c651014594782c2c0ec8790279b34db8f3c0a004b237"
+        },
+        {
+          "code": 15009293,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "b05144073d44dff718ec1c4e31cf08a67fbc7aecd066d3c05c93de220b7894f3",
+          "after_row_sha256": "529de3fb36c949a198b5895971a9f3931fd44aa56fa9c61dffeaf04aa588db23"
+        },
+        {
+          "code": 15009284,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "49fa02ce5d9f8c60bd886d0d99f43632bd812128d9da9ffe7945172f19c0aefe",
+          "after_row_sha256": "967ba5ff9920bacfdab0cd7a2aa6e6e13c66d8984b4180dfafc0c1d4a1afc6e8"
+        },
+        {
+          "code": 15009289,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "25c11f4eabe3895eaad088a6862ae8f4d0bdf14107d1fd53849d1512f7620fff",
+          "after_row_sha256": "e356d1669a15830c8a725cac080472cb01c0660fcdc7aa49f5876edebc16fe3d"
+        },
+        {
+          "code": 15009294,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "9814a3307817b42c6d3bf29c15d05149ad28f3cd6fb20e913a9efde59b4d8ee4",
+          "after_row_sha256": "01a777b7928ac911e88828197c22fe93e5f06adc99c13d9ad865ee54dc793fda"
+        },
+        {
+          "code": 15003322,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "67a6738d60165f377ee8700ba78ab958fd4bc79728a9b3880349b6e75bbcf3da",
+          "after_row_sha256": "e1bbc544cc30d599ff541528b2fceaf388b52318579278f4c12d4dcfa97db750"
+        },
+        {
+          "code": 15003331,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "2e510a1227834eb506df79c3e3aa10d9d9cebc4f1c3d92c74bde383cf8604d13",
+          "after_row_sha256": "93fdc632db320f200f38832269723fe51a35ea4dd6ffb342e550dc2c55e946b2"
+        },
+        {
+          "code": 15003323,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "014823f38e6d94cd60c9bb67f88c0e0f356bc3362e50400041ab1feb6fdaab76",
+          "after_row_sha256": "e61248e167b8903609393fa742f54fd354b6c74c2210bddc7295842159fc0e76"
+        },
+        {
+          "code": 15003332,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "7d0a3490502f2858e4b2cf91eee4fe4ac8b5cb27d5b18d295de57a1a9d766e0b",
+          "after_row_sha256": "db8df29912b3f30ffd97857b53160f6473181df50d2467bb223d124d06617ac3"
+        },
+        {
+          "code": 15003324,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "8dfd71a03c54485cf655d2e7c3318af2474b994a90685bd77972738fe951ef75",
+          "after_row_sha256": "12ea84b999002af3d998a3c29db56bbcfb6a8a644a41901240aaf65ccb7fb717"
+        },
+        {
+          "code": 15003333,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "d981c61360121e24ddc04bef304b0dc7412d0d5ba3242c48e6c00af524bb2a1a",
+          "after_row_sha256": "d7e3bd1df905bb915c60c911732d6f3f9e2837266d3d04ba60ea8a5259bc964d"
+        },
+        {
+          "code": 15003325,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "fc6a0a3b0bc7311aa327e1068498913cf8b849e6c059e8b1ec7bd7dfb57f0df9",
+          "after_row_sha256": "283bfb75c60010c509341ca643f5c81cc90b45a2cbc7113851e8769b6693838b"
+        },
+        {
+          "code": 15003334,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "e0c379cc896b39f681852e2723ef701f6dfcdc27e22e0f49f31aa9bd6635c810",
+          "after_row_sha256": "b690fe71e33a4e9da8106e07ebb6e0cacd4a6d01fe0a88975070665c0c540c57"
+        },
+        {
+          "code": 15003326,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "18a54a69b88f068fef14189614a0797f9d97fb9591488701da0260c577c2e227",
+          "after_row_sha256": "dd93db72d07d5771e1f13d863578efb3ccb32494b69df191b6832f65ff1fd881"
+        },
+        {
+          "code": 15003335,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "d0e8ab22945d8f31ba61461659b498f21f8442b600b2ac5e05a49f2b3fd8710c",
+          "after_row_sha256": "283e1a95a75a8698525f8ae846fa0665a71e6cedf77a44507370252446ab827a"
+        },
+        {
+          "code": 15003327,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "5e1e2f33aba97b337eae2168c8cfa24815cf0f9050845f069d02ef7ac986dd68",
+          "after_row_sha256": "46128772b277ce0f746f230ce3c6b24dc8ac656b1d1629dcadcf9dd242b4f03e"
+        },
+        {
+          "code": 15003336,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "62be5bac66d54cddf10ee0fc5aaf1159cb29ba0752c89b69e08b46d0686952d1",
+          "after_row_sha256": "f9c788f939224d4cf4812676b10db3007a9b3e52bb792be2417a8c1171e206bb"
+        },
+        {
+          "code": 15003328,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "b69bd57b919e8df0fa6d8d76ede07eda2011775e4f358e735a8a1f31c91c91e6",
+          "after_row_sha256": "d68b466e19555b825395191567811d433adc79fb0f8f458cd2945039d77833e5"
+        },
+        {
+          "code": 15003337,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "6b13bac88279b59a11555cc4c3fa0f295d88081553003f2a2706c67f4e68c84f",
+          "after_row_sha256": "de28513353c6081597b4c8b2725bca386e2c8e053cc2555dd9d8f51f4b569b34"
+        },
+        {
+          "code": 15003329,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "ba3ea268aeada281a87422747685712f8436ee727af8ec63d7c38193310225a0",
+          "after_row_sha256": "db5029f45d149039daf10ff8c0a54cfad536e61424dd90ba0955936c4c0b1131"
+        },
+        {
+          "code": 15003338,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "a2a36f45c00c3f6960e9dbc825d3a05a6cdfbaefede21b1d18177a5e3af87373",
+          "after_row_sha256": "f830065629ca9c8e32e575f8b245e39220ca25da2dfeffbb82301c432a226c92"
+        },
+        {
+          "code": 15003330,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "90b1cb83218b794357199d4d92c64a312b0bb6196d58d2c672155b354042ca0d",
+          "after_row_sha256": "fd82939ba1c48ec685277637edaf51d221def5ed9ac807a0ae74843c0407ba7c"
+        },
+        {
+          "code": 15003339,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "19561cd4b1e6591508b07facc16a67822b798837f2a75b01d6c2911451aabedd",
+          "after_row_sha256": "23bdb8aae1519d60f545e80cc3da7d85de11dbee695091b5fe5010cf59a6f9db"
+        },
+        {
+          "code": 15003358,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "064e69dcbfced80877e2fbfcadeca4c8b428a93df29c4f8f7a687a8ce9a81782",
+          "after_row_sha256": "04a853639bd57145affc8d605d0b25604467c89b98aa70a0b75fb908df8239db"
+        },
+        {
+          "code": 15003359,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "f5cd5f67903ea55c1fb3edabe231a613916bc4a210d9b424421ed9fdb2b6a70a",
+          "after_row_sha256": "4191724809110e80e0eaa7a7bce4215d2c563b30fdbec08e0444fdef48c68288"
+        },
+        {
+          "code": 15003360,
+          "allowed_fields": [
+            18
+          ],
+          "before_row_sha256": "eb3201634e66ec35ceaabf6539cadd456943063ba106a2989e6dbabee10e8618",
+          "after_row_sha256": "3d210146e2a52a4456da471defef802222567e5e506054003ea12a437f311ee7"
+        }
+      ],
+      "receipt_recipe_sha256": "f805603d19948df60eb3e93ed8009e8ab3a78a8525c36259a3c31bcc1221a6a8"
     }
   ],
   "client_string_capacities_including_nul": {
