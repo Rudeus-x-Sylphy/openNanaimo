@@ -1048,8 +1048,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 988437,
-      "sha256": "3C2E26015FC5CCD45AD1F35082B8940587C39B39058C3556E1AFF8F4FCE4DD1E"
+      "size": 989266,
+      "sha256": "C73B6A81BF71F9FB62BDCE865B715A08342FDBBB1B8F95DB46ED68B685867453"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

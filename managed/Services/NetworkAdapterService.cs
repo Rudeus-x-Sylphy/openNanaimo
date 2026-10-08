@@ -17362,40 +17362,53 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     {
         // Ordinary inventory 8005F0: full+9 is the acquisition notice; full+10==6
         // enables expansion using full+1024. Other page modes are separate tuples.
-        var itemCodes = requestMode == 30 || character is null
+        var items = requestMode == 30 || character is null
             ? []
-            : GetInteriorItemCodes(character);
+            : GetInteriorInventoryRows(character);
         var expansionExpiration = character?.InteriorInventoryExpansionExpires ?? 0;
         var payload = new byte[expansionExpiration != 0
             ? 1020
-            : 4 + itemCodes.Length * InteriorInventoryRecordLength];
+            : 4 + items.Length * InteriorInventoryRecordLength];
         payload[0] = requestMode;
         payload[1] = 0;
         payload[2] = expansionExpiration != 0 ? (byte)6 : (byte)0;
-        payload[3] = checked((byte)itemCodes.Length);
-        for (var index = 0; index < itemCodes.Length; index++)
+        payload[3] = checked((byte)items.Length);
+        for (var index = 0; index < items.Length; index++)
         {
             var record = payload.AsSpan(4 + index * InteriorInventoryRecordLength, InteriorInventoryRecordLength);
-            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(0, 4), itemCodes[index]);
+            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(0, 4), items[index].Code);
             BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(4, 2), 0);
             BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(6, 2), checked((ushort)index));
-            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(8, 4), PermanentItemExpiration);
+            // The client renders this word as the instance's 期间; it carries the same
+            // yyyyMMddHH wire expiration as timed clothing, so a duration furniture item
+            // no longer displays the far-future permanent sentinel.
+            BinaryPrimitives.WriteUInt32LittleEndian(record.Slice(8, 4), items[index].Expiration);
         }
         if (expansionExpiration != 0)
             BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(1016, 4), expansionExpiration);
         return payload;
     }
 
-    private static uint[] GetInteriorItemCodes(CharacterRecord character)
+    /// <summary>
+    /// Visible furniture instances with the wire expiration each one publishes.
+    /// Ordering, quantity expansion and the 84-instance limit stay identical to the
+    /// code-only projection so placement indices keep matching record positions.
+    /// </summary>
+    private static (uint Code, uint Expiration)[] GetInteriorInventoryRows(CharacterRecord character)
         => character.Items
             .Where(item => item.Quantity > 0
                 && ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
                 && catalogItem.Section == InventorySection.Furniture
                 // A lapsed furniture item is not published, matching the wardrobe rule.
                 && (!catalogItem.HasExpiry || ClothingExpirationTime.IsActive(item.ItemExpiration, DateTime.Now)))
-            .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
+            .SelectMany(item => Enumerable.Repeat(
+                (Code: item.ItemCode, Expiration: ClothingExpirationTime.Effective(item.ItemExpiration)),
+                item.Quantity))
             .Take(InteriorInventoryCapacity)
             .ToArray();
+
+    private static uint[] GetInteriorItemCodes(CharacterRecord character)
+        => GetInteriorInventoryRows(character).Select(row => row.Code).ToArray();
 
     private static byte[] BuildEmptyCashInventoryPayload(byte requestMode)
         // The C474 consumer ignores frame+8/+9, then reads mode and byte count.

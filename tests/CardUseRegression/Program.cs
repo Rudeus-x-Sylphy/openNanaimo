@@ -82,6 +82,18 @@ bool InteriorPublishes(byte[] payload,uint code)
         if(BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4+index*12,4))==code) return true;
     return false;
 }
+uint InteriorWireExpiration(byte[] payload,uint code)
+{
+    // The record's fourth word is the instance's 期间 on the same yyyyMMddHH wire
+    // encoding as timed clothing, so the client shows a date rather than 永久.
+    for(var index=0;index<payload[3]&&4+(index+1)*12<=payload.Length;index++)
+    {
+        var record=payload.AsSpan(4+index*12,12);
+        if(BinaryPrimitives.ReadUInt32LittleEndian(record)==code)
+            return BinaryPrimitives.ReadUInt32LittleEndian(record.Slice(8,4));
+    }
+    return 0;
+}
 uint WirePetExpiration(byte[] payload,uint code)
 {
     // C44C carries petItems.Length + materials.Length 36-byte records from frame+4;
@@ -304,11 +316,25 @@ Check(ShopCatalog.TryGet(11000043,out var timedFurniture)&&timedFurniture.Durati
 Config(11000043);await Reset();await SeedSet(1);
 Check((await Redeem()).Success,"furniture reward granted");
 var furnitureTerm=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=11000043");
+var furnitureWire=InteriorWireExpiration(NetworkAdapterService.BuildInteriorInventoryPayload(0,(await db.GetCharacterAsync(account))!),11000043);
+Check(furnitureWire==(uint)furnitureTerm&&furnitureWire!=ClothingExpirationTime.PermanentExpiration,
+    "C40A publishes the granted furniture term as its 期间, not the permanent sentinel");
 await SeedSet(1);Check((await Redeem()).Success,"furniture repeat grant");
 Check(furnitureTerm!=0
     &&ClothingExpirationTime.TryDecode((uint)furnitureTerm,out var furnitureBefore)
     &&ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=11000043"),out var furnitureAfter)
     &&furnitureAfter-furnitureBefore>=TimeSpan.FromDays(29),"furniture grant extends the term by the authored period");
+var extendedStored=(uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=11000043");
+var extendedWire=InteriorWireExpiration(NetworkAdapterService.BuildInteriorInventoryPayload(0,(await db.GetCharacterAsync(account))!),11000043);
+Check(extendedWire==extendedStored
+    &&ClothingExpirationTime.TryDecode(extendedWire,out var wireAfter)
+    &&wireAfter>DateTime.Now.AddDays(28),"C40A tracks the extended furniture term");
+// Permanent furniture keeps the far-future sentinel instead of an epoch date.
+var permanentFurniture=ShopCatalog.All.First(item=>item.Section==InventorySection.Furniture&&item.DurationDays==0);
+await Sql("INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES($id,$code,1,'furniture') ON CONFLICT(CharacterId,ItemCode) DO UPDATE SET Quantity=1",("$code",permanentFurniture.ItemCode));
+Check(InteriorWireExpiration(NetworkAdapterService.BuildInteriorInventoryPayload(0,(await db.GetCharacterAsync(account))!),permanentFurniture.ItemCode)==ClothingExpirationTime.PermanentExpiration,
+    "permanent furniture publishes the permanent sentinel as its 期间");
+await Sql("DELETE FROM CharacterItems WHERE CharacterId=$id AND ItemCode=$code",("$code",permanentFurniture.ItemCode));
 await Sql("UPDATE CharacterItems SET ItemExpiration=$e WHERE CharacterId=$id AND ItemCode=11000043",("$e",ClothingExpirationTime.Encode(new DateTime(2020,1,1,0,0,0))));
 Check(!InteriorPublishes(NetworkAdapterService.BuildInteriorInventoryPayload(0,(await db.GetCharacterAsync(account))!),11000043),"lapsed furniture is not published");
 Config();
