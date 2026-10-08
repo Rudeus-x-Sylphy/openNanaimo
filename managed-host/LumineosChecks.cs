@@ -22,8 +22,8 @@ internal static class LumineosChecks
             Check(wire.Count == 1 && wire.SequenceEqual(resource), "lookup-only resource identity");
             Check(wire[0].Value.TotalHp == (stage == 0 ? 7_650_000 : 10_200_000), "authored scaled Boss ledger");
             Check(DungeonCombatCatalog.TryGetMaximumScore(0, 100, 7, stage, slot, out var maximum)
-                && maximum.HitScore > 0 && maximum.BossBonusScore == (stage == 0 ? 12_000_000 : 13_000_000),
-                "resource maximum score and scheduled Boss bonus");
+                && maximum.HitScore > 0 && maximum.BossBonusScore == (stage == 0 ? 1_200_000 : 1_300_000),
+                "scaled resource maximum score and scheduled Boss bonus (MMO Score / 10)");
             Check(DungeonTitleProgression.TryGetGrade(0, 100, 7, stage, out var grade) == (stage == 1)
                 && grade == (stage == 1 ? 24 : 0), "only stage1 awards R8");
         }

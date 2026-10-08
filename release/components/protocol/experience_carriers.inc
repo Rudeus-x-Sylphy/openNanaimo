@@ -13,7 +13,7 @@
 static void release_normalize_experience_carrier(char *p,int n){
     unsigned op,len=0u,seed=STABLE_LEVEL;
     const unsigned char *name=g_stable_name;
-    struct progression_progression_state st;
+    struct progression_progression_state st;struct progression_client_experience display;
     if(n<8)return;
     op=(unsigned char)p[6]|((unsigned)(unsigned char)p[7]<<8);
     if(op==0xC355u){
@@ -24,16 +24,17 @@ static void release_normalize_experience_carrier(char *p,int n){
         len=g_stable_name_len;
     }else return;
     progression_progression_snapshot_name(name,len,seed,&st);
+    if(!progression_project_client_experience(st.level,st.exp_total,&display)){printf("[EXPERIENCE_REJECT] invalid authoritative state\n");exit(1);}
     if(op==0xC355u){
         p[0x23]=(char)st.level;
-        stable_put32(p,0x28,st.exp_total);
-        stable_put32(p,0x2C,st.lower);
-        stable_put32(p,0x30,st.next);
+        stable_put32(p,0x28,display.current);
+        stable_put32(p,0x2C,display.lower);
+        stable_put32(p,0x30,display.next);
     }else{
         p[0x48]=(char)st.level;
-        stable_put32(p,0x40,st.next);
-        stable_put32(p,0x44,st.exp_total);
+        stable_put32(p,0x40,display.next);
+        stable_put32(p,0x44,display.current);
     }
-    printf("  [EXPERIENCE] op=%04X level=%u current=%u lower=%u next=%u name_len=%u scope=builder-actor len=%d\n",op,st.level,st.exp_total,st.lower,st.next,len,n);fflush(0);
+    printf("  [EXPERIENCE] op=%04X level=%u current=%u lower=%u next=%u name_len=%u scope=builder-actor len=%d\n",op,st.level,display.current,display.lower,display.next,len,n);fflush(0);
 }
 #endif

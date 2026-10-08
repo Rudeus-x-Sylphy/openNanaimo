@@ -98,14 +98,11 @@ internal static class DungeonProtocol
             payload.AsSpan(0x3C - 8),
             character.Gender == 1 ? 1u : 0u);
 
-        // The retail CF71 consumer stores frame+40 as the absolute next-level
-        // threshold and frame+44 as the character's absolute experience. Its
-        // HUD then evaluates (current - levelStart) / (next - levelStart).
-        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x40 - 8),
-            (uint)Math.Clamp(nextLevelExperience, levelStartExperience + 1, uint.MaxValue));
-        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x44 - 8),
-            (uint)Math.Clamp(character.Experience, levelStartExperience, nextLevelExperience));
-        payload[0x48 - 8] = (byte)Math.Clamp(character.Level, 0, 0x7F);
+        // CF71 has no lower field. C355/CF88 seed the shared lower to zero.
+        var display = CharacterProgression.ProjectClientExperience(character.Level, character.Experience);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x40 - 8), display.Next);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x44 - 8), display.Current);
+        payload[0x48 - 8] = checked((byte)display.Level);
         // Retail CF71 frame+0x49 is the persisted dungeon grade/title, not
         // a level-derived icon band. Keep it coherent with C355 and CF88.
         payload[0x49 - 8] = CharacterTitleState.GetGrade(character);

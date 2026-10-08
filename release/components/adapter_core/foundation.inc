@@ -158,7 +158,7 @@ static void stable_load_launcher_profile(const char *path){
         if(stable_profile_resources_parse_line(line))continue;
         if(sscanf(line,"quickbar_expiry=%u",&v)==1){if(v==0u||(v>=2000010100u&&v<=2100123123u))g_profile_quickbar_expiry=v;else g_profile_resources_valid=0;continue;}
         {unsigned a,b,c,d;if(sscanf(line,"network_ip=%u.%u.%u.%u",&a,&b,&c,&d)==4&&a<=255u&&b<=255u&&c<=255u&&d<=255u){const char*q=line+11;unsigned n=0;g_advertised_ip_octets[0]=(unsigned char)a;g_advertised_ip_octets[1]=(unsigned char)b;g_advertised_ip_octets[2]=(unsigned char)c;g_advertised_ip_octets[3]=(unsigned char)d;while(n<15u&&q[n]&&q[n]!='\r'&&q[n]!='\n'){g_advertised_ip[n]=q[n];n++;}g_advertised_ip[n]=0;continue;}}
-        if(sscanf(line,"level=%u",&v)==1){if(v>=1u&&v<=99u)g_stable_level=v;continue;}
+        if(sscanf(line,"level=%u",&v)==1){if(v>=1u&&v<=200u)g_stable_level=v;continue;}
         if(sscanf(line,"pet=%u",&v)==1){if(v>=15000000u&&v<=15999999u)g_stable_pet=v;continue;}
         if(sscanf(line,"pet_age_a=%u",&v)==1){if(v<=255u)g_stable_pet_age_a=v;continue;}
         if(sscanf(line,"pet_age_b=%u",&v)==1){if(v<=255u)g_stable_pet_age_b=v;continue;}

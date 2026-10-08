@@ -100,6 +100,7 @@ def payload_policy(value: str, layer: str) -> None:
             "release/components/target_resources/preloaded_target_catalog.json",
             "release/components/cards/card_drop_cn.csv",
             "release/components/dungeon_progression/character_experience.csv",
+            "release/components/dungeon_progression/character_experience_v2.csv",
             "release/components/cards/card_drop_cn_boss_bindings.json",
             "release/components/cards/gen_card_drop_pool_boss.py",
             "release/components/cards/generate_card_drop_data.py",
@@ -310,7 +311,10 @@ def validated_closure(closure: dict) -> list[dict]:
         card_distribution = rel in {
             "release/components/cards/card_drop_cn.csv",
             "release/components/dungeon_progression/character_experience.csv",
+            "release/components/dungeon_progression/character_experience_v2.csv",
             "scripts/generate_character_experience.py",
+            "scripts/generate_lumineos_combat.py",
+            "scripts/normalize_combat_score_resources.py",
             "release/components/cards/card_drop_cn_boss_bindings.json",
             "scripts/generate_cn_card_drops.py",
             "scripts/generate_scene_hazard_catalog.py",

@@ -43,15 +43,15 @@ public sealed partial class NetworkAdapterService
                 var petAttack = PetProgression.GetAttackProfile(PetProgression.GetState(
                     attackCharacter, GetEquippedPetItemCode(attackCharacter))).Default;
                 var attack = (int)Math.Min(int.MaxValue,
-                    (long)Math.Max(attackCharacter.Attack, petAttack) + attackCharacter.AttackModifier);
-                var defense = (int)Math.Min(int.MaxValue, (long)victim.Character.Defense + victim.Character.DefenseFlat);
+                    (long)petAttack + CharacterCombatProgression.NativeAttack(attackCharacter.Level, attackCharacter.AttackModifier));
+                var defense = CharacterCombatProfile.EffectiveDefense(victim.Character);
                 var damage = ArenaProtocol.CalculatePvpDamage(attack, defense);
-                hp = (ushort)Math.Max(0, hp - damage);
+                var appliedDamage = (ushort)Math.Min(hp, damage);
+                hp -= appliedDamage;
                 room.CurrentHpBySession[victim.SessionId] = hp;
-                payload.AsSpan(2, 4).CopyTo(response.AsSpan(2));
-                response[6] = attacker.ArenaSlotIndex;
-                BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(8), hp);
-                response[10] = hp == 0 ? (byte)200 : (byte)100;
+                response = ArenaProtocol.BuildPlayerHitResult(kind, objectId,
+                    BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(4)),
+                    attacker.ArenaSlotIndex, victim.ArenaSlotIndex, hp, appliedDamage);
                 if (hp == 0)
                 {
                     var living = room.Members.Values.Where(member => room.CurrentHpBySession.GetValueOrDefault(member.SessionId) > 0).ToArray();

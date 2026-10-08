@@ -86,7 +86,7 @@ public sealed partial class DatabaseService
         GameInventoryExpansionExpires, InteriorInventoryExpansionExpires,
         QuickSlotExpansionExpires, FreeMagicExpansionExpires,
         AttackModifier, DefenseFlat, InitialAttackMode, PureNewProfile,
-        SkillPointsMeat
+        SkillPointsMeat, CurveVersion
         """;
 
     private readonly string _databasePath;
@@ -113,6 +113,7 @@ public sealed partial class DatabaseService
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
+        await ValidateExistingCharacterCurveAsync(connection, cancellationToken);
         await using (var command = connection.CreateCommand())
         {
             command.CommandText = """
@@ -194,9 +195,9 @@ public sealed partial class DatabaseService
                     Intelligence INTEGER NOT NULL DEFAULT 5,
                     Luck INTEGER NOT NULL DEFAULT 5,
                     MaxHp INTEGER NOT NULL DEFAULT 1500,
-                    MaxMp INTEGER NOT NULL DEFAULT 100,
+                    MaxMp INTEGER NOT NULL DEFAULT 110,
                     CurrentHp INTEGER NOT NULL DEFAULT 1500,
-                    CurrentMp INTEGER NOT NULL DEFAULT 100,
+                    CurrentMp INTEGER NOT NULL DEFAULT 110,
                     SpawnMapId INTEGER NOT NULL DEFAULT 1,
                     SpawnX INTEGER NOT NULL DEFAULT 320,
                     SpawnY INTEGER NOT NULL DEFAULT 240,
@@ -266,6 +267,11 @@ public sealed partial class DatabaseService
                     Quantity INTEGER NOT NULL DEFAULT 1 CHECK (Quantity BETWEEN 1 AND 255),
                     UpdatedAt TEXT NOT NULL,
                     PRIMARY KEY (CharacterId, CardCode)
+                );
+                CREATE TABLE IF NOT EXISTS CharacterExperienceCards (
+                    CharacterId INTEGER PRIMARY KEY REFERENCES Characters(Id) ON DELETE CASCADE,
+                    CardCode INTEGER NOT NULL CHECK (CardCode BETWEEN 22000001 AND 22000010),
+                    Expires INTEGER NOT NULL CHECK (Expires BETWEEN 1 AND 4294967295)
                 );
                 CREATE TABLE IF NOT EXISTS AuctionListings (
                     UniqueNumber INTEGER PRIMARY KEY AUTOINCREMENT CHECK (UniqueNumber BETWEEN 1 AND 4294967295),
@@ -626,9 +632,9 @@ public sealed partial class DatabaseService
         await EnsureColumnAsync(connection, "Characters", "PetLevel", "INTEGER NOT NULL DEFAULT 1", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "PetExperience", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "MaxHp", "INTEGER NOT NULL DEFAULT 1500", cancellationToken);
-        await EnsureColumnAsync(connection, "Characters", "MaxMp", "INTEGER NOT NULL DEFAULT 100", cancellationToken);
+        await EnsureColumnAsync(connection, "Characters", "MaxMp", "INTEGER NOT NULL DEFAULT 110", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "CurrentHp", "INTEGER NOT NULL DEFAULT 1500", cancellationToken);
-        await EnsureColumnAsync(connection, "Characters", "CurrentMp", "INTEGER NOT NULL DEFAULT 100", cancellationToken);
+        await EnsureColumnAsync(connection, "Characters", "CurrentMp", "INTEGER NOT NULL DEFAULT 110", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "ApartmentStarterGranted", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "SpawnMapId", "INTEGER NOT NULL DEFAULT 1", cancellationToken);
         await EnsureColumnAsync(connection, "Characters", "SpawnX", "INTEGER NOT NULL DEFAULT 320", cancellationToken);
@@ -782,7 +788,7 @@ public sealed partial class DatabaseService
         {
             migration.CommandText = """
                 UPDATE Characters
-                SET Level = MIN(99, MAX(1, Level)),
+                SET Level = MIN(200, MAX(1, Level)),
                     Experience = MAX(0, Experience),
                     PetVariant = CASE
                         WHEN PetVariant BETWEEN 1 AND 3 THEN PetVariant
@@ -795,47 +801,30 @@ public sealed partial class DatabaseService
                     END,
                     PetLevel = CASE WHEN EquippedPetItemCode = 0 THEN 0 ELSE MIN(99, MAX(1, PetLevel)) END,
                     PetExperience = MAX(0, PetExperience),
-                    AttributePoints = CASE
-                        WHEN LastSavedAt IS NULL THEN MAX(
-                            MAX(0, AttributePoints),
-                            MAX(0,
-                                (MIN(99, MAX(1, Level)) - 1) * 5
-                                - MAX(0, Strength - 5)
-                                - MAX(0, Vitality - 5)
-                                - MAX(0, Agility - 5)
-                                - MAX(0, Intelligence - 5)
-                                - MAX(0, Luck - 5)))
-                        ELSE MAX(0, AttributePoints)
-                    END,
-                    Strength = MAX(0, Strength),
-                    Vitality = MAX(0, Vitality),
-                    Agility = MAX(0, Agility),
-                    Intelligence = MAX(0, Intelligence),
-                    Luck = MAX(0, Luck),
                     MaxHp = CASE
-                        WHEN LastSavedAt IS NULL OR MaxHp <= 200 THEN MAX(
+                        WHEN CurveVersion < 3 AND (LastSavedAt IS NULL OR MaxHp <= 200) THEN MAX(
                             MAX(0, MaxHp),
-                            1440 + MAX(0, Vitality) * 12 + (MIN(99, MAX(1, Level)) - 1) * 8)
+                            1600 + (MIN(200, MAX(1, Level)) - 1) * 100)
                         ELSE MIN(65535, MaxHp)
                     END,
                     MaxMp = CASE
-                        WHEN LastSavedAt IS NULL OR MaxMp < 0 THEN MAX(
+                        WHEN CurveVersion < 3 AND (LastSavedAt IS NULL OR MaxMp < 0) THEN MAX(
                             MAX(0, MaxMp),
-                            50 + MAX(0, Intelligence) * 10 + (MIN(99, MAX(1, Level)) - 1) * 5)
+                            100 + (MIN(200, MAX(1, Level)) - 1) * 10)
                         ELSE MIN(65535, MaxMp)
                     END,
                     CurrentHp = CASE
-                        WHEN LastSavedAt IS NULL THEN MAX(
+                        WHEN LastSavedAt IS NULL AND CurveVersion < 3 THEN MAX(
                             MAX(0, MaxHp),
-                            1440 + MAX(0, Vitality) * 12 + (MIN(99, MAX(1, Level)) - 1) * 8)
+                            1600 + (MIN(200, MAX(1, Level)) - 1) * 100)
                         WHEN MaxHp <= 200 AND CurrentHp >= MaxHp THEN
-                            1440 + MAX(0, Vitality) * 12 + (MIN(99, MAX(1, Level)) - 1) * 8
+                            1600 + (MIN(200, MAX(1, Level)) - 1) * 100
                         ELSE MIN(65535, MAX(0, CurrentHp))
                     END,
                     CurrentMp = CASE
-                        WHEN LastSavedAt IS NULL THEN MAX(
+                        WHEN LastSavedAt IS NULL AND CurveVersion < 3 THEN MAX(
                             MAX(0, MaxMp),
-                            50 + MAX(0, Intelligence) * 10 + (MIN(99, MAX(1, Level)) - 1) * 5)
+                            100 + (MIN(200, MAX(1, Level)) - 1) * 10)
                         ELSE MIN(65535, MAX(0, CurrentMp))
                     END,
                     CurrentMapId = CASE
@@ -896,9 +885,12 @@ public sealed partial class DatabaseService
             await migration.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        await UpgradeNativeCardProfilesAsync(connection, cancellationToken);
         await ClampPersistedEffectiveInventoryResourcesAsync(connection, cancellationToken);
         await RepairApartmentInventoryPlacementsAsync(cancellationToken: cancellationToken);
         await MigrateSkillPointCardsAsync(connection, cancellationToken);
+        await InitializeLuckyCardUsesAsync(connection, cancellationToken);
+        await InitializeEventCardUsesAsync(connection, cancellationToken);
         await InitializeCardExchangeAsync(cancellationToken);
         await InitializeMentorshipAsync(cancellationToken);
         await ExpireMentorshipRequestsAsync(cancellationToken);
@@ -6786,7 +6778,7 @@ public sealed partial class DatabaseService
                    c.GameInventoryExpansionExpires, c.InteriorInventoryExpansionExpires,
                    c.QuickSlotExpansionExpires, c.FreeMagicExpansionExpires,
                    c.AttackModifier, c.DefenseFlat, c.InitialAttackMode, c.PureNewProfile,
-                   a.Username
+                   c.SkillPointsMeat, c.CurveVersion, a.Username
             FROM Characters c
             INNER JOIN Accounts a ON a.Id = c.AccountId
             ORDER BY c.Id
@@ -6795,7 +6787,7 @@ public sealed partial class DatabaseService
         while (await reader.ReadAsync(cancellationToken))
         {
             var character = ReadCharacter(reader);
-            character.Username = reader.GetString(59);
+            character.Username = reader.GetString(61);
             result.Add(character);
         }
         return result;
@@ -6838,8 +6830,8 @@ public sealed partial class DatabaseService
         }
 
         var now = DateTime.UtcNow.ToString("O");
-        var maxHp = CharacterProgression.CalculateMaxHp(1, 5);
-        var maxMp = CharacterProgression.CalculateMaxMp(1, 5);
+        var maxHp = CharacterProgression.CalculateMaxHp(1);
+        var maxMp = CharacterProgression.CalculateMaxMp(1);
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction();
         try
@@ -9125,13 +9117,13 @@ public sealed partial class DatabaseService
         // Same level-up rule as the other grant paths: one point into each of the five
         // attributes per level, with the vital caps recomputed from the raised
         // vitality/intelligence instead of the pre-level values.
-        var strength = CharacterCombatProgression.GrowAttribute(oldStrength, gainedLevels);
-        var vitality = CharacterCombatProgression.GrowAttribute(oldVitality, gainedLevels);
-        var agility = CharacterCombatProgression.GrowAttribute(oldAgility, gainedLevels);
-        var intelligence = CharacterCombatProgression.GrowAttribute(oldIntelligence, gainedLevels);
-        var luck = CharacterCombatProgression.GrowAttribute(oldLuck, gainedLevels);
-        var maxHp = CharacterProgression.CalculateMaxHp(level, vitality);
-        var maxMp = CharacterProgression.CalculateMaxMp(level, intelligence);
+        var strength = oldStrength;
+        var vitality = oldVitality;
+        var agility = oldAgility;
+        var intelligence = oldIntelligence;
+        var luck = oldLuck;
+        var maxHp = CharacterProgression.CalculateMaxHp(level);
+        var maxMp = CharacterProgression.CalculateMaxMp(level);
         var now = DateTime.UtcNow.ToString("O");
 
         using (var update = connection.CreateCommand())
@@ -9159,7 +9151,7 @@ public sealed partial class DatabaseService
             update.Parameters.AddWithValue("$hans", hans);
             update.Parameters.AddWithValue("$experience", experience);
             update.Parameters.AddWithValue("$level", level);
-            update.Parameters.AddWithValue("$points", gainedLevels * CharacterProgression.AttributePointsPerLevel);
+            update.Parameters.AddWithValue("$points", gainedLevels);
             update.Parameters.AddWithValue("$strength", strength);
             update.Parameters.AddWithValue("$vitality", vitality);
             update.Parameters.AddWithValue("$agility", agility);
@@ -9377,10 +9369,8 @@ public sealed partial class DatabaseService
         var level = CharacterProgression.CalculateLevel(experience);
         level = Math.Max(Math.Clamp(oldLevel, 1, CharacterProgression.MaximumLevel), level);
         var gainedLevels = CharacterCombatProgression.GainedLevels(oldLevel, level);
-        vitality = CharacterCombatProgression.GrowAttribute(vitality, gainedLevels);
-        intelligence = CharacterCombatProgression.GrowAttribute(intelligence, gainedLevels);
-        var maxHp = CharacterProgression.CalculateMaxHp(level, vitality);
-        var maxMp = CharacterProgression.CalculateMaxMp(level, intelligence);
+        var maxHp = CharacterProgression.CalculateMaxHp(level);
+        var maxMp = CharacterProgression.CalculateMaxMp(level);
         await using (var update = connection.CreateCommand())
         {
             update.Transaction = transaction;
@@ -9388,11 +9378,8 @@ public sealed partial class DatabaseService
                 UPDATE Characters
                 SET Experience = $experience,
                     Level = $level,
-                    Strength = MIN(65535, MAX(0, Strength) + $levels),
-                    Vitality = $vitality,
-                    Agility = MIN(65535, MAX(0, Agility) + $levels),
-                    Intelligence = $intelligence,
-                    Luck = MIN(65535, MAX(0, Luck) + $levels),
+
+
                     MaxHp = $maxHp,
                     MaxMp = $maxMp,
                     CurrentHp = CASE WHEN $points > 0 THEN $maxHp ELSE MIN(CurrentHp, $maxHp) END,
@@ -9402,7 +9389,7 @@ public sealed partial class DatabaseService
                 """;
             update.Parameters.AddWithValue("$experience", experience);
             update.Parameters.AddWithValue("$level", level);
-            update.Parameters.AddWithValue("$points", gainedLevels * CharacterProgression.AttributePointsPerLevel);
+            update.Parameters.AddWithValue("$points", gainedLevels);
             update.Parameters.AddWithValue("$levels", gainedLevels);
             update.Parameters.AddWithValue("$vitality", vitality);
             update.Parameters.AddWithValue("$intelligence", intelligence);
@@ -9523,10 +9510,8 @@ public sealed partial class DatabaseService
         var level = Math.Max(Math.Clamp(oldLevel, 1, CharacterProgression.MaximumLevel),
             CharacterProgression.CalculateLevel(experience));
         var gainedLevels = CharacterCombatProgression.GainedLevels(oldLevel, level);
-        vitality = CharacterCombatProgression.GrowAttribute(vitality, gainedLevels);
-        intelligence = CharacterCombatProgression.GrowAttribute(intelligence, gainedLevels);
-        var maxHp = Math.Max(oldMaxHp, CharacterProgression.CalculateMaxHp(level, vitality));
-        var maxMp = Math.Max(oldMaxMp, CharacterProgression.CalculateMaxMp(level, intelligence));
+        var maxHp = Math.Max(oldMaxHp, CharacterProgression.CalculateMaxHp(level));
+        var maxMp = Math.Max(oldMaxMp, CharacterProgression.CalculateMaxMp(level));
         var hans = oldHans > long.MaxValue - hansReward ? long.MaxValue : oldHans + hansReward;
         var now = DateTime.UtcNow.ToString("O");
 
@@ -9537,11 +9522,8 @@ public sealed partial class DatabaseService
                 UPDATE Characters
                 SET Experience = $experience,
                     Level = $level,
-                    Strength = MIN(65535, MAX(0, Strength) + $levels),
-                    Vitality = $vitality,
-                    Agility = MIN(65535, MAX(0, Agility) + $levels),
-                    Intelligence = $intelligence,
-                    Luck = MIN(65535, MAX(0, Luck) + $levels),
+
+
                     MaxHp = $maxHp,
                     MaxMp = $maxMp,
                     CurrentHp = CASE WHEN $points > 0 THEN $maxHp ELSE MIN(CurrentHp, $maxHp) END,
@@ -9552,7 +9534,7 @@ public sealed partial class DatabaseService
                 """;
             update.Parameters.AddWithValue("$experience", experience);
             update.Parameters.AddWithValue("$level", level);
-            update.Parameters.AddWithValue("$points", gainedLevels * CharacterProgression.AttributePointsPerLevel);
+            update.Parameters.AddWithValue("$points", gainedLevels);
             update.Parameters.AddWithValue("$levels", gainedLevels);
             update.Parameters.AddWithValue("$vitality", vitality);
             update.Parameters.AddWithValue("$intelligence", intelligence);
@@ -10187,97 +10169,6 @@ public sealed partial class DatabaseService
         return (true, string.Empty);
     }
 
-    public async Task<(bool Success, string Error, CharacterRecord? Character)> AllocateAttributeAsync(
-        long characterId,
-        CharacterAttribute attribute,
-        int amount,
-        CancellationToken cancellationToken = default)
-    {
-        if (amount <= 0)
-            return (false, "分配点数必须大于零。", await GetCharacterByIdAsync(characterId, cancellationToken));
-
-        var column = attribute switch
-        {
-            CharacterAttribute.Strength => "Strength",
-            CharacterAttribute.Vitality => "Vitality",
-            CharacterAttribute.Agility => "Agility",
-            CharacterAttribute.Intelligence => "Intelligence",
-            CharacterAttribute.Luck => "Luck",
-            _ => throw new ArgumentOutOfRangeException(nameof(attribute))
-        };
-
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction();
-        int points;
-        int level;
-        int vitality;
-        int intelligence;
-        int currentHp;
-        int currentMp;
-        int oldMaxHp;
-        int oldMaxMp;
-        await using (var query = connection.CreateCommand())
-        {
-            query.Transaction = transaction;
-            query.CommandText = "SELECT AttributePoints, Level, Vitality, Intelligence, CurrentHp, CurrentMp, MaxHp, MaxMp FROM Characters WHERE Id = $id";
-            query.Parameters.AddWithValue("$id", characterId);
-            await using var reader = await query.ExecuteReaderAsync(cancellationToken);
-            if (!await reader.ReadAsync(cancellationToken))
-                return (false, "角色不存在。", null);
-            points = reader.GetInt32(0);
-            level = reader.GetInt32(1);
-            vitality = reader.GetInt32(2);
-            intelligence = reader.GetInt32(3);
-            currentHp = reader.GetInt32(4);
-            currentMp = reader.GetInt32(5);
-            oldMaxHp = reader.GetInt32(6);
-            oldMaxMp = reader.GetInt32(7);
-        }
-        if (points < amount)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return (false, "可分配属性点不足。", await GetCharacterByIdAsync(characterId, cancellationToken));
-        }
-
-        if (attribute == CharacterAttribute.Vitality)
-            vitality = checked(vitality + amount);
-        if (attribute == CharacterAttribute.Intelligence)
-            intelligence = checked(intelligence + amount);
-        var maxHp = CharacterProgression.CalculateMaxHp(level, vitality);
-        var maxMp = CharacterProgression.CalculateMaxMp(level, intelligence);
-        currentHp = Math.Clamp(currentHp + Math.Max(0, maxHp - oldMaxHp), 0, maxHp);
-        currentMp = Math.Clamp(currentMp + Math.Max(0, maxMp - oldMaxMp), 0, maxMp);
-
-        await using (var update = connection.CreateCommand())
-        {
-            update.Transaction = transaction;
-            update.CommandText = $"""
-                UPDATE Characters
-                SET {column} = {column} + $amount,
-                    AttributePoints = AttributePoints - $amount,
-                    MaxHp = $maxHp,
-                    MaxMp = $maxMp,
-                    CurrentHp = $currentHp,
-                    CurrentMp = $currentMp,
-                    LastSavedAt = $now
-                WHERE Id = $id AND AttributePoints >= $amount
-                """;
-            update.Parameters.AddWithValue("$amount", amount);
-            update.Parameters.AddWithValue("$maxHp", maxHp);
-            update.Parameters.AddWithValue("$maxMp", maxMp);
-            update.Parameters.AddWithValue("$currentHp", currentHp);
-            update.Parameters.AddWithValue("$currentMp", currentMp);
-            update.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
-            update.Parameters.AddWithValue("$id", characterId);
-            if (await update.ExecuteNonQueryAsync(cancellationToken) != 1)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return (false, "属性点更新冲突，请刷新角色后重试。", await GetCharacterByIdAsync(characterId, cancellationToken));
-            }
-        }
-        await transaction.CommitAsync(cancellationToken);
-        return (true, string.Empty, await GetCharacterByIdAsync(characterId, cancellationToken));
-    }
 
     public async Task<int> DeleteCharacterAsync(long accountId, CancellationToken cancellationToken = default)
     {
@@ -10297,13 +10188,13 @@ public sealed partial class DatabaseService
             return (false, "角色名长度需要在 1-16 个字符之间，且不能包含控制字符。");
         if (character.Gender is < 0 or > 1)
             return (false, "性别字段只能是 0（女）或 1（男）。");
-        if (character.Level is < 1 or > 99 || character.PetLevel is < 1 or > byte.MaxValue)
-            return (false, "角色等级需要在 1-99，宠物等级需要在 1-255。");
+        if (character.Level is < 1 or > CharacterProgression.MaximumLevel || character.PetLevel is < 1 or > byte.MaxValue)
+            return (false, "角色等级需要在 1-200，宠物等级需要在 1-255。");
         if (character.PetVariant is < 0 or > 3)
             return (false, "宠物类型只能是 0（无）或 1-3。");
-        if (character.Experience is < 0 or > uint.MaxValue
+        if ((character.Experience < 0 || character.Experience > CharacterProgression.MaximumExperience || CharacterProgression.CalculateLevel(character.Experience) != character.Level)
             || character.PetExperience is < 0 or > uint.MaxValue)
-            return (false, "角色经验和宠物经验需要在 0-4294967295 之间。");
+            return (false, "人物等级与KR累计经验必须一致且不超过200级；宠物经验仍为32位。");
         if (character.AttributePoints is < 0 or > ushort.MaxValue
             || character.Strength is < 0 or > ushort.MaxValue
             || character.Vitality is < 0 or > ushort.MaxValue
@@ -11533,7 +11424,7 @@ public sealed partial class DatabaseService
 
     private static CharacterRecord ReadCharacter(SqliteDataReader reader)
     {
-        return new CharacterRecord
+        var character = new CharacterRecord
         {
             Id = reader.GetInt64(0),
             AccountId = reader.GetInt64(1),
@@ -11594,8 +11485,11 @@ public sealed partial class DatabaseService
             DefenseFlat = checked((ushort)reader.GetInt32(56)),
             InitialAttackMode = checked((byte)reader.GetInt32(57)),
             PureNewProfile = reader.GetInt64(58) != 0,
-            SkillPointsMeat = checked((ushort)reader.GetInt32(59))
+            SkillPointsMeat = checked((ushort)reader.GetInt32(59)),
+            CurveVersion = reader.GetInt32(60)
         };
+        CharacterProgression.Validate(character.Level, character.Experience, character.CurveVersion);
+        return character;
     }
 
     private static async Task<List<CharacterItemRecord>> GetCharacterItemsAsync(

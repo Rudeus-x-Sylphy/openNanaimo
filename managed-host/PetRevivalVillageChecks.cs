@@ -121,7 +121,7 @@ internal static class PetRevivalVillageChecks
             Id = 77,
             Name = "CarrierCheck",
             Level = 10,
-            Experience = 1000,
+            Experience = CharacterProgression.ExperienceRequiredForLevel(10),
             MaxHp = 2000,
             CurrentHp = 0,
             MaxMp = 800,

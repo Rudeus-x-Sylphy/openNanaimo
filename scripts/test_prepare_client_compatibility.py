@@ -1,4 +1,4 @@
-﻿"""Regression tests for safe, hash-free client compatibility derivation."""
+"""Regression tests for safe, hash-free client compatibility derivation."""
 import importlib.util
 import itertools
 import contextlib
@@ -80,8 +80,12 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         # helper. Keep a synthetic backing section for the exact-site tests.
         (0x740000, 0x10000, 0x149400),
         (0x2F4000, 0x10000, 0x159400),
+        (0x370000, 0x10000, 0x179400),
+        (0xF0000, 0x10000, 0x189400), # level-200 C5AA entry comparison
+        (0x540000, 0x10000, 0x199400), # level-keyed item resource table
+        (0x2D0000, 0x10000, 0x1A9400), # three-digit actor nameplate
     ]
-    data = bytearray(0x179400)
+    data = bytearray(0x1B9400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -103,6 +107,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         put(va, old)
     put(compat.dungeon7_visuals.MINIMAP_VA, compat.dungeon7_visuals.MINIMAP_OLD)
     for _, va, old, _ in compat.dungeon_experience_compat.patch_sites():
+        put(va, old)
+    for _, va, old, _ in compat.level200_compat.patch_sites():
         put(va, old)
     for _, va, old, _ in compat.BOSS_HEALTH_DISPLAY_SITES:
         put(va, old)
@@ -129,6 +135,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
     put(compat.REVIVAL_HUD_CAVE_VA, revival_cave)
     put(compat.SETTLEMENT_OTHER_AUTO_GATE_VA, compat.SETTLEMENT_OTHER_AUTO_GATE_OLD)
     for _, va, old, _ in compat.SETTLEMENT_MEMBER_TOWN_SITES:
+        put(va, old)
+    for _, va, old, _ in compat.dungeon_result_compat.continuation_sites():
         put(va, old)
     put(compat.dungeon_result_compat.HOOK_VA, compat.dungeon_result_compat.HOOK_OLD)
     put(compat.dungeon_result_compat.CAVE_VA, compat.dungeon_result_compat.CAVE_OLD)

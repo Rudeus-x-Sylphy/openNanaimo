@@ -265,13 +265,14 @@ static unsigned captured_len,sends,broadcasts,hans_calls;
 static unsigned multiplayer_room_slot_idx(unsigned i){return i;}
 static struct boss_hp_sync_context g_boss_context;
 static struct boss_hp_sync_context*multiplayer_shared_boss_context(void){return &g_boss_context;}
-static unsigned combat_economy_boss_total_hp(const struct boss_hp_sync_context*c){(void)c;return 15000u;}
+static unsigned test_boss_hp=15000u;
+static unsigned combat_economy_boss_total_hp(const struct boss_hp_sync_context*c){(void)c;return test_boss_hp;}
 static void teamplay_score_snapshot(unsigned*s){s[0]=9480;s[1]=0;s[2]=0;}
 static unsigned combat_economy_rating(unsigned score,unsigned cleared,const struct boss_hp_sync_context*ctx){unsigned step=ctx->dungeon==2u?16000u:10000u,grade;if(!cleared)return 0u;grade=score/step;return grade>5u?5u:grade;}
 static void mkpkt(char*p,unsigned op,int len,int flags){(void)flags;memset(p,0,4096);boss_hp_sync_put16((unsigned char*)p,4,(unsigned)len);boss_hp_sync_put16((unsigned char*)p,6,op);}
 static void stable_put32(char*p,unsigned off,unsigned value){boss_hp_sync_put32((unsigned char*)p,off,value);}
-static unsigned teamplay_boss_final_hans_commit(unsigned hp){assert(hp==15000u);hans_calls++;return 300u;}
-static int combat_economy_reward_hp_eligible(unsigned hp){return hp>=200u;}
+static unsigned teamplay_boss_final_hans_commit(unsigned hp){assert(hp==test_boss_hp);hans_calls++;return hp/100u;}
+
 static void sendbuf(SOCKET c,const char*p,int len){(void)c;assert(len<=64);memcpy(captured,p,len);captured_len=(unsigned)len;sends++;}
 static void multiplayer_broadcast_raw(unsigned op,const unsigned char*p,int len){assert(op==0xD012 && captured_len==(unsigned)len && !memcmp(captured,p,len));broadcasts++;}
 static long sec(void){return 0;}
@@ -301,11 +302,24 @@ int main(void){
     r.hp=0;r.first_terminal=1u;r.final_terminal=1u;
     send_d012_boss_hp_sync_score(0,&r,0);
     assert(captured_len==64u && hans_calls==1u && card_calls==1u);
+    assert(boss_hp_sync_get32(captured,0x1C)==150u);
     for(i=0;i<4;i++)assert(captured[0x24+i]==20u && captured[0x3C+i]==0u);
     for(i=0x2Cu;i<0x3Cu;i++)assert(captured[i]==0u);
     r.first_terminal=0;r.repeated_terminal=1;
     send_d012_boss_hp_sync_score(0,&r,0);
     assert(captured_len==64u && hans_calls==1u && card_calls==1u && sends==6u && broadcasts==6u);
+    /* Low-HP Boss rewards: preserve the card even when floor(HP/100)==0. */
+    {static const unsigned hp[]={1u,99u,100u,106u,199u,200u};unsigned k;
+     for(k=0;k<sizeof(hp)/sizeof(hp[0]);k++){
+      test_boss_hp=hp[k];memset(&r,0,sizeof(r));r.first_terminal=1u;r.final_terminal=1u;
+      send_d012_boss_hp_sync_score(0,&r,0);
+      assert(boss_hp_sync_get32(captured,0x1C)==hp[k]/100u);
+      assert(boss_hp_sync_get32(captured,0x20)==13000077u);
+      r.first_terminal=0u;r.repeated_terminal=1u;send_d012_boss_hp_sync_score(0,&r,0);
+      assert(boss_hp_sync_get32(captured,0x1C)==0u && boss_hp_sync_get32(captured,0x20)==0u);
+     }
+     assert(hans_calls==7u && card_calls==7u);
+    }
     return 0;
 }
 """

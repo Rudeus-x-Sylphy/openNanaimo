@@ -81,8 +81,25 @@ public sealed partial class NetworkAdapterService
         const ushort family = 0xC3E8;
         session.InventoryAcquisitions.Track(family, CardNoticeCodes(cards));
         var pending = session.InventoryAcquisitions.PendingCodes(family);
-        var category = payload[2];
+        var mode = BinaryPrimitives.ReadUInt16LittleEndian(payload);
+        cards = cards.Where(card => CardCatalog.MatchesAlbumMode(card.CardCode, mode)).ToArray();
+        var category = mode == 20 ? (byte)3 : payload[2];
         var page = payload[3];
+        if (BinaryPrimitives.ReadUInt16LittleEndian(payload) == 50)
+        {
+            foreach (var card in cards)
+            {
+                if (card.Quantity == 0 || !pending.Contains(card.CardCode)
+                    || card.CardCode is < 22_000_001 or > 22_000_020) continue;
+                payload[44 + (int)((card.CardCode - 22_000_001) / 10)] = 1;
+                if (ExperienceCardPolicy.TryGetListSlot(card.CardCode, page, out var slot))
+                    payload[24 + slot] = 1;
+            }
+            session.InventoryAcquisitions.Acknowledge(family,
+                cards.Where(card => ExperienceCardPolicy.TryGetListSlot(card.CardCode, page, out _))
+                    .Select(card => card.CardCode));
+            return;
+        }
         foreach (var card in cards)
         {
             if (card.Quantity == 0 || card.Category != category || !pending.Contains(card.CardCode)) continue;

@@ -90,6 +90,21 @@ internal static class ArenaProtocol
     public const int GameEventRequestLength = 20;
     public const int GameEventResponseLength = 36;
 
+    internal static byte[] BuildPlayerHitResult(ushort kind, ushort objectId, ushort collisionIndex,
+        byte attackerSlot, byte victimSlot, ushort remainingHp, ushort appliedDamage)
+    {
+        var payload = new byte[16];
+        BinaryPrimitives.WriteUInt16LittleEndian(payload, kind);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2), objectId);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(4), collisionIndex);
+        payload[6] = attackerSlot; payload[7] = victimSlot;
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(8), remainingHp);
+        payload[10] = remainingHp == 0 ? (byte)200 : (byte)100;
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(12), appliedDamage);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(14), appliedDamage);
+        return payload;
+    }
+
     private static readonly Encoding Gbk = CreateGbkEncoding();
 
     public static bool TryParseCreateRequest(

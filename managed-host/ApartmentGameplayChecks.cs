@@ -425,7 +425,7 @@ internal static class ApartmentGameplayChecks
             var sessionId = (string)Get(_sessions[who], "SessionId")!;
             foreach (var level in new[] { 1, 2, 3 })
             {
-                await Sql($"UPDATE Characters SET TutorialCompleted=1,Level={level},Hans=1000 WHERE Id={character.Id};"
+                await Sql($"UPDATE Characters SET TutorialCompleted=1,Level={level},Experience={CharacterProgression.ExperienceRequiredForLevel(level)},Hans=1000 WHERE Id={character.Id};"
                     + $"DELETE FROM CharacterStoryGuides WHERE CharacterId={character.Id} AND GuideId IN (0,5);"
                     + $"DELETE FROM CharacterItems WHERE CharacterId={character.Id} AND ItemCode=46000008;");
                 var entry = One(await Send(service, who, 0xC38D, Move(1)), 0xC38E);

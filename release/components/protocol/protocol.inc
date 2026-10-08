@@ -821,6 +821,7 @@ static void send_c3e8_card_page(SOCKET c,unsigned type,unsigned family,unsigned 
     unsigned learned_omit_log=0u,learned_explicit_log=0u;
 #endif
     mkpkt(p,0xC3E8,0x8C,1);p[8]=(char)type;p[9]=0;p[0x0A]=(char)family;p[0x0B]=(char)page;
+    if(type==20u||type==40u||type==50u){for(slot=0;slot<10u;slot++){unsigned code=type==40u?((page>=1u&&page<=2u)?CARD_SP_CODE_MIN+(page-1u)*10u+slot:0u):card_coord_code(type==50u?5u:3u,page,slot);p[0x0C+slot]=(char)(code?card_inventory_count(code):0u);}}
     if(type==10u){for(slot=0;slot<20u;slot++){unsigned code=card_coord_code(family,page,slot);unsigned count=code?card_inventory_count(code):0u;p[0x0C+slot]=(char)(count>255u?255u:count);p[0x20+slot]=0;}}
     else if(type==40u){
         unsigned base=(page==2u)?8u:0u,rec=0u,i;

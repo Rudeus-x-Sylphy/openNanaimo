@@ -54,7 +54,7 @@ internal static class ApartmentGuideLifecycleChecks
             await using (var sql = new SqliteConnection($"Data Source={db.DatabasePath};Pooling=False"))
             {
                 await sql.OpenAsync(); await using var command = sql.CreateCommand();
-                command.CommandText = "UPDATE Characters SET TutorialCompleted=1,Level=4,Hans=1000 WHERE Id=$id";
+                command.CommandText = $"UPDATE Characters SET TutorialCompleted=1,Level=4,Experience={CharacterProgression.ExperienceRequiredForLevel(4)},Hans=1000 WHERE Id=$id";
                 command.Parameters.AddWithValue("$id", character.Id); await command.ExecuteNonQueryAsync();
             }
             character = (await db.GetCharacterAsync(account))!;

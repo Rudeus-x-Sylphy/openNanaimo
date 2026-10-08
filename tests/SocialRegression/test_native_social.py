@@ -42,10 +42,10 @@ def receive(connection, wanted, captured=None):
 
 
 def seed(uid, ring, partner=0):
-    state = bytearray(5124)
-    fields = {0: 1, 4: uid, 8: 1, 16: 2000, 20: 10, 24: 1000, 28: 10,
+    state = bytearray(5704)
+    fields = {0: 4, 4: uid, 8: 1, 16: 2000, 20: 10, 24: 1000, 28: 10,
               88: 6, 136: 2026092901, 224: 14000001, 228: 1,
-              1952: 1, 1956: 14000001, 1960: 3, 3996: ring, 5116: 1, 5120: partner}
+              1952: 1, 1956: 14000001, 1960: 3, 3996: ring, 5116: 1, 5120: partner, 5124: 4, 5128: 5704, 5132: 3}
     for offset, value in fields.items():
         struct.pack_into("<I", state, offset, value)
     for handle in range(1, 4):
@@ -133,7 +133,7 @@ int main(void) {
                         connection.settimeout(8)
                         connection.sendall(frame(0xF100, seed(uid, ring)))
                         imported = receive(connection, 0xF102)
-                        self.assertEqual(struct.unpack_from("<I", imported, 8)[0], 1)
+                        self.assertEqual(struct.unpack_from("<I", imported, 8)[0], 4)
                         self.assertEqual(struct.unpack_from("<I", imported, 8 + 3996)[0], ring)
                     for connection, uid, ring, recovery in ((first, 11, 43000001, 360), (second, 12, 43000003, 600), (third, 13, 43000002, 450)):
                         connection.sendall(frame(0xCF93, bytes(4)))

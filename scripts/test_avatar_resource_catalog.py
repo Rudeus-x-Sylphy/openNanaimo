@@ -18,9 +18,9 @@ class AvatarResourceCatalogTests(unittest.TestCase):
         expected = render(resource)
         actual = (ROOT / 'release/components/inventory_instances/avatar_resource_data.inc').read_text('utf8')
         self.assertEqual(actual, expected)
-        self.assertIn('{10110337u,0u,200u,0u,300u}', actual)
-        self.assertIn('{10110062u,930u,0u,155u,0u}', actual)
-        self.assertNotIn('{10150103u,', actual)  # butterfly wings: defense, not HP or MP
+        self.assertIn('{10110337u,0u,200u,0u,300u,0u,300u}', actual)
+        self.assertIn('{10110062u,930u,0u,155u,0u,0u,0u}', actual)
+        self.assertIn('{10150103u,0u,0u,0u,0u,3u,0u}', actual)  # butterfly wings: flat defense
 
 
 if __name__ == '__main__':

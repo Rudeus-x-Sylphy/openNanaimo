@@ -18,6 +18,12 @@ internal static partial class Program
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         WireIdentityAllocator.Reset();
+        if (args.Contains("--experience-bonuses-only"))
+        {
+            await CheckExperienceBonusesAsync();
+            Console.WriteLine($"EXPERIENCE_BONUSES_PASS checks={_checks}");
+            return;
+        }
         if (args.Contains("--encounters-only"))
         {
             await CheckCoupleEncountersAsync();
@@ -25,6 +31,8 @@ internal static partial class Program
             Console.WriteLine($"COUPLE_ENCOUNTER_PASS checks={_checks}");
             return;
         }
+        await CheckExperienceBonusesAsync();
+        WireIdentityAllocator.Reset();
         await CheckNativeInventoryAsync();
         CheckPolicies();
         CheckChatEncoding();

@@ -1,0 +1,42 @@
+[
+  {
+    "va": 5497144,
+    "target": "c7855cffffff3f000000",
+    "operation": "level200_town_title_mask"
+  },
+  {
+    "va": 5497178,
+    "target": "c1e90c",
+    "operation": "level200_town_level_shift"
+  },
+  {
+    "va": 5497181,
+    "target": "81e1ff000000",
+    "operation": "level200_town_level_mask"
+  },
+  {
+    "va": 5129824,
+    "target": "3dc80000000f8e28b80100e98fb70100cccccccccccccccccccccccccccccccc",
+    "operation": "level200_entry_code"
+  },
+  {
+    "va": 5242358,
+    "target": "e96548feff90909090",
+    "operation": "level200_entry_hook"
+  },
+  {
+    "va": 9760937,
+    "target": "c745e4c8000000",
+    "operation": "level200_item_growth_table"
+  },
+  {
+    "va": 7191056,
+    "target": "83f8647c0b",
+    "operation": "level200_nameplate_digits"
+  },
+  {
+    "va": 7191064,
+    "target": "83c115",
+    "operation": "level200_nameplate_gap"
+  }
+]

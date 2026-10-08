@@ -37,7 +37,7 @@ internal static class NativeDungeonExperienceChecks
             var state = NativeDungeonState.Create(character, [], []);
             await db.RestoreNativeDungeonProgressAsync(id, state, token);
             var imported = new NativeDungeonState(state.Bytes.ToArray());
-            Put(imported.Bytes, 8, 9); Put(imported.Bytes, 12, 9999);
+            imported.SetProgression(9, CharacterProgression.ExperienceRequiredForLevel(9));
             var result = Result((ushort)id, 100);
             var emitResult = true;
             byte[]? capturedKill = null;
@@ -182,7 +182,7 @@ internal static class NativeDungeonExperienceChecks
             await Send(0xCF87,[0,0,0,0]);
             await Expect(2500,"captured final kill precedes independent terminal award");
             var finalWithKill=Drain(session).Single();
-            Check(U32(finalWithKill,24)==1000&&U32(finalWithKill,28)==2500&&finalWithKill[22]==2,
+            Check(U32(finalWithKill,24)==1000&&U32(finalWithKill,28)==2500&&finalWithKill[22]==CharacterProgression.CalculateLevel(2500),
                 "CF88 added field excludes already-earned live kill EXP");
             await CheckPetBoundary(db, root, token);
             Console.WriteLine("NATIVE_DUNGEON_EXPERIENCE_HOST_PASS");

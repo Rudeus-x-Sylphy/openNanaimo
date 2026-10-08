@@ -595,9 +595,14 @@ static int boss_hp_sync_apply_external_damage(struct boss_hp_sync_context*c,unsi
 #define BOSS_HP_SYNC_CARD_POOLS 0
 #endif
 #if BOSS_HP_SYNC_CARD_POOLS
+static unsigned pet_crafting_pet_economy_percent(unsigned effect);
+static unsigned flight_items_flight_card_percent(void);
 static unsigned boss_hp_sync_terminal_card(const struct boss_hp_sync_result*r){
     const struct card_cn_pool*pool=r?card_cn_boss_lookup(r->card_pool_hd,r->card_pool_key):0;
-    unsigned card=card_cn_drop_create(1u,r?r->stage:0u,pool,0u);
+    /* Same active-player gems/clover and capped total probability as ordinary
+       targets. Final-terminal eligibility and the boss ledger stay separate. */
+    unsigned basis_points=card_cn_basis_points(card_cn_total_rate(pool),pet_crafting_pet_economy_percent(7u),flight_items_flight_card_percent());
+    unsigned card=card_cn_drop_create(1u,r?r->stage:0u,pool,basis_points);
     printf("  [CARD_CN] boss-terminal key=%u pool=%s code=%u\n",r?r->card_pool_key:0u,pool?pool->name:"<none>",card);fflush(0);
     return card;
 }

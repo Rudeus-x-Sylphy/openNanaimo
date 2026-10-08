@@ -1039,10 +1039,11 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
 #if TEAMPLAY_FEATURE_BOSS_D011_EXACT_PON_SOURCE
                         else if(boss_attack.have_value&&(boss_attack.provenance==MONSTER_HP_ATTACK_PON_CANDIDATE||boss_attack.provenance==MONSTER_HP_ATTACK_PON_ONE_PAST_ALIAS)){apply_attack=(unsigned)boss_attack.value;apply_have=1u;}
 #endif
-                        /* SHOP_PURCHASE_BASE original-client correlation: D011 PON attack minus the
-                           authored component basis reproduces all unclamped local-energy
-                           deltas. PET-gem/flight adjustments are already reflected by the
-                           client attack path and must not be applied a second time here. */
+                        /* Retained SHOP_PURCHASE_BASE correlation is profile-scoped, not
+                           proof that selected attack gems are included in every PON source.
+                           Fixed owner/source candidates do not read selected gems here.
+                           Apply the independent character modifier and flight policy once;
+                           defer any gem formula until the client source chain is closed. */
                         if(apply_have)apply_attack=multiplayer_combat_profile_adjust_attack(apply_attack);
 #if TEAMPLAY_FEATURE_BOSS_RESOURCE_DAMAGE_SYNC
                         printf("  [GS %d] BOSS_ATTACK MULTIPLAYER_COMBAT owner=%u source=%u base_attack=%d attack_prov=%u projectile_verified=%d policy=%s resource=%s adapter_attack=%u configured_modifier=%u flight_pct=%u pet_gem_auto_applied=0 generic_apply_candidate=%u boss_hp_policy=RESOURCE_HP_ATTACK_MINUS_BASIS trigger=D011-only\n",port,boss_owner,boss_source,boss_attack.value,boss_attack.provenance,projectile_verified,projectile_policy_label(&boss_attack,projectile_verified),boss_attack.resource,apply_attack,g_profile_attack_modifier,item_effects_flight_attack_percent(),(!boss_ctx.authored_multimode&&apply_have)?1u:0u);fflush(0);
@@ -1124,7 +1125,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                             }
                             /* Original v2 first/mid-stage captures: CF8B/12
                                {real=0,show=0,mode=2} -> CF8C/48 with the same
-                               stage bytes and room-owner UID at +0x2C. Re-arm
+                               stage bytes and difficulty WORD at +0x2C. Re-arm
                                settlement for the next battle epoch; CF7F owns
                                the actual combat/Boss/ordinary-target reset. */
                             settlement_sent=0;
@@ -1138,8 +1139,14 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                             if(dungeon_room_phase==ROOM_READY){int same_pending=post_reset_pending && post_reset_epoch==dungeon_room_epoch && post_reset_real==effective_real && post_reset_show==reset_show && post_reset_mode==reset_mode;if(!same_pending){int superseded=post_reset_pending;post_reset_pending=1;post_reset_seen_c587=0;post_reset_seen_cf70=0;post_reset_real=effective_real;post_reset_show=reset_show;post_reset_mode=reset_mode;post_reset_epoch=dungeon_room_epoch;printf("  [GS %d] LATE_REARM armed requested=%u effective=%u show=%u mode=%u authored_super=%d epoch=%u superseded=%d phase=READY\n",port,reset_real,effective_real,reset_show,reset_mode,authored_super,dungeon_room_epoch,superseded);fflush(0);}else{printf("  [GS %d] LATE_REARM duplicate request retains pending effective=%u show=%u mode=%u seen=%d/%d epoch=%u\n",port,effective_real,reset_show,reset_mode,post_reset_seen_c587,post_reset_seen_cf70,dungeon_room_epoch);fflush(0);}}
                             printf("  [GS %d] GOT CF8B reset requested=%u effective=%u show=%u mode=%u authored_super=%d advance_dungeon=%d dungeon=%u -> CF8C difficulty=current\n",port,reset_real,effective_real,reset_show,reset_mode,authored_super,advance_dungeon,current_dungeon); fflush(0);
 #if TEAMPLAY_FEATURE_CF99_SUPER_REARM_CLEAR
-                            /* Every participant enters the same continuation controller, including fallen members. */
-                            sleep(0);multiplayer_broadcast_cf6d_super_rearm();
+                            /* CF6D is not a pure flag clear: it sends CFD1, whose
+                               reply requests another CF70 alongside the CF8C
+                               reload. A late local CF71 overwrites the entry
+                               position. Only observed CF99 writers need +7
+                               cleared; death alone does not authorize re-entry. */
+                            if(multiplayer_cf99_surrender_room_pending()){
+                                sleep(0);multiplayer_broadcast_cf6d_super_rearm();
+                            }
 #endif
                             teamplay_continuation_arm_room(effective_real,reset_show,current_difficulty,current_dungeon,reset_mode);
                             sleep(0); multiplayer_broadcast_reset(effective_real,reset_show,current_difficulty,current_dungeon);

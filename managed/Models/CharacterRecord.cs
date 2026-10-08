@@ -47,21 +47,28 @@ public sealed class CharacterRecord
     public long Cash { get; set; }
     public int Level { get; set; } = 1;
     public long Experience { get; set; }
+    public int CurveVersion { get; set; } = CharacterProgression.CurveVersion;
     public byte DungeonGrade { get; set; }
     // Native option[0]: 0 hidden, 1 alternate title, 2 couple title.
     // Missing legacy settings use the observed retail default, not an account UID.
     public ushort TownTitleDisplayMode { get; set; } = 2;
     public ushort TownOptionFlags { get; set; }
+    [System.ComponentModel.Browsable(false)] // Legacy storage only; not client stats.
     public int AttributePoints { get; set; }
+    [System.ComponentModel.Browsable(false)] // Legacy storage only; not client stats.
     public int Strength { get; set; } = 5;
+    [System.ComponentModel.Browsable(false)] // Legacy storage only; not client stats.
     public int Vitality { get; set; } = 5;
+    [System.ComponentModel.Browsable(false)] // Legacy storage only; not client stats.
     public int Agility { get; set; } = 5;
+    [System.ComponentModel.Browsable(false)] // Legacy storage only; not client stats.
     public int Intelligence { get; set; } = 5;
+    [System.ComponentModel.Browsable(false)] // Legacy storage only; not client stats.
     public int Luck { get; set; } = 5;
     public int MaxHp { get; set; } = CharacterProgression.InitialMaximumHp;
-    public int MaxMp { get; set; } = 100;
+    public int MaxMp { get; set; } = CharacterProgression.InitialMaximumMp;
     public int CurrentHp { get; set; } = CharacterProgression.InitialMaximumHp;
-    public int CurrentMp { get; set; } = 100;
+    public int CurrentMp { get; set; } = CharacterProgression.InitialMaximumMp;
     public int SpawnMapId { get; set; } = 1;
     public int SpawnX { get; set; } = 320;
     public int SpawnY { get; set; } = 240;
@@ -92,12 +99,9 @@ public sealed class CharacterRecord
     public string ManaStatus => $"{CurrentMp}/{MaxMp}";
     public string MapStatus => $"{CurrentMapId}/{CurrentTownPage} ({PositionX}, {PositionY})";
     public string ChannelStatus => CurrentChannelId?.ToString() ?? "-";
-    public int Attack => CharacterCombatProgression.CalculateAttack(Strength, Agility);
-    public int MagicAttack => 10 + Intelligence * 3 + Luck;
-    public int Defense => CharacterCombatProgression.CalculateDefense(Vitality, Strength);
-    public int MagicDefense => 5 + Intelligence * 2 + Vitality;
-    public int MoveSpeed => 100 + Agility * 2;
-    public int CriticalBasisPoints => Math.Min(5000, 500 + Agility * 20 + Luck * 30);
+    // Real client combat carriers; legacy RPG columns above are storage-only.
+    public int Attack => (int)Math.Min(int.MaxValue, CharacterCombatProgression.NativeAttack(Level, AttackModifier));
+    public int Defense => CharacterCombatProgression.NativeDefense(Level, DefenseFlat);
 }
 
 public sealed class CharacterQuickSlotRecord

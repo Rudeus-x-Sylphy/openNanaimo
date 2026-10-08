@@ -25,7 +25,7 @@ class DungeonResultEntryTests(unittest.TestCase):
 
     @unittest.skipUnless(uc, 'x86 execution engine required')
     def test_result_and_observer_entry_preserves_rows_registers_and_fresh_input(self):
-        for mode in (0,1):
+        for mode in (0,1,2):
             for page in (0,3,4,6,10):
                 with self.subTest(mode=mode,page=page):
                     m=uc.Uc(uc.UC_ARCH_X86,uc.UC_MODE_32)
@@ -56,7 +56,7 @@ class DungeonResultEntryTests(unittest.TestCase):
                         machine.reg_write(x86.UC_X86_REG_ESP,sp+4+extra);machine.reg_write(x86.UC_X86_REG_EIP,ret)
                     m.hook_add(uc.UC_HOOK_CODE,intercept)
                     m.emu_start(recipe.CAVE_VA,end+1,count=400)
-                    eligible=mode==0 and page in (4,6)
+                    eligible=mode<=1 and page in (4,6)
                     self.assertEqual(get(manager+0x10f0),6 if eligible else page)
                     self.assertEqual(bytes(m.mem_read(keyboard+268,256)),current if eligible else previous)
                     self.assertEqual(bytes(m.mem_read(keyboard+544,16)),mouse if eligible else b'\xEE'*16)

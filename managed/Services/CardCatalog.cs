@@ -62,6 +62,15 @@ public static class CardCatalog
         return true;
     }
 
+    public static bool MatchesAlbumMode(uint code, ushort mode) => mode switch
+    {
+        10 => code is >= 13000001 and <= 13000420,
+        20 => code is >= 50000001 and <= 50000100,
+        40 => IsSkillPointCard(code),
+        50 => code is >= 22000001 and <= 22000020,
+        _ => false
+    };
+
     public static bool IsGoldPowder(uint cardCode)
         => cardCode is >= 13000201 and <= 13000210 or >= 13000411 and <= 13000420;
 
@@ -252,7 +261,7 @@ public static class CardCatalog
     {
         var result = new List<CardCatalogEntry>(530);
         // ddakg._D4 has two 210-record ordinary albums; the last ten rows in
-        // each are gold-powder synthesis outputs and are excluded from drops.
+        // each are gold-powder cards; native CSV drop eligibility is independent.
         LoadFixedRecords(result, NormalResourceName, "PICTURECARD", 3, 17, 210, 1, 0, 1, 20, 12, 5, 6,
             dropRegionField: 13, episodeField: 14, dropTypeField: 8, sourceMonstersField: 15, mapNameField: 16,
             monsterImageField: 11, cardTypeField: 7);
@@ -260,14 +269,37 @@ public static class CardCatalog
             dropRegionField: 13, episodeField: 14, dropTypeField: 8, sourceMonstersField: 15, mapNameField: 16,
             monsterImageField: 11, cardTypeField: 7, firstRecord: 210);
         LoadFixedRecords(result, EventResourceName, "EVENTDDAKGI", 2, 12, 100, 3, 0, 1, 10, 8, null, null, @"images\ddakg_images\");
-        // Sddakg declares ten fixed-layout VIP cards in its header. Later
-        // reward-list records are variable length and are not card-book slots.
+        // Sddakg has two distinct blocks: ten 18-field experience rows and
+        // ten 36-field lucky rows (16 metadata fields + ten reward/weight pairs).
         // Sddakg._D35 fields 4 and 5 are the native special-card shop's
         // purchasable flag and Cash price. Field 4 disables the tenth row.
         LoadFixedRecords(result, SpecialResourceName, "SPECIALDDAKGI", 4, 18, 10, 3, 0, 2, 10, 13, null, null,
             specialShopPurchasableField: 4, specialShopPriceField: 5);
+        LoadLuckyCardEntries(result);
         LoadSkillPointCardEntries(result);
         return result;
+    }
+
+    private static void LoadLuckyCardEntries(List<CardCatalogEntry> result)
+    {
+        var fields = DecryptFields(SpecialResourceName);
+        const int countOffset = 4 + 10 * 18;
+        const int width = 36;
+        if (fields.Length < countOffset + 1 + 10 * width || fields[countOffset] != "10")
+            throw new InvalidDataException("Invalid lucky-card catalog block.");
+        for (var i = 0; i < 10; i++)
+        {
+            var offset = countOffset + 1 + i * width;
+            var code = uint.Parse(fields[offset], CultureInfo.InvariantCulture);
+            if (code != 22000011u + i || fields[offset + 15] != "2")
+                throw new InvalidDataException("Invalid lucky-card identity or type.");
+            result.Add(new CardCatalogEntry
+            {
+                CardCode = code, Name = fields[offset + 2], Category = 3,
+                Page = 2, Slot = (byte)i, IconPath = fields[offset + 13]
+                // Reward activation is not an experience-card entitlement.
+            });
+        }
     }
 
     private static void LoadSkillPointCardEntries(List<CardCatalogEntry> result)

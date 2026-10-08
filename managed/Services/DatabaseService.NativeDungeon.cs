@@ -236,11 +236,25 @@ public sealed partial class DatabaseService
             read.CommandText = "SELECT State FROM NativeDungeonProfiles WHERE CharacterId=$id";
             read.Parameters.AddWithValue("$id", characterId);
             state = await read.ExecuteScalarAsync(token) is byte[] saved
-                && NativeDungeonState.IsSupportedSize(saved.Length)
                 ? new NativeDungeonState(saved).Bytes.ToArray()
                 : new byte[NativeDungeonState.Size];
         }
-        BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(0, 4), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(0, 4), NativeDungeonState.ProtocolVersion);
+        BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(NativeDungeonState.VersionOffset), NativeDungeonState.ProtocolVersion);
+        BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(NativeDungeonState.LengthOffset), NativeDungeonState.Size);
+        BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(NativeDungeonState.CurveVersionOffset), CharacterProgression.CurveVersion);
+        if (BinaryPrimitives.ReadUInt32LittleEndian(state.AsSpan(8)) == 0)
+        {
+            await using var progression = connection.CreateCommand();
+            progression.Transaction = transaction;
+            progression.CommandText = "SELECT Level,Experience FROM Characters WHERE Id=$id";
+            progression.Parameters.AddWithValue("$id", characterId);
+            await using var row = await progression.ExecuteReaderAsync(token);
+            if (!await row.ReadAsync(token)) throw new InvalidDataException("Missing character progression.");
+            CharacterProgression.Validate(row.GetInt32(0), row.GetInt64(1));
+            BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(8), checked((uint)row.GetInt32(0)));
+            BinaryPrimitives.WriteUInt64LittleEndian(state.AsSpan(NativeDungeonState.TotalExperienceOffset), checked((ulong)row.GetInt64(1)));
+        }
         state.AsSpan(NativeDungeonState.DungeonGradeOffset, NativeDungeonState.DungeonGradeStateLength).Clear();
         BinaryPrimitives.WriteUInt32LittleEndian(
             state.AsSpan(NativeDungeonState.DungeonGradeOffset, 4),
@@ -315,9 +329,9 @@ public sealed partial class DatabaseService
             ? historyGrade
             : Math.Max(storedGrade, historyGrade);
 
-        var legacyState = state.Length == NativeDungeonState.LegacySize;
-        if (legacyState) Array.Resize(ref state, NativeDungeonState.Size);
-        if (state.Length == NativeDungeonState.Size && (legacyState || effectiveGrade != storedGrade))
+        if (!NativeDungeonState.IsSupportedSize(state.Length))
+            throw new InvalidDataException("Offline native profile migration required.");
+        if (effectiveGrade != storedGrade)
         {
             BinaryPrimitives.WriteUInt32LittleEndian(
                 state.AsSpan(NativeDungeonState.DungeonGradeOffset, 4), effectiveGrade);
@@ -424,7 +438,7 @@ public sealed partial class DatabaseService
             foreach (var (key, value) in args) cmd.Parameters.AddWithValue(key, value);
             await cmd.ExecuteNonQueryAsync(token);
         }
-        int level = (int)Math.Clamp(Read("level", 1), 1, 99);
+        int level = (int)Math.Clamp(Read("level", 1), 1, CharacterProgression.MaximumLevel);
         var selectedSkill0 = Read("skill_slot_z");
         var selectedSkill1 = Read("skill_slot_x");
         var skillSlotExpiration = Read("skill_slot_expiry", 0u);
@@ -441,9 +455,9 @@ public sealed partial class DatabaseService
               SkillPoints=0, SkillPointsMeat=0 WHERE Id=$id
             """, ("$appearance", appearance), ("$gender", Read("gender")), ("$level", level),
             ("$exp", CharacterProgression.ExperienceRequiredForLevel(level)),
-            ("$attribute", CharacterCombatProgression.InitialAttribute(level)),
-            ("$hpmax", Read("hp_max", 1500)), ("$hp", Read("hp_max", 1500)),
-            ("$mpmax", Read("mp_max", 500)), ("$mp", Read("mp_max", 500)),
+            ("$attribute", 5),
+            ("$hpmax", Read("hp_max", (uint)CharacterProgression.CalculateMaxHp(level))), ("$hp", Read("hp_max", (uint)CharacterProgression.CalculateMaxHp(level))),
+            ("$mpmax", Read("mp_max", (uint)CharacterProgression.CalculateMaxMp(level))), ("$mp", Read("mp_max", (uint)CharacterProgression.CalculateMaxMp(level))),
             ("$coin", selectedCoin), ("$cash", selectedNana),
             ("$mystery", Read("card_key_mystery", 99)), ("$gold", Read("card_key_gold", 99)),
             ("$attack", Read("attack")), ("$defense", Read("defense")),
@@ -734,9 +748,15 @@ public sealed partial class DatabaseService
         // normalized back to the managed ledger, while a completed result applies
         // exactly the award carried by that result. Legacy settlement journals fall
         // back to their positive snapshot delta; ordinary checkpoints never do.
-        var workerExperienceDelta = after.Get(12) > before.Get(12)
-            ? after.Get(12) - before.Get(12)
-            : 0u;
+        uint workerExperienceDelta = 0;
+        if (settlement is { Rating: <= DungeonRewardPolicy.ClearRatingS, CharacterExperienceAward: null }
+            && after.TotalExperience64 > before.TotalExperience64)
+        {
+            var delta = after.TotalExperience64 - before.TotalExperience64;
+            if (delta > uint.MaxValue)
+                throw new InvalidDataException("Legacy settlement delta exceeds the unchanged single-award limit.");
+            workerExperienceDelta = checked((uint)delta);
+        }
         var experienceDelta = settlement is not { Rating: <= DungeonRewardPolicy.ClearRatingS }
             ? 0u
             : settlement.Value.CharacterExperienceAward ?? workerExperienceDelta;
@@ -744,10 +764,8 @@ public sealed partial class DatabaseService
         var level = Math.Max(Math.Clamp(storedLevel, 1, CharacterProgression.MaximumLevel),
             CharacterProgression.CalculateLevel(experience));
         var gainedLevels = CharacterCombatProgression.GainedLevels(storedLevel, level);
-        vitality = CharacterCombatProgression.GrowAttribute(vitality, gainedLevels);
-        intelligence = CharacterCombatProgression.GrowAttribute(intelligence, gainedLevels);
-        var maxHp = Math.Max(storedMaxHp, CharacterProgression.CalculateMaxHp(level, vitality));
-        var maxMp = Math.Max(storedMaxMp, CharacterProgression.CalculateMaxMp(level, intelligence));
+        var maxHp = Math.Max(storedMaxHp, CharacterProgression.CalculateMaxHp(level));
+        var maxMp = Math.Max(storedMaxMp, CharacterProgression.CalculateMaxMp(level));
         // Current resources include equipped bonuses; persisted maxima remain base stats.
         var (snapshotHp, snapshotMp) = after.GetEffectiveResourceMaximums();
         var effectiveHp = Math.Max(maxHp, snapshotHp);
@@ -847,7 +865,7 @@ public sealed partial class DatabaseService
         var currentHp = progressionState.CurrentHp;
         var currentMp = progressionState.CurrentMp;
         BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(8, 4), checked((uint)level));
-        BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(12, 4), checked((uint)experience));
+        after.SetProgression(level, experience);
         BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(16, 4), checked((uint)maxHp));
         BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(20, 4), checked((uint)currentHp));
         BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(24, 4), checked((uint)maxMp));
@@ -857,11 +875,11 @@ public sealed partial class DatabaseService
         int changed = await Execute("""
             UPDATE Characters SET Hans=Hans+$hans, Cash=Cash+$cash,
               Level=$level, Experience=$exp,
-              Strength=MIN(65535,MAX(0,Strength)+$levels),
-              Vitality=MIN(65535,MAX(0,Vitality)+$levels),
-              Agility=MIN(65535,MAX(0,Agility)+$levels),
-              Intelligence=MIN(65535,MAX(0,Intelligence)+$levels),
-              Luck=MIN(65535,MAX(0,Luck)+$levels),
+
+
+
+
+
               MaxHp=$maxHp, MaxMp=$maxMp, CurrentHp=$hp, CurrentMp=$mp,
               RevivalUseCount=$revives, LastSavedAt=$now
             WHERE Id=$id AND AccountId=$account AND (ActiveSessionId=$session OR ($recover=1 AND ActiveSessionId IS NULL))
@@ -977,16 +995,18 @@ public sealed partial class DatabaseService
             }
         }
 
-        for (int i = 0; i < 420; i++)
+        for (int i = 0; i < NativeDungeonState.CardCount; i++)
         {
-            long delta = (long)after.Get(272 + i * 4) - before.Get(272 + i * 4);
+            var cardCode = NativeDungeonState.CardCodeAt(i);
+            var cardOffset = NativeDungeonState.CardOffsetAt(i);
+            long delta = (long)after.Get(cardOffset) - before.Get(cardOffset);
             if (delta == 0) continue;
             if (delta < 0)
             {
                 int removed = await Execute("DELETE FROM CharacterCards WHERE CharacterId=$id AND CardCode=$code AND Quantity=-$delta",
-                    ("$code", 13000001 + i), ("$delta", delta));
+                    ("$code", cardCode), ("$delta", delta));
                 if (removed == 0 && await Execute("UPDATE CharacterCards SET Quantity=Quantity+$delta WHERE CharacterId=$id AND CardCode=$code AND Quantity+$delta>0",
-                    ("$code", 13000001 + i), ("$delta", delta)) != 1) throw new InvalidDataException("Dungeon card debit conflict.");
+                    ("$code", cardCode), ("$delta", delta)) != 1) throw new InvalidDataException("Dungeon card debit conflict.");
                 continue;
             }
             // Album quantities are bytes. Clamp both the proposed INSERT row
@@ -995,7 +1015,7 @@ public sealed partial class DatabaseService
             await Execute("""
                 INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt) VALUES($id,$code,MIN(255,$delta),$now)
                 ON CONFLICT(CharacterId,CardCode) DO UPDATE SET Quantity=MIN(255,CharacterCards.Quantity+$delta), UpdatedAt=$now
-                """, ("$code", 13000001 + i), ("$delta", delta), ("$now", DateTime.UtcNow.ToString("O")));
+                """, ("$code", cardCode), ("$delta", delta), ("$now", DateTime.UtcNow.ToString("O")));
         }
         var oldItems = before.Items; var newItems = after.Items;
         foreach (uint code in oldItems.Keys.Union(newItems.Keys))
@@ -1332,4 +1352,87 @@ public sealed partial class DatabaseService
                 && settlementId.ValueKind == System.Text.Json.JsonValueKind.String
                 ? settlementId.GetString() : null);
     }
+    private static byte[] PreparePreviousNativeCardProfile(byte[] previous)
+    {
+        if (previous.Length != NativeDungeonState.PreviousSize
+            || BinaryPrimitives.ReadUInt32LittleEndian(previous) != 3
+            || BinaryPrimitives.ReadUInt32LittleEndian(previous.AsSpan(5124)) != 3
+            || BinaryPrimitives.ReadUInt32LittleEndian(previous.AsSpan(5128)) != NativeDungeonState.PreviousSize)
+            throw new InvalidDataException("Unknown native recovery profile; offline migration required.");
+        var bytes = new byte[NativeDungeonState.Size];
+        previous.CopyTo(bytes, 0);
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes, NativeDungeonState.ProtocolVersion);
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(NativeDungeonState.VersionOffset), NativeDungeonState.ProtocolVersion);
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(NativeDungeonState.LengthOffset), NativeDungeonState.Size);
+        _ = new NativeDungeonState(bytes);
+        return bytes;
+    }
+
+    // Startup-only upgrade of inactive recovery profiles, NOT reward journals.
+    // Keep exact old bytes; derive extended card quantities only from the main
+    // account ledger, never the v3 worker sidecar (its item array overlapped SP).
+    private static async Task UpgradeNativeCardProfilesAsync(SqliteConnection connection, CancellationToken token)
+    {
+        await using var exists = connection.CreateCommand();
+        exists.CommandText = "SELECT 1 FROM sqlite_master WHERE type='table' AND name='NativeDungeonProfiles'";
+        if (await exists.ExecuteScalarAsync(token) is null) return;
+        await using var tx = connection.BeginTransaction();
+        var rows = new List<(long Id, byte[] Bytes)>();
+        await using (var read = connection.CreateCommand())
+        {
+            read.Transaction = tx;
+            read.CommandText = "SELECT CharacterId,State FROM NativeDungeonProfiles";
+            await using var reader = await read.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token)) rows.Add((reader.GetInt64(0), (byte[])reader[1]));
+        }
+        foreach (var (id, previous) in rows)
+            await UpgradeNativeCardProfileAsync(connection, tx, id, previous, token);
+        await tx.CommitAsync(token);
+    }
+
+    // Used by both startup and the offline launcher. The caller owns the
+    // transaction and offline gate: migration, exact-byte archival and the
+    // requested edit must commit together, or all roll back together.
+    public static async Task<byte[]> UpgradeNativeCardProfileAsync(
+        SqliteConnection connection, SqliteTransaction tx, long id, byte[] previous,
+        CancellationToken token = default)
+    {
+        if (previous.Length == NativeDungeonState.Size)
+        {
+            _ = new NativeDungeonState(previous);
+            return previous;
+        }
+        var bytes = PreparePreviousNativeCardProfile(previous);
+        await using (var cards = connection.CreateCommand())
+        {
+            cards.Transaction = tx;
+            cards.CommandText = "SELECT CardCode,Quantity FROM CharacterCards WHERE CharacterId=$id";
+            cards.Parameters.AddWithValue("$id", id);
+            await using var reader = await cards.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token))
+            {
+                var quantity = reader.GetInt64(1);
+                if (quantity is < 0 or > 255) throw new InvalidDataException("Invalid stored card quantity.");
+                if (NativeDungeonState.TryGetCardOffset(checked((uint)reader.GetInt64(0)), out var offset)
+                    && offset >= NativeDungeonState.ExtendedCardsOffset)
+                    BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(offset), (uint)quantity);
+            }
+        }
+        _ = new NativeDungeonState(bytes); // validate unchanged curve/EXP/items and every card before writing
+        await using var archive = connection.CreateCommand(); archive.Transaction = tx;
+        archive.CommandText = """
+            CREATE TABLE IF NOT EXISTS NativeCardProfileArchives(
+                CharacterId INTEGER NOT NULL, Sha256 TEXT NOT NULL, State BLOB NOT NULL, ArchivedAt TEXT NOT NULL,
+                PRIMARY KEY(CharacterId,Sha256));
+            INSERT OR IGNORE INTO NativeCardProfileArchives VALUES($id,$hash,$old,$now);
+            UPDATE NativeDungeonProfiles SET State=$new WHERE CharacterId=$id;
+            """;
+        archive.Parameters.AddWithValue("$id", id);
+        archive.Parameters.AddWithValue("$hash", Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(previous)));
+        archive.Parameters.AddWithValue("$old", previous); archive.Parameters.AddWithValue("$new", bytes);
+        archive.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+        await archive.ExecuteNonQueryAsync(token);
+        return bytes;
+    }
+
 }

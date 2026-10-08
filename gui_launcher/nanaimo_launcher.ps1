@@ -401,7 +401,7 @@ $tabFurniture=New-Object Windows.Forms.TabPage;$tabFurniture.Text='装饰家具�
 
 $title=New-Object Windows.Forms.Label;$title.Text='OpenNanaimo Launcher';$title.Font=New-Object Drawing.Font('Microsoft YaHei UI',16,[Drawing.FontStyle]::Bold);$title.AutoSize=$true;$title.Location=New-Object Drawing.Point(28,16);$tabStart.Controls.Add($title)
 $releaseLabel=New-Object Windows.Forms.Label;$releaseLabel.Text="Release: $ReleaseIdentity | Canonical entry: start_nanaimo_launcher.bat";$releaseLabel.AutoSize=$true;$releaseLabel.ForeColor=[Drawing.Color]::DarkGreen;$releaseLabel.Location=New-Object Drawing.Point(30,50);$tabStart.Controls.Add($releaseLabel)
-$hint=New-Object Windows.Forms.Label;$hint.Text='等级现由通关结算推进：每次成功 CF88 结算 +100 EXP，下一级需要当前等级×100；此处等级仅在该角色没有进度档时作为初始种子。';$hint.AutoSize=$true;$hint.Location=New-Object Drawing.Point(30,76);$tabStart.Controls.Add($hint)
+$hint=New-Object Windows.Forms.Label;$hint.Text='等级按 1～200 级经验表推进，地宫实时经验与结算奖励共同累计；此处用于新角色初始等级，已有角色需点击“Reset level/EXP/title”才会重置。';$hint.AutoSize=$true;$hint.Location=New-Object Drawing.Point(30,76);$tabStart.Controls.Add($hint)
 
 function Add-Label($parent,$text,$x,$y,$w=150){$l=New-Object Windows.Forms.Label;$l.Text=$text;$l.Location=New-Object Drawing.Point($x,$y);$l.Size=New-Object Drawing.Size($w,25);$parent.Controls.Add($l);return $l}
 
@@ -500,7 +500,7 @@ function Get-SelectedLaunchMode {return 'network'}
 function Get-NetworkIpInput {return '127.0.0.1'}
 function Get-SelectedLaunchModeInfo {return Get-LaunchModeInfo}
 Add-Label $tabStart '初始等级（无进度档）' 35 188 155|Out-Null
-$levelBox=New-Object Windows.Forms.NumericUpDown;$levelBox.Location=New-Object Drawing.Point(190,184);$levelBox.Minimum=1;$levelBox.Maximum=99;$levelBox.Value=[Math]::Min(99,[Math]::Max(1,$defaultLevel));$levelBox.Size=New-Object Drawing.Size(120,28);$tabStart.Controls.Add($levelBox)
+$levelBox=New-Object Windows.Forms.NumericUpDown;$levelBox.Location=New-Object Drawing.Point(190,184);$levelBox.Minimum=1;$levelBox.Maximum=200;$levelBox.Value=[Math]::Min(200,[Math]::Max(1,$defaultLevel));$levelBox.Size=New-Object Drawing.Size(120,28);$tabStart.Controls.Add($levelBox)
 $resetProgressBtn=New-Object Windows.Forms.Button;$resetProgressBtn.Text='Reset level/EXP/title';$resetProgressBtn.Location=New-Object Drawing.Point(900,230);$resetProgressBtn.Size=New-Object Drawing.Size(170,30);$tabStart.Controls.Add($resetProgressBtn)
 Add-Label $tabStart '性别（模型基础）' 340 188 130|Out-Null
 $genderCombo=New-Object Windows.Forms.ComboBox;$genderCombo.Location=New-Object Drawing.Point(475,184);$genderCombo.Size=New-Object Drawing.Size(170,30);$genderCombo.DropDownStyle='DropDownList';[void]$genderCombo.Items.Add('女（F资源）');[void]$genderCombo.Items.Add('男（M资源）');$genderCombo.SelectedIndex=[Math]::Min(1,[Math]::Max(0,$defaultGender));$tabStart.Controls.Add($genderCombo)
@@ -645,7 +645,7 @@ function Update-AttackModes {
     $want=if($script:firstAttackModeLoad-and$defaultAttackMode-ge0-and$defaultAttackMode-le2){[int]$defaultAttackMode}else{[int]$m.initial_slot};$attackIndex=[int]$want;if($attackIndex-lt0){$attackIndex=0};if($attackIndex-ge$attackCombo.Items.Count){$attackIndex=$attackCombo.Items.Count-1};$attackCombo.SelectedIndex=$attackIndex;$script:firstAttackModeLoad=$false
 }
 function Selected-AttackMode {if($attackCombo.SelectedIndex-ge0){return [int]$attackCombo.SelectedIndex};return 0}
-function Update-PetDetail {$r=Get-SelectedData $petCombo;if($r){if(-not[uint32]$r.id){$petDetail.Text='未装备宠物；保存后保留宠物箱，仅取消当前出战。';return};if($r.optional_resource_port-eq'korean_pets'){$petDetail.Text="$($r.name) | $($r.id) | 佩戴等级$($r.level_requirement)（原始$($r.source_level_requirement)）；GUI直接指定不受等级限制。固定3阶外观；数值基础攻击$($r.attack_value)；宝石槽$($r.slot_count)。名称为中文译名；游戏内显示、攻击及MP门控待实测。";return};if([uint32]$r.id-eq15003361){$petDetail.Text="英雄龙 | 15003361 | 佩戴等级$($r.level_requirement)（原始$($r.source_level_requirement)）；GUI直接指定不受等级限制。固定3阶外观；基础攻击915；三宝石槽。普通/P升级/蓄力/自动/追踪资源已接入，客户端实测待确认。";return};$petDetail.Text="攻击：$($r.attack_style) 初攻：$($r.attack_value) 原生槽：$($r.native_initial_slot) Power序列：$($r.power_unlock_sequence -join '/')；蓄力资源：$($r.static_charge_text)，实际：$($r.charge_text)，门值：$($r.charge_gate_value)，MP门：实机确认，候选需求=$($r.charge_gate_value)，精确比较链待闭合；自动资源：$($r.static_auto_resource)，解锁：$($r.auto_unlock_class)，owner：$($r.auto_owners -join '/')，跟踪资源：$($r.homing_resource)，MP：$($r.auto_mp_gate)，wire：$($r.auto_wire_status)；岁数：$(Selected-PetAge)/$($r.max_age) wire=$($r.wire_age_status)"}}
+function Update-PetDetail {$r=Get-SelectedData $petCombo;if($r){if(-not[uint32]$r.id){$petDetail.Text='未装备宠物；保存后保留宠物箱，仅取消当前出战。';return};if($r.optional_resource_port-eq'korean_pets'){$petDetail.Text="$($r.name) | $($r.id) | 佩戴等级$($r.level_requirement)（韩服原值；本服上限200）；GUI直接指定不受等级限制。固定3阶外观；数值基础攻击$($r.attack_value)；宝石槽$($r.slot_count)。名称为中文译名；游戏内显示、攻击及MP门控待实测。";return};if([uint32]$r.id-eq15003361){$petDetail.Text="英雄龙 | 15003361 | 佩戴等级$($r.level_requirement)（韩服原值；本服上限200）；GUI直接指定不受等级限制。固定3阶外观；基础攻击915；三宝石槽。普通/P升级/蓄力/自动/追踪资源已接入，客户端实测待确认。";return};$petDetail.Text="攻击：$($r.attack_style) 初攻：$($r.attack_value) 原生槽：$($r.native_initial_slot) Power序列：$($r.power_unlock_sequence -join '/')；蓄力资源：$($r.static_charge_text)，实际：$($r.charge_text)，门值：$($r.charge_gate_value)，MP门：实机确认，候选需求=$($r.charge_gate_value)，精确比较链待闭合；自动资源：$($r.static_auto_resource)，解锁：$($r.auto_unlock_class)，owner：$($r.auto_owners -join '/')，跟踪资源：$($r.homing_resource)，MP：$($r.auto_mp_gate)，wire：$($r.auto_wire_status)；岁数：$(Selected-PetAge)/$($r.max_age) wire=$($r.wire_age_status)"}}
 $petCombo.add_SelectedIndexChanged({$r=Get-SelectedData $petCombo;if($r){Update-PetAgeOptions ([int]$r.display_age)};Update-AttackModes;Update-PetDetail})
 $petAgeCombo.add_SelectedIndexChanged({Update-PetDetail})
 $nameBox.add_TextChanged({if($launchInfoBox){Update-LaunchPreview}})
@@ -697,6 +697,8 @@ function Ensure-ClientCompatibility {
     if(-not(Test-Path -LiteralPath $ClientCompatibilityReport -PathType Leaf)){throw 'Client compatibility report was not generated.'}
     $report=Get-Content -LiteralPath $ClientCompatibilityReport -Raw -Encoding UTF8|ConvertFrom-Json
     if(-not$report.verification.all_pass){throw 'Client compatibility post-apply verification failed.'}
+    foreach($required in @('level200_town_title_mask','level200_town_level_shift','level200_town_level_mask','level200_entry_code','level200_entry_hook')){if(-not @($report.operations|Where-Object{$_.operation-eq$required}).Count){throw 'Level200 requires a matching newly built adapter compatibility recipe; old runtime refused.'}}
+    & (Join-Path $PSScriptRoot 'level200_client_check.ps1') -Client $Client | Out-Host
     $projectileSettings=Read-ProjectileSettings (Join-Path $Root 'nanaimo_projectile.ini')
     if($projectileSettings.enabled-eq1){& (Join-Path $Root 'scripts\prepare_projectile_diy.ps1') -ClientRoot $Root -Apply | Out-Null}
     return $report
@@ -1187,6 +1189,8 @@ if($SelfTestKoreanPets){
     foreach($row in $added){
         if(-not(Select-ComboId $petCombo ([uint32]$row.id))){throw "Pet missing: $($row.id)"}
         Update-PetAgeOptions 1
+        if([int]$row.level_requirement-ne[int]$row.source_level_requirement){throw "Pet requirement differs from KR source: $($row.id)"}
+        if($petDetail.Text-notmatch '韩服原值；本服上限200'){throw "Pet original-level hint missing: $($row.id)"}
         if([int]$levelBox.Value-ne1-or(Selected-PetAge)-ne3-or$petAgeCombo.Items.Count-ne1){throw "Invalid pet model stage/level: $($row.id)"}
         if(-not$attackByPet[[uint32]$row.id]){throw "Attack mapping missing: $($row.id)"}
         $icon=@($petPreviewRows|Where-Object id -eq $row.id)
@@ -1201,13 +1205,13 @@ if($SelfTestHeroDragon){
     if(-not(Select-ComboId $petCombo 15003361)){throw 'Hero Dragon is missing from the selector.'}
     Update-PetAgeOptions 1
     $hero=Get-SelectedData $petCombo
-    if([uint32]$hero.id-ne15003361-or[int]$hero.level_requirement-ne95-or[int]$levelBox.Value-ne1){throw 'Hero Dragon direct selection changed player level.'}
+    if([uint32]$hero.id-ne15003361-or[int]$hero.level_requirement-ne120-or[int]$levelBox.Value-ne1){throw 'Hero Dragon direct selection changed player level.'}
     if((Selected-PetAge)-ne3-or$petAgeCombo.Items.Count-ne1){throw 'Hero Dragon offers unsupported model stages.'}
     $icon=@($petPreviewRows|Where-Object id -eq 15003361)
     if($icon.Count-ne1-or-not$icon[0].available){throw 'Hero Dragon icon is missing.'}
     if($attackByPet[[uint32]15003361].initial_owner_key-ne1422){throw 'Hero Dragon attack mapping is missing.'}
     if($petDetail.Text-notmatch 'GUI直接指定不受等级限制'){throw 'Hero Dragon direct-assignment hint missing.'}
-    Write-Output 'HERO_DRAGON_GUI_SELFTEST_PASS level=1 requirement=95 pet=15003361 stage=3 icon=PASS attack=1422'
+    Write-Output 'HERO_DRAGON_GUI_SELFTEST_PASS level=1 requirement=120 pet=15003361 stage=3 icon=PASS attack=1422'
     $form.Dispose();exit 0
 }
 

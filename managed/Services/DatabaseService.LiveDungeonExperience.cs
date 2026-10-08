@@ -7,36 +7,41 @@ public readonly record struct LiveDungeonExperienceResult(bool Authorized, uint 
 
 public sealed partial class DatabaseService
 {
+    // Existing archives require a reviewed offline preview. Never migrate a curve
+    // as a side effect of opening the server (and never grant migration attributes).
+    private static async Task ValidateExistingCharacterCurveAsync(SqliteConnection connection, CancellationToken token)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Characters'";
+        if (Convert.ToInt64(await command.ExecuteScalarAsync(token)) == 0) return;
+        command.CommandText = "SELECT COUNT(*) FROM Characters";
+        if (Convert.ToInt64(await command.ExecuteScalarAsync(token)) == 0) return;
+        command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Characters') WHERE name='CurveVersion'";
+        if (Convert.ToInt64(await command.ExecuteScalarAsync(token)) == 0)
+            throw new InvalidDataException("Offline level200 migration preview/approval required before opening this database.");
+        command.CommandText = "SELECT Level,Experience,CurveVersion FROM Characters";
+        await using (var reader = await command.ExecuteReaderAsync(token))
+            while (await reader.ReadAsync(token)) CharacterProgression.Validate(reader.GetInt32(0), reader.GetInt64(1), reader.GetInt32(2));
+        command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='NativeDungeonProfiles'";
+        if (Convert.ToInt64(await command.ExecuteScalarAsync(token)) != 0)
+        {
+            command.CommandText = "SELECT State FROM NativeDungeonProfiles";
+            await using var reader = await command.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token))
+            {
+                var bytes = (byte[])reader[0];
+                // Same curve, old inventory schema: read-only preflight here.
+                // The startup card migration archives and commits the upgrade.
+                _ = new NativeDungeonState(bytes.Length == NativeDungeonState.PreviousSize
+                    ? PreparePreviousNativeCardProfile(bytes) : bytes);
+            }
+        }
+    }
+
     private static async Task MigrateCharacterExperienceCurveAsync(SqliteConnection connection, CancellationToken token)
     {
-        await using var transaction = connection.BeginTransaction();
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "INSERT OR IGNORE INTO SchemaMigrations(Name,AppliedAt) VALUES('character-exp-score-v2',$now)";
-        command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
-        if (await command.ExecuteNonQueryAsync(token) == 0) return;
-        command.CommandText = """
-            CREATE TABLE IF NOT EXISTS CharacterExperienceCurveMigration(
-                CharacterId INTEGER PRIMARY KEY, OldLevel INTEGER NOT NULL,
-                OldExperience INTEGER NOT NULL, NewExperience INTEGER NOT NULL)
-            """;
-        await command.ExecuteNonQueryAsync(token);
-        command.CommandText = "SELECT Id,Level,Experience FROM Characters";
-        var rows = new List<(long Id,int Level,long Experience)>();
-        await using (var reader = await command.ExecuteReaderAsync(token))
-            while (await reader.ReadAsync(token)) rows.Add((reader.GetInt64(0),reader.GetInt32(1),reader.GetInt64(2)));
-        foreach (var row in rows)
-        {
-            var experience = CharacterProgression.MigrateLegacyExperience(row.Level, row.Experience);
-            command.Parameters.Clear();
-            command.Parameters.AddWithValue("$id",row.Id); command.Parameters.AddWithValue("$level",row.Level);
-            command.Parameters.AddWithValue("$old",row.Experience); command.Parameters.AddWithValue("$new",experience);
-            command.CommandText = "INSERT INTO CharacterExperienceCurveMigration VALUES($id,$level,$old,$new)";
-            await command.ExecuteNonQueryAsync(token);
-            command.CommandText = "UPDATE Characters SET Experience=$new WHERE Id=$id";
-            await command.ExecuteNonQueryAsync(token);
-        }
-        await transaction.CommitAsync(token);
+        await EnsureColumnAsync(connection, "Characters", "CurveVersion", "INTEGER NOT NULL DEFAULT 3", token);
+        await ValidateExistingCharacterCurveAsync(connection, token);
     }
 
     // Only the trusted loopback worker calls this at a first-death score change.
@@ -92,17 +97,15 @@ public sealed partial class DatabaseService
             ON CONFLICT(CharacterId,SessionId,BattleId) DO UPDATE SET Score=MAX(Score,excluded.Score)
             """, ("$id",characterId), ("$session",sessionId), ("$battle",battleId), ("$score",(long)highWater));
         var nextExperience = Math.Min(CharacterProgression.MaximumExperience, Math.Max(0, experience) + delta);
-        var nextLevel = Math.Max(Math.Clamp(level, 1, 99), CharacterProgression.CalculateLevel(nextExperience));
+        var nextLevel = Math.Max(Math.Clamp(level, 1, CharacterProgression.MaximumLevel), CharacterProgression.CalculateLevel(nextExperience));
         var gained = CharacterCombatProgression.GainedLevels(level, nextLevel);
-        maxHp = Math.Min(ushort.MaxValue, Math.Max(maxHp, CharacterProgression.CalculateMaxHp(nextLevel, CharacterCombatProgression.GrowAttribute(vitality, gained))));
-        maxMp = Math.Min(ushort.MaxValue, Math.Max(maxMp, CharacterProgression.CalculateMaxMp(nextLevel, CharacterCombatProgression.GrowAttribute(intelligence, gained))));
+        maxHp = Math.Min(ushort.MaxValue, Math.Max(maxHp, CharacterProgression.CalculateMaxHp(nextLevel)));
+        maxMp = Math.Min(ushort.MaxValue, Math.Max(maxMp, CharacterProgression.CalculateMaxMp(nextLevel)));
         // Level-up grows maxima but does not heal, revive, reset Power or touch
         // inventory, currencies, pet EXP or the independent settlement receipt.
         await Execute("""
             UPDATE Characters SET Level=$level,Experience=$exp,
-                Strength=MIN(65535,MAX(0,Strength)+$gain),Vitality=MIN(65535,MAX(0,Vitality)+$gain),
-                Agility=MIN(65535,MAX(0,Agility)+$gain),Intelligence=MIN(65535,MAX(0,Intelligence)+$gain),
-                Luck=MIN(65535,MAX(0,Luck)+$gain),
+
                 MaxHp=$hp,MaxMp=$mp,LastSavedAt=$now WHERE Id=$id
             """, ("$level",nextLevel), ("$exp",nextExperience), ("$gain",gained),
             ("$hp",maxHp), ("$mp",maxMp),

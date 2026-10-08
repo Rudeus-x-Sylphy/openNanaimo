@@ -107,8 +107,9 @@ internal static partial class Program
             var account = await Database.OpenLocalAccountAsync(username);
             await Database.CreateLocalCharacterAsync(account, name, 0);
             var character = (await Database.GetCharacterAsync(account))!;
-            await ExecuteAsync("UPDATE Characters SET Level = $level, Hans = 1000 WHERE Id = $id", ("$level", level), ("$id", character.Id));
+            await ExecuteAsync("UPDATE Characters SET Level = $level, Experience = $exp, Hans = 1000 WHERE Id = $id", ("$level", level), ("$exp", CharacterProgression.ExperienceRequiredForLevel(level)), ("$id", character.Id));
             character.Level = level;
+            character.Experience = CharacterProgression.ExperienceRequiredForLevel(level);
             character.Hans = 1000;
             return await RegisterSessionAsync(character, username, channel);
         }
@@ -483,7 +484,7 @@ internal static partial class Program
             "graduation confirmation is teacher owned");
         Check((await f.Service.GraduateMentorshipAsync(Id(f.Teacher), relation.Id)).Code == MentorshipResultCode.Ineligible,
             "all required course selectors participate in graduation eligibility");
-        await f.ExecuteAsync("UPDATE Characters SET Level = 2 WHERE Id = $id", ("$id", Character(f.Student).Id));
+        await f.ExecuteAsync($"UPDATE Characters SET Level = 2, Experience = {CharacterProgression.ExperienceRequiredForLevel(2)} WHERE Id = $id", ("$id", Character(f.Student).Id));
         Check(!(await f.Database.GetMentorshipQualificationAsync(Actor(f.Student), f.Service.MentorshipRules)).CanGraduate,
             "graduation combines authoritative level and course progress");
         await Certify(f.Student, "event-two", 1);
@@ -542,11 +543,11 @@ internal static partial class Program
             "request expiry is persistent");
         pending = await f.Service.RequestMentorshipAsync(Id(f.Teacher), Character(f.Student).Id, MentorshipDirection.TeacherInvitation);
         Check(pending.Success, "qualification-change scenario created a pending invitation");
-        await f.ExecuteAsync("UPDATE Characters SET Level = 1 WHERE Id = $id", ("$id", Character(f.Teacher).Id));
+        await f.ExecuteAsync($"UPDATE Characters SET Level = 1, Experience = {CharacterProgression.ExperienceRequiredForLevel(1)} WHERE Id = $id", ("$id", Character(f.Teacher).Id));
         var invalidated = await f.Service.RespondMentorshipAsync(Id(f.Student), pending.Request!.Id, true);
         Check(invalidated.Code == MentorshipResultCode.Ineligible && invalidated.Request?.State == MentorshipRequestState.Ineligible,
             "acceptance rechecks persisted teacher qualification");
-        await f.ExecuteAsync("UPDATE Characters SET Level = 30 WHERE Id = $id", ("$id", Character(f.Teacher).Id));
+        await f.ExecuteAsync($"UPDATE Characters SET Level = 30, Experience = {CharacterProgression.ExperienceRequiredForLevel(30)} WHERE Id = $id", ("$id", Character(f.Teacher).Id));
         pending = await f.Service.RequestMentorshipAsync(Id(f.Teacher), Character(f.Student).Id, MentorshipDirection.TeacherInvitation);
         Check(pending.Success, "disconnect scenario created a pending invitation");
         f.Deliveries.Clear();

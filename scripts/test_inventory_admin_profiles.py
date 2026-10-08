@@ -88,7 +88,7 @@ class CardPreservationTests(unittest.TestCase):
 
     def test_offline_save_reopen_preserves_cards_land_and_other_account(self):
         with self.fixture() as (root,db):
-            before=self.read(db,'SELECT * FROM CharacterCards WHERE CardCode != 13000001 ORDER BY CharacterId,CardCode')
+            before=self.read(db,'SELECT * FROM CharacterCards WHERE CardCode NOT IN (13000001,12000001) ORDER BY CharacterId,CardCode')
             houses=self.read(db,'SELECT * FROM CharacterApartmentHouses ORDER BY CharacterId')
             land=self.read(db,'SELECT * FROM CharacterApartmentLandCards ORDER BY CharacterId')
             other=self.read(db,'SELECT * FROM Characters WHERE Id=22')
@@ -100,7 +100,7 @@ class CardPreservationTests(unittest.TestCase):
             self.assertEqual(restored['shop']['coin'],777)
             self.assertEqual({c['code']:c['count'] for c in restored['cards']},
                              {13000001:5,12000001:1,60000000:1,42424242:3})
-            self.assertEqual(self.read(db,'SELECT * FROM CharacterCards WHERE CardCode != 13000001 ORDER BY CharacterId,CardCode'),before)
+            self.assertEqual(self.read(db,'SELECT * FROM CharacterCards WHERE CardCode NOT IN (13000001,12000001) ORDER BY CharacterId,CardCode'),before)
             self.assertEqual(self.read(db,'SELECT * FROM CharacterApartmentHouses ORDER BY CharacterId'),houses)
             self.assertEqual(self.read(db,'SELECT * FROM CharacterApartmentLandCards ORDER BY CharacterId'),land)
             self.assertEqual(self.read(db,'SELECT * FROM Characters WHERE Id=22'),other)
@@ -110,10 +110,10 @@ class CardPreservationTests(unittest.TestCase):
         with self.fixture() as (root,db):
             snap=BACKEND.db_snapshot(root,11);snap['cards']=[]
             BACKEND.db_apply(root,11,snap)
-            self.assertEqual(self.read(db,'SELECT CardCode,Quantity FROM CharacterCards WHERE CharacterId=11 ORDER BY CardCode'),[(12000001,1),(42424242,3),(60000000,1)])
+            self.assertEqual(self.read(db,'SELECT CardCode,Quantity FROM CharacterCards WHERE CharacterId=11 ORDER BY CardCode'),[(42424242,3),(60000000,1)])
 
     def test_unknown_card_injection_quantity_change_and_duplicate_rejected(self):
-        for row in ({'code':99999999,'count':1},{'code':12000001,'count':2},{'code':12000001,'count':0},{'code':12000001,'count':-1}):
+        for row in ({'code':99999999,'count':1},{'code':42424242,'count':2},{'code':42424242,'count':0},{'code':42424242,'count':-1}):
             with self.subTest(row=row),self.fixture() as (root,db):
                 before=self.read(db,'SELECT * FROM CharacterCards ORDER BY CharacterId,CardCode')
                 snap=BACKEND.db_snapshot(root,11);snap['shop']['coin']=999
@@ -141,7 +141,7 @@ class CardPreservationTests(unittest.TestCase):
             path=root/'card_inventory_p_4C6567616379.dat';path.write_text('version=1\n12000001=1\n60000000=1\n13000001=2\n',encoding='ascii')
             snap=BACKEND.snapshot(root,'4C6567616379');snap['cards']=[]
             BACKEND.apply(root,'4C6567616379',snap)
-            self.assertEqual(BACKEND.parse_counts(path),[{'code':12000001,'count':1},{'code':60000000,'count':1}])
+            self.assertEqual(BACKEND.parse_counts(path),[{'code':60000000,'count':1}])
 
     def test_clone_preserves_all_editor_domains_without_touching_source_or_runtime(self):
         with self.fixture() as (root,db):

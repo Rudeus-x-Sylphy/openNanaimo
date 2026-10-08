@@ -144,7 +144,7 @@ internal static class EntertainmentProtocol
             record[25] = room.Mode;
             record[26] = room.Level;
             EncodeFixed(room.Password, record.Slice(28, 8));
-            BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(38, 2), room.RoomId);
+            BinaryPrimitives.WriteUInt16LittleEndian(record.Slice(36, 2), room.RoomId);
         }
         return payload;
     }

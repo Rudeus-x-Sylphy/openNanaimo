@@ -43,6 +43,60 @@ class ManagedRuntimeTools(unittest.TestCase):
                 if changed=='duplicate':state['cards'].append(state['cards'][0])
                 apply(root,state,ok=False)
                 self.assertEqual(inventory(root,'snapshot','--character-id',11)['shop']['coin'],100)
+    def test_sp_event_grant_edit_delete_clone_and_unknown_protection(self):
+        codes=list(range(12000001,12000021))+list(range(50000001,50000101))+list(range(22000001,22000021))
+        with self.fixture() as (root,db):
+            state=inventory(root,'snapshot','--character-id',11)
+            with closing(sqlite3.connect(db)) as con:
+                protected=con.execute('SELECT * FROM CharacterCards WHERE CardCode IN (42424242,60000000) OR CharacterId=22 ORDER BY CharacterId,CardCode').fetchall()
+                land=con.execute('SELECT * FROM CharacterApartmentLandCards ORDER BY CharacterId').fetchall()
+            state['cards']=[r for r in state['cards'] if r['code'] not in codes]+[{'code':c,'count':255 if i%2 else 1} for i,c in enumerate(codes)]
+            apply(root,state)
+            saved=inventory(root,'snapshot','--character-id',11)
+            self.assertEqual({r['code']:r['count'] for r in saved['cards'] if r['code'] in codes},{c:255 if i%2 else 1 for i,c in enumerate(codes)})
+            path=root/'clone.json';path.write_text(json.dumps(saved),'utf-8')
+            inventory(root,'clone','--name-hex','43617264436F7079','--source-name-hex',saved['name_hex'],'--source-character-id',11,'--input',path)
+            cloned=inventory(root,'snapshot','--name-hex','43617264436F7079')
+            self.assertEqual({r['code']:r['count'] for r in cloned['cards']},{r['code']:r['count'] for r in saved['cards']})
+            for code in (12000001,12000020,50000001,50000100,22000001,22000020):
+                for quantity in (0,-1,256):
+                    bad=json.loads(json.dumps(saved));next(r for r in bad['cards'] if r['code']==code)['count']=quantity
+                    bad['shop']['coin']=999
+                    self.assertIn('card count out of range',apply(root,bad,ok=False))
+                    self.assertEqual(inventory(root,'snapshot','--character-id',11)['shop']['coin'],100)
+            bad=json.loads(json.dumps(saved));next(r for r in bad['cards'] if r['code']==42424242)['count']=4
+            self.assertIn('uncatalogued card is read-only',apply(root,bad,ok=False))
+            # A fresh snapshot includes gameplay changes before an offline grant.
+            with closing(sqlite3.connect(db)) as con:
+                con.execute('UPDATE CharacterCards SET Quantity=7 WHERE CharacterId=11 AND CardCode=50000001');con.commit()
+            fresh=inventory(root,'snapshot','--character-id',11)
+            next(r for r in fresh['cards'] if r['code']==50000001)['count']+=1
+            apply(root,fresh)
+            self.assertEqual(next(r for r in inventory(root,'snapshot','--character-id',11)['cards'] if r['code']==50000001)['count'],8)
+            fresh['cards']=[r for r in fresh['cards'] if r['code'] not in codes]
+            apply(root,fresh)
+            with closing(sqlite3.connect(db)) as con:
+                self.assertEqual(con.execute('SELECT * FROM CharacterCards WHERE CardCode IN (42424242,60000000) OR CharacterId=22 ORDER BY CharacterId,CardCode').fetchall(),protected)
+                self.assertEqual(con.execute('SELECT * FROM CharacterApartmentLandCards ORDER BY CharacterId').fetchall(),land)
+                self.assertEqual(con.execute('SELECT COUNT(*) FROM CharacterCards WHERE CharacterId=11 AND (CardCode BETWEEN 12000001 AND 12000020 OR CardCode BETWEEN 50000001 AND 50000100 OR CardCode BETWEEN 22000001 AND 22000020)').fetchone()[0],0)
+
+    def test_explicit_resource_repair_is_previewed_idempotent_and_offline(self):
+        with self.fixture() as (root,db):
+            with closing(sqlite3.connect(db)) as con:
+                con.execute('ALTER TABLE Characters ADD COLUMN Experience INTEGER DEFAULT 0')
+                con.execute('ALTER TABLE Characters ADD COLUMN CurveVersion INTEGER DEFAULT 3')
+                con.execute('ALTER TABLE Characters ADD COLUMN Strength INTEGER DEFAULT 6')
+                con.execute('UPDATE Characters SET Level=200,Experience=67955751200,MaxHp=1712,MaxMp=235,CurrentHp=0,CurrentMp=17 WHERE Id=11')
+                con.commit();before=con.execute('SELECT * FROM Characters WHERE Id=11').fetchone()
+            preview=call('state','repair-resources','--root',root,'--character-id',11)
+            self.assertEqual(preview['after'],{'MaxHp':21500,'MaxMp':2100})
+            with closing(sqlite3.connect(db)) as con:self.assertEqual(con.execute('SELECT * FROM Characters WHERE Id=11').fetchone(),before)
+            for _ in range(2):call('state','repair-resources','--root',root,'--character-id',11,'--apply')
+            with closing(sqlite3.connect(db)) as con:
+                self.assertEqual(con.execute('SELECT Level,Experience,Strength,MaxHp,MaxMp,CurrentHp,CurrentMp FROM Characters WHERE Id=11').fetchone(),(200,67955751200,6,21500,2100,0,17))
+                con.execute('UPDATE Characters SET IsOnline=1 WHERE Id=11');con.commit()
+            self.assertIn('Stop this character',call('state','repair-resources','--root',root,'--character-id',11,'--apply',ok=False))
+
     def test_draft_clone_is_database_only_and_reopen_uses_database(self):
         with self.fixture() as (root,db):
             snap=inventory(root,'snapshot','--character-id',11);snap['shop']['coin']=456;file=root/'request.json';file.write_text(json.dumps(snap),'utf-8');hexname='436F7079'
@@ -62,6 +116,107 @@ class ManagedRuntimeTools(unittest.TestCase):
             self.assertEqual(path.read_bytes(),original)
             call('state','migrate','--root',root)
             self.assertEqual(call('state','read','--root',root,'--name',path.name),{})
+    def seed_progression_profile(self, root, db, legacy=True):
+        import csv
+        with (ROOT/'release/components/dungeon_progression/character_experience.csv').open(encoding='utf-8-sig') as f:
+            thresholds=[int(r['total_experience']) for r in csv.DictReader(f)]
+        with closing(sqlite3.connect(db)) as con:
+            con.execute('ALTER TABLE Characters ADD COLUMN Experience INTEGER DEFAULT 0')
+            con.execute('ALTER TABLE Characters ADD COLUMN CurveVersion INTEGER DEFAULT 3')
+            for cid,level in con.execute('SELECT Id,Level FROM Characters').fetchall():
+                con.execute('UPDATE Characters SET Experience=? WHERE Id=?',(thresholds[level-1],cid))
+            con.commit()
+        call('state','reset','--root',root,'--name-hex','416C706861','--level',3)
+        with closing(sqlite3.connect(db)) as con:
+            data=bytearray(con.execute('SELECT State FROM NativeDungeonProfiles WHERE CharacterId=11').fetchone()[0])
+            struct.pack_into('<I',data,272,7) # existing picture-card slot survives
+            struct.pack_into('<I',data,5024,23)
+            struct.pack_into('<I',data,152,9) # pet level is not character progression
+            if legacy:
+                data=data[:5144]
+                for offset,value in ((0,3),(5124,3),(5128,5144)):
+                    struct.pack_into('<I',data,offset,value)
+            else:
+                struct.pack_into('<I',data,5144,19)
+            con.execute('UPDATE NativeDungeonProfiles SET State=? WHERE CharacterId=11',(data,))
+            for code,qty in ((12000001,19),(50000001,17),(22000020,13)):
+                con.execute("INSERT OR REPLACE INTO CharacterCards VALUES(11,?,?, 'test')",(code,qty))
+            con.commit()
+        return bytes(data),thresholds
+
+    def test_offline_reset_and_grade_upgrade_previous_profile_atomically(self):
+        for operation in ('reset','grade'):
+            with self.subTest(operation=operation),self.fixture() as (root,db):
+                original,thresholds=self.seed_progression_profile(root,db)
+                with closing(sqlite3.connect(db)) as con:
+                    other=con.execute('SELECT * FROM Characters WHERE Id=22').fetchone()
+                    cards=con.execute('SELECT * FROM CharacterCards ORDER BY CharacterId,CardCode').fetchall()
+                args=('--level',4) if operation=='reset' else ('--value',24)
+                result=call('state',operation,'--root',root,'--name-hex','416C706861',*args)
+                with closing(sqlite3.connect(db)) as con:
+                    data=con.execute('SELECT State FROM NativeDungeonProfiles WHERE CharacterId=11').fetchone()[0]
+                    self.assertEqual(len(data),5704)
+                    self.assertEqual(struct.unpack_from('<III',data,5124),(4,5704,3))
+                    self.assertEqual(struct.unpack_from('<I',data,0)[0],4)
+                    self.assertEqual(struct.unpack_from('<I',data,272)[0],7)
+                    self.assertEqual(struct.unpack_from('<I',data,152)[0],9)
+                    self.assertEqual([struct.unpack_from('<I',data,o)[0] for o in (5144,5224,5700)],[19,17,13])
+                    level=4 if operation=='reset' else 3
+                    self.assertEqual(con.execute('SELECT Level,Experience FROM Characters WHERE Id=11').fetchone(),(level,thresholds[level-1]))
+                    self.assertEqual(struct.unpack_from('<Q',data,5136)[0],thresholds[level-1])
+                    self.assertEqual(struct.unpack_from('<I',data,5024)[0],0 if operation=='reset' else 24)
+                    self.assertEqual(con.execute('SELECT State FROM NativeCardProfileArchives WHERE CharacterId=11').fetchone()[0],original)
+                    self.assertEqual(con.execute('SELECT * FROM Characters WHERE Id=22').fetchone(),other)
+                    self.assertEqual(con.execute('SELECT * FROM CharacterCards ORDER BY CharacterId,CardCode').fetchall(),cards)
+                backup=Path(result['backup'])
+                if backup.is_dir():backup=backup/'game.db'
+                with closing(sqlite3.connect(backup)) as con:
+                    self.assertEqual(con.execute('SELECT State FROM NativeDungeonProfiles WHERE CharacterId=11').fetchone()[0],original)
+                call('state',operation,'--root',root,'--name-hex','416C706861',*args)
+                with closing(sqlite3.connect(db)) as con:
+                    self.assertEqual(con.execute('SELECT COUNT(*) FROM NativeCardProfileArchives').fetchone()[0],1)
+
+    def test_launcher_progression_hint_matches_current_rules(self):
+        source=(ROOT/'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
+        self.assertIn('等级按 1～200 级经验表推进，地宫实时经验与结算奖励共同累计',source)
+        self.assertIn('已有角色需点击“Reset level/EXP/title”才会重置',source)
+        self.assertNotIn('每次成功 CF88 结算 +100 EXP',source)
+        self.assertNotIn('下一级需要当前等级×100',source)
+
+    def test_offline_reset_current_profile_preserves_extended_cards(self):
+        with self.fixture() as (root,db):
+            self.seed_progression_profile(root,db,legacy=False)
+            call('state','reset','--root',root,'--name-hex','416C706861','--level',200)
+            with closing(sqlite3.connect(db)) as con:
+                data=con.execute('SELECT State FROM NativeDungeonProfiles WHERE CharacterId=11').fetchone()[0]
+                self.assertEqual(struct.unpack_from('<I',data,8)[0],200)
+                self.assertEqual(struct.unpack_from('<I',data,5144)[0],19)
+
+    def test_offline_upgrade_rejects_bad_state_and_online_profiles_without_writes(self):
+        for fault in ('size','version','curve','card','online','account_online','character_curve','edit_failure'):
+            with self.subTest(fault=fault),self.fixture() as (root,db):
+                original,_=self.seed_progression_profile(root,db)
+                data=bytearray(original)
+                if fault=='size':data=data[:-1]
+                if fault=='version':struct.pack_into('<I',data,5124,99)
+                if fault=='curve':struct.pack_into('<I',data,5132,2)
+                with closing(sqlite3.connect(db)) as con:
+                    if fault=='card':con.execute('UPDATE CharacterCards SET Quantity=256 WHERE CharacterId=11 AND CardCode=12000001')
+                    if fault=='online':con.execute('UPDATE Characters SET IsOnline=1 WHERE Id=11')
+                    if fault=='account_online':con.execute('UPDATE Accounts SET IsOnline=1 WHERE Id=1')
+                    if fault=='character_curve':con.execute('UPDATE Characters SET CurveVersion=2 WHERE Id=11')
+                    if fault=='edit_failure':con.execute("CREATE TRIGGER reject_reset BEFORE UPDATE OF Level ON Characters BEGIN SELECT RAISE(ABORT,'forced edit failure'); END")
+                    con.execute('UPDATE NativeDungeonProfiles SET State=? WHERE CharacterId=11',(data,));con.commit()
+                    before=con.execute('SELECT * FROM Characters ORDER BY Id').fetchall()
+                    resets=con.execute('SELECT * FROM DungeonTitleResets').fetchall()
+                call('state','reset','--root',root,'--name-hex','416C706861','--level',4,ok=False)
+                with closing(sqlite3.connect(db)) as con:
+                    self.assertEqual(con.execute('SELECT State FROM NativeDungeonProfiles WHERE CharacterId=11').fetchone()[0],bytes(data))
+                    self.assertEqual(con.execute('SELECT * FROM Characters ORDER BY Id').fetchall(),before)
+                    self.assertEqual(con.execute('SELECT * FROM DungeonTitleResets').fetchall(),resets)
+                    if con.execute("SELECT COUNT(*) FROM sqlite_master WHERE name='NativeCardProfileArchives'").fetchone()[0]:
+                        self.assertEqual(con.execute('SELECT COUNT(*) FROM NativeCardProfileArchives').fetchone()[0],0)
+
     def test_legacy_json_is_imported_once_and_not_written_back(self):
         with self.fixture() as (root,db):
             state=fixtures.BACKEND.snapshot(root,'4C6567616379');state['profile']={'character_name':'Legacy'}
@@ -92,6 +247,12 @@ int main(int argc,char**argv){char b[100];FILE*f=fopen("accounts.dat","r");if(ar
         with self.fixture() as (root,db):
             with closing(sqlite3.connect(db)) as con:
                 con.execute('ALTER TABLE Characters ADD COLUMN Experience INTEGER DEFAULT 777')
+                con.execute('ALTER TABLE Characters ADD COLUMN CurveVersion INTEGER DEFAULT 3')
+                # This reset targets an explicitly migrated test character; old versions must refuse.
+                import csv
+                thresholds=[int(r['total_experience']) for r in csv.DictReader((ROOT/'release/components/dungeon_progression/character_experience.csv').open(encoding='utf-8-sig'))]
+                for character_id,level in con.execute('SELECT Id,Level FROM Characters').fetchall():
+                    con.execute('UPDATE Characters SET Experience=? WHERE Id=?',(thresholds[level-1],character_id))
                 con.execute('CREATE TABLE DungeonProgress(CharacterId INTEGER,Episode INTEGER,ClearMask INTEGER)')
                 con.execute('INSERT INTO DungeonProgress VALUES(11,3,15)');con.commit()
             old=root/'level_progress_state_v1_416C706861.dat';old.write_bytes(b'version=1\nlevel=5\nexp_total=777\n')

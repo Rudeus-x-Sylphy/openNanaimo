@@ -11,7 +11,7 @@ internal static class Program
         var combatBefore = NativeDungeonState.Create(levelOne, [], []);
         var combatAfterBytes = combatBefore.Bytes.ToArray();
         Put(combatAfterBytes, 8, 3);
-        Put(combatAfterBytes, 12, 900);
+        SetTotal(combatAfterBytes, CharacterProgression.ExperienceRequiredForLevel(3));
         var combatAfter = new NativeDungeonState(combatAfterBytes);
         var combat = DatabaseService.ResolveNativeDungeonCharacterProgression(
             combatBefore, combatAfter, null,
@@ -30,7 +30,7 @@ internal static class Program
         var settlementBefore = NativeDungeonState.Create(thresholdCharacter, [], []);
         var settlementAfterBytes = settlementBefore.Bytes.ToArray();
         Put(settlementAfterBytes, 8, 4);
-        Put(settlementAfterBytes, 12, 2_000);
+        SetTotal(settlementAfterBytes, CharacterProgression.ExperienceRequiredForLevel(4));
         var settlementAfter = new NativeDungeonState(settlementAfterBytes);
         var settlement = new NativeDungeonSettlementRecord(
             0, 1, 0, 0, 0, DungeonRewardPolicy.ClearRatingS, 12_000,
@@ -77,7 +77,7 @@ internal static class Program
 
         var legacySettlement = settlement with { CharacterExperienceAward = null };
         var legacyAfterBytes = settlementBefore.Bytes.ToArray();
-        Put(legacyAfterBytes, 12, checked((uint)afterExperience));
+        SetTotal(legacyAfterBytes, afterExperience);
         var legacy = DatabaseService.ResolveNativeDungeonCharacterProgression(
             settlementBefore, new NativeDungeonState(legacyAfterBytes), legacySettlement,
             storedLevel: 1, storedExperience: beforeExperience,
@@ -112,9 +112,9 @@ internal static class Program
             && frame[0x0C + 0x04] == 1
             && frame[0x0C + 0x0A] == 2
             && U32(frame, 0x0C + 0x0C) == 20
-            && U32(frame, 0x0C + 0x10) == afterExperience
-            && U32(frame, 0x0C + 0x14) == levelTwoThreshold
-            && U32(frame, 0x0C + 0x18) == CharacterProgression.NextExperienceThreshold(2)
+            && U32(frame, 0x0C + 0x10) == afterExperience - levelTwoThreshold
+            && U32(frame, 0x0C + 0x14) == 0
+            && U32(frame, 0x0C + 0x18) == CharacterProgression.NextExperienceThreshold(2) - levelTwoThreshold
             && frame.AsSpan(0x0C + 0x34, 0x34).SequenceEqual(untouchedRemote)
             && HasValidChecksum(frame),
             "CF88 client synchronization uses committed progression and preserves other members");
@@ -159,6 +159,12 @@ internal static class Program
         CurrentMp = 100,
         TutorialCompleted = true
     };
+
+    private static void SetTotal(byte[] bytes, long total)
+    {
+        Put(bytes,8,(uint)CharacterProgression.CalculateLevel(total));Put(bytes,12,0);
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes.AsSpan(NativeDungeonState.TotalExperienceOffset),checked((ulong)total));
+    }
 
     private static uint U32(byte[] value, int offset)
         => BinaryPrimitives.ReadUInt32LittleEndian(value.AsSpan(offset, 4));

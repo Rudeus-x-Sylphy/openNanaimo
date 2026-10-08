@@ -117,18 +117,20 @@ public sealed partial class NetworkAdapterService
     private async Task<DungeonSettlementReward> ApplyManagedCoupleRewardAsync(
         ConnectionSession session, DungeonBattleInstance battle, DungeonSettlementReward reward, bool cleared, CancellationToken token)
     {
-        if (!cleared || session.Character is null) return reward;
-        var relation = await _database.GetActiveCoupleRelationAsync(session.Character.Id, token);
-        var eligible = relation is not null
+        if (session.Character is null) return reward;
+        var id = session.Character.Id;
+        var score = checked((uint)Math.Max(0, battle.HitScores.GetValueOrDefault(id)
+            + battle.BossBonusScores.GetValueOrDefault(id)));
+        var relation = await _database.GetActiveCoupleRelationAsync(id, token);
+        var eligible = cleared && relation is not null
             && AreCurrentManagedCoupleParticipants(session, relation, battle)
-            && !battle.DeadCharacters.Contains(session.Character.Id);
+            && !battle.DeadCharacters.Contains(id);
+        var total = await ScaleSettlementScoreAsync(session, score,
+            relation?.RingItemCode ?? 0, eligible, token);
         return reward with
         {
-            CharacterExperience = (int)Math.Min(int.MaxValue,
-                await ScaleMentorshipExperienceAsync(session, CoupleBenefitPolicy.ScaleExperience(
-                    checked((uint)Math.Max(0, reward.CharacterExperience)),
-                    relation?.RingItemCode ?? 0,
-                    eligible), token))
+            CharacterExperience = checked((int)(total / 4u)),
+            RelationshipBonusScore = checked((int)(total > score ? total - score : 0))
         };
     }
 

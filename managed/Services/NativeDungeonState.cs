@@ -1,4 +1,4 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
 using System.Text;
 using OpenNanaimo.Adapter.Models;
 
@@ -7,8 +7,39 @@ namespace OpenNanaimo.Adapter.Services;
 public sealed class NativeDungeonState
 {
     public const int LegacySize = 5120;
-    public const int Size = 5124;
-    public static bool IsSupportedSize(int length) => length is LegacySize or Size;
+    public const int PreviousSize = 5144;
+    public const int Size = 5704;
+    public const int ProtocolVersion = 4;
+    public const int BaseCardCount = 420;
+    public const int CardCount = 560; // pictures + SP + event + special/VIP
+    public const int ExtendedCardsOffset = PreviousSize;
+    public static int CardOffsetAt(int index)
+    {
+        if ((uint)index >= CardCount) throw new ArgumentOutOfRangeException(nameof(index));
+        return index < BaseCardCount ? 272 + index * 4 : ExtendedCardsOffset + (index - BaseCardCount) * 4;
+    }
+    public static uint CardCodeAt(int index)
+    {
+        if ((uint)index >= CardCount) throw new ArgumentOutOfRangeException(nameof(index));
+        return index < 420 ? 13000001u + (uint)index
+            : index < 440 ? 12000001u + (uint)(index - 420)
+            : index < 540 ? 50000001u + (uint)(index - 440)
+            : 22000001u + (uint)(index - 540);
+    }
+    public static bool TryGetCardOffset(uint code, out int offset)
+    {
+        var index = code is >= 13000001 and <= 13000420 ? (int)(code - 13000001)
+            : code is >= 12000001 and <= 12000020 ? 420 + (int)(code - 12000001)
+            : code is >= 50000001 and <= 50000100 ? 440 + (int)(code - 50000001)
+            : code is >= 22000001 and <= 22000020 ? 540 + (int)(code - 22000001) : -1;
+        offset = index < 0 ? -1 : CardOffsetAt(index);
+        return index >= 0;
+    }
+    public const int VersionOffset = 5124;
+    public const int LengthOffset = 5128;
+    public const int CurveVersionOffset = 5132;
+    public const int TotalExperienceOffset = 5136;
+    public static bool IsSupportedSize(int length) => length == Size;
     public const int CouplePartnerUidOffset = 5120;
     public const int PetLevelOffset = 152;
     public const int PetExperienceOffset = 156;
@@ -25,15 +56,22 @@ public sealed class NativeDungeonState
     {
         ArgumentNullException.ThrowIfNull(bytes);
         if (!IsSupportedSize(bytes.Length)) throw new InvalidDataException("Invalid native state length.");
-        // Persisted states and recovery journals predate partner sharing. Keep
-        // every original field, and start with no live partner authorization.
-        if (bytes.Length == LegacySize)
-        {
-            Bytes = new byte[Size];
-            bytes.CopyTo(Bytes, 0);
-        }
-        else Bytes = bytes;
-        if (Get(0) != 1 || Get(1952) > 255) throw new InvalidDataException("Native worker rejected state exchange.");
+        Bytes = bytes;
+        if (Get(0) != ProtocolVersion || Get(VersionOffset) != ProtocolVersion
+            || Get(LengthOffset) != Size || Get(CurveVersionOffset) != CharacterProgression.CurveVersion
+            || Get(12) != 0 || Get(1952) > 255)
+            throw new InvalidDataException("Native state version/length/curve mismatch; offline migration required.");
+        CharacterProgression.Validate(checked((int)Get(8)), TotalExperience64);
+        for (var i = 0; i < CardCount; i++)
+            if (Get(CardOffsetAt(i)) > byte.MaxValue)
+                throw new InvalidDataException("Native card quantity exceeds the album byte limit.");
+    }
+    public long TotalExperience64 => checked((long)BinaryPrimitives.ReadUInt64LittleEndian(Bytes.AsSpan(TotalExperienceOffset, 8)));
+    public void SetProgression(int level, long totalExperience)
+    {
+        CharacterProgression.Validate(level, totalExperience);
+        Put(8, level); Put(12, 0);
+        BinaryPrimitives.WriteUInt64LittleEndian(Bytes.AsSpan(TotalExperienceOffset, 8), checked((ulong)totalExperience));
     }
     public uint Get(int offset) => BinaryPrimitives.ReadUInt32LittleEndian(Bytes.AsSpan(offset, 4));
     public long GetBalance(int offset) => checked((long)BinaryPrimitives.ReadUInt64LittleEndian(Bytes.AsSpan(offset, 8)));
@@ -54,7 +92,7 @@ public sealed class NativeDungeonState
         BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(24, 4), Get(132));
         var resources = NetworkAdapterService.ResolveInventoryVitals(new CharacterRecord
         {
-            Level = checked((int)Math.Min(Get(8), 99)),
+            Level = checked((int)Math.Min(Get(8), CharacterProgression.MaximumLevel)),
             Appearance = appearance,
             MaxHp = checked((int)Math.Min(Get(16), ushort.MaxValue)),
             MaxMp = checked((int)Math.Min(Get(24), ushort.MaxValue)),
@@ -73,12 +111,18 @@ public sealed class NativeDungeonState
     {
         if (c.Id > ushort.MaxValue)
             throw new InvalidDataException($"Native dungeon character identity must not exceed uint16: {c.Id}.");
-        var data = new byte[Size]; data[0] = 1;
+        CharacterProgression.Validate(c.Level, c.Experience, c.CurveVersion);
+        var data = new byte[Size]; data[0] = ProtocolVersion;
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(VersionOffset), ProtocolVersion);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(LengthOffset), Size);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(CurveVersionOffset), CharacterProgression.CurveVersion);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(8), checked((uint)c.Level));
+        BinaryPrimitives.WriteUInt64LittleEndian(data.AsSpan(TotalExperienceOffset), checked((ulong)c.Experience));
         var s = new NativeDungeonState(data);
         var name = Encoding.GetEncoding(936).GetBytes(c.Name);
         // Native quickbar account keys use 32 bytes including p_ and NUL.
         if (name.Length is < 1 or > 14) throw new InvalidDataException("Native dungeon names require 1..14 GBK bytes.");
-        s.Put(4, c.Id); s.Put(8, c.Level); s.Put(12, c.Experience);
+        s.Put(4, c.Id); s.SetProgression(c.Level, c.Experience);
         s.Put(16, c.MaxHp); s.Put(20, c.CurrentHp); s.Put(24, c.MaxMp); s.Put(28, c.CurrentMp);
         BinaryPrimitives.WriteInt64LittleEndian(data.AsSpan(32, 8), c.Hans);
         BinaryPrimitives.WriteInt64LittleEndian(data.AsSpan(40, 8), c.Cash);
@@ -86,8 +130,8 @@ public sealed class NativeDungeonState
         // Zero is an explicit unequip, not a request to restore the creation pet.
         var equippedPetItemCode = c.EquippedPetItemCode;
         s.Put(60, c.RevivalUseCount); s.Put(64, c.QuickSlotExpansionExpires); s.Put(68, equippedPetItemCode);
-        s.Put(AttackModifierOffset, CharacterCombatProgression.NativeAttack(c.Strength, c.Agility, c.AttackModifier));
-        s.Put(DefenseFlatOffset, CharacterCombatProgression.NativeDefense(c.Vitality, c.Strength, c.DefenseFlat));
+        s.Put(AttackModifierOffset, CharacterCombatProgression.NativeAttack(c.Level, c.AttackModifier));
+        s.Put(DefenseFlatOffset, CharacterCombatProgression.NativeDefense(c.Level, c.DefenseFlat));
         s.Put(PetCombatLevelOffset, (uint)Math.Clamp(c.InitialAttackMode + 1, 1, 3));
         var pet = c.Items.FirstOrDefault(i => i.ItemCode == equippedPetItemCode && i.Quantity > 0);
         var petState = PetProgression.GetState(c, equippedPetItemCode);
@@ -106,7 +150,7 @@ public sealed class NativeDungeonState
         foreach (var skill in skills)
             if (skill.SkillCode is >= 52000000 and <= 52000015) s.Put(160 + (int)(skill.SkillCode - 52000000) * 4, skill.Grade);
         foreach (var card in cards)
-            if (card.CardCode is >= 13000001 and <= 13000420) s.Put(272 + (int)(card.CardCode - 13000001) * 4, card.Quantity);
+            if (TryGetCardOffset(card.CardCode, out var cardOffset)) s.Put(cardOffset, card.Quantity);
         var items = c.Items.Where(i => IsNativeItem(i.ItemCode) && i.Quantity > 0).OrderBy(i => i.ItemCode).ToArray();
         if (items.Length > 255 || items.Sum(i => (int)i.Quantity) > 255)
             throw new InvalidDataException("Native dungeon inventory exceeds its 255 instance handles.");

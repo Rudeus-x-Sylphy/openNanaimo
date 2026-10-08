@@ -283,8 +283,9 @@ internal static class HealthRecoveryChecks
         }.ToString());
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE Characters SET Level=$level,MaxHp=$maxHp,MaxMp=$maxMp,CurrentHp=$hp,CurrentMp=$mp WHERE Id=$id";
+        command.CommandText = "UPDATE Characters SET Level=$level,Experience=$exp,MaxHp=$maxHp,MaxMp=$maxMp,CurrentHp=$hp,CurrentMp=$mp WHERE Id=$id";
         command.Parameters.AddWithValue("$level", level);
+        command.Parameters.AddWithValue("$exp", CharacterProgression.ExperienceRequiredForLevel(level));
         command.Parameters.AddWithValue("$maxHp", maxHp);
         command.Parameters.AddWithValue("$maxMp", maxMp);
         command.Parameters.AddWithValue("$hp", currentHp);

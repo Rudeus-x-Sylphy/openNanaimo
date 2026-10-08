@@ -65,14 +65,18 @@ class ExportPatchTests(unittest.TestCase):
 
     def test_character_experience_inputs_are_exactly_scoped_source(self):
         for name in ('release/components/dungeon_progression/character_experience.csv',
+                     'release/components/dungeon_progression/character_experience_v2.csv',
                      'scripts/generate_character_experience.py'):
             patch.payload_policy(name, 'source')
+            patch.validated_closure({'count': 1, 'files': [{'path': name, 'size': 1, 'sha256': '0' * 64}]})
         with self.assertRaises(patch.ExportError):
             patch.payload_policy('release/components/dungeon_progression/player-dump.csv', 'source')
 
     def test_combat_score_generator_is_exactly_scoped_source(self):
         for name in ("scripts/combat-score-generator/Program.cs",
-                     "scripts/combat-score-generator/CombatScoreGenerator.csproj"):
+                     "scripts/combat-score-generator/CombatScoreGenerator.csproj",
+                     "scripts/generate_lumineos_combat.py",
+                     "scripts/normalize_combat_score_resources.py"):
             patch.payload_policy(name, "source")
             patch.validated_closure({"count":1,"files":[{"path":name,"size":1,"sha256":"0"*64}]})
         for name in ("scripts/arbitrary/Program.cs", "scripts/combat-score-generator/bin/tool.dll",

@@ -167,9 +167,9 @@ public sealed partial class DatabaseService
         }
         var gender = Read("gender");
         var level = Read("level", 1);
-        var hp = Read("hp_max", 1500);
-        var mp = Read("mp_max", 100);
-        if (gender > 1 || level is < 1 or > 99 || hp is < 1 or > ushort.MaxValue || mp is < 1 or > ushort.MaxValue)
+        var hp = Read("hp_max", (uint)CharacterProgression.CalculateMaxHp((int)level));
+        var mp = Read("mp_max", (uint)CharacterProgression.CalculateMaxMp((int)level));
+        if (gender > 1 || level is < 1 or > CharacterProgression.MaximumLevel || hp is < 1 or > ushort.MaxValue || mp is < 1 or > ushort.MaxValue)
             throw new InvalidDataException("Local profile character values are out of range.");
         var shopping = new LocalShoppingSidecar
         {
@@ -254,7 +254,7 @@ public sealed partial class DatabaseService
             RETURNING Id
             """, ("$account", accountId), ("$name", username), ("$gender", gender), ("$face", BinaryPrimitives.ReadUInt32LittleEndian(appearance)), ("$appearance", appearance),
             ("$level", level), ("$exp", CharacterProgression.ExperienceRequiredForLevel((int)level)),
-            ("$attribute", CharacterCombatProgression.InitialAttribute((int)level)),
+            ("$attribute", 5),
             ("$hp", hp), ("$mp", mp), ("$coin", shopping.Coin!.Value), ("$nana", shopping.Nana!.Value),
             ("$attack", Read("attack")), ("$defense", Read("defense")), ("$pet", shopping.SelectedPet),
             ("$petVariant", shopping.SelectedPet is >= 15000001 and <= 15000003 ? shopping.SelectedPet - 15000000 : 0),

@@ -393,6 +393,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte[]? LastSkillSlotExpansionRequestPayload { get; set; }
         public DateTime LastSkillSlotExpansionRequestUtc { get; set; }
         public byte[]? LastSkillSlotExpansionResultPayload { get; set; }
+        public LuckyCardRequestWindow LuckyCardRequests { get; } = new();
+        public LuckyCardRequestWindow EventCardRequests { get; } = new();
         public ushort? LastSkillPointUnionControl { get; set; }
         public uint LastSkillPointUnionToken { get; set; }
         public DateTime LastSkillPointUnionUtc { get; set; }
@@ -407,6 +409,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public bool NativeContinuationRosterRequested { get; set; }
         public bool NativeCoupleIdentityRetained { get; set; }
         public bool TownPetSceneCompletionPending { get; set; }
+        public bool TownEquipmentInitializationPending { get; set; }
         public HashSet<ushort> TownKnownActors { get; } = [];
         public byte[]? LastTownMovement { get; set; }
         public Dictionary<string, (ConnectionSession Actor, int Remaining)> TownAttachmentRefreshes { get; } = new();
@@ -2327,7 +2330,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 // The numeric source is the committed story-claim ledger, not C59A
                 // scratch data or a localized reward label.
                 loadNecessityFrames[C355StoryMedalFrameOffset] = storyGuideState.Medals;
-                _log($"{channel}:{remote} load necessities restored: {FormatCharacterRestoreSummary(session.Character)}; storyMedals={storyGuideState.Medals}; C355 followed by C476 inventory initialization");
+                _log($"{channel}:{remote} load necessities restored: {FormatCharacterRestoreSummary(session.Character)}; storyMedals={storyGuideState.Medals}; C355 followed by C476 inventory initialization; equipped snapshot deferred until first C368");
                 return CombineNativeFrames(
                     BuildLoadNecessityReadinessResponse(frame, session, storyGuideState.Mask),
                     loadNecessityFrames);
@@ -2360,6 +2363,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
 
+                LeaveTradeRoomScene(session, "entertainment entry");
+                LeaveApartmentScene(session, "entertainment entry");
+                LeaveVillageShopScene(session, "entertainment entry");
+                LeaveTownScene(session, "entertainment entry");
                 session.ArenaGameType = checked((byte)arenaGameType);
                 _log($"{channel}:{remote} Arena adapter entry notification accepted: type={arenaGameType} character={session.Character.Name}; retail protocol is one-way, no response required");
                 return null;
@@ -4109,6 +4116,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     ? await _database.GetCharacterSkillsAsync(session.Character.Id, token)
                     : [];
                 var cardList = BuildCardListPayload(payload, ownedCards, session.Character, learnedSkills);
+                if (BinaryPrimitives.ReadUInt16LittleEndian(payload) == 50)
+                {
+                    var experienceCard = await _database.GetExperienceCardAsync(session.Character.Id, token);
+                    ExperienceCardPolicy.WriteCardList(cardList, experienceCard, DateTime.Now);
+                }
                 if (payload[0] is 10 or 20 or 40 or 50)
                     ApplyCardAcquisitionNotices(cardList, ownedCards, session);
                 if (BinaryPrimitives.ReadUInt16LittleEndian(payload) == 30)
@@ -4242,6 +4254,20 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     BuildCardSummonPayload(session.Character),
                     session);
 
+            case 0xC3FD: // Dedicated event-card set redemption; not C3ED/type20.
+            {
+                if (!session.OnlineTracked || session.Character is null) return null;
+                if (!EventCardPolicy.TryParse(payload, out var page))
+                    return BuildNativeFrame(frame, 0xC3FE, EventCardPolicy.Result(0, "Invalid request"), session);
+                var requestId = session.EventCardRequests.Get(BinaryPrimitives.ReadUInt16LittleEndian(frame), page, DateTime.UtcNow);
+                var result = await _database.RedeemEventCardAsync(session.AccountId, session.Character.Id,
+                    session.SessionId, requestId, page, token);
+                if (result.Success) await RefreshSessionCharacterAsync(session, token);
+                _log($"{channel}:{remote} event-card page={page} request={requestId} reward={result.Reward} error={result.Error}");
+                // 863790 requests C3E7/20 itself. No cross-controller inventory pushes.
+                return BuildNativeFrame(frame, 0xC3FE, EventCardPolicy.Result(result.Reward, result.Message), session);
+            }
+
             case 0xC3ED: // REQ_MAKE_UNION_DDAKGI
             {
                 if (!session.OnlineTracked || session.Character is null)
@@ -4251,6 +4277,30 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 {
                     _log($"{channel}:{remote} card synthesis request invalid: length={payload.Length}; returning C3EE failure");
                     return BuildNativeFrame(frame, 0xC3EE, BuildCardSynthesisResultPayload(false, 0), session);
+                }
+
+                if (unionType == 40)
+                {
+                    if (LuckyCardPolicy.TryParse(payload, out var luckyCard))
+                    {
+                        var control = BinaryPrimitives.ReadUInt16LittleEndian(frame);
+                        var requestId = session.LuckyCardRequests.Get(control, luckyCard, DateTime.UtcNow);
+                        var draw = await _database.OpenLuckyCardAsync(session.AccountId, session.Character.Id,
+                            session.SessionId, requestId, luckyCard, token);
+                        if (draw.Success) await RefreshSessionCharacterAsync(session, token);
+                        _log($"{channel}:{remote} lucky-card card={luckyCard} request={requestId} result={draw.Result} reward={draw.Reward} error={draw.Error}");
+                        return BuildNativeFrame(frame, 0xC3EE, LuckyCardPolicy.Result(draw.Result, draw.Reward), session);
+                    }
+                    var activation = (Success: false, State: default(ExperienceCardState));
+                    if (ExperienceCardPolicy.TryParseActivation(payload, out var experienceCard))
+                        activation = await _database.ActivateExperienceCardAsync(
+                            session.AccountId, session.Character.Id, session.SessionId, experienceCard, token,
+                            keyChoice: BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2)), allowReplacement: true);
+                    _log($"{channel}:{remote} experience-card key={BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2))} card={BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(8))} success={activation.Success}");
+                    // The client requests its own C3E7/50 and C3E9 refresh after C3EE.
+                    // Do not push another controller's inventory frames here.
+                    return BuildNativeFrame(frame, 0xC3EE,
+                        ExperienceCardPolicy.BuildActivationResult(activation.Success, activation.State), session);
                 }
 
                 if (unionType == SkillPointCardUnionType
@@ -5019,7 +5069,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         ? $"{channel}:{remote} C367 village-entry sentinel normalized: town={session.TownId} room={effectiveRoomIndex} requested=({requestedPositionX},{requestedPositionY}) position=({entryPosition.WireX},{entryPosition.WireY}); FFFF/FFFF and legacy 03FF/03FF are not persisted"
                         : $"{channel}:{remote} C367 accepted village-entry position: room={effectiveRoomIndex} position=({entryPosition.WireX},{entryPosition.WireY})");
                 await CompleteTownPetSceneOnActivityAsync(session, token);
-                return BuildNativeFrame(
+                var townActor = BuildNativeFrame(
                     frame,
                     0xC368,
                     BuildRoomEnterPayloadWithResources(
@@ -5029,6 +5079,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         entryPosition.WireY,
                         session.NonCombatResourceSnapshot),
                     session);
+                if (!session.TownEquipmentInitializationPending || !session.Character.TutorialCompleted)
+                    return townActor;
+                var initialSkills = await _database.GetCharacterSkillsAsync(session.Character.Id, token);
+                return CompleteTownEquipmentInitialization(frame, session, townActor, initialSkills);
             }
 
             case 0xC376: // character/profile query
@@ -5624,13 +5678,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             requestedRoomId = FindPublicEntertainmentRoom(session);
                             payload.AsSpan(4, 8).Clear();
                         }
+                        byte entertainmentJoinResult = 50;
                         if (enterMode is not (10 or 20) || !session.AuxiliaryGameSession
                             || !TryDecodeFixedGbkString(payload.AsSpan(4, 8), true, out var entertainmentPassword)
                             || !TryJoinEntertainmentRoom(
                                 session,
                                 requestedRoomId,
                                 entertainmentPassword,
-                                out var joinedEntertainmentRoom)
+                                out var joinedEntertainmentRoom,
+                                out entertainmentJoinResult)
                             || joinedEntertainmentRoom is null
                             || !joinedEntertainmentRoom.Members.TryGetValue(
                                 joinedEntertainmentRoom.OwnerSessionId,
@@ -5639,7 +5695,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             return BuildNativeFrame(
                                 frame,
                                 0xCF76,
-                                EntertainmentProtocol.BuildEnterResponse(20, 0, 0, string.Empty, string.Empty, 0, string.Empty),
+                                EntertainmentProtocol.BuildEnterResponse(entertainmentJoinResult, 0, 0, string.Empty, string.Empty, 0, string.Empty),
                                 session);
                         QueueEntertainmentLobbyRoomListRefresh(session, "entertainment room member joined");
                         return BuildNativeFrame(
@@ -7498,6 +7554,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         rewardCleared,
                         PetProgression.GetHansBonusPercent(petBeforeReward));
                     settlementReward = await ApplyManagedCoupleRewardAsync(session, endBattle, settlementReward, rewardCleared, token);
+                    var settlementScore = checked(score + settlementReward.RelationshipBonusScore);
+                    // Preserve the team base (including the Boss only once), but
+                    // replace this member's base contribution with its result score.
+                    var settlementStageScore = (int)Math.Min(int.MaxValue,
+                        (long)stageRecordScore + settlementReward.RelationshipBonusScore);
                     // Retail stores Dungeon 1/2/3/Super-BOSS in bits 0/1/2/3
                     // of the same [episode][difficulty] C355 entry.
                     var rewardProgressCompleted = rewardCleared;
@@ -7513,7 +7574,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         rewardEpisode,
                         rewardDungeon,
                         rewardDifficulty,
-                        score,
+                        settlementScore,
                         elapsedMinutes,
                         settlementReward.CharacterExperience,
                         settlementReward.PetExperience,
@@ -7522,7 +7583,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         completed: rewardProgressCompleted,
                         superBoss: rewardIsSuperBoss,
                         clearRating: settlementReward.Rating,
-                        stageRecordScore: stageRecordScore);
+                        stageRecordScore: settlementStageScore);
                     if (rewarded is null)
                         return null;
 
@@ -7563,9 +7624,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         hitScore,
                         settlementReward.Rating,
                         petLevelUp ? 1 : 0,
-                        bonusScore: bossBonusScore,
+                        bonusScore: checked(bossBonusScore + settlementReward.RelationshipBonusScore),
                         earnedHans: settlementReward.Hans,
                         playerLevelUpState: session.Character.Level != levelBeforeReward ? 1 : 0);
+                    // BuildDungeonEndGamePayload writes hit + bonus to both score
+                    // fields; never overwrite it with the unscaled rating basis.
                     lock (_dungeonRoomGate)
                     {
                         endBattle.RewardedCharacters.Add(rewardCharacterId);
@@ -13830,7 +13893,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // not initialize our configured inventories/pet inside the main guide.
         // Completion remains owned by validated C353; the next C354/C367 use
         // the unchanged stored loadout through the normal village lifecycle.
-        if (session.Character is not { TutorialCompleted: true })
+        session.TownEquipmentInitializationPending = session.Character is { TutorialCompleted: true };
+        if (!session.TownEquipmentInitializationPending)
             return loadNecessity;
 
         // The C476 notification is the client's inventory initialization gate.
@@ -13852,6 +13916,24 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             BuildPetInventoryPayload(session.Character),
             session);
         return CombineNativeFrames(loadNecessity, inventoryReady, equippedPet);
+    }
+
+    private static byte[] CompleteTownEquipmentInitialization(
+        byte[] request, ConnectionSession session, byte[] townActor,
+        IReadOnlyList<CharacterSkillRecord> learnedSkills)
+    {
+        if (!session.TownEquipmentInitializationPending || session.Character is not { TutorialCompleted: true } character)
+            return townActor;
+        // C476 -> 8196A0 clears equipped references, but only requests owned
+        // lists (C3CB/C44B/C409/C42F), not C378. Restore the COMPLETE equipped
+        // snapshot without simulating a C47D mutation or respawning an actor.
+        // Order matters: C368 first initializes actual HP/MP; C379 then copies
+        // them to its preview words (800DC8/800DDF) and restores every slot.
+        // Sending this beside C355 would sample pre-actor resources instead.
+        var equipped = BuildNativeFrame(request, 0xC379,
+            BuildBoxInfoPayloadWithSkills(character, learnedSkills), session);
+        session.TownEquipmentInitializationPending = false;
+        return CombineNativeFrames(townActor, equipped);
     }
 
     private static byte[] BuildLoadNecessityReadinessResponse(
@@ -13979,7 +14061,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         payload[2] = 1; // local adapter id
         // The 271A consumer reads frame+12 and calls the same character-level
         // setter used by C355. This is payload+4 after the native header.
-        payload[4] = session.Character is null ? (byte)0 : (byte)Math.Clamp(session.Character.Level, 1, 99);
+        payload[4] = session.Character is null ? (byte)0 : (byte)Math.Clamp(session.Character.Level, 1, CharacterProgression.MaximumLevel);
         // 271A frame+0x0D is the persisted character title grade.
         payload[5] = CharacterTitleState.GetGrade(session.Character);
         // The 271A consumer stores packet+14 as the persistent guide state.
@@ -15622,15 +15704,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     {
         var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
         var nextLevel = CharacterProgression.NextExperienceThreshold(character.Level);
-        var protocolLevelStart = (uint)Math.Clamp(levelStart, 0L, uint.MaxValue - 1L);
-        var protocolNextLevel = (uint)Math.Clamp(
-            nextLevel,
-            protocolLevelStart + 1L,
-            uint.MaxValue);
-        var protocolExperience = GetDungeonResultExperience(
-            character.Experience,
-            protocolLevelStart,
-            protocolNextLevel);
+        var display = CharacterProgression.ProjectClientExperience(character.Level, character.Experience);
+        var protocolLevelStart = display.Lower;
+        var protocolNextLevel = display.Next;
+        var protocolExperience = display.Current;
         return new ArenaPvpResultRecord(
             GetSceneEntityId(character),
             win,
@@ -15830,21 +15907,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // title renderer. The launcher fixed selection and native CF88 state
         // share this same managed snapshot.
         payload[0x24 - NativeHeaderLength] = CharacterTitleState.GetGrade(character);
-        // The retail C355 handler stores frame+40/+44/+48 as accumulated
-        // experience, this level's start, and the next-level threshold. The
-        // profile window reads those same three local-state values to compute
+        // The retail C355 handler stores frame+40/+44/+48 as current/lower/next.
+        // These are projected display coordinates, never authoritative totals.
+        // The profile window reads those same three local-state values to compute
         // (current - start) / (next - start).
-        var levelStart = CharacterProgression.ExperienceRequiredForLevel(level);
-        var nextLevel = CharacterProgression.NextExperienceThreshold(level);
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            payload.AsSpan(32, 4),
-            (uint)Math.Clamp(character?.Experience ?? 0L, 0L, uint.MaxValue));
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            payload.AsSpan(36, 4),
-            (uint)Math.Clamp(levelStart, 0L, uint.MaxValue - 1L));
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            payload.AsSpan(40, 4),
-            (uint)Math.Clamp(nextLevel, levelStart + 1, uint.MaxValue));
+        var display = CharacterProgression.ProjectClientExperience(level, character?.Experience ?? 0L);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(32, 4), display.Current);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(36, 4), display.Lower);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(40, 4), display.Next);
         // C355 frame+0x38 restores the selected PET code independently
         // from the frame+0x0D carry flag.
         BinaryPrimitives.WriteUInt32LittleEndian(
@@ -16019,7 +16089,16 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var pageSize = category == 3 ? 10 : 20;
         foreach (var card in ownedCards)
         {
-            if (card.Category != category || card.Page != page || card.Slot >= pageSize)
+            if (mode == 50)
+            {
+                // VIP requests send category0, not CardCatalog's category3. Other
+                // special/SP/event cards share category/page/slot: do not mix them.
+                if (ExperienceCardPolicy.TryGetListSlot(card.CardCode, page, out var vipSlot))
+                    payload[4 + vipSlot] = card.Quantity;
+                continue;
+            }
+            if (!CardCatalog.MatchesAlbumMode(card.CardCode, mode)
+                || (mode != 20 && card.Category != category) || card.Page != page || card.Slot >= (mode == 20 ? 10 : pageSize))
                 continue;
 
             // Quantities start at frame+12; frame+32 and +52 carry acquisition notices.
@@ -16609,18 +16688,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         payload[0x0E] = (byte)Math.Clamp(player.Level, 1, byte.MaxValue);
         payload[0x0F] = clearRating;
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x10, 4), gainedExperience);
-        // CF88 uses cumulative experience/current-level start/next-level start.
-        // Clamp inconsistent admin-edited archives into that absolute interval;
-        // otherwise the client's unsigned percentage calculation can underflow.
-        var protocolLevelStart = (uint)Math.Clamp(levelStart, 0L, uint.MaxValue - 1L);
-        var protocolNextLevel = (uint)Math.Clamp(
-            nextLevel,
-            protocolLevelStart + 1L,
-            uint.MaxValue);
-        var protocolExperience = GetDungeonResultExperience(
-            player.Experience,
-            protocolLevelStart,
-            protocolNextLevel);
+        // CF88 uses the same level-relative display coordinates as C355/CF71.
+        // The independent gainedExperience is a real reward, NOT a display delta.
+        var display = CharacterProgression.ProjectClientExperience(player.Level, player.Experience);
+        var protocolLevelStart = display.Lower;
+        var protocolNextLevel = display.Next;
+        var protocolExperience = display.Current;
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x14, 4), protocolExperience);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x18, 4), protocolLevelStart);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x1C, 4), protocolNextLevel);
@@ -16639,12 +16712,6 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // remains unclosed, so keep the reserved result-side value zero.
         return payload;
     }
-
-    private static uint GetDungeonResultExperience(
-        long experience,
-        uint levelStart,
-        uint nextLevel) =>
-        (uint)Math.Clamp(experience, (long)levelStart, (long)nextLevel);
 
     private static bool IsDungeonSuperBoss(byte dungeon, byte realStage) =>
         dungeon == DungeonCountPerEpisode - 1 && realStage == 1;
@@ -17596,18 +17663,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(14, 2),
             (ushort)Math.Clamp(character.MaxMp, 0, ushort.MaxValue));
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            payload.AsSpan(16, 4),
-            (uint)Math.Clamp(character.Experience, 0L, uint.MaxValue));
-
-        var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
-        var nextLevel = CharacterProgression.NextExperienceThreshold(character.Level);
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            payload.AsSpan(20, 4),
-            (uint)Math.Clamp(levelStart, 0L, uint.MaxValue - 1L));
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            payload.AsSpan(24, 4),
-            (uint)Math.Clamp(nextLevel, levelStart + 1, uint.MaxValue));
+        var display = CharacterProgression.ProjectClientExperience(character.Level, character.Experience);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(16, 4), display.Current);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(20, 4), display.Lower);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(24, 4), display.Next);
         return payload;
     }
 
@@ -18436,16 +18495,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var payload = new byte[128];
         WriteFixedGbk(payload.AsSpan(0, 24), character?.Name ?? "角色");
 
-        var level = Math.Clamp(character?.Level ?? 1, 1, 99);
+        var level = Math.Clamp(character?.Level ?? 1, 1, CharacterProgression.MaximumLevel);
         payload[31] = (byte)level;
         payload[33] = CharacterTitleState.GetGrade(character);
 
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(34, 2),
-            (ushort)Math.Clamp(character?.MaxHp ?? 160, 1, ushort.MaxValue));
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            payload.AsSpan(36, 2),
-            (ushort)Math.Clamp(character?.MaxMp ?? 100, 1, ushort.MaxValue));
+        // Remote C377 consumes these totals; local C377 reads the installed actor.
+        // Both must use the same equipment-aware maxima as C368/CF71/CF72.
+        var vitals = character is null ? null : ResolveInventoryVitals(character);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(34, 2), vitals?.MaximumHp ?? (ushort)160);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(36, 2), vitals?.MaximumMp ?? (ushort)100);
 
         CharacterCombatProfile.WriteProfileStats(payload, character);
         return payload;
@@ -18748,20 +18806,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(42, 2),
             entryPositionY);
-        var maximumHp = visibleResources?.MaximumHp > 0
-            ? visibleResources.MaximumHp
-            : checked((ushort)Math.Clamp(character.MaxHp, 0, ushort.MaxValue));
-        var maximumMp = visibleResources?.MaximumMp > 0
-            ? visibleResources.MaximumMp
-            : checked((ushort)Math.Clamp(character.MaxMp, 0, ushort.MaxValue));
-        var currentHp = visibleResources?.CurrentHp
-            ?? checked((ushort)Math.Clamp(character.CurrentHp, 0, maximumHp));
-        var currentMp = visibleResources?.CurrentMp
-            ?? checked((ushort)Math.Clamp(character.CurrentMp, 0, maximumMp));
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(44, 2), maximumHp);
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(46, 2), maximumMp);
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(48, 2), (ushort)Math.Min(currentHp, maximumHp));
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(50, 2), (ushort)Math.Min(currentMp, maximumMp));
+        // Construct authoritative totals here as well as at the final send
+        // boundary. A stale/base-only cached maximum must not win over the
+        // current loadout; only absolute current resources are preserved.
+        var resources = ResolveInventoryVitals(character, visibleResources);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(44, 2), resources.MaximumHp);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(46, 2), resources.MaximumMp);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(48, 2), resources.CurrentHp);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(50, 2), resources.CurrentMp);
         return payload;
     }
 
@@ -18797,9 +18849,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         var characterLevel = (uint)Math.Clamp(character.Level, 1, CharacterProgression.MaximumLevel);
         var titleGrade = (uint)CharacterTitleState.GetGrade(character);
+        if (character.DungeonGrade > 63 || titleGrade > 63 || sceneEntityId > 4095 || sceneEntityId == 0)
+            throw new InvalidDataException("Town level200 title/UID out of range.");
         BinaryPrimitives.WriteUInt32LittleEndian(
             payload.AsSpan(52, 4),
-            (2u << 3) | (titleGrade << 6) | (characterLevel << 13) | ((uint)sceneEntityId << 20));
+            (2u << 3) | (titleGrade << 6) | (characterLevel << 12) | ((uint)sceneEntityId << 20));
 
         var packedPosition = ((uint)positionX << 2) | ((uint)positionY << 12);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(80, 4), packedPosition);
@@ -19059,7 +19113,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             or 0xCF79 or 0xCF85 or 0xCF89 or 0xCF97 or 0xCFE5 or 0xD014 or 0xD036 => "ArenaAdapter",
         0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640 or 0xC351 or 0xC353 or 0xC354 or 0xC358 or 0xC365 or 0xC367 or 0xC369 or 0xC36C or 0xC376 or 0xC387 or 0xC388 or 0xC576 or 0xC577 or 0xC578 or 0xC57A or 0xC57D or 0xC57F or 0xC581 or 0xC583 or 0xC584 or 0xC585 or 0xC586 or 0xC587 or 0xCB21 or 0xCB22 or 0xCB23 or 0xCF09 or 0xCF0F or 0xCF15 or 0xCF1D or 0xCF6C or 0xCF6E or 0xCF70 or 0xCF73 or 0xCF75 or 0xCF77 or 0xCF7B or 0xCF7D or 0xCF7F or 0xCF87 or 0xCF8B or 0xCF8D or 0xCF93 or 0xCF95 or 0xCF99 or 0xCF9B or 0xD00D or 0xD00F or 0xD011 or 0xD034
             or 0xCFD1 or 0xCFD3 or 0xCFD5 or 0xCFD9 or 0xCFEB
-            or 0xC378 or 0xC37A or 0xC3CB or 0xC3CD or 0xC3CF or 0xC3D1 or 0xC3D4 or 0xC3D6 or 0xC3D8 or 0xC3E7 or 0xC3E9 or 0xC3ED or 0xC3EF or 0xC3F3 or 0xC3FB or 0xC3FF or 0xC401 or 0xC431 or 0xC433 or 0xC469 or 0xC46B or 0xC46D or 0xC46F or 0xC47A or 0xC480 or 0xC491
+            or 0xC378 or 0xC37A or 0xC3CB or 0xC3CD or 0xC3CF or 0xC3D1 or 0xC3D4 or 0xC3D6 or 0xC3D8 or 0xC3E7 or 0xC3E9 or 0xC3ED or 0xC3EF or 0xC3F3 or 0xC3FB or 0xC3FD or 0xC3FF or 0xC401 or 0xC431 or 0xC433 or 0xC469 or 0xC46B or 0xC46D or 0xC46F or 0xC47A or 0xC480 or 0xC491
             or 0xC36E or 0xC370 or 0xC396 or 0xC407 or 0xC40D or 0xC414 or 0xC425 or 0xC38D or 0xC38F or 0xC392 or 0xC398 or 0xC3AB or 0xC3AD or 0xC405 or 0xC409 or 0xC40B or 0xC40F or 0xC411 or 0xC417 or 0xC419 or 0xC41B or 0xC423 or 0xC42D or 0xC437 or 0xC439 or 0xC43B or 0xC42F or 0xC44B or 0xC44D or 0xC44F or 0xC451 or 0xC453 or 0xC473 or 0xC475 or 0xC47D or 0xC4AF or 0xC4B1 or 0xC4B3 or 0xC4B7 or 0xC4B8 or 0xC4BA or 0xC4BC or 0xC4BE or 0xC4BF or 0xC4E0 or 0xC4E1 or 0xC4E3 or 0xC4E5 or 0xC4E7 or 0xC4EA or 0xC595 or 0xC597 or 0xC599 or 0xC59B or 0xC59E or 0xC5AA or 0xC5B0 or 0xC5B2 or 0xC5B4 or 0xC5B6 or 0xC5BC
             or 0xCB25 or 0xC5AC or 0xC5AE or 0xEB29 or 0xEB8F => "WorldAdapter",
         _ => null
@@ -19129,6 +19183,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         0xC3E7 => "card-list",
         0xC3E9 => "card-summon-info",
         0xC3ED => "card-item-synthesis",
+        0xC3FD => "event-card-redemption",
         0xC3EF => "card-item-synthesis-finish",
         0xC3F3 => "card-sell",
         0xC3FB => "card-guide-step",

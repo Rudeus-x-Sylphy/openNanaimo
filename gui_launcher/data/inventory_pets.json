@@ -61606,7 +61606,7 @@
   {
     "id": 15003361,
     "name": "英雄龙",
-    "level_requirement": 95,
+    "level_requirement": 120,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100156_boo_9157.boo",
     "image": "images\\Village_images\\pet_images\\pet_9157_3.im3",
@@ -64417,7 +64417,7 @@
   {
     "id": 15003366,
     "name": "直升机5号",
-    "level_requirement": 81,
+    "level_requirement": 99,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100152_boo_9153.boo",
     "image": "images\\Village_images\\pet_images\\pet_9153_3.im3",
@@ -68140,7 +68140,7 @@
   },
   {
     "id": 15009280,
-    "name": "海洋潘",
+    "name": "海洋熊猫",
     "level_requirement": 0,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100129_boo_9130.boo",
@@ -68212,11 +68212,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 235,
-    "source_level_requirement": 0
+    "source_level_requirement": 0,
+    "localization_basis": "오션 对应 ocean；蓝色造型及海星饰物，按海洋主题意译。"
   },
   {
     "id": 15009285,
-    "name": "海洋潘",
+    "name": "海洋熊猫",
     "level_requirement": 0,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100129_boo_9130.boo",
@@ -68288,11 +68289,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 235,
-    "source_level_requirement": 0
+    "source_level_requirement": 0,
+    "localization_basis": "오션 对应 ocean；蓝色造型及海星饰物，按海洋主题意译。"
   },
   {
     "id": 15009290,
-    "name": "海洋潘",
+    "name": "海洋熊猫",
     "level_requirement": 0,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100129_boo_9130.boo",
@@ -68364,11 +68366,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 235,
-    "source_level_requirement": 0
+    "source_level_requirement": 0,
+    "localization_basis": "오션 对应 ocean；蓝色造型及海星饰物，按海洋主题意译。"
   },
   {
     "id": 15009281,
-    "name": "皇家庞",
+    "name": "花冠熊猫",
     "level_requirement": 21,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100130_boo_9131.boo",
@@ -68440,11 +68443,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 340,
-    "source_level_requirement": 21
+    "source_level_requirement": 21,
+    "localization_basis": "레알팡 为未确认词源的自造名；据花朵、绿叶头饰命名，不再臆定为皇家。"
   },
   {
     "id": 15009286,
-    "name": "皇家庞",
+    "name": "花冠熊猫",
     "level_requirement": 21,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100130_boo_9131.boo",
@@ -68516,11 +68520,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 340,
-    "source_level_requirement": 21
+    "source_level_requirement": 21,
+    "localization_basis": "레알팡 为未确认词源的自造名；据花朵、绿叶头饰命名，不再臆定为皇家。"
   },
   {
     "id": 15009291,
-    "name": "皇家庞",
+    "name": "花冠熊猫",
     "level_requirement": 21,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100130_boo_9131.boo",
@@ -68592,11 +68597,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 340,
-    "source_level_requirement": 21
+    "source_level_requirement": 21,
+    "localization_basis": "레알팡 为未确认词源的自造名；据花朵、绿叶头饰命名，不再臆定为皇家。"
   },
   {
     "id": 15009282,
-    "name": "飞鹰潘",
+    "name": "烈焰熊猫",
     "level_requirement": 41,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100131_boo_9132.boo",
@@ -68668,11 +68674,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 498,
-    "source_level_requirement": 41
+    "source_level_requirement": 41,
+    "localization_basis": "판이글 为未确认词源的自造名；据火焰头饰命名，不把 이글 武断解释成 eagle。"
   },
   {
     "id": 15009287,
-    "name": "飞鹰潘",
+    "name": "烈焰熊猫",
     "level_requirement": 41,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100131_boo_9132.boo",
@@ -68744,11 +68751,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 498,
-    "source_level_requirement": 41
+    "source_level_requirement": 41,
+    "localization_basis": "판이글 为未确认词源的自造名；据火焰头饰命名，不把 이글 武断解释成 eagle。"
   },
   {
     "id": 15009292,
-    "name": "飞鹰潘",
+    "name": "烈焰熊猫",
     "level_requirement": 41,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100131_boo_9132.boo",
@@ -68820,11 +68828,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 498,
-    "source_level_requirement": 41
+    "source_level_requirement": 41,
+    "localization_basis": "판이글 为未确认词源的自造名；据火焰头饰命名，不把 이글 武断解释成 eagle。"
   },
   {
     "id": 15009283,
-    "name": "艾尔潘",
+    "name": "宝冠熊猫",
     "level_requirement": 61,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100132_boo_9133.boo",
@@ -68896,11 +68905,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 629,
-    "source_level_requirement": 61
+    "source_level_requirement": 61,
+    "localization_basis": "엘펜 为未确认词源的自造名；据宝石冠饰命名，不把词尾硬译为潘。"
   },
   {
     "id": 15009288,
-    "name": "艾尔潘",
+    "name": "宝冠熊猫",
     "level_requirement": 61,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100132_boo_9133.boo",
@@ -68972,11 +68982,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 629,
-    "source_level_requirement": 61
+    "source_level_requirement": 61,
+    "localization_basis": "엘펜 为未确认词源的自造名；据宝石冠饰命名，不把词尾硬译为潘。"
   },
   {
     "id": 15009293,
-    "name": "艾尔潘",
+    "name": "宝冠熊猫",
     "level_requirement": 61,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100132_boo_9133.boo",
@@ -69048,11 +69059,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 629,
-    "source_level_requirement": 61
+    "source_level_requirement": 61,
+    "localization_basis": "엘펜 为未确认词源的自造名；据宝石冠饰命名，不把词尾硬译为潘。"
   },
   {
     "id": 15009284,
-    "name": "翠绿潘",
+    "name": "翠绿熊猫",
     "level_requirement": 81,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100133_boo_9134.boo",
@@ -69124,11 +69136,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 763,
-    "source_level_requirement": 81
+    "source_level_requirement": 81,
+    "localization_basis": "그린 对应 green；绿色熊猫造型，按颜色意译。"
   },
   {
     "id": 15009289,
-    "name": "翠绿潘",
+    "name": "翠绿熊猫",
     "level_requirement": 81,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100133_boo_9134.boo",
@@ -69200,11 +69213,12 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 763,
-    "source_level_requirement": 81
+    "source_level_requirement": 81,
+    "localization_basis": "그린 对应 green；绿色熊猫造型，按颜色意译。"
   },
   {
     "id": 15009294,
-    "name": "翠绿潘",
+    "name": "翠绿熊猫",
     "level_requirement": 81,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100133_boo_9134.boo",
@@ -69276,7 +69290,8 @@
     "optional_resource_port": "korean_pets",
     "upgrade_material": 19000031,
     "base_attack": 763,
-    "source_level_requirement": 81
+    "source_level_requirement": 81,
+    "localization_basis": "그린 对应 green；绿色熊猫造型，按颜色意译。"
   },
   {
     "id": 15003322,
@@ -70649,7 +70664,7 @@
   {
     "id": 15003358,
     "name": "战斗龙",
-    "level_requirement": 90,
+    "level_requirement": 110,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100153_boo_9154.boo",
     "image": "images\\Village_images\\pet_images\\pet_9154_3.im3",
@@ -70725,7 +70740,7 @@
   {
     "id": 15003359,
     "name": "斗战龙",
-    "level_requirement": 90,
+    "level_requirement": 110,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100154_boo_9155.boo",
     "image": "images\\Village_images\\pet_images\\pet_9155_3.im3",
@@ -70801,7 +70816,7 @@
   {
     "id": 15003360,
     "name": "冠军龙",
-    "level_requirement": 90,
+    "level_requirement": 110,
     "gui_direct_assignment_ignores_level": true,
     "boo_file": "100155_boo_9156.boo",
     "image": "images\\Village_images\\pet_images\\pet_9156_3.im3",

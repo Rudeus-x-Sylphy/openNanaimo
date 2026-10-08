@@ -27,6 +27,17 @@ internal static class Program
             && ArenaProtocol.CalculatePvpDamage(100, 20) == ArenaProtocol.CalculatePvpDamage(100, 20)
             && ArenaProtocol.CalculatePvpDamage(int.MaxValue, 0) == ushort.MaxValue,
             "PvP damage is stable and bounded independently of object metadata");
+        foreach (var kind in new ushort[] { 10, 20, 30, 60 })
+        foreach (var hp in new ushort[] { 0, 900 })
+        {
+            var hit = ArenaProtocol.BuildPlayerHitResult(kind, 17, 23, 0, 1, hp, 100);
+            Check(hit.Length == 16 && hit[6] == 0 && hit[7] == 1
+                && BinaryPrimitives.ReadUInt16LittleEndian(hit.AsSpan(8)) == hp
+                && hit[10] == (hp == 0 ? 200 : 100)
+                && BinaryPrimitives.ReadUInt16LittleEndian(hit.AsSpan(12)) == 100
+                && BinaryPrimitives.ReadUInt16LittleEndian(hit.AsSpan(14)) == 100,
+                "player hit publishes the same applied damage in both native display branches");
+        }
         var scoreData = ArenaProtocol.BuildGameData(0, 0);
         Check(ArenaProtocol.ResolveScoreDelta(scoreData, 0) is >= -500 and <= 500,
             "arena game data exposes a bounded score delta");

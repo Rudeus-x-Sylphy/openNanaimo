@@ -92,7 +92,6 @@ public sealed partial class NetworkAdapterService
 
     private static byte[] BuildTownCurrentPosition(ConnectionSession subject)
     {
-        if (subject.LastTownMovement is { } movement) return movement.ToArray();
         var payload = new byte[16];
         payload.AsSpan(0, 8).Fill(0x44);
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(8), subject.LastReportedPositionX);
@@ -123,9 +122,8 @@ public sealed partial class NetworkAdapterService
                     viewer.TownAttachmentRefreshes.Remove(id);
                     continue;
                 }
-                if (actor.LastTownMovement is { } movement)
-                    viewer.PendingBroadcasts.Add(new PendingNativeBroadcast(
-                        recipient, 0xCB21, movement.ToArray(), "town character position refresh"));
+                viewer.PendingBroadcasts.Add(new PendingNativeBroadcast(
+                    recipient, 0xCB21, BuildTownCurrentPosition(actor), "town character position refresh"));
                 viewer.PendingBroadcasts.Add(new PendingNativeBroadcast(
                     recipient, 0xC47F, BuildUserDataChangePayload(character), "town character attachment refresh"));
                 if (pending.Remaining <= 1) viewer.TownAttachmentRefreshes.Remove(id);

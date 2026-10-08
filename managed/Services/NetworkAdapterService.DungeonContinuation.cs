@@ -32,6 +32,10 @@ public sealed partial class NetworkAdapterService
         session.NativeContinuationRosterRequested = false;
     }
 
+    private bool HasNativeDungeonContinuationReload(ConnectionSession session)
+        => _nativeContinuationRooms.TryGetValue(session, out var room)
+            && room.Reload is { } reload && reload.Epoch == session.NativeBattleEpoch;
+
     private bool IsNativeDungeonContinuationProfileRequest(ConnectionSession session, ReadOnlySpan<byte> frame)
         => session.OnlineTracked && session.NativeDungeon is not null && session.Character is not null
             && !session.NativeDungeonDeathLatched && !session.NativeDungeonSettlementAwaitingAction

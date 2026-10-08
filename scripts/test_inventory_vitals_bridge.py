@@ -58,7 +58,7 @@ static int standalone(void){
 #ifndef VITALS_STANDALONE
 static void seed(unsigned char*p,unsigned pet,unsigned hp,unsigned mp){
     memset(p,0,MANAGED_STATE_SIZE);
-    managed_put(p,0,1);managed_put(p,4,21);managed_put(p,8,1);
+    managed_put(p,0,MANAGED_STATE_VERSION);managed_put(p,5124,MANAGED_STATE_VERSION);managed_put(p,5128,MANAGED_STATE_SIZE);managed_put(p,5132,3);managed_put(p,4,21);managed_put(p,8,1);
     managed_put(p,16,22222);managed_put(p,20,hp);
     managed_put(p,24,500);managed_put(p,28,mp);
     managed_put(p,68,pet);managed_put(p,72,3);managed_put(p,76,3);
@@ -69,7 +69,7 @@ static void seed(unsigned char*p,unsigned pet,unsigned hp,unsigned mp){
 static int snapshot_ok(unsigned hp,unsigned mp,unsigned hp_gem,unsigned mp_gem){
     unsigned i,sum=0;const unsigned char*p=captured+8;
     CHECK(captured_len==MANAGED_STATE_SIZE+8&&word(captured,4)==captured_len);
-    CHECK(word(captured,6)==0xF102&&managed_get(p,0)==1u);
+    CHECK(word(captured,6)==0xF102&&managed_get(p,0)==MANAGED_STATE_VERSION);
     for(i=4;i<(unsigned)captured_len;i++)sum=(sum+captured[i])&65535u;
     CHECK(word(captured,2)==(sum^g_csum_key));
     CHECK(managed_get(p,16)==22222u&&managed_get(p,24)==500u);
@@ -152,7 +152,7 @@ static int carriers(void){
 static int avatar(void){
     unsigned char state[MANAGED_STATE_SIZE];unsigned i;
     seed(state,PET,30000u,1400u);
-    managed_put(state,8,25u);managed_put(state,12,progression_progression_threshold(25u));
+    managed_put(state,8,25u);managed_put64(state,MANAGED_EXP64_OFFSET,progression_progression_threshold(25u));
     managed_put(state,120,10110337u); /* GM top: HP+200%, MP+300% */
     for(i=0u;i<4u;i++){
         CHECK(managed_bridge_import(state));
@@ -171,6 +171,33 @@ static int avatar(void){
     CHECK(pet_crafting_pet_effective_hp_current()==22222u&&pet_crafting_pet_effective_mp_current()==500u);
     return 0;
 }
+static int level_growth(void){
+    unsigned char state[MANAGED_STATE_SIZE];unsigned level,hp,mp,iteration;
+    for(level=1u;level<=200u;level++){
+        hp=1500u+100u*level;mp=100u+10u*level;
+        seed(state,PET,700u,50u);
+        managed_put(state,8,level);managed_put64(state,MANAGED_EXP64_OFFSET,progression_progression_threshold(level));
+        managed_put(state,16,hp);managed_put(state,24,mp);
+        managed_put(state,80,9u+level-1u);managed_put(state,84,11u+level-1u);
+        managed_put(state,120,10110337u);
+        for(iteration=0u;iteration<((level==1u||level==99u||level==200u)?3u:1u);iteration++){
+            CHECK(managed_bridge_import(state));
+            CHECK(multiplayer_combat_profile_adjust_attack(100u)==100u+9u+level-1u);
+            CHECK(multiplayer_combat_profile_reduce_damage(1000u)==1000u-4u*(11u+level-1u));
+            CHECK(multiplayer_combat_profile_reduce_damage(1u)==1u);
+            CHECK(pet_crafting_pet_effective_hp_max()==3u*hp+400u);
+            CHECK(pet_crafting_pet_effective_mp_max()==mp+3u*(mp-10u)+60u);
+            CHECK(pet_crafting_pet_effective_hp_current()==700u&&pet_crafting_pet_effective_mp_current()==50u);
+            sends=0;managed_bridge_snapshot(1,1);
+            CHECK(managed_get(captured+8,16)==hp&&managed_get(captured+8,24)==mp);
+            CHECK(managed_get(captured+8,80)==9u+level-1u&&managed_get(captured+8,84)==11u+level-1u);
+            memcpy(state,captured+8,MANAGED_STATE_SIZE);
+        }
+    }
+    printf("LEVEL_COMBAT_VITALS_PASS levels=200 roundtrips=206 attack/defense/apparel/gems\n");
+    return 0;
+}
+
 #endif
 int main(int argc,char**argv){
     pSd=capture_send;pT=fixed_clock;g_multi_current=0;
@@ -189,6 +216,7 @@ int main(int argc,char**argv){
         case 7:return carriers();
         case 8:return standalone();
         case 9:return avatar();
+        case 10:return level_growth();
     }
     return 2;
 #endif
@@ -218,7 +246,7 @@ class InventoryVitalsBridgeTests(unittest.TestCase):
         work = self.directory / ("standalone" if standalone else str(case))
         work.mkdir()
         result = subprocess.run([str(self.standalone if standalone else self.worker), str(case)],
-                                cwd=work, capture_output=True, text=True, errors="replace", timeout=30)
+                                cwd=work, capture_output=True, text=True, errors="replace", timeout=300 if case == 10 else 30)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_above_base_absolute_current_survives_four_import_export_cycles(self):
@@ -250,6 +278,9 @@ class InventoryVitalsBridgeTests(unittest.TestCase):
 
     def test_avatar_percent_and_gems_survive_roundtrip_without_healing(self):
         self.run_case(9)
+
+    def test_level_growth_combat_and_equipment_resources(self):
+        self.run_case(10)
 
     def test_standalone_historical_full_rule_is_unchanged(self):
         self.run_case(0, standalone=True)

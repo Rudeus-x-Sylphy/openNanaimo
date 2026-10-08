@@ -71,11 +71,11 @@ public sealed partial class DatabaseService
         var gbk = Encoding.GetEncoding(936, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
         if (name.Length == 0 || name.Any(char.IsControl) || gbk.GetByteCount(name) > 14)
             throw new InvalidDataException("角色名需要 1..14 个 GBK 字节，不能包含控制字符。");
-        if (edit.Level is < 1 or > 99 || edit.Experience is < 0 or > uint.MaxValue || CharacterProgression.CalculateLevel(edit.Experience) != edit.Level)
+        if (edit.Level is < 1 or > CharacterProgression.MaximumLevel || (edit.Experience < 0 || edit.Experience > CharacterProgression.MaximumExperience) || CharacterProgression.CalculateLevel(edit.Experience) != edit.Level)
             throw new InvalidDataException("等级范围为 1..99，经验必须处于该等级区间；修改等级会自动填写起始经验。");
         if (edit.Hans is < 0 or > uint.MaxValue || edit.Cash is < 0 or > uint.MaxValue)
             throw new InvalidDataException("金币和点券范围为 0..4294967295。");
-        if (new[] { edit.AttributePoints, edit.Strength, edit.Vitality, edit.Agility, edit.Intelligence, edit.Luck, edit.SkillPoints }.Any(v => v is < 0 or > ushort.MaxValue)
+        if (new[] { edit.SkillPoints }.Any(v => v is < 0 or > ushort.MaxValue)
             || edit.MaxHp > ushort.MaxValue || edit.MaxMp > ushort.MaxValue || edit.PetLevel is < 1 or > 99)
             throw new InvalidDataException("属性与技能点范围为 0..65535；计算后的生命和魔法不能超过 65535；宠物等级为 1..99。");
         await using var connection = await OpenConnectionAsync(token);
@@ -87,7 +87,7 @@ public sealed partial class DatabaseService
         if (Convert.ToInt32(await command.ExecuteScalarAsync(token)) != 0) throw new InvalidDataException("角色名已经被使用。");
         command.CommandText = """
             UPDATE Characters SET Name=$name,Level=$level,Experience=$exp,Hans=$hans,Cash=$cash,
-              AttributePoints=$points,Strength=$str,Vitality=$vit,Agility=$agi,Intelligence=$int,Luck=$luck,SkillPoints=$skill,
+              SkillPoints=$skill,
               MaxHp=$hp,MaxMp=$mp,CurrentHp=CASE WHEN $heal=1 THEN $hp ELSE MIN(CurrentHp,$hp) END,
               CurrentMp=CASE WHEN $heal=1 THEN $mp ELSE MIN(CurrentMp,$mp) END,PetLevel=$pet,LastSavedAt=$now WHERE Id=$id;
             UPDATE CharacterItems SET PetLevel=$pet,UpdatedAt=$now WHERE CharacterId=$id

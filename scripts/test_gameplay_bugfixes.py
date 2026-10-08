@@ -28,39 +28,83 @@ int main(void){
     gems[0]=gems[1]=gems[2]=card;
     CHECK(pet_crafting_pet_economy_percent_for_gems(gems,7u)==27u);
     CHECK(pet_crafting_pet_economy_percent_for_gems(gems,6u)==0u);
-    CHECK(card_ordinary_drop_basis_points(0u)==1000u);
-    CHECK(card_ordinary_drop_basis_points(27u)==1270u);
-    CHECK(card_ordinary_drop_basis_points(0xFFFFFFFFu)==10000u);
+    CHECK(card_ordinary_drop_basis_points(10u,0u)==1000u);
+    CHECK(card_ordinary_drop_basis_points(10u,27u)==1270u);
+    CHECK(card_ordinary_drop_basis_points(10u,0xFFFFFFFFu)==10000u);
     gems[0]=gems[1]=gems[2]=money;
     CHECK(pet_crafting_pet_economy_percent_for_gems(gems,6u)==27u);
     CHECK(combat_economy_apply_percent(1000u,27u)==1270u);
     CHECK(combat_economy_apply_percent(0xFFFFFFFFu,27u)==0xFFFFFFFFu);
     memcpy(g_stable_name,"TEST",5);g_stable_name_len=4;g_account_name[0]=0;
     g_stable_pet=15009205u;r=pet_crafting_pet_row(g_stable_pet,1);CHECK(r);
+    r->gems[0]=r->gems[1]=r->gems[2]=card;
+    CHECK(pet_crafting_pet_economy_percent(7u)==27u);
+    CHECK(card_cn_basis_points(13u,pet_crafting_pet_economy_percent(7u),flight_items_flight_card_percent())==1651u);
     r->gems[0]=r->gems[1]=r->gems[2]=money;
     CHECK(pet_crafting_pet_economy_percent(6u)==27u);
     {
         struct hp_sync_target_def td;memset(&td,0,sizeof(td));td.raw_hp=50000;td.target_type=1;
         g_profile_coin_hans=1000u;flight_items_coin_begin(1u,1u);
-        CHECK(flight_items_coin_on_terminal(&td,"ani_mon_m_03_01.mmo",1u,1u,0u,50000u)==1270u);
-        CHECK(g_profile_coin_hans==2270u);
+        CHECK(flight_items_coin_on_terminal(&td,"ani_mon_m_03_01.mmo",1u,1u,0u,50000u)==635u);
+        CHECK(g_profile_coin_hans==1635u);
         CHECK(flight_items_coin_on_terminal(&td,"ani_mon_m_03_01.mmo",1u,0u,0u,50000u)==0u);
         teamplay_boss_final_hans_reset_current();
-        CHECK(teamplay_boss_final_hans_commit(50000u)==1270u);
-        CHECK(teamplay_boss_final_hans_commit(50000u)==0u&&g_profile_coin_hans==3540u);
+        CHECK(teamplay_boss_final_hans_commit(50000u)==635u);
+        CHECK(teamplay_boss_final_hans_commit(50000u)==0u&&g_profile_coin_hans==2270u);
+    }
+    /* Real ordinary/Boss consumers: no HP200 gate, floor before 27% bonus,
+       no double credit on repeated terminals, zero awards never change balance. */
+    {
+        static const unsigned hp[]={1u,99u,100u,106u,199u,200u,299u,300u,4000u,50000u};
+        static const unsigned base[]={0u,0u,1u,1u,1u,2u,2u,3u,40u,500u};
+        struct hp_sync_target_def td;unsigned k,amount;memset(&td,0,sizeof(td));td.target_type=1;
+        for(k=0;k<sizeof(hp)/sizeof(hp[0]);k++){
+            td.raw_hp=hp[k];amount=base[k]*127u/100u;g_profile_coin_hans=1000u;
+            flight_items_coin_begin(7u,k+1u);teamplay_boss_final_hans_reset_current();
+            CHECK(flight_items_coin_on_terminal(&td,"ani_mon_m_03_01.mmo",k,1u,0u,hp[k])==amount);
+            CHECK(g_profile_coin_hans==1000u+amount);
+            CHECK(flight_items_coin_on_terminal(&td,"ani_mon_m_03_01.mmo",k,0u,0u,hp[k])==0u);
+            CHECK(teamplay_boss_final_hans_commit(hp[k])==amount);
+            CHECK(teamplay_boss_final_hans_commit(hp[k])==0u);
+            CHECK(g_profile_coin_hans==1000u+2u*amount);
+        }
+
     }
     item_effects_flight_reset_current(1u,1u,"test");
+    /* The alternate authored clover is 120%, not a boolean 200% buff. */
+    {unsigned dh=1u,dm=1u;CHECK(quickbar_gameitem_effect(21000051u,&dh,&dm)&&!dh&&!dm);}
+    CHECK(flight_items_flight_card_percent()==100u);
+    item_effects_flight_activate(21000051u,1u,1u,123400u);
+    CHECK(flight_items_flight_card_percent()==120u);
+    CHECK(card_ordinary_drop_basis_points(13u,0u)==1560u);
+    CHECK(card_ordinary_drop_basis_points(13u,27u)==1981u);
+    CHECK(card_cn_basis_points(80u,27u,flight_items_flight_card_percent())==10000u);
+    CHECK(flight_items_flight_money_percent()==100u);
+    item_effects_flight_activate(21000051u,1u,1u,123400u);
+    CHECK(flight_items_flight_card_percent()==120u); /* no 1.2 * 1.2 */
+    item_effects_flight_activate(21000001u,1u,1u,123400u);
+    CHECK(flight_items_flight_card_percent()==120u); /* shield does not clear */
+    g_multi_current=1;CHECK(flight_items_flight_card_percent()==100u);
+    g_multi_current=0;
     item_effects_flight_activate(21000019u,1u,1u,123400u);
-    CHECK(card_ordinary_drop_basis_points(0u)==2000u&&card_ordinary_drop_basis_points(27u)==2540u);
+    CHECK(card_ordinary_drop_basis_points(10u,0u)==2000u&&card_ordinary_drop_basis_points(10u,27u)==2540u);
+    item_effects_flight_activate(21000051u,1u,1u,123400u);
+    CHECK(flight_items_flight_card_percent()==200u); /* never downgrade */
     item_effects_flight_activate(21000020u,1u,1u,123400u);
     CHECK(combat_economy_coin_with_bonuses(1000u)==1524u);
     item_effects_flight_activate(21000001u,1u,1u,123400u);
-    CHECK(card_ordinary_drop_basis_points(27u)==2540u&&combat_economy_coin_with_bonuses(1000u)==1524u);
+    CHECK(card_ordinary_drop_basis_points(10u,27u)==2540u&&combat_economy_coin_with_bonuses(1000u)==1524u);
     item_effects_flight_activate(21000019u,1u,1u,123400u);
-    CHECK(card_ordinary_drop_basis_points(27u)==2540u);
-    g_multi_current=1;CHECK(card_ordinary_drop_basis_points(0u)==1000u&&flight_items_flight_money_percent()==100u);
+    CHECK(card_ordinary_drop_basis_points(10u,27u)==2540u);
+    g_multi_current=1;CHECK(card_ordinary_drop_basis_points(10u,0u)==1000u&&flight_items_flight_money_percent()==100u);
     g_multi_current=0;item_effects_flight_reset_current(1u,2u,"next-stage");
-    CHECK(card_ordinary_drop_basis_points(27u)==1270u&&flight_items_flight_money_percent()==100u);
+    CHECK(card_ordinary_drop_basis_points(10u,27u)==1270u&&flight_items_flight_money_percent()==100u);
+    item_effects_flight_activate(21000051u,1u,2u,123400u);
+    CHECK(flight_items_flight_card_percent()==120u);
+    item_effects_flight_activate(21000051u,2u,3u,123400u);
+    CHECK(flight_items_flight_card_percent()==120u); /* changed epoch does not stack */
+    item_effects_flight_reset_current(2u,3u,"leave");
+    CHECK(flight_items_flight_card_percent()==100u);
     g_stable_pet=0u;CHECK(pet_crafting_pet_economy_percent(6u)==0u);
     /* Every positive registered row, all three difficulties, exact root/child shapes. */
     for(i=0;i<3u;i++)for(j=1;j<=2;j++){

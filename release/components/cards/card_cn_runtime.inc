@@ -1,13 +1,10 @@
 #ifndef NANAIMO_CARD_CN_RUNTIME_INC
 #define NANAIMO_CARD_CN_RUNTIME_INC
 #include "card_drop_cn_data.inc"
-/* Family 0: all collectible cards, 1: non-SP, 2: SP. Domain22 lucky
- * cards require dedicated pickup and durable-inventory authorization.
- * CSV-listed album powder cards are not filtered by the legacy global pool. */
-static int card_cn_family(unsigned code,unsigned family){
-    int sp=(code>=12000001u&&code<=12000020u);
-    if(card_code_index(code)<0)return 0;
-    return family==0u||(family==1u&&!sp)||(family==2u&&sp);
+/* Every supported album, including lucky domain22, participates in the authored
+ * rate groups. Zero-weight cards cannot consume probability or win a ticket. */
+static int card_cn_entry_eligible(const struct card_cn_entry*e){
+    return e->rate>0u&&e->weight>0u&&card_code_index(e->code)>=0;
 }
 static unsigned card_cn_map(unsigned hd,unsigned ep,unsigned dg,unsigned st){
     return (hd<<24)|(ep<<16)|(dg<<8)|st;
@@ -40,25 +37,57 @@ static const struct card_cn_pool*card_cn_boss_lookup(unsigned hd,unsigned key){
     }
     return 0;
 }
-static unsigned card_cn_weight(const struct card_cn_pool*p,unsigned family){
+/* Entries are sorted by (rate,code). Equal rates are ONE exclusive group,
+ * not independent card rolls; SP and non-SP share the authored group. */
+static unsigned card_cn_group_weight(const struct card_cn_pool*p,unsigned rate){
     unsigned i,total=0u;if(!p)return 0u;
-    for(i=0u;i<p->count;i++){const struct card_cn_entry*e=&card_cn_entries[p->first+i];if(card_cn_family(e->code,family))total+=e->rate;}
+    for(i=0u;i<p->count;i++){const struct card_cn_entry*e=&card_cn_entries[p->first+i];
+        if(e->rate==rate&&card_cn_entry_eligible(e))total+=e->weight;}
     return total;
 }
-/* A deterministic ticket function is shared by production and exhaustive tests. */
-static unsigned card_cn_pick_ticket(const struct card_cn_pool*p,unsigned family,unsigned ticket){
-    unsigned i;if(!p)return 0u;
+static unsigned card_cn_total_rate(const struct card_cn_pool*p){
+    unsigned i,total=0u,previous=0u;if(!p)return 0u;
     for(i=0u;i<p->count;i++){const struct card_cn_entry*e=&card_cn_entries[p->first+i];
-        if(!card_cn_family(e->code,family))continue;if(ticket<e->rate)return e->code;ticket-=e->rate;}
+        if(card_cn_entry_eligible(e)&&e->rate!=previous){total+=e->rate;previous=e->rate;}}
+    return total;
+}
+static unsigned card_cn_pick_group(const struct card_cn_pool*p,unsigned ticket){
+    unsigned i,previous=0u;if(!p)return 0u;
+    for(i=0u;i<p->count;i++){const struct card_cn_entry*e=&card_cn_entries[p->first+i];
+        if(!card_cn_entry_eligible(e)||e->rate==previous)continue;
+        previous=e->rate;if(ticket<e->rate)return e->rate;ticket-=e->rate;}
     return 0u;
 }
-static unsigned card_cn_drop_create(unsigned kind,unsigned producer,const struct card_cn_pool*p,unsigned family){
-    unsigned total=card_cn_weight(p,family),code;struct card_drop_claim*r;
-    if(!total||g_card_claim_count>=CARD_DROP_CAP)return 0u;
-    code=card_cn_pick_ticket(p,family,card_rand_bounded(total));if(!code)return 0u;
+/* Deterministic helpers are shared with exhaustive boundary tests. */
+static unsigned card_cn_pick_ticket(const struct card_cn_pool*p,unsigned rate,unsigned ticket){
+    unsigned i;if(!p)return 0u;
+    for(i=0u;i<p->count;i++){const struct card_cn_entry*e=&card_cn_entries[p->first+i];
+        if(e->rate!=rate||!card_cn_entry_eligible(e))continue;
+        if(ticket<e->weight)return e->code;ticket-=e->weight;}
+    return 0u;
+}
+static unsigned card_cn_basis_points(unsigned rate,unsigned bonus,unsigned multiplier){
+    unsigned long long scaled;
+    if(!rate||!multiplier)return 0u;
+    if(rate>100u)rate=100u;
+    scaled=(unsigned long long)rate*(100ull+bonus);
+    /* Saturate BEFORE multiplication, including adversarial unsigned inputs. */
+    if(scaled>=(1000000ull+multiplier-1ull)/multiplier)return 10000u;
+    return (unsigned)(scaled*multiplier/100ull);
+}
+static unsigned card_cn_drop_create(unsigned kind,unsigned producer,const struct card_cn_pool*p,unsigned basis_points){
+    unsigned rates=card_cn_total_rate(p),rate,total,code,roll;struct card_drop_claim*r;
+    if(!rates||!basis_points||g_card_claim_count>=CARD_DROP_CAP)return 0u;
+    roll=card_rand_bounded(10000u);
+    if(roll>=basis_points)return 0u;
+    /* A single success gate, then rate-weighted group and weight-weighted card.
+     * Bonuses scale the total chance, preserving relative group probabilities. */
+    rate=card_cn_pick_group(p,card_rand_bounded(rates));
+    total=card_cn_group_weight(p,rate);if(!total)return 0u;
+    code=card_cn_pick_ticket(p,rate,card_rand_bounded(total));if(!code)return 0u;
     r=&g_card_claims[g_card_claim_count++];memset(r,0,sizeof(*r));
     r->epoch=g_card_epoch;r->producer_kind=kind;r->producer_id=producer;r->code=code;
-    printf("  [CARD_CN] offer epoch=%u kind=%u producer=%u map=%u resource=%s family=%u weight=%u code=%u\n",g_card_epoch,kind,producer,p->map,p->name,family,total,code);fflush(0);
+    printf("  [CARD_CN] offer epoch=%u kind=%u producer=%u map=%u resource=%s base_rate=%u bp=%u roll=%u group_rate=%u weight=%u code=%u\n",g_card_epoch,kind,producer,p->map,p->name,rates,basis_points,roll,rate,total,code);fflush(0);
     return code;
 }
 #endif

@@ -124,7 +124,7 @@ class Resources:
 
 
 def template(m, hp=None):
-    return (i32(m),m[4],i32(m,8) if hp is None else hp,i32(m,12),i32(m,16),i32(m,20))
+    return (i32(m),m[4],i32(m,8) if hp is None else hp,i32(m,12),i32(m,16)//10,i32(m,20))
 
 def dcc_read(data):
     if data[:4]!=b'DCC7':raise ValueError('DCC7 required')

@@ -28,7 +28,7 @@ internal static class AvatarResourceChecks
             BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(8), 10110337);
             var food = ShopCatalog.All.First(x => x.Category == 14 && x.QuickHpRestore > 0);
             await Execute($"DELETE FROM CharacterQuickSlots WHERE CharacterId={id}; DELETE FROM CharacterItems WHERE CharacterId={id};"
-                + $"UPDATE Characters SET Level=25, Experience=30000, MaxHp=1500, MaxMp=500, CurrentHp=9450, CurrentMp=1400,"
+                + $"UPDATE Characters SET Level=25, Experience={CharacterProgression.ExperienceRequiredForLevel(25)}, MaxHp=1500, MaxMp=500, CurrentHp=9450, CurrentMp=1400,"
                 + $" EquippedPetItemCode=0, Appearance=X'{Convert.ToHexString(appearance)}' WHERE Id={id};"
                 + $"INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES({id},{food.ItemCode},2,'fixture');");
             var result = await db.ConsumeInventoryFoodAsync(account, id, session, food.ItemCode, 0);

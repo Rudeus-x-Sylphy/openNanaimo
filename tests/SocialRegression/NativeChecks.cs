@@ -67,6 +67,18 @@ internal static partial class Program
                 && frame.AsSpan(12 + 0x34).SequenceEqual(remote), "couple experience scales only the local settlement row");
             await Invoke<Task>(service, "ApplyNativeCoupleExperienceAsync", fixture.First, frame, Token);
             Check(BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(24)) == expectedExperience, "couple settlement adjustment idempotence");
+            var fractional = Settlement(fixture.First, fixture.Second);
+            BinaryPrimitives.WriteUInt32LittleEndian(fractional.AsSpan(40), 15);
+            await Invoke<Task>(service, "ApplyNativeCoupleExperienceAsync", fixture.First, fractional, Token);
+            var resultHit = BinaryPrimitives.ReadUInt32LittleEndian(fractional.AsSpan(48));
+            var resultBonus = BinaryPrimitives.ReadUInt32LittleEndian(fractional.AsSpan(52));
+            var resultTotal = BinaryPrimitives.ReadUInt32LittleEndian(fractional.AsSpan(56));
+            var scaledScore = CoupleBenefitPolicy.ScaleExperience(
+                DungeonExperiencePolicy.ScaleEquipment(15, Character(fixture.First)),
+                (await fixture.Database.GetActiveCoupleRelationAsync(Character(fixture.First).Id, Token))!.RingItemCode, true);
+            Check(resultHit == 15 && resultTotal == scaledScore && resultHit + resultBonus == resultTotal
+                && BinaryPrimitives.ReadUInt32LittleEndian(fractional.AsSpan(24)) == resultTotal / 4,
+                "fractional relation rewards enter bonus score before one final quarter-score conversion");
             Set(fixture.Second, "NativeDungeonDungeon", (byte)1);
             var separated = Settlement(fixture.First, fixture.Second);
             await Invoke<Task>(service, "ApplyNativeCoupleExperienceAsync", fixture.First, separated, Token);

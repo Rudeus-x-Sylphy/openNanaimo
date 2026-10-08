@@ -150,10 +150,9 @@ public sealed partial class NetworkAdapterService
                 checked((ushort)session.NativeCheckpoint.Get(4)), out _, out var score, out _))
             return;
         var relation = await _database.GetActiveCoupleRelationAsync(session.Character.Id, token);
-        var amount = DungeonExperiencePolicy.BaseSettlementExperience(score);
-        var scaled = CoupleBenefitPolicy.ScaleExperience(DungeonExperiencePolicy.ScaleEquipment(amount, session.Character), relation?.RingItemCode ?? 0,
-            relation is not null && FindNativeDungeonPartner(session, relation) is not null);
-        scaled = await ScaleMentorshipExperienceAsync(session, scaled, token);
+        var amount = checked((uint)Math.Max(0, score));
+        var scaled = await ScaleSettlementScoreAsync(session, amount, relation?.RingItemCode ?? 0,
+            relation is not null && FindNativeDungeonPartner(session, relation) is not null, token);
         var count = BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8));
         for (var index = 0; index < count; index++)
         {
@@ -161,7 +160,7 @@ public sealed partial class NetworkAdapterService
             if (BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(offset))
                 != session.NativeCheckpoint.Get(4))
                 continue;
-            BinaryPrimitives.WriteUInt32LittleEndian(response.AsSpan(offset + 0x0C), scaled);
+            DungeonExperiencePolicy.WriteSettlementScore(response.AsSpan(offset, 0x34), amount, scaled);
             _coupleExperienceFrames.GetValue(response, static _ => new object());
             break;
         }

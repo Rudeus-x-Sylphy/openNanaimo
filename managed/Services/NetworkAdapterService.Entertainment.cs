@@ -51,6 +51,7 @@ public sealed partial class NetworkAdapterService
         public Dictionary<string, uint>? FinalScores { get; set; }
         public Dictionary<string, CharacterRecord> SettledCharacters { get; } = new(StringComparer.Ordinal);
 
+        public int Capacity => CreateRequest.Mode == 100 ? 1 : EntertainmentProtocol.MaximumMembers;
         public string Title => CreateRequest.Title;
         public string Password => CreateRequest.Password;
     }
@@ -89,23 +90,29 @@ public sealed partial class NetworkAdapterService
         ConnectionSession member,
         ushort roomId,
         string password,
-        out EntertainmentRoom? joinedRoom)
+        out EntertainmentRoom? joinedRoom,
+        out byte result)
     {
         lock (_entertainmentRoomGate)
         {
             joinedRoom = null;
+            result = 50;
             if (!_entertainmentRooms.TryGetValue(roomId, out var room)
-                || room.ChannelId != member.ChannelId
-                || room.GameType != member.ArenaGameType
-                || room.Started
-                || room.Members.Count >= EntertainmentProtocol.MaximumMembers
-                || !string.Equals(room.Password, password, StringComparison.Ordinal))
+                || room.ChannelId != member.ChannelId || room.GameType != member.ArenaGameType)
                 return false;
             if (room.Members.ContainsKey(member.SessionId))
             {
                 joinedRoom = room;
+                result = 10;
                 return true;
             }
+            result = 30;
+            if (room.Started) return false;
+            result = 20;
+            if (room.Members.Count >= room.Capacity) return false;
+            result = 40;
+            if (!string.Equals(room.Password, password, StringComparison.Ordinal)) return false;
+            result = 10;
 
             RemoveEntertainmentRoomMemberLocked(member);
             var occupied = room.Members.Values
@@ -174,7 +181,7 @@ public sealed partial class NetworkAdapterService
                 || inviter.ArenaGameType != invitee.ArenaGameType || invitee.EntertainmentRoomId != 0
                 || !_entertainmentRooms.TryGetValue(inviter.EntertainmentRoomId, out var room)
                 || room.OwnerSessionId != inviter.SessionId || room.Started
-                || room.Members.Count >= EntertainmentProtocol.MaximumMembers)
+                || room.Members.Count >= room.Capacity)
                 return false;
             _entertainmentInvitationsByInvitee[invitee.SessionId] = new EntertainmentInvitation
             { Inviter = inviter, Invitee = invitee, RoomId = room.Id };
@@ -205,7 +212,7 @@ public sealed partial class NetworkAdapterService
             inviter = invitation.Inviter;
             if (resultCode == PartyAgreementAccepted)
             {
-                if (room.Members.Count >= EntertainmentProtocol.MaximumMembers) return false;
+                if (room.Members.Count >= room.Capacity) return false;
                 var occupied = room.Members.Values.Select(value => value.EntertainmentSlotIndex).ToHashSet();
                 byte freeSlot = 0;
                 while (freeSlot < EntertainmentProtocol.MaximumMembers && occupied.Contains(freeSlot)) freeSlot++;
@@ -267,7 +274,7 @@ public sealed partial class NetworkAdapterService
                     .OrderBy(room => room.Id);
             if (option == 200)
                 query = query.Where(room => !room.Started
-                    && room.Members.Count < EntertainmentProtocol.MaximumMembers);
+                    && room.Members.Count < room.Capacity);
             var rooms = query.Take(100)
                 .Select(room => new EntertainmentRoomListEntry(
                     checked((ushort)room.Id),
@@ -724,15 +731,12 @@ public sealed partial class NetworkAdapterService
                 var records = members.Select(member =>
                 {
                     var character = room.SettledCharacters.GetValueOrDefault(member.SessionId) ?? member.Character!;
-                    var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
-                    var nextLevel = CharacterProgression.NextExperienceThreshold(character.Level);
+                    var display = CharacterProgression.ProjectClientExperience(character.Level, character.Experience);
                     return new EntertainmentEndGameRecord(GetSceneEntityId(character),
                         checked((byte)Math.Clamp(character.Level, 1, byte.MaxValue)),
                         CharacterTitleState.GetGrade(character), CharacterTitleState.GetGrade(character),
                         room.FinalScores.GetValueOrDefault(member.SessionId),
-                        checked((uint)Math.Clamp(character.Experience, 0L, uint.MaxValue)),
-                        checked((uint)Math.Clamp(levelStart, 0L, uint.MaxValue - 1L)),
-                        checked((uint)Math.Clamp(nextLevel, 1L, uint.MaxValue)), 1, 0, 0, 0, 0, 0, 0);
+                        display.Current, display.Lower, display.Next, 1, 0, 0, 0, 0, 0, 0);
                 }).ToArray();
                 room.EndGamePayload = EntertainmentProtocol.BuildEndGameInfo(records);
                 room.Started = false;
@@ -1074,7 +1078,7 @@ public sealed partial class NetworkAdapterService
         lock (_entertainmentRoomGate)
             return (ushort)(_entertainmentRooms.Values.Where(room => room.ChannelId == requester.ChannelId
                 && room.GameType == requester.ArenaGameType && !room.Started && room.Password.Length == 0
-                && room.Members.Count < EntertainmentProtocol.MaximumMembers)
+                && room.Members.Count < room.Capacity)
                 .OrderBy(room => room.Id).FirstOrDefault()?.Id ?? 0);
     }
 }

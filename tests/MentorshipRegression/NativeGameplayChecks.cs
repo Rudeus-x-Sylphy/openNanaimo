@@ -11,13 +11,14 @@ internal static partial class Program
         {
             await using var f = await Fixture.CreateAsync();
             f.Service.MentorshipRules = MentorshipPolicy.Production;
-            await f.ExecuteAsync("UPDATE Characters SET Level=18 WHERE Id=$id", ("$id", Character(f.Student).Id));
+            await f.ExecuteAsync($"UPDATE Characters SET Level=18,Experience={CharacterProgression.ExperienceRequiredForLevel(18)} WHERE Id=$id", ("$id", Character(f.Student).Id));
             Character(f.Student).Level = 18;
+            Character(f.Student).Experience = CharacterProgression.ExperienceRequiredForLevel(18);
             var request = await f.Service.RequestMentorshipAsync(Id(f.Teacher), Character(f.Student).Id, MentorshipDirection.TeacherInvitation);
             Check(request.Success, "level eighteen invitation");
             var accepted = await f.Service.RespondMentorshipAsync(Id(f.Student), request.Request!.Id, true);
             Check(accepted.Success, "level eighteen relation established");
-            await f.ExecuteAsync("UPDATE Characters SET Level=$level WHERE Id=$id", ("$level", level), ("$id", Character(f.Student).Id));
+            await f.ExecuteAsync("UPDATE Characters SET Level=$level,Experience=$exp WHERE Id=$id", ("$level", level), ("$exp", CharacterProgression.ExperienceRequiredForLevel(level)), ("$id", Character(f.Student).Id));
             // The student's next profile read uses persisted level even with a stale session and offline teacher.
             f.RemovePresence(f.Teacher);
             var frame = (await Dispatch(f, f.Student, 0xC578, []))!;
@@ -33,7 +34,7 @@ internal static partial class Program
         busy.Service.MentorshipRules = MentorshipPolicy.Production;
         var pending = await busy.Service.RequestMentorshipAsync(Id(busy.Teacher), Character(busy.Student).Id, MentorshipDirection.TeacherInvitation);
         Check((await busy.Service.RespondMentorshipAsync(Id(busy.Student), pending.Request!.Id, true)).Success, "busy relation established");
-        await busy.ExecuteAsync("UPDATE Characters SET Level=21 WHERE Id=$id", ("$id", Character(busy.Student).Id));
+        await busy.ExecuteAsync($"UPDATE Characters SET Level=21,Experience={CharacterProgression.ExperienceRequiredForLevel(21)} WHERE Id=$id", ("$id", Character(busy.Student).Id));
         Set(busy.Student, "TownSceneActive", false);
         await InvokeMentorship<Task>(busy.Service, "ReconcileLevelMentorshipsAsync", busy.Teacher, CancellationToken.None);
         Check((await busy.Database.GetMentorshipRelationsAsync(Actor(busy.Student))).Count == 1, "graduation waits for both town boundaries");

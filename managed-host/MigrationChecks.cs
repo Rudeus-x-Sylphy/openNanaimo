@@ -151,12 +151,27 @@ internal static class MigrationChecks
             Assert((await db.GetCharacterCardsAsync(c.Id, token)).Single(i => i.CardCode == 13000001).Quantity == before.Get(272) + 2,
                 "Checkpoint replay does not duplicate cards");
             var invalid = after.Bytes.ToArray();
-            BinaryPrimitives.WriteUInt32LittleEndian(invalid.AsSpan(272), 256);
+            BinaryPrimitives.WriteUInt32LittleEndian(invalid.AsSpan(272), after.Get(272) + 1);
             BinaryPrimitives.WriteInt64LittleEndian(invalid.AsSpan(32), changed.Hans + 123);
+            // Free card gains now saturate at255 by policy. Inject a real storage
+            // error instead of calling a legitimate saturated gain "invalid".
+            await using var failureConnection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={db.DatabasePath};Pooling=False");
+            await failureConnection.OpenAsync(token);
+            await using var failureCommand = failureConnection.CreateCommand();
+            failureCommand.CommandText = $"CREATE TRIGGER selftest_card_failure BEFORE UPDATE ON CharacterCards WHEN NEW.CharacterId={c.Id} BEGIN SELECT RAISE(ABORT,'selftest card write failure'); END";
+            await failureCommand.ExecuteNonQueryAsync(token);
             bool rejected = false;
-            try { await db.ApplyNativeDungeonDeltaAsync(account, c.Id, session, after, new NativeDungeonState(invalid), token); }
-            catch (Microsoft.Data.Sqlite.SqliteException) { rejected = true; }
-            Assert(rejected && (await db.GetCharacterAsync(account, token))!.Hans == changed.Hans, "Invalid card count rolls back currency transaction");
+            try
+            {
+                try { await db.ApplyNativeDungeonDeltaAsync(account, c.Id, session, after, new NativeDungeonState(invalid), token); }
+                catch (Microsoft.Data.Sqlite.SqliteException) { rejected = true; }
+            }
+            finally
+            {
+                failureCommand.CommandText = "DROP TRIGGER selftest_card_failure";
+                await failureCommand.ExecuteNonQueryAsync(token);
+            }
+            Assert(rejected && (await db.GetCharacterAsync(account, token))!.Hans == changed.Hans, "Injected card-write failure rolls back currency transaction");
             await db.ApplyNativeDungeonDeltaAsync(account, c.Id, session, after, before, token);
             Assert((await db.GetCharacterAsync(account, token))!.Hans == c.Hans, "Checkpoint debit restores starting balance");
         }
@@ -401,8 +416,8 @@ internal static class MigrationChecks
         edit.Strength=12; edit.Vitality=20; edit.IsGm=true; edit.RestoreHealth=true;
         await db.SaveGmCharacterAsync(edit,token);
         var saved=(await db.GetCharacterAsync(account,token))!;
-        Assert(saved.Level==25 && saved.Experience==30000 && saved.Hans==123456 && saved.Cash==654321 && saved.SkillPoints==400
-            && saved.Vitality==20 && saved.CurrentHp==saved.MaxHp,"GM character stats, level, currencies and health persist");
+        Assert(saved.Level==25 && saved.Experience==CharacterProgression.ExperienceRequiredForLevel(25) && saved.Hans==123456 && saved.Cash==654321 && saved.SkillPoints==400
+            && saved.Vitality==5 && saved.CurrentHp==saved.MaxHp,"GM character stats, level, currencies and health persist");
         Assert((await db.GetAccountsAsync(token)).Single(a=>a.Id==account).IsGm,"GM account flag persists");
         var stock=DatabaseService.GetGmCatalog();
         uint item=stock.First(i=>i.Kind=="item" && NativeDungeonState.IsNativeItem(i.Code)).Code;

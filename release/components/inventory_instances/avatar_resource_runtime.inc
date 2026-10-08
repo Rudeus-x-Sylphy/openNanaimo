@@ -10,9 +10,19 @@ static const struct avatar_resource_row* avatar_resource_find(unsigned code){
     if(lo<sizeof(g_avatar_resource_rows)/sizeof(g_avatar_resource_rows[0])&&g_avatar_resource_rows[lo].code==code)return &g_avatar_resource_rows[lo];
     return 0;
 }
+/* Local defense policy; percentage basis is supplied by the character layer. */
+static void avatar_defense_bonuses(const unsigned*equip,unsigned effect,unsigned*flat,unsigned*percent){
+    unsigned i,code;unsigned long long f=0u,p=0u;const struct avatar_resource_row*r;
+    for(i=0u;i<6u;i++){
+        if(i==1u)continue;
+        code=i<5u?equip[i]:effect;r=avatar_resource_find(code);if(!r)continue;
+        f+=r->defense_flat;p+=r->defense_percent;
+    }
+    *flat=f>65535u?65535u:(unsigned)f;*percent=p>65535u?65535u:(unsigned)p;
+}
 static void avatar_resource_bonuses(const unsigned*equip,unsigned effect,unsigned level,unsigned*hp,unsigned*mp){
     unsigned i,code;unsigned long long h=0u,m=0u,hb,mb;const struct avatar_resource_row*r;
-    if(level<1u)level=1u;if(level>99u)level=99u;
+    if(level<1u)level=1u;if(level>200u)level=200u;
     hb=1600u+100u*(level-1u);mb=100u+10u*(level-1u);
     for(i=0u;i<6u;i++){
         if(i==1u)continue; /* base face/body has no equipment effect */

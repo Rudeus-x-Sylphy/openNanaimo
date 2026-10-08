@@ -4,8 +4,9 @@
 static unsigned character_progression_effective_defense(void);
 
 /* The attack modifier uses the CFEC additive slot before the flight multiplier.
-   Ordinary and Boss projectiles share one configured adjustment; selected-pet
-   attack gemstones are not added a second time here. */
+   Ordinary and Boss projectiles share one configured adjustment. This helper
+   does not read selected attack gems; that is not proof of upstream inclusion.
+   Do not add a blanket PET-panel bonus without closing the client source chain. */
 static unsigned multiplayer_combat_profile_adjust_attack(unsigned base){
     unsigned out=base,pct=item_effects_flight_attack_percent();
     if(out>0xFFFFFFFFu-g_profile_attack_modifier)out=0xFFFFFFFFu;else out+=g_profile_attack_modifier;

@@ -200,6 +200,15 @@ function Save-InventoryAdminState($Context,[string]$NameHex,$Shop,$Profile=$null
 
 function Test-InventoryAdminInstallation([string]$Root){
     $backend=Join-Path (Split-Path $PSScriptRoot -Parent) 'adapter_runtime\Nanaimo.Adapter.exe';$summary=Get-Content -LiteralPath (Join-Path $Root 'gui_launcher\data\inventory_catalog_summary.json') -Raw -Encoding UTF8|ConvertFrom-Json
-    if([int]$summary.counts.'inventory_clothing.json'-ne3885-or[int]$summary.counts.'inventory_pets.json'-ne990-or[int]$summary.counts.'inventory_pet_gems.json'-ne18931-or[int]$summary.counts.'inventory_furniture.json'-ne781-or[int]$summary.counts.'inventory_cards.json'-ne420){throw '物品目录计数校验失败。'}
+    if([int]$summary.counts.'inventory_clothing.json'-ne3885-or[int]$summary.counts.'inventory_pets.json'-ne990-or[int]$summary.counts.'inventory_pet_gems.json'-ne18931-or[int]$summary.counts.'inventory_furniture.json'-ne781-or[int]$summary.counts.'inventory_cards.json'-ne560){throw '物品目录计数校验失败。'}
+    # Validate the actual consumed JSON, not only a self-reported summary.
+    $cardPath=Join-Path $Root 'gui_launcher\data\inventory_cards.json'
+    $cards=Get-Content -LiteralPath $cardPath -Raw -Encoding UTF8|ConvertFrom-Json
+    $codes=@{};foreach($card in $cards){$code=[uint32]$card.id;if($codes.ContainsKey($code)){throw "卡片目录存在重复ID：$code"};$codes[$code]=$true}
+    $expected=@(13000001..13000420)+@(12000001..12000020)+@(50000001..50000100)+@(22000001..22000020)
+    if($cards.Count-ne560){throw "实际卡片目录不完整：$($cards.Count)/560，请更新 inventory_cards.json。"}
+    foreach($code in $expected){if(-not$codes.ContainsKey([uint32]$code)){throw "实际卡片目录缺少ID：$code"}}
+    $dropPath=Join-Path $Root 'release\components\cards\card_drop_cn.csv'
+    foreach($row in (Import-Csv -LiteralPath $dropPath -Encoding UTF8)){if(-not$codes.ContainsKey([uint32]$row.card_id)){throw "掉落表卡片未纳入可发放目录：$($row.card_id)"}}
     return Invoke-InventoryAdminBackend @($backend,'selftest','--root',$Root)
 }

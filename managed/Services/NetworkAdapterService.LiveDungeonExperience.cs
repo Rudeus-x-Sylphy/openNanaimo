@@ -35,10 +35,10 @@ public sealed partial class NetworkAdapterService
         var character = session.Character!;
         var next = new NativeDungeonState(session.NativeCheckpoint.Bytes.ToArray());
         void Put(int offset, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(next.Bytes.AsSpan(offset), value);
-        Put(8, (uint)character.Level); Put(12, checked((uint)character.Experience));
+        next.SetProgression(character.Level, character.Experience);
         Put(16, (uint)character.MaxHp); Put(24, (uint)character.MaxMp);
-        var attack = CharacterCombatProgression.NativeAttack(character.Strength, character.Agility, character.AttackModifier);
-        var defense = CharacterCombatProgression.NativeDefense(character.Vitality, character.Strength, character.DefenseFlat);
+        var attack = CharacterCombatProgression.NativeAttack(character.Level, character.AttackModifier);
+        var defense = CharacterCombatProgression.NativeDefense(character.Level, character.DefenseFlat);
         Put(NativeDungeonState.AttackModifierOffset, attack); Put(NativeDungeonState.DefenseFlatOffset, defense);
         if (session.NativeBattleResources is { } resources)
         {
@@ -51,10 +51,13 @@ public sealed partial class NetworkAdapterService
             session.NativeBattleResources.ApplyTo(next);
         }
         session.NativeCheckpoint = next;
-        var payload = new byte[32];
-        uint[] values = [next.Get(4), (uint)character.Level, checked((uint)character.Experience),
-            (uint)character.MaxHp, (uint)character.MaxMp, attack, defense, nativeEpoch];
-        for (var i = 0; i < values.Length; i++) BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4*i), values[i]);
+        var payload = new byte[48];
+        void Field(int offset, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset), value);
+        Field(0, NativeDungeonState.ProtocolVersion); Field(4, 48); Field(8, CharacterProgression.CurveVersion);
+        Field(12, next.Get(4)); Field(16, checked((uint)character.Level));
+        BinaryPrimitives.WriteUInt64LittleEndian(payload.AsSpan(20), checked((ulong)character.Experience));
+        Field(28, (uint)character.MaxHp); Field(32, (uint)character.MaxMp);
+        Field(36, attack); Field(40, defense); Field(44, nativeEpoch);
         // Also resynchronize on duplicate receipts: a prior send may have failed
         // after the DB transaction committed. It must never grant EXP twice.
         await worker.SendControlAsync(NativeDungeonClient.Frame(0xF10B, payload), token);

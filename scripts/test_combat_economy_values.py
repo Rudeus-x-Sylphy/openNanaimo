@@ -1,5 +1,6 @@
 """Production scoring policy and independently decoded DCC7 table regressions."""
 import hashlib
+import os
 import re
 import struct
 import subprocess
@@ -97,9 +98,17 @@ int main(void){
     teamplay_battle_score_add(&score,75u,BATTLE_SCORE_KIND_ORDINARY);CHECK(teamplay_current_score()==0xFFFFFFFFu);
     teamplay_score_begin(3u);battle_score_begin(&score,3u);teamplay_score_snapshot(slots);
     CHECK(!slots[0]&&!slots[1]&&!slots[2]&&!score.total);
-    CHECK(combat_economy_coin_amount_for_hp(199u)==0u);
-    CHECK(combat_economy_coin_amount_for_hp(200u)==4u);
-    CHECK(combat_economy_coin_amount_for_hp(4000u)==80u);
+    CHECK(combat_economy_coin_amount_for_hp(0u)==0u);
+    CHECK(combat_economy_coin_amount_for_hp(1u)==0u);
+    CHECK(combat_economy_coin_amount_for_hp(99u)==0u);
+    CHECK(combat_economy_coin_amount_for_hp(100u)==1u);
+    CHECK(combat_economy_coin_amount_for_hp(106u)==1u);
+    CHECK(combat_economy_coin_amount_for_hp(199u)==1u);
+    CHECK(combat_economy_coin_amount_for_hp(299u)==2u);
+    CHECK(combat_economy_coin_amount_for_hp(300u)==3u);
+    CHECK(combat_economy_coin_amount_for_hp(0xFFFFFFFFu)==42949672u);
+    CHECK(combat_economy_coin_amount_for_hp(200u)==2u);
+    CHECK(combat_economy_coin_amount_for_hp(4000u)==40u);
     puts("COMBAT_SCORE_SYNC_PASS profiles=864 targets=484547");return 0;
 }
 '''
@@ -121,7 +130,7 @@ class CombatEconomyValueTests(unittest.TestCase):
             self.assertIn("COMBAT_SCORE_SYNC_PASS",result.stdout)
 
     def test_generated_table_matches_every_catalog_target_and_boss(self):
-        catalog=ROOT/"adapter_runtime/资源/数据/dungeon_combat_catalog.bin"
+        catalog=Path(os.environ.get("NANAIMO_SCORE_CATALOG", ROOT/"adapter_runtime/资源/数据/dungeon_combat_catalog.bin"))
         data=catalog.read_bytes(); self.assertEqual(data[:4],b"DCC7"); pos=4; sections=[]
         for size in (28,16,34,30):
             count=struct.unpack_from("<I",data,pos)[0];pos+=4

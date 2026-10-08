@@ -104,9 +104,26 @@ internal static class TutorialAppearanceChecks
                 BinaryPrimitives.WriteUInt16LittleEndian(move.AsSpan(4), ushort.MaxValue);
                 BinaryPrimitives.WriteUInt16LittleEndian(move.AsSpan(6), ushort.MaxValue);
                 var actor = (await Send(service, session, 0xC367, move))!;
-                Check(actor.Length == 60 && Opcodes(actor).SequenceEqual(new ushort[] { 0xC368 })
-                    && actor.AsSpan(12, 36).SequenceEqual(expected),
+                Check(Opcodes(actor).SequenceEqual(new ushort[] { 0xC368, 0xC379 })
+                    && Frame(actor, 0xC368).AsSpan(12, 36).SequenceEqual(expected),
                     "first village actor restores every saved slot, including D6, without relaunch");
+                var initialBox = Frame(actor, 0xC379);
+                var queriedBox = Frame((await Send(service, session, 0xC378, []))!, 0xC379);
+                Check(initialBox.AsSpan(10).SequenceEqual(queriedBox.AsSpan(10))
+                    && initialBox.AsSpan(132, 36).SequenceEqual(expected),
+                    "login initializes the complete equipped snapshot before opening inventory or changing equipment");
+                var resources = NetworkAdapterService.ResolveInventoryVitals(completed);
+                var directActor = NetworkAdapterService.BuildRoomEnterPayload(completed, 0, 160, 304);
+                Check(BinaryPrimitives.ReadUInt16LittleEndian(directActor.AsSpan(44)) == resources.MaximumHp
+                    && BinaryPrimitives.ReadUInt16LittleEndian(directActor.AsSpan(46)) == resources.MaximumMp
+                    && BinaryPrimitives.ReadUInt16LittleEndian(directActor.AsSpan(48)) == resources.CurrentHp,
+                    "actor constructor itself uses equipment-effective resources without an implicit heal");
+                Check(Opcodes((await Send(service, session, 0xC367, move))!).SequenceEqual(new ushort[] { 0xC368 }),
+                    "later town pages do not repeat initialization");
+                await Send(service, session, 0xC354, []);
+                var repeated = (await Send(service, session, 0xC367, move))!;
+                Check(Frame(repeated, 0xC379).AsSpan(10).SequenceEqual(initialBox.AsSpan(10)),
+                    "repeated initialization replaces the same slots without a synthetic equip acknowledgment");
                 var beforeRepeat = (await db.GetCharacterAsync(character.AccountId))!;
                 Check(Opcodes((await Send(service, session, 0xC353, guide))!).SequenceEqual(new ushort[] { 0xC594 }),
                     "duplicate completion stays request-driven");
@@ -123,6 +140,7 @@ internal static class TutorialAppearanceChecks
                     && Encoding.UTF8.GetString(new PersistentStateStore(db.DatabasePath).Read(sidecarPath)!) == sidecar,
                     "INI and sidecar are unchanged throughout tutorial lifecycle");
             }
+            EquipmentInitializationChecks.Run(service);
             Console.WriteLine("TUTORIAL_APPEARANCE_CHECKS_PASS cases=8 plus no-character; host construction only");
         }
         finally

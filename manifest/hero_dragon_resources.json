@@ -2,7 +2,7 @@
   "schema": "openNanaimo.hero-dragon.v1",
   "item_code": 15003361,
   "family": 9157,
-  "required_level": 95,
+  "required_level": 120,
   "model_stage": 3,
   "source_pet_sha256": "0ef547a8b5cc5c9a2b383657c30da3700c9599b0f737609e8572596845d3c038",
   "resources": [
@@ -337,40 +337,51 @@
     }
   ],
   "source_required_level": 120,
-  "level_policy": "cn99-high-tier-v1",
+  "level_policy": "original-kr-requirement-level200",
   "catalog_migrations": [
     {
       "before": {
         "size": 552608,
-        "sha256": "3b9b1d8c6600b2d06bc94f0e55205d82fbda6f0ac832ba2e1e670bbf27fb11a7"
+        "sha256": "2aa94008452f1771155db22306e39ab1af019caaa29be67df205f8f86ff482eb"
       },
       "allowed_fields": [
         1
       ],
-      "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
-      "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
-    },
-    {
-      "before": {
-        "size": 483696,
-        "sha256": "864643ccc424bac86c53a477d7673b654ab4be4cdd95c2c9dcc5647a79d6896c"
-      },
-      "allowed_fields": [
-        1
-      ],
-      "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
-      "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
+      "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+      "after_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa"
     },
     {
       "before": {
         "size": 552752,
-        "sha256": "c59190101532b23fb7a39f091ae1213ee27a2d8ce0adc40007ed2f8696aca0f9"
+        "sha256": "88abf4dd402ecafc85e6427e942a38f3201ec4078f7ceeb259dbf4b967961caa"
       },
       "allowed_fields": [
         1
       ],
-      "before_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa",
-      "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
+      "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+      "after_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa"
+    },
+    {
+      "before": {
+        "size": 550320,
+        "sha256": "6497cd2e6c0351b5fc859ced8817955e4e3fde829f8b6c6dc365fb7c61d32372"
+      },
+      "allowed_fields": [
+        1
+      ],
+      "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+      "after_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa"
+    },
+    {
+      "before": {
+        "size": 550320,
+        "sha256": "0ea61f5a54d29abc3c3a0b251d70ed70212b7264a837eb8b7e05aee636b211e0"
+      },
+      "allowed_fields": [
+        1
+      ],
+      "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
+      "after_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa"
     },
     {
       "before": {
@@ -381,7 +392,29 @@
         1
       ],
       "before_row_sha256": "5a6fd2aa390bfdc0cddd5791800e093078ba466f0f5a590917351a33aa07e71a",
-      "after_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b"
+      "after_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa"
+    },
+    {
+      "before": {
+        "size": 483696,
+        "sha256": "42bae689c46f5f654b24d2059b95db51d3cefe59fba59701ab43c65843586cc8"
+      },
+      "allowed_fields": [
+        1
+      ],
+      "before_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b",
+      "after_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa"
+    },
+    {
+      "before": {
+        "size": 550320,
+        "sha256": "514580cc90959b9194a53317870d5d5a7ea0814ead9ca67c379491d5a000598e"
+      },
+      "allowed_fields": [
+        1
+      ],
+      "before_row_sha256": "6c9beab78ee6d533afbf4e009f3cc0701cc0792a49b07290c91759bbad26773b",
+      "after_row_sha256": "198f848b16cd15adbe98d4c3a1cc3dfa6a0c70a90b41e7dad9729d6b79ceb1aa"
     }
   ]
 }

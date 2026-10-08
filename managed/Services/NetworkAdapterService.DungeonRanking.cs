@@ -201,9 +201,10 @@ public sealed partial class NetworkAdapterService
         if (count is < 1 or > 3 || frame.Length != 12 + count * 0x34)
             return false;
         // Native teamplay_battle_score_add attributes each kill (Boss included)
-        // once to its scoring slot. CF88 +0x1C contains that slot's absolute score,
-        // unlike the managed battle's mirrored Boss bonus. Sum each unique member
-        // once; do not change reward/rating arithmetic or infer a score from rank.
+        // once to its scoring slot, unlike the managed battle's mirrored Boss
+        // bonus. Sum each unique published score once, after the owner's +0x1C
+        // has been normalized to its hit + bonus total (+0x2C). Do not change
+        // rating arithmetic or infer a score from rank.
         Span<ushort> members = stackalloc ushort[3];
         long total = 0;
         for (var index = 0; index < count; index++)

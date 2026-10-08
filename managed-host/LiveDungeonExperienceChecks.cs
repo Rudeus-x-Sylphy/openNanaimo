@@ -10,17 +10,17 @@ internal static class LiveDungeonExperienceChecks
     public static async Task RunAsync()
     {
         await CheckControlDuringExchangeAsync();
-        for (int level=1;level<=99;level++)
+        for (int level=1;level<=200;level++)
         {
             var lower=CharacterProgression.ExperienceRequiredForLevel(level);
             var next=CharacterProgression.NextExperienceThreshold(level);
             Check(next>lower && (float)next>(float)lower, $"curve and float HUD interval {level}");
             Check(CharacterProgression.CalculateLevel(lower)==level, $"threshold {level}");
             Check(CharacterProgression.CalculateLevel(next-1)==level, $"below threshold {level}");
-            Check(CharacterProgression.CalculateLevel(next)==Math.Min(99,level+1), $"cross threshold {level}");
+            Check(CharacterProgression.CalculateLevel(next)==Math.Min(200,level+1), $"cross threshold {level}");
         }
-        Check(CharacterProgression.MaximumExperience==1_483_748_900L, "full user curve checksum");
-        Check(CharacterProgression.CalculateLevel(long.MaxValue)==99, "cannot become level100");
+        Check(CharacterProgression.MaximumExperience==69_469_351_200L, "full user curve checksum");
+        Check(CharacterProgression.CalculateLevel(long.MaxValue)==200, "cannot become level201");
         var costume=new CharacterRecord { Appearance=new byte[36] };
         BinaryPrimitives.WriteUInt32LittleEndian(costume.Appearance,10030458);
         Check(AvatarEquipmentCatalog.GetExperiencePercent(costume.Appearance)==18, "authored AVATA EXP type10");
@@ -51,19 +51,19 @@ internal static class LiveDungeonExperienceChecks
             var initial=await Character();
             Check(await Kill("1:1",3)==0,"round cumulative, do not round each increment");
             Check(await Kill("1:1",4)==1,"fraction carries to next kill");
-            Check(await Kill("1:1",3960)==989,"absolute score high water increment");
+            Check(await Kill("1:1",15960)==3989,"absolute score high water increment");
             Check((await Character()).Level==1,"below first level");
-            Check(await Kill("1:1",4000)==10,"kill crosses level in same battle");
+            Check(await Kill("1:1",16000)==10,"kill crosses level in same battle");
             var grown=await Character();
-            Check(grown.Level==2&&grown.Experience==1000,"level and EXP committed immediately");
-            Check(grown.Strength==initial.Strength+1&&grown.Vitality==initial.Vitality+1
-                &&grown.Agility==initial.Agility+1&&grown.Intelligence==initial.Intelligence+1
-                &&grown.Luck==initial.Luck+1,"all five growth attributes");
+            Check(grown.Level==2&&grown.Experience==4000,"level and EXP committed immediately");
+            Check(grown.Strength==initial.Strength&&grown.Vitality==initial.Vitality
+                &&grown.Agility==initial.Agility&&grown.Intelligence==initial.Intelligence
+                &&grown.Luck==initial.Luck,"legacy RPG columns inert");
             Check(grown.MaxHp>initial.MaxHp&&grown.MaxMp>initial.MaxMp&&grown.CurrentHp==711&&grown.CurrentMp==31,
                 "maxima grow without healing");
-            Check(await Kill("1:1",4000)==0&&await Kill("1:1",10)==0,"duplicate and out-of-order kills");
+            Check(await Kill("1:1",16000)==0&&await Kill("1:1",10)==0,"duplicate and out-of-order kills");
             var reopened=new DatabaseService(root);
-            Check((await reopened.ApplyLiveDungeonExperienceAsync(account,id,session,"1:1",4000,token)).AddedExperience==0,
+            Check((await reopened.ApplyLiveDungeonExperienceAsync(account,id,session,"1:1",16000,token)).AddedExperience==0,
                 "receipt survives DB reopen");
             Check(!(await db.ApplyLiveDungeonExperienceAsync(account,id,"wrong","1:1",999999,token)).Authorized,
                 "wrong session cannot grant");
@@ -72,29 +72,26 @@ internal static class LiveDungeonExperienceChecks
             var settlement=new NativeDungeonSettlementRecord(0,0,0,0,0,5,4000,
                 CharacterExperienceAward:1000,SettlementId:"1:2");
             await db.ApplyNativeDungeonDeltaAsync(account,id,session,before,new(before.Bytes.ToArray()),token,"end-a",settlement:settlement);
-            Check((await Character()).Experience==3000,"terminal awards another 25 percent, not a deduction");
+            Check((await Character()).Experience==6000,"terminal awards another 25 percent, not a deduction");
             await db.ApplyNativeDungeonDeltaAsync(account,id,session,before,new(before.Bytes.ToArray()),token,"end-b",settlement:settlement);
-            Check((await Character()).Experience==3000,"end receipt distinct and idempotent");
+            Check((await Character()).Experience==6000,"end receipt distinct and idempotent");
             var stale=new NativeDungeonState(before.Bytes.ToArray());
-            BinaryPrimitives.WriteUInt32LittleEndian(stale.Bytes.AsSpan(12),uint.MaxValue);
+            stale.SetProgression(CharacterProgression.CalculateLevel(uint.MaxValue),uint.MaxValue);
             await db.ApplyNativeDungeonDeltaAsync(account,id,session,before,stale,token,"old-snapshot");
-            Check((await Character()).Experience==3000,"stale snapshots neither erase nor mint kill EXP");
-            var level98=CharacterProgression.ExperienceRequiredForLevel(99)-1;
-            await Sql($"UPDATE Characters SET Level=98,Experience={level98},CurrentHp=0 WHERE Id={id}");
-            Check(await Kill("1:3",4)==1,"98 to 99 on a kill");
-            Check((await Character()).Level==99&&(await Character()).CurrentHp==0,"dead actor never revived by earned level");
+            Check((await Character()).Experience==6000,"stale snapshots neither erase nor mint kill EXP");
+            var level98=CharacterProgression.MaximumExperience-1;
+            await Sql($"UPDATE Characters SET Level=199,Experience={level98},CurrentHp=0 WHERE Id={id}");
+            Check(await Kill("1:3",4)==1,"199 to 200 on a kill");
+            Check((await Character()).Level==200&&(await Character()).CurrentHp==0,"dead actor never revived by earned level");
             await Kill("1:3",uint.MaxValue);
-            Check((await Character()).Level==99&&(await Character()).Experience==CharacterProgression.MaximumExperience,
-                "99 stays99 with large reward and bounded display");
-            // One-time curve migration preserves level and fractional progress,
-            // archives exact old values, and never reapplies on later startups.
-            await Sql($"UPDATE Characters SET Level=80,Experience={50L*79*80+4000} WHERE Id={id}; DELETE FROM SchemaMigrations WHERE Name='character-exp-score-v2'");
-            await db.InitializeAsync(token);
-            var migrated=(await Character()).Experience;
-            Check((await Character()).Level==80 && migrated==CharacterProgression.MigrateLegacyExperience(80,50L*79*80+4000),
-                "legacy curve migration retains level and half-bar");
-            await db.InitializeAsync(token);
-            Check((await Character()).Experience==migrated,"curve migration once only");
+            Check((await Character()).Level==200&&(await Character()).Experience==CharacterProgression.MaximumExperience,
+                "200 stays200 with large reward and bounded display");
+            // A legacy archive is refused before any automatic mutation. The
+            // offline reviewed migration is covered by test_level200.py.
+            await Sql($"UPDATE Characters SET Level=80,Experience={50L*79*80+4000},CurveVersion=1 WHERE Id={id}");
+            var refused=false;
+            try { await db.InitializeAsync(token); } catch(InvalidDataException) { refused=true; }
+            Check(refused,"legacy curve requires explicit offline preview/approval");
             Console.WriteLine("LIVE_DUNGEON_EXPERIENCE_HOST_PASS");
         }
         finally { SqliteConnection.ClearAllPools(); Directory.Delete(root,true); }
@@ -130,13 +127,13 @@ internal static class LiveDungeonExperienceChecks
                 Check(await Read()==0xF101,"concurrent exchange enters before reader control send");
                 sendControl.TrySetResult();
                 Check(await Read()==0xF10B,"reader control bypasses exchange gate without interleaving bytes");
-                var state = new byte[NativeDungeonState.Size];state[0]=1;
+                var state = NativeDungeonState.Create(new CharacterRecord { Id=1,Name="Control",Level=1,Experience=0 },[],[]).Bytes;
                 await stream.WriteAsync(NativeDungeonClient.Frame(0xF102,state),token);
                 await Task.Delay(100,token);
             },token);
             await native.ConnectAsync(token);await received.Task.WaitAsync(token);
             var result=await native.ExchangeCapturedAsync(null,null,token);
-            Check(result.State.Get(0)==1,"no reader/exchange deadlock");
+            Check(result.State.Get(0)==NativeDungeonState.ProtocolVersion,"no reader/exchange deadlock");
             await server;
         }
         finally {listener.Stop();}

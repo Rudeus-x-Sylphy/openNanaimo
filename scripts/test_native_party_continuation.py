@@ -3,6 +3,7 @@ import importlib.util
 import os
 from pathlib import Path
 import socket
+import select
 import struct
 import subprocess
 import tempfile
@@ -18,6 +19,106 @@ BRIDGE = Path(os.environ.get("NANAIMO_SOCIAL_BRIDGE", ROOT / "adapter_runtime/na
 
 
 class NativePartyContinuationTests(unittest.TestCase):
+    def test_solo_observed_continuation_without_reentering_room(self):
+        """The failed UID4 run: CF8B -> one roster -> CFEB, without CF77/CF6C."""
+        port = None
+        for candidate in range(62100, 64000, 10):
+            reserved = []
+            try:
+                for value in range(candidate, candidate + 9):
+                    item = socket.socket(); reserved.append(item)
+                    item.bind(("127.0.0.1", value))
+                port = candidate
+                break
+            except OSError:
+                pass
+            finally:
+                for item in reserved: item.close()
+        self.assertIsNotNone(port)
+        with tempfile.TemporaryDirectory(prefix="nanaimo-solo-continuation-") as directory:
+            root = Path(directory)
+            profile = root / "profile.ini"
+            profile.write_text("version=2\nname_hex=536F6C6F\nlevel=1\npet=0\nhp_max=2000\nhp_current=2000\nmp_max=1000\nmp_current=1000\n", encoding="ascii")
+            with (root / "native.txt").open("wb") as output:
+                process = subprocess.Popen([str(BRIDGE), str(port + 8), "0", "0", "0", str(profile), str(port)],
+                    cwd=directory, stdout=output, stderr=output, creationflags=subprocess.CREATE_NO_WINDOW)
+                connection = None
+                try:
+                    deadline = time.monotonic() + 8
+                    while connection is None:
+                        try: connection = socket.create_connection(("127.0.0.1", port), timeout=3)
+                        except OSError:
+                            if time.monotonic() > deadline: raise
+                            time.sleep(0.05)
+                    connection.settimeout(5)
+                    expected_sequence, sequence_wraps = 0, 0
+                    def exchange(opcode, payload, wanted, low=14):
+                        nonlocal expected_sequence, sequence_wraps
+                        request = bytearray(frame(opcode, payload))
+                        struct.pack_into("<H", request, 0, 0xE000 | low)
+                        connection.sendall(request)
+                        captured = []
+                        result = receive(connection, wanted, captured)
+                        # One-client worker has no ambient pushes; include the
+                        # trailing CF72/CF7E in the triggering request's ledger.
+                        while select.select([connection], [], [], 0.02)[0]:
+                            header = connection.recv(8, socket.MSG_PEEK)
+                            if len(header) < 8: raise AssertionError("truncated header")
+                            receive(connection, struct.unpack_from("<H", header, 6)[0], captured)
+                        for item in captured:
+                            magic, checksum = struct.unpack_from("<HH", item)
+                            self.assertEqual((magic >> 5) & 0x7F, expected_sequence)
+                            if expected_sequence == 100: sequence_wraps += 1
+                            expected_sequence = 1 if expected_sequence >= 100 else expected_sequence + 1
+                            self.assertEqual(magic & 31, low)
+                            self.assertEqual(checksum, (sum(item[4:]) & 65535) ^ 0x0E0E)
+                        return result, captured
+                    state = bytearray(seed(4, 0))
+                    struct.pack_into("<I", state, 20, 690)
+                    struct.pack_into("<I", state, 28, 44)
+                    exchange(0xF100, state, 0xF102)
+                    selection = bytearray(32); selection[26] = 1
+                    exchange(0xCF6C, selection, 0xCF6D)
+                    total_rosters = 0
+                    for epoch in range(3):
+                        exchange(0xC587, b"", 0xC588)
+                        roster, records = exchange(0xCF70, bytes(4), 0xCF71)
+                        self.assertEqual(sum(struct.unpack_from("<H", x, 6)[0] == 0xCF71 for x in records), 1)
+                        self.assertEqual(struct.unpack_from("<HH", roster, 0x18), (4, 4))
+                        self.assertEqual(roster[0x56], 0)
+                        total_rosters += 1
+                        exchange(0xCFD9, b"", 0xCFDA)
+                        exchange(0xCFEB, bytes(4), 0xCFEC)
+                        exchange(0xCFD3, b"", 0xCFD4)
+                        exchange(0xCFD5, struct.pack("<I", 1), 0xCFD6)
+                        start, records = exchange(0xCF7F, b"", 0xCF80)
+                        self.assertEqual(len(start), 8)
+                        self.assertFalse(any(struct.unpack_from("<H", x, 6)[0] in (0xCF6D, 0xCF71) for x in records))
+                        if epoch < 2:
+                            # Exercise the native post-authorization loading
+                            # branch, not Boss defeat or managed settlement
+                            # permission (covered by DungeonTransitionRegression).
+                            reset, records = exchange(0xCF8B, bytes((0, 0, 2, 0)), 0xCF8C, low=9+epoch)
+                            ops = [struct.unpack_from("<H", x, 6)[0] for x in records]
+                            self.assertNotIn(0xCF6D, ops)
+                            self.assertNotIn(0xCF71, ops)
+                            self.assertNotIn(0xCF80, ops)
+                            self.assertEqual(len(reset), 48)
+                            self.assertEqual(reset[0x28:0x2A], bytes(2))
+                            self.assertEqual(struct.unpack_from("<H", reset, 0x2E)[0], epoch + 1)
+                    for index in range(105):
+                        exchange(0xF101, b"", 0xF102, low=9 if index % 2 else 14)
+                    self.assertGreaterEqual(sequence_wraps, 1)
+                    self.assertEqual(total_rosters, 3)
+                    print("SOLO_CONTINUATION_PASS uid=4 epochs=3 no-reentry no-unsolicited-roster/start sequence-ring checksum request-low")
+                except Exception:
+                    output.flush()
+                    print((root / "native.txt").read_text("utf-8", errors="replace")[-12000:])
+                    raise
+                finally:
+                    if connection is not None: connection.close()
+                    process.terminate(); process.wait(timeout=10)
+
     def test_continuation_membership_and_slot_generations(self):
         harness = r'''
 #include <assert.h>
@@ -60,7 +161,13 @@ int main(void){
     def test_superboss_slow_member_and_explicit_return(self):
         self.run_loading_epochs(True)
 
-    def run_loading_epochs(self, superboss):
+    def test_only_cf99_member_is_rearmed(self):
+        self.run_loading_epochs(False, surrender_member=True)
+
+    def test_superboss_cf99_member_is_rearmed(self):
+        self.run_loading_epochs(True, surrender_member=True)
+
+    def run_loading_epochs(self, superboss, surrender_member=False):
         self.assertTrue(BRIDGE.is_file())
         port = None
         for candidate in range(62100, 64000, 10):
@@ -149,19 +256,23 @@ int main(void){
                                 struct.pack_into("<I", fallen, 28, 0)
                                 member.sendall(frame(0xF100, fallen))
                                 receive(member, 0xF102)
+                            if epoch == 0 and surrender_member:
+                                member.sendall(frame(0xCF99))
+                                receive(member, 0xCF9A)
                             owner.sendall(frame(0xCF8B, bytes((0, 0, 1 if superboss else 2, 0))))
                             owner_frames, member_frames = [], []
                             reset_owner = receive(owner, 0xCF8C, owner_frames)
                             reset_member = receive(member, 0xCF8C, member_frames)
                             for frames in (owner_frames, member_frames):
                                 opcodes = [struct.unpack_from("<H", item, 6)[0] for item in frames]
-                                self.assertIn(0xCF6D, opcodes)
-                                self.assertLess(opcodes.index(0xCF6D), opcodes.index(0xCF8C))
-                                entry = next(item for item in frames if struct.unpack_from("<H", item, 6)[0] == 0xCF6D)
-                                self.assertEqual(len(entry), 44)
-                                self.assertEqual(entry[8], 10)
-                                self.assertEqual(entry[9], 1 if frames is owner_frames else 0)
-                                self.assertEqual(struct.unpack_from("<I", entry, 0x10)[0], 11)
+                                needs_clear = surrender_member and epoch == 0 and frames is member_frames
+                                self.assertEqual(opcodes.count(0xCF6D), int(needs_clear))
+                                if needs_clear:
+                                    self.assertLess(opcodes.index(0xCF6D), opcodes.index(0xCF8C))
+                                    entry = next(item for item in frames if struct.unpack_from("<H", item, 6)[0] == 0xCF6D)
+                                    self.assertEqual(len(entry), 44)
+                                    self.assertEqual(entry[8:10], bytes((10, 0)))
+                                    self.assertEqual(struct.unpack_from("<I", entry, 0x10)[0], 11)
                             self.assertEqual(reset_owner[8:], reset_member[8:])
                             self.assertEqual(reset_member[0x2E], 2 if superboss else epoch + 1)
                             self.assertEqual(reset_member[0x28], 1 if superboss else 0)
@@ -178,7 +289,7 @@ int main(void){
                         receive(connection, 0xF102, captured)
                         self.assertFalse(any(struct.unpack_from("<H", item, 6)[0] in (0xC368, 0xC379, 0xC389)
                                              for item in captured))
-                    print(f"NATIVE_PARTY_CONTINUATION_PASS epochs=3 members=2 superboss={superboss}")
+                    print(f"NATIVE_PARTY_CONTINUATION_PASS epochs=3 members=2 superboss={superboss} cf99_member={surrender_member}")
                 except Exception:
                     output.flush()
                     print((root / "native.txt").read_text("utf-8", errors="replace")[-16000:])

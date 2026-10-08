@@ -17,7 +17,7 @@
       "targets": 796,
       "boss_modes": 1,
       "boss_hp": 7650000,
-      "boss_score": 12000000
+      "boss_score": 1200000
     },
     {
       "stage": 0,
@@ -27,7 +27,7 @@
       "targets": 801,
       "boss_modes": 1,
       "boss_hp": 7650000,
-      "boss_score": 12000000
+      "boss_score": 1200000
     },
     {
       "stage": 0,
@@ -37,7 +37,7 @@
       "targets": 790,
       "boss_modes": 1,
       "boss_hp": 7650000,
-      "boss_score": 12000000
+      "boss_score": 1200000
     },
     {
       "stage": 0,
@@ -47,7 +47,7 @@
       "targets": 796,
       "boss_modes": 1,
       "boss_hp": 7650000,
-      "boss_score": 12000000
+      "boss_score": 1200000
     },
     {
       "stage": 0,
@@ -57,7 +57,7 @@
       "targets": 801,
       "boss_modes": 1,
       "boss_hp": 7650000,
-      "boss_score": 12000000
+      "boss_score": 1200000
     },
     {
       "stage": 0,
@@ -67,7 +67,7 @@
       "targets": 790,
       "boss_modes": 1,
       "boss_hp": 7650000,
-      "boss_score": 12000000
+      "boss_score": 1200000
     },
     {
       "stage": 0,
@@ -77,7 +77,7 @@
       "targets": 796,
       "boss_modes": 1,
       "boss_hp": 7650000,
-      "boss_score": 12000000
+      "boss_score": 1200000
     },
     {
       "stage": 0,
@@ -87,7 +87,7 @@
       "targets": 801,
       "boss_modes": 1,
       "boss_hp": 7650000,
-      "boss_score": 12000000
+      "boss_score": 1200000
     },
     {
       "stage": 0,
@@ -97,7 +97,7 @@
       "targets": 790,
       "boss_modes": 1,
       "boss_hp": 7650000,
-      "boss_score": 12000000
+      "boss_score": 1200000
     },
     {
       "stage": 1,
@@ -107,7 +107,7 @@
       "targets": 708,
       "boss_modes": 2,
       "boss_hp": 10200000,
-      "boss_score": 13000000
+      "boss_score": 1300000
     },
     {
       "stage": 1,
@@ -117,7 +117,7 @@
       "targets": 711,
       "boss_modes": 2,
       "boss_hp": 10200000,
-      "boss_score": 13000000
+      "boss_score": 1300000
     },
     {
       "stage": 1,
@@ -127,7 +127,7 @@
       "targets": 706,
       "boss_modes": 2,
       "boss_hp": 10200000,
-      "boss_score": 13000000
+      "boss_score": 1300000
     },
     {
       "stage": 1,
@@ -137,7 +137,7 @@
       "targets": 708,
       "boss_modes": 2,
       "boss_hp": 10200000,
-      "boss_score": 13000000
+      "boss_score": 1300000
     },
     {
       "stage": 1,
@@ -147,7 +147,7 @@
       "targets": 711,
       "boss_modes": 2,
       "boss_hp": 10200000,
-      "boss_score": 13000000
+      "boss_score": 1300000
     },
     {
       "stage": 1,
@@ -157,7 +157,7 @@
       "targets": 706,
       "boss_modes": 2,
       "boss_hp": 10200000,
-      "boss_score": 13000000
+      "boss_score": 1300000
     },
     {
       "stage": 1,
@@ -167,7 +167,7 @@
       "targets": 708,
       "boss_modes": 2,
       "boss_hp": 10200000,
-      "boss_score": 13000000
+      "boss_score": 1300000
     },
     {
       "stage": 1,
@@ -177,7 +177,7 @@
       "targets": 711,
       "boss_modes": 2,
       "boss_hp": 10200000,
-      "boss_score": 13000000
+      "boss_score": 1300000
     },
     {
       "stage": 1,
@@ -187,7 +187,7 @@
       "targets": 706,
       "boss_modes": 2,
       "boss_hp": 10200000,
-      "boss_score": 13000000
+      "boss_score": 1300000
     }
   ],
   "terminal_item_rows": 162,
@@ -1516,9 +1516,9 @@
       "size": 976312,
       "sha256": "081E094BBE20FE20167D4A31758F3AF30260EE56EFD48C19306F5613C6307EB0"
     },
-    "adapter_runtime/\u8d44\u6e90/\u6570\u636e/dungeon_combat_catalog.bin": {
+    "adapter_runtime/资源/数据/dungeon_combat_catalog.bin": {
       "size": 11805956,
-      "sha256": "75677C3B80C900E2FF2F769271E878E3BEC96B3D39601E5EB82166CF07093C4D"
+      "sha256": "F3D8A7ED6069EDF4BD2D9721AD9F7E2A3D412790BE6142C94D7793053AAA0E7A"
     },
     "release/components/targets/terminal_item_drop_data.inc": {
       "size": 2391,

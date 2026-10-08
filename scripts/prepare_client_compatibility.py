@@ -18,14 +18,18 @@ try:
     from . import apartment_exterior_panel as exterior_panel
     from . import dungeon7_visuals
     from . import lumineos_scenes
+    from . import entertainment_mode_compat
     from . import dungeon_result_compat
     from . import dungeon_experience_compat
+    from . import level200_compat
 except ImportError:
     import apartment_exterior_panel as exterior_panel
     import dungeon7_visuals
     import lumineos_scenes
+    import entertainment_mode_compat
     import dungeon_result_compat
     import dungeon_experience_compat
+    import level200_compat
 from pathlib import Path
 
 ROUTE = [8, 7, 6, 11, 16, 17, 18, 19, 14, 9, 4, 3, 2, 1, 0, 5, 10, 15, 20, 21, 22, 23, 24]
@@ -616,7 +620,8 @@ def social_gameplay_patch_sites():
         ('picnic_lucky_meter_entry', 0x0040B37A, bytes.fromhex('e951822300'),
          b'\xE9' + struct.pack('<i', base - 0x0040B37A - 5)),
         ('dungeon_result_data_gate', 0x0066CD71, bytes.fromhex('741a'), bytes.fromhex('eb1a')),
-    ]
+        ('dungeon_party_result_data_gate', 0x0066CD45, bytes.fromhex('741a'), bytes.fromhex('eb1a')),
+    ] + entertainment_mode_compat.patch_sites()
 
 
 def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
@@ -638,16 +643,17 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     for name, va, old, new in social_gameplay_patch_sites():
         data, gameplay[name] = _patch_site(data, va, old, new, 'patch_' + name,
             'the social gameplay compatibility site differs')
-    data, result_entry = dungeon_result_compat.patch(data, _patch_site)
+    data, result_entry = dungeon_result_compat.patch(data, _patch_site, _migrate_site)
     data, power = restore_native_power(data)
     data, experience = dungeon_experience_compat.patch_experience_preview(data, _patch_site)
     data, actor_level = dungeon_experience_compat.patch_local_actor_level(data, _patch_site)
+    data, level200 = level200_compat.patch(data, _patch_site)
     data, boss_health = patch_boss_health_display(data)
     data, quickbar = patch_quickbar_refresh(data)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
         other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power, result_entry=result_entry,
         social_gameplay=_migration_report('patch_social_gameplay', **gameplay),
-        settlement_experience=experience, actor_level=actor_level, boss_health=boss_health, quickbar=quickbar,
+        settlement_experience=experience, actor_level=actor_level, level200=_migration_report("patch_level200", **level200), boss_health=boss_health, quickbar=quickbar,
         member_town=_migration_report('patch_settlement_member_town', **member_town))
 
 
@@ -1098,10 +1104,13 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
             ('settlement_mouse_confirmation', SETTLEMENT_AUTO_ACTION_GATE_VA, SETTLEMENT_AUTO_ACTION_GATE_OLD)))
         expected_sites.extend((name, va, new)
                               for name, va, _, new in dungeon_experience_compat.patch_sites())
+        expected_sites.extend((name, va, new) for name, va, _, new in level200_compat.patch_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in BOSS_HEALTH_DISPLAY_SITES)
         expected_sites.extend((name, va, new) for name, va, _, new in quickbar_refresh_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in SETTLEMENT_MEMBER_TOWN_SITES)
         expected_sites.extend((name, va, new) for name, va, _, new in social_gameplay_patch_sites())
+        expected_sites.extend((name, va, new) for name, va, _, new
+                              in dungeon_result_compat.continuation_sites())
         result_hook, result_code = dungeon_result_compat.encodings()
         expected_sites.extend((('dungeon_result_entry', dungeon_result_compat.HOOK_VA, result_hook),
                                ('dungeon_result_entry_code', dungeon_result_compat.CAVE_VA, result_code)))

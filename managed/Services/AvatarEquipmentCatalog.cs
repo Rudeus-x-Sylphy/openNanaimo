@@ -6,7 +6,7 @@ namespace OpenNanaimo.Adapter.Services;
 /// <summary>AVATA resource effects, independent of shop prices and pet gemstones.</summary>
 internal static class AvatarEquipmentCatalog
 {
-    internal readonly record struct ResourceEffect(int HpFlat, int HpPercent, int MpFlat, int MpPercent, int ExperiencePercent);
+    internal readonly record struct ResourceEffect(int HpFlat, int HpPercent, int MpFlat, int MpPercent, int ExperiencePercent, int DefenseFlat, int DefensePercent);
     private static readonly Lazy<IReadOnlyDictionary<uint, ResourceEffect>> Effects = new(Load);
 
     internal static (int Hp, int Mp) GetResourceBonuses(ReadOnlySpan<byte> appearance, int level)
@@ -14,8 +14,8 @@ internal static class AvatarEquipmentCatalog
         if (appearance.Length != 36) return default;
         // 94F050/94F2A0/94F2D0: percent effects use the CLIENT level table,
         // not a previously effective maximum (nor the configurable GUI base).
-        var hpBasis = 1600L + 100L * (Math.Clamp(level, 1, 99) - 1);
-        var mpBasis = 100L + 10L * (Math.Clamp(level, 1, 99) - 1);
+        var hpBasis = 1600L + 100L * (Math.Clamp(level, 1, CharacterProgression.MaximumLevel) - 1);
+        var mpBasis = 100L + 10L * (Math.Clamp(level, 1, CharacterProgression.MaximumLevel) - 1);
         long hp = 0, mp = 0;
         ReadOnlySpan<int> offsets = [0, 8, 12, 16, 20, 24]; // exclude body/face, pet, gender
         foreach (var offset in offsets)
@@ -26,6 +26,19 @@ internal static class AvatarEquipmentCatalog
             mp += effect.MpFlat + mpBasis * effect.MpPercent / 100;
         }
         return ((int)Math.Clamp(hp, 0, ushort.MaxValue), (int)Math.Clamp(mp, 0, ushort.MaxValue));
+    }
+
+    // Local defense policy: authored fixed bonuses plus additive percentages of
+    // the character base (level + configured modifier), never of a prior total.
+    internal static (int Flat, int Percent) GetDefenseBonuses(ReadOnlySpan<byte> appearance)
+    {
+        if (appearance.Length != 36) return default;
+        long flat = 0, percent = 0;
+        ReadOnlySpan<int> offsets = [0, 8, 12, 20, 24];
+        foreach (var offset in offsets)
+            if (Effects.Value.TryGetValue(BinaryPrimitives.ReadUInt32LittleEndian(appearance.Slice(offset, 4)), out var effect))
+            { flat += effect.DefenseFlat; percent += effect.DefensePercent; }
+        return ((int)Math.Min(flat, ushort.MaxValue), (int)Math.Min(percent, ushort.MaxValue));
     }
 
     internal static int GetExperiencePercent(ReadOnlySpan<byte> appearance)
@@ -51,7 +64,7 @@ internal static class AvatarEquipmentCatalog
         {
             int offset = 3 + row * 25;
             uint code = uint.Parse(fields[offset + 4], CultureInfo.InvariantCulture);
-            int hpFlat = 0, hpPercent = 0, mpFlat = 0, mpPercent = 0, experiencePercent = 0;
+            int hpFlat = 0, hpPercent = 0, mpFlat = 0, mpPercent = 0, experiencePercent = 0, defenseFlat = 0, defensePercent = 0;
             for (int i = 13; i <= 19; i += 3)
             {
                 int type = int.Parse(fields[offset + i], CultureInfo.InvariantCulture);
@@ -61,6 +74,12 @@ internal static class AvatarEquipmentCatalog
                 // 10030458: 18%). Stacking across selected items is local policy.
                 if (type == 10 && percent != 0 && value > 0)
                     experiencePercent = Math.Min(10000, experiencePercent + value);
+                if (type == 4)
+                {
+                    if (value < 0) throw new InvalidDataException("Negative AVATA defense effect.");
+                    if (percent != 0) defensePercent = checked(defensePercent + value);
+                    else defenseFlat = checked(defenseFlat + value);
+                }
                 if (type is not (1 or 2)) continue;
                 if (value < 0) throw new InvalidDataException("Negative AVATA resource effect.");
                 // 94F330/94F460: a percent row REPLACES earlier same-type rows
@@ -76,7 +95,7 @@ internal static class AvatarEquipmentCatalog
                     else mpFlat = checked(mpFlat + value);
                 }
             }
-            result.Add(code, new(hpFlat, hpPercent, mpFlat, mpPercent, experiencePercent));
+            result.Add(code, new(hpFlat, hpPercent, mpFlat, mpPercent, experiencePercent, defenseFlat, defensePercent));
         }
         return result;
     }

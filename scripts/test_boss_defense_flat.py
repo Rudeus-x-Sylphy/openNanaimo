@@ -14,6 +14,7 @@ int main(void){
     struct stage_damage_damage_context ctx;struct stage_damage_damage_lookup lookup;
     struct skill_effect_cleanup_context skill;int dead;
     memset(&skill,0,sizeof(skill));pSd=capture;pT=clock_fixed;g_multi_current=0;
+    memset(g_stable_equip,0,sizeof(g_stable_equip));g_stable_effect=0;g_stable_pet=0;g_stable_level=1;
     g_multi_conn[0].active=1;g_multi_conn[0].uid=21;g_multi_conn[0].socket=100;
     for(dg=0;dg<8;dg++)for(stage=0;stage<2;stage++)for(diff=0;diff<3;diff++)for(k=0;k<3;k++){
         stage_damage_damage_begin(&ctx,0,100,dg,stage,diff,1,1);

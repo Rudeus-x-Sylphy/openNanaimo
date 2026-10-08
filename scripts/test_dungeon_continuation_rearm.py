@@ -43,8 +43,8 @@ static void reset(unsigned mode,int surrendered,int authored){
 }
 int main(void){unsigned mode,surrendered,authored;
 for(mode=1;mode<=2;mode++)for(surrendered=0;surrendered<=1;surrendered++)for(authored=0;authored<=1;authored++){
- reset(mode,surrendered,authored);assert(count==2);assert(ops[count-1]==0xCF8C);
- assert(ops[0]==0xCF6D);assert(!pending);
+ reset(mode,surrendered,authored);assert(count==(surrendered?2:1));assert(ops[count-1]==0xCF8C);
+ if(surrendered)assert(ops[0]==0xCF6D);assert(!pending);
 }
 reset(0,1,0);assert(count==0&&pending);reset(3,1,0);assert(count==0&&pending);
 next_exists=0;reset(2,1,0);assert(count==2&&ops[0]==0xCF6D&&ops[1]==0xCF8C);
@@ -60,7 +60,7 @@ assert(!injury_armed&&!injury_dead&&!death_latched&&!retry_acknowledged&&!lifest
 assert(!settlement_sent&&post_reset_pending);
 /* Super-Boss retry uses the same tuple even when the button requests real0. */
 current_stage_index=1;settlement_sent=1;combat_hp=0;injury_dead=1;
-reset(1,0,1);assert(count==2&&response_stage==1&&response_dungeon==2);
+reset(1,0,1);assert(count==1&&ops[0]==0xCF8C&&response_stage==1&&response_dungeon==2);
 /* Being dead without a completed result cannot authorize a free reset. */
 combat_hp=0;injury_dead=1;settlement_sent=0;
 reset(1,1,1);assert(count==0&&combat_hp==0&&pending);
@@ -70,4 +70,49 @@ puts("CONTINUATION_REARM_PASS modes=1,2 short/CF99 normal/super invalid=0,3 no-u
    p=Path(temp);(p/'test.c').write_text(prefix+branch+suffix)
    for cmd in [[str(ROOT/'tools/tcc/tcc.exe'),str(p/'test.c'),'-o',str(p/'test.exe')],[str(p/'test.exe')]]:
     r=subprocess.run(cmd,capture_output=True,text=True);self.assertEqual(r.returncode,0,r.stdout+r.stderr);print(r.stdout)
+
+ def test_clear_targets_only_current_room_cf99_writers(self):
+  text=(ROOT/'release/components/multiplayer_combat/realtime_runtime.inc').read_text(encoding='utf-8')
+  block=text.split('static unsigned g_surrender_rearm_cf99_surrender_mask=0u;',1)[1].split('#endif',1)[0]
+  harness=r"""
+#include <assert.h>
+#include <stdio.h>
+#define MULTI_MAX_PLAYERS 3
+static struct {int active,room_active,socket;unsigned uid;} g_multi_conn[3];
+static int g_multi_current,g_multi_transport_alive[3],sent[3];
+static unsigned g_surrender_rearm_cf99_surrender_mask=0u;
+static void multi_switch_to(int i,int src){assert(src==g_multi_current);}
+static void multi_switch_back(int src,int i){assert(src==g_multi_current);}
+static void send_cf6d_entry(int socket){sent[socket]++;}
+"""+block+r"""
+int main(void){int i;
+ for(i=0;i<3;i++){g_multi_conn[i].active=g_multi_conn[i].room_active=g_multi_transport_alive[i]=1;g_multi_conn[i].uid=i+11;g_multi_conn[i].socket=i;}
+ g_multi_current=0;assert(!multiplayer_cf99_surrender_room_pending());
+ multiplayer_broadcast_cf6d_super_rearm();assert(!sent[0]&&!sent[1]&&!sent[2]);
+ g_multi_current=1;multiplayer_cf99_surrender_mark_current();
+ g_multi_current=0;assert(multiplayer_cf99_surrender_room_pending());
+ multiplayer_broadcast_cf6d_super_rearm();assert(!sent[0]&&sent[1]==1&&!sent[2]);
+ assert(!multiplayer_cf99_surrender_room_pending());
+ multiplayer_broadcast_cf6d_super_rearm();assert(sent[1]==1);
+ /* Departed peers neither trigger nor receive a clear. Reuse clears the bit. */
+ g_multi_current=2;multiplayer_cf99_surrender_mark_current();g_multi_conn[2].room_active=0;
+ g_multi_current=0;assert(!multiplayer_cf99_surrender_room_pending());
+ multiplayer_broadcast_cf6d_super_rearm();assert(!sent[2]);
+ g_multi_current=2;multiplayer_cf99_surrender_clear_current();g_multi_conn[2].room_active=1;
+ assert(!multiplayer_cf99_surrender_room_pending());
+ multiplayer_cf99_surrender_mark_current();g_multi_transport_alive[2]=0;
+ assert(!multiplayer_cf99_surrender_room_pending());multiplayer_broadcast_cf6d_super_rearm();assert(!sent[2]);
+ multiplayer_cf99_surrender_clear_current();g_multi_transport_alive[2]=1;
+ /* A member initiating the action does not change which actor needs a clear. */
+ g_multi_current=0;multiplayer_cf99_surrender_mark_current();
+ g_multi_current=1;multiplayer_broadcast_cf6d_super_rearm();assert(sent[0]==1&&sent[1]==1&&!sent[2]);
+ g_multi_current=-1;assert(!multiplayer_cf99_surrender_room_pending());multiplayer_broadcast_cf6d_super_rearm();
+ puts("CONTINUATION_CF99_SCOPE_PASS marked-only reuse leave disconnect owner/member");return 0;
+}
+"""
+  with tempfile.TemporaryDirectory(prefix='nanaimo-continuation-scope-') as temp:
+   p=Path(temp);(p/'test.c').write_text(harness,encoding='utf-8')
+   for cmd in [[str(ROOT/'tools/tcc/tcc.exe'),str(p/'test.c'),'-o',str(p/'test.exe')],[str(p/'test.exe')]]:
+    r=subprocess.run(cmd,capture_output=True,text=True);self.assertEqual(r.returncode,0,r.stdout+r.stderr);print(r.stdout)
+
 if __name__=='__main__':unittest.main()

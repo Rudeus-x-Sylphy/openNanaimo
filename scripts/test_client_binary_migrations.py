@@ -189,6 +189,8 @@ class UserOwnedNativeWindowTests(unittest.TestCase):
         for va, span in ((0x6E2F90, 7), (0x6E30A0, 64), (0x6F096A, 10), (0x41FB54, 64),
                          (0x76F7C7, 2), (0x762AF5, 6), (0x76FA2E, 2),
                          (0x6FADE9, 5), (0x6E3180, 96),
+                         (0x6FBF5C, 5), (0x6E3340, 96),  # accepted continuation cleanup
+                         (0x66CD45, 2), (0x77744D, 6), (0x6E3240, 256),
                          (0x763E3E, 6), (0x7653E3, 2),  # member town input and display
                          (0x763E3A, 10), (0x7653DF, 6),  # member town control gates
                          (0x6F5B1E, 5), (0x6F5B68, 5), (0x6E3100, 64),  # actor refresh layout
@@ -199,6 +201,9 @@ class UserOwnedNativeWindowTests(unittest.TestCase):
                          (0xC396C0, 4), (0x513690, 192), (0x53207E, 4)):
             off = compat._va_offset(output, va, span)
             allowed.update(range(off, off + span))
+        for _, va, old, _ in compat.level200_compat.patch_sites():
+            off = compat._va_offset(output, va, len(old))
+            allowed.update(range(off, off + len(old)))
         self.assertEqual(len(output), len(self.original))
         self.assertTrue(all(i in allowed for i, (a, b) in enumerate(zip(self.original, output)) if a != b))
 

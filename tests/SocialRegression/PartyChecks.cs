@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Reflection;
 using OpenNanaimo.Adapter.Services;
 
 internal static partial class Program
@@ -7,8 +8,10 @@ internal static partial class Program
     {
         Broadcasts(fixture.First).Clear();
         Character(fixture.First).Level = 37;
+        Character(fixture.First).Experience = CharacterProgression.ExperienceRequiredForLevel(37);
         Character(fixture.First).DungeonGrade = 8;
         Character(fixture.Second).Level = 12;
+        Character(fixture.Second).Experience = CharacterProgression.ExperienceRequiredForLevel(12);
         Character(fixture.Second).DungeonGrade = 3;
         var invitation = new byte[24]; invitation[20] = 99;
         PrivateChatProtocol.WriteText(invitation.AsSpan(0, 16), "Forged");
@@ -51,6 +54,22 @@ internal static partial class Program
             Set(fixture.Second, "NativeContinuationRosterRequested", true);
             Check(!Invoke<bool>(fixture.Service, "DeferNativePartyMap", fixture.First, map),
                 "both owned ready rosters release the common map");
+            var reloadTable = typeof(NetworkAdapterService).GetField("_nativeContinuationRooms", PrivateInstance)!.GetValue(fixture.Service)!;
+            var reloadType = typeof(NetworkAdapterService).GetNestedType("NativeContinuationReload", BindingFlags.NonPublic)!;
+            foreach (var peer in new[] { fixture.First, fixture.Second })
+            {
+                Set(peer, "NativeContinuationRosterRequested", false);
+                var state = reloadTable.GetType().GetMethod("GetOrCreateValue")!.Invoke(reloadTable, [peer])!;
+                var reload = Activator.CreateInstance(reloadType, [(long)Get(peer, "NativeBattleEpoch")!, (byte)0, (byte)0]);
+                state.GetType().GetField("Reload")!.SetValue(state, reload);
+            }
+            Check(!Invoke<bool>(fixture.Service, "DeferNativePartyMap", fixture.First, map),
+                "authorized continuation releases both members without a second ready-room roster");
+            foreach (var peer in new[] { fixture.First, fixture.Second })
+            {
+                Set(peer, "NativeContinuationRosterRequested", true);
+                Invoke<object?>(fixture.Service, "ResetNativeDungeonContinuationRoom", peer);
+            }
             Set(fixture.First, "NativeCheckpoint", NativeDungeonState.Create(Character(fixture.First), [], []));
             Set(fixture.Second, "NativeCheckpoint", NativeDungeonState.Create(Character(fixture.Second), [], []));
             Set(fixture.First, "NativeDungeonEpisode", (byte)2);
@@ -116,6 +135,7 @@ internal static partial class Program
         var nonParticipantProfile = await Dispatch(fixture, fixture.First, 0xCFEB, new byte[4]);
         Check(nonParticipantProfile is { Length: 808 } && nonParticipantProfile[0x325] == 0,
             "managed special encounter excludes a non-participant room member");
+        ((Dictionary<long, int>)Get(battle, "HitScores")!)[Character(fixture.First).Id] = 400;
         var ordinaryReward = new DungeonSettlementReward(5, 100, 80, 250);
         var nonParticipantReward = await Invoke<Task<DungeonSettlementReward>>(fixture.Service, "ApplyManagedCoupleRewardAsync",
             fixture.First, battle, ordinaryReward, true, Token);
@@ -127,8 +147,8 @@ internal static partial class Program
         var reward = new DungeonSettlementReward(5, 100, 80, 250);
         var improved = await Invoke<Task<DungeonSettlementReward>>(fixture.Service, "ApplyManagedCoupleRewardAsync",
             fixture.First, battle, reward, true, Token);
-        Check(improved.CharacterExperience == 120 && improved.PetExperience == 80 && improved.Hans == 250,
-            "managed couple reward changes only character experience");
+        Check(improved.CharacterExperience == 120 && improved.RelationshipBonusScore == 80 && improved.PetExperience == 80 && improved.Hans == 250,
+            "managed couple reward adds bonus score before the quarter-score conversion");
         var failed = await Invoke<Task<DungeonSettlementReward>>(fixture.Service, "ApplyManagedCoupleRewardAsync",
             fixture.First, battle, reward, false, Token);
         Check(failed == reward, "managed failed settlement retains ordinary reward policy");

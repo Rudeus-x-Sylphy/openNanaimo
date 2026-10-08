@@ -8,8 +8,8 @@ public sealed partial class NetworkAdapterService
     {
         if (session.Character is not { } character || session.NativeDungeon is not { } worker
             || session.NativeCheckpoint is not { } before) return;
-        var attack = CharacterCombatProgression.NativeAttack(character.Strength, character.Agility, character.AttackModifier);
-        var defense = CharacterCombatProgression.NativeDefense(character.Vitality, character.Strength, character.DefenseFlat);
+        var attack = CharacterCombatProgression.NativeAttack(character.Level, character.AttackModifier);
+        var defense = CharacterCombatProgression.NativeDefense(character.Level, character.DefenseFlat);
         if (before.Get(NativeDungeonState.AttackModifierOffset) == attack
             && before.Get(NativeDungeonState.DefenseFlatOffset) == defense) return;
         var epoch = session.NativeBattleEpoch;

@@ -1617,9 +1617,10 @@ public sealed partial class NetworkAdapterService
                 continue;
 
             var level = Math.Clamp(after.Level, 1, CharacterProgression.MaximumLevel);
-            var currentExperience = checked((uint)Math.Clamp(after.Experience, 0L, uint.MaxValue));
-            var lowerExperience = checked((uint)CharacterProgression.ExperienceRequiredForLevel(level));
-            var nextExperience = checked((uint)CharacterProgression.NextExperienceThreshold(level));
+            var display = CharacterProgression.ProjectClientExperience(level, after.Experience);
+            var currentExperience = display.Current;
+            var lowerExperience = display.Lower;
+            var nextExperience = display.Next;
             var addedExperience = after.Experience > before.Experience
                 ? checked((uint)Math.Min(uint.MaxValue, after.Experience - before.Experience))
                 : 0u;

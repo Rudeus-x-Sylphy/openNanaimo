@@ -41,7 +41,7 @@ static int frame_is(unsigned op,unsigned len){
 static void seed(unsigned char *p,int equipped){
     unsigned i;
     memset(p,0,MANAGED_STATE_SIZE);
-    managed_put(p,0,1);managed_put(p,4,21);managed_put(p,8,1);
+    managed_put(p,0,MANAGED_STATE_VERSION);managed_put(p,5124,MANAGED_STATE_VERSION);managed_put(p,5128,MANAGED_STATE_SIZE);managed_put(p,5132,3);managed_put(p,4,21);managed_put(p,8,1);
     managed_put(p,16,1500);managed_put(p,20,1500);
     managed_put(p,24,500);managed_put(p,28,500);
     managed_put(p,32,321);managed_put(p,40,123);
@@ -93,9 +93,9 @@ static int request_boundary(void){
     unsigned char f[MANAGED_STATE_SIZE+8];
     memset(f,0,sizeof(f));seed(f+8,0);
     CHECK(managed_bridge_handle(1,0xF100,sizeof(f),f));
-    CHECK(sends==1&&frame_is(0xF102,MANAGED_STATE_SIZE+8)&&rd(8)==1);
+    CHECK(sends==1&&frame_is(0xF102,MANAGED_STATE_SIZE+8)&&rd(8)==MANAGED_STATE_VERSION);
     CHECK(managed_bridge_handle(1,0xF101,8,f));
-    CHECK(sends==2&&frame_is(0xF102,MANAGED_STATE_SIZE+8)&&rd(8)==1);
+    CHECK(sends==2&&frame_is(0xF102,MANAGED_STATE_SIZE+8)&&rd(8)==MANAGED_STATE_VERSION);
     CHECK(managed_bridge_handle(1,0xF100,sizeof(f)-1,f));
     CHECK(sends==3&&frame_is(0xF102,MANAGED_STATE_SIZE+8)&&rd(8)==0);
     CHECK(managed_bridge_handle(1,0xF101,9,f));

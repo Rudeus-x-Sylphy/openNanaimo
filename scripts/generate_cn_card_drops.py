@@ -1,4 +1,4 @@
-"""Generate exact-map CN card pools. CSV rates are relative weights, not percentages.
+"""Generate exact-map CN card pools. Equal rates form exclusive drop groups; weights select cards within a group.
 
 --client-root refreshes the reviewed map/slot -> BMO bindings from SSTG/SMMO.
 Without it, generation is reproducible from the checked-in CSV and binding receipt.
@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 from pathlib import Path
 import re
@@ -37,32 +38,70 @@ def map_key(name):
     return hd << 24 | ep << 16 | dg << 8 | st
 
 
-def load_pools(path=SOURCE):
+COLUMNS = ['sstg', 'mmo', 'card_id', 'card_name', 'kind', 'rate', 'weight']
+
+
+def workbook_csv(path):
+    """Import the seven authored columns; blank worksheet rows are not drops."""
+    import openpyxl
+    book = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    try:
+        if len(book.worksheets) != 1:
+            raise ValueError('expected exactly one card sheet')
+        rows = iter(book.active.values)
+        if list(next(rows)[:7]) != COLUMNS:
+            raise ValueError('unexpected workbook columns')
+        out = io.StringIO(newline='')
+        writer = csv.writer(out, lineterminator='\n')
+        writer.writerow(COLUMNS)
+        for row in rows:
+            row = list(row[:7])
+            if not any(value is not None for value in row):
+                continue
+            if len(row) != 7 or any(value is None for value in row):
+                raise ValueError('incomplete workbook row: ' + str(row))
+            for col in (2, 5, 6):
+                value = row[col]
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or int(value) != value:
+                    raise ValueError('expected integer card/rate/weight: ' + str(row))
+                row[col] = int(value)
+            writer.writerow(row)
+        return out.getvalue().encode('utf-8')
+    finally:
+        book.close()
+
+
+def load_pools(path=SOURCE, data=None):
     pools = {}
-    with path.open(encoding='utf-8-sig', newline='') as f:
-        reader = csv.DictReader(f)
-        if reader.fieldnames != ['sstg', 'mmo', 'card_id', 'card_name', 'kind', 'rate']:
-            raise ValueError('unexpected CSV columns')
-        for row in reader:
-            code, rate = int(row['card_id']), int(row['rate'])
-            lo, hi = KINDS[row['kind']]
-            if not lo <= code <= hi or not 0 < rate <= 32767:
-                raise ValueError('invalid code/rate: ' + str(row))
-            name = row['mmo'].lower()
-            if not re.fullmatch(r'[a-z0-9_]+\.(mmo|bmo)', name):
-                raise ValueError('invalid resource: ' + name)
-            for stage in row['sstg'].lower().split(';'):
-                key = (map_key(stage), name)
-                pool = pools.setdefault(key, {})
-                if code in pool and pool[code] != rate:
-                    raise ValueError('conflicting duplicate: ' + str((key, code)))
-                pool[code] = rate  # duplicates are observations, not extra tickets
-    if any(sum(p.values()) > 32768 for p in pools.values()):
-        raise ValueError('pool exceeds native random bound')
+    reader = csv.DictReader(io.StringIO((path.read_bytes() if data is None else data).decode('utf-8-sig')))
+    if reader.fieldnames != COLUMNS:
+        raise ValueError('unexpected CSV columns')
+    for row in reader:
+        code, rate, weight = int(row['card_id']), int(row['rate']), int(row['weight'])
+        lo, hi = KINDS[row['kind']]
+        if not lo <= code <= hi or not 0 <= rate <= 100 or not 0 <= weight <= 32768:
+            raise ValueError('invalid code/rate/weight: ' + str(row))
+        name = row['mmo'].lower()
+        if not re.fullmatch(r'[a-z0-9_]+\.(mmo|bmo)', name):
+            raise ValueError('invalid resource: ' + name)
+        for stage in row['sstg'].lower().split(';'):
+            key = (map_key(stage), name)
+            pool = pools.setdefault(key, {})
+            if code in pool and pool[code] != (rate, weight):
+                raise ValueError('conflicting duplicate: ' + str((key, code)))
+            pool[code] = (rate, weight)  # duplicates do not add probability or tickets
+    for key, pool in pools.items():
+        groups = {}
+        for rate, weight in pool.values():
+            groups[rate] = groups.get(rate, 0) + weight
+        if sum(groups) > 100:
+            raise ValueError('group rates exceed 100 percent: ' + str(key))
+        if any(weight > 32768 for weight in groups.values()):
+            raise ValueError('group exceeds native random bound: ' + str(key))
     return pools
 
 
-def collect_bindings(client_root, pools):
+def collect_bindings(client_root, pools, source_data=None):
     import lumineos_codec as codec
     inputs, bindings = {}, []
     def read(name):
@@ -87,16 +126,17 @@ def collect_bindings(client_root, pools):
                 raise ValueError('ambiguous boss identity: ' + str((stage, slot, bosses)))
             if bosses:
                 bindings.append({'map': key, 'slot': slot, 'resource': bosses[0]})
-    return {'schema': 1, 'csv_sha256': digest(SOURCE.read_bytes()), 'inputs': inputs, 'bindings': bindings}
+    return {'schema': 1, 'csv_sha256': digest(SOURCE.read_bytes() if source_data is None else source_data), 'inputs': inputs, 'bindings': bindings}
 
 
-def generate(pools, receipt):
-    if receipt['csv_sha256'] != digest(SOURCE.read_bytes()):
+def generate(pools, receipt, source_data=None):
+    source_data = SOURCE.read_bytes() if source_data is None else source_data
+    if receipt['csv_sha256'] != digest(source_data):
         raise ValueError('CSV changed: refresh boss bindings with --client-root')
     entries, rows = [], []
     for (key, name), pool in sorted(pools.items()):
         rows.append((key, name, len(entries), len(pool)))
-        entries.extend(sorted(pool.items()))
+        entries.extend((code, rate, weight) for code, (rate, weight) in sorted(pool.items(), key=lambda item: (item[1][0], item[0])))
     row_index = {(k, n): i for i, (k, n, _, _) in enumerate(rows)}
     bindings = []
     seen = set()
@@ -110,15 +150,15 @@ def generate(pools, receipt):
         if index is not None:
             bindings.append((key, slot, index))
     out = ['/* Generated by scripts/generate_cn_card_drops.py. Do not edit. */',
-           '/* CSV SHA256: ' + digest(SOURCE.read_bytes()) + ' */',
+           '/* CSV SHA256: ' + digest(source_data) + ' */',
            '#ifndef NANAIMO_CARD_CN_DATA_INC', '#define NANAIMO_CARD_CN_DATA_INC',
            f'#define CARD_CN_POOL_COUNT {len(rows)}u',
            f'#define CARD_CN_BOSS_COUNT {len(bindings)}u',
-           'struct card_cn_entry { unsigned code,rate; };',
+           'struct card_cn_entry { unsigned code,rate,weight; };',
            'struct card_cn_pool { unsigned map; const char*name; unsigned first,count; };',
            'struct card_cn_boss { unsigned map,slot,pool; };',
            'static const struct card_cn_entry card_cn_entries[] = {']
-    out += [f'    {{{code}u,{rate}u}},' for code, rate in entries]
+    out += [f'    {{{code}u,{rate}u,{weight}u}},' for code, rate, weight in entries]
     out += ['};', 'static const struct card_cn_pool card_cn_pools[] = {']
     out += [f'    {{0x{key:08X}u,"{name}",{first}u,{count}u}},' for key, name, first, count in rows]
     out += ['};', 'static const struct card_cn_boss card_cn_bosses[] = {']
@@ -130,12 +170,16 @@ def generate(pools, receipt):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--client-root', type=Path)
+    ap.add_argument('--xlsx', type=Path, help='import rate/weight workbook (requires openpyxl)')
     ap.add_argument('--check', action='store_true')
     args = ap.parse_args()
-    pools = load_pools()
-    receipt = collect_bindings(args.client_root, pools) if args.client_root else json.loads(BINDINGS.read_text('utf-8'))
-    text = generate(pools, receipt)
+    source_data = workbook_csv(args.xlsx) if args.xlsx else SOURCE.read_bytes()
+    pools = load_pools(data=source_data)
+    receipt = collect_bindings(args.client_root, pools, source_data) if args.client_root else json.loads(BINDINGS.read_text('utf-8'))
+    text = generate(pools, receipt, source_data)
     outputs = {OUTPUT: text.encode('utf-8')}
+    if args.xlsx:
+        outputs[SOURCE] = source_data
     if args.client_root:
         outputs[BINDINGS] = (json.dumps(receipt, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
     for path, data in outputs.items():

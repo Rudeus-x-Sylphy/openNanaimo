@@ -19,7 +19,10 @@ static unsigned card_quantity_clamp(unsigned count){return count>CARD_QUANTITY_M
 #define CARD_EVENT_CODE_MIN 50000001u
 #define CARD_EVENT_CODE_MAX 50000100u
 #define CARD_EVENT_COUNT 100u
-#define CARD_COUNT (CARD_BASE_COUNT+CARD_SP_COUNT+CARD_EVENT_COUNT)
+#define CARD_SPECIAL_CODE_MIN 22000001u
+#define CARD_SPECIAL_CODE_MAX 22000020u
+#define CARD_SPECIAL_COUNT 20u
+#define CARD_COUNT (CARD_BASE_COUNT+CARD_SP_COUNT+CARD_EVENT_COUNT+CARD_SPECIAL_COUNT)
 /* One claim per card rolled in a room. 128 was tight for a 10% roll and would be
    exhausted by a 30% roll, which silently stops all further drops for the rest of
    the room, so it is sized for a full stage at 30% with head-room. */
@@ -37,18 +40,22 @@ static int card_code_index(unsigned code){
     if(code>=CARD_CODE_MIN&&code<=CARD_CODE_MAX)return (int)(code-CARD_CODE_MIN);
     if(code>=CARD_SP_CODE_MIN&&code<=CARD_SP_CODE_MAX)return (int)(CARD_BASE_COUNT+(code-CARD_SP_CODE_MIN));
     if(code>=CARD_EVENT_CODE_MIN&&code<=CARD_EVENT_CODE_MAX)return (int)(CARD_BASE_COUNT+CARD_SP_COUNT+(code-CARD_EVENT_CODE_MIN));
+    if(code>=CARD_SPECIAL_CODE_MIN&&code<=CARD_SPECIAL_CODE_MAX)return (int)(CARD_BASE_COUNT+CARD_SP_COUNT+CARD_EVENT_COUNT+(code-CARD_SPECIAL_CODE_MIN));
     return -1;
 }
 static unsigned card_index_code(unsigned index){
     if(index<CARD_BASE_COUNT)return CARD_CODE_MIN+index;
     if(index<CARD_BASE_COUNT+CARD_SP_COUNT)return CARD_SP_CODE_MIN+(index-CARD_BASE_COUNT);
-    return CARD_EVENT_CODE_MIN+(index-CARD_BASE_COUNT-CARD_SP_COUNT);
+    if(index<CARD_BASE_COUNT+CARD_SP_COUNT+CARD_EVENT_COUNT)return CARD_EVENT_CODE_MIN+(index-CARD_BASE_COUNT-CARD_SP_COUNT);
+    return CARD_SPECIAL_CODE_MIN+(index-CARD_BASE_COUNT-CARD_SP_COUNT-CARD_EVENT_COUNT);
 }
 static int card_map_code(unsigned code,unsigned*family,unsigned*page,unsigned*slot){unsigned n;
+    if(code>=CARD_SPECIAL_CODE_MIN&&code<=CARD_SPECIAL_CODE_MAX){n=code-CARD_SPECIAL_CODE_MIN;*family=5u;*page=n/10u+1u;*slot=n%10u;return 1;}
     if(code>=CARD_EVENT_CODE_MIN&&code<=CARD_EVENT_CODE_MAX){n=code-CARD_EVENT_CODE_MIN;*family=3u;*page=(n/10u)+1u;*slot=n%10u;return 1;}
     if(code>=CARD_SP_CODE_MIN&&code<=CARD_SP_CODE_MAX){n=code-CARD_SP_CODE_MIN;*family=4u;*page=1u;*slot=n;return 1;}
     if(code<CARD_CODE_MIN||code>CARD_CODE_MAX)return 0;n=code-13000000u;if(n<=210u){*family=1u;*page=((n-1u)/20u)+1u;*slot=(n-1u)%20u;}else{n-=211u;*family=2u;*page=(n/20u)+1u;*slot=n%20u;}return 1;}
 static unsigned card_coord_code(unsigned family,unsigned page,unsigned slot){unsigned n;
+    if(family==5u){if(page<1u||page>2u||slot>=10u)return 0u;return CARD_SPECIAL_CODE_MIN+(page-1u)*10u+slot;}
     /* Family 3 is the event album (10 pages x 10 slots = the 100 EDdakgi cards);
        family 4 is the SP album (one page of 20). The client still reads a
        20-slot frame, so slots past the album width simply report zero. */

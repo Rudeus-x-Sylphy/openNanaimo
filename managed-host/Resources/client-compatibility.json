@@ -203,10 +203,41 @@
     },
     {
       "group": "dungeon-state",
-      "va": 7221632,
-      "target": "e84ceed2ff9c60e85427f8ff80780300754683b8f010000004740b83b8f0100000067534eb096a068bc8e83161f8ffe8c3bbd2ff8d700c8db80c010000b940000000fcf3a58db0100200008db820020000b904000000f3a5619dc3cccccccccc",
+      "va": 6737221,
+      "target": "eb1a",
       "known": [
-        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        "741a"
+      ],
+      "operation": "patch_dungeon_party_result_data_gate",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7221824,
+      "target": "9c6068240100006880326e00688b326e006800000000ff158022d90083f806750866c745e86400eb0666c745e8c800619dc3ccccccccccccccccccccccccccccb4b4bda8d3e9c0d6cad200cac7b7f1b4b4bda8b5a5c8cbb7bfbce4a3bf0d0acac7a3bab5a5c8cbc4a3cabda3a831c8cba3a90d0ab7f1a3bab6e0c8cbc4a3cabda3a8d7eeb6e036c8cba3a900cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "known": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "patch_entertainment_room_mode_body",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7828557,
+      "target": "e8eebdf6ff90",
+      "known": [
+        "66c745e8c800"
+      ],
+      "operation": "patch_entertainment_room_mode_entry",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7221632,
+      "target": "e84ceed2ff9c60e85427f8ff80780301774683b8f010000004740b83b8f0100000067534eb096a068bc8e83161f8ffe8c3bbd2ff8d700c8db80c010000b940000000fcf3a58db0100200008db820020000b904000000f3a5619dc3cccccccccc",
+      "known": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "e84ceed2ff9c60e85427f8ff80780300754683b8f010000004740b83b8f0100000067534eb096a068bc8e83161f8ffe8c3bbd2ff8d700c8db80c010000b940000000fcf3a58db0100200008db820020000b904000000f3a5619dc3cccccccccc"
       ],
       "operation": "patch_dungeon_result_entry_code",
       "known_hashes": []
@@ -219,6 +250,26 @@
         "e8e371d1ff"
       ],
       "operation": "patch_dungeon_result_entry",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7222080,
+      "target": "9c60837c2428077523e89225f8ff80780301771883b8f010000006750f8b0da82fd70085c97405e8f4380600619de909e7d2ffcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "known": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "patch_dungeon_continuation_cleanup_code",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7323484,
+      "target": "e8df73feff",
+      "known": [
+        "e81b5bd1ff"
+      ],
+      "operation": "patch_dungeon_continuation_cleanup_entry",
       "known_hashes": []
     },
     {
@@ -259,6 +310,86 @@
         "837dfc00752de8955dd1ff8bc8e8f75dd1ff8bc8e81c06d0ff8b4d080fb751083bc2750fe8775dd1ff8bc8e8d95dd1ff8945fc"
       ],
       "operation": "patch_battle_local_level",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 5497144,
+      "target": "c7855cffffff3f000000",
+      "known": [
+        "c7855cffffff7f000000"
+      ],
+      "operation": "level200_town_title_mask",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 5497178,
+      "target": "c1e90c",
+      "known": [
+        "c1e90d"
+      ],
+      "operation": "level200_town_level_shift",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 5497181,
+      "target": "81e1ff000000",
+      "known": [
+        "238d5cffffff"
+      ],
+      "operation": "level200_town_level_mask",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 5129824,
+      "target": "3dc80000000f8e28b80100e98fb70100cccccccccccccccccccccccccccccccc",
+      "known": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "level200_entry_code",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 5242358,
+      "target": "e96548feff90909090",
+      "known": [
+        "83f8630f8e94000000"
+      ],
+      "operation": "level200_entry_hook",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 9760937,
+      "target": "c745e4c8000000",
+      "known": [
+        "c745e463000000"
+      ],
+      "operation": "level200_item_growth_table",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7191056,
+      "target": "83f8647c0b",
+      "known": [
+        "83f864750b"
+      ],
+      "operation": "level200_nameplate_digits",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7191064,
+      "target": "83c115",
+      "known": [
+        "83c10f"
+      ],
+      "operation": "level200_nameplate_gap",
       "known_hashes": []
     },
     {

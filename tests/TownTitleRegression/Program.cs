@@ -261,9 +261,13 @@ internal static class Program
             BinaryPrimitives.WriteUInt16LittleEndian(movement.AsSpan(10), 144);
             BinaryPrimitives.WriteUInt16LittleEndian(movement.AsSpan(14), subjectSceneId);
             Set(subject, "LastTownMovement", movement);
-            Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, subject, false), "snapshot includes current movement");
+            Set(subject, "LastReportedPositionX", (ushort)712);
+            Set(subject, "LastReportedPositionY", (ushort)144);
+            Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, subject, false), "snapshot includes the stationary current position");
             Check(queued.Count == 4 && Get<ushort>(queued[3]!, "Opcode") == 0xCB21,
                 "current position follows construction and attachment");
+            Check(Get<byte[]>(queued[3]!, "Payload").AsSpan(0, 8).ToArray().All(b => b == 0x44),
+                "position snapshot uses the stationary action code");
             movement[8] = 0;
             Check(Get<byte[]>(queued[3]!, "Payload")[8] != 0, "queued position is an independent snapshot");
             queued.Clear();

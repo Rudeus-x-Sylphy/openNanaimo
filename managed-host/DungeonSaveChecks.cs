@@ -193,15 +193,14 @@ internal static class DungeonSaveChecks
             replies.Clear();
             var premature = await bridge.ExchangeAsync(NativeDungeonClient.Frame(0xCF87, new byte[4]), null, token);
             Check(!replies.Any(f => BinaryPrimitives.ReadUInt16LittleEndian(f.AsSpan(6)) == 0xCF88)
-                && premature.Get(12) == imported.Get(12), "premature settlement before Boss defeat grants no experience");
+                && premature.TotalExperience64 == imported.TotalExperience64, "premature settlement before Boss defeat grants no experience");
 
             var levelTwoThreshold = checked((uint)CharacterProgression.ExperienceRequiredForLevel(2));
             await db.GrantExperienceAsync(character.Id, levelTwoThreshold - 10, token);
             var thresholdCharacter = (await db.GetCharacterAsync(account, token))!;
             var thresholdBefore = NativeDungeonState.Create(thresholdCharacter, [], []);
             var thresholdAfterBytes = thresholdBefore.Bytes.ToArray();
-            Put(thresholdAfterBytes, 12, levelTwoThreshold + 10);
-            Put(thresholdAfterBytes, 8, 1); // deliberately stale worker level
+            SetExperience(thresholdAfterBytes, levelTwoThreshold + 10);
             var thresholdAfter = new NativeDungeonState(thresholdAfterBytes);
             await db.ApplyNativeDungeonDeltaAsync(
                 account, character.Id, session, thresholdBefore, thresholdAfter, token,
@@ -212,13 +211,14 @@ internal static class DungeonSaveChecks
             var thresholdPersisted = (await db.GetCharacterAsync(account, token))!;
             Check(thresholdPersisted.Experience == levelTwoThreshold + 10 && thresholdPersisted.Level == 2
                 && thresholdPersisted.AttributePoints == thresholdCharacter.AttributePoints
-                && thresholdPersisted.Strength == thresholdCharacter.Strength + 1
-                && thresholdPersisted.Vitality == thresholdCharacter.Vitality + 1,
-                "native settlement distributes growth at the shared experience threshold");
+                && thresholdPersisted.Strength == thresholdCharacter.Strength
+                && thresholdPersisted.Vitality == thresholdCharacter.Vitality,
+                "native settlement preserves compatibility columns at the shared experience threshold");
 
             var staleAfterBytes = thresholdAfter.Bytes.ToArray();
-            Put(staleAfterBytes, 12, levelTwoThreshold);
-            Put(staleAfterBytes, 8, 1);
+            // A stale snapshot is coherent with its historical level; v3 rejects
+            // inconsistent level/EXP pairs before entering the database layer.
+            SetExperience(staleAfterBytes, levelTwoThreshold - 10);
             await db.ApplyNativeDungeonDeltaAsync(
                 account, character.Id, session, thresholdAfter, new NativeDungeonState(staleAfterBytes), token,
                 "character-stale-progression");
@@ -236,7 +236,7 @@ internal static class DungeonSaveChecks
             var failedBeforeCharacter = (await db.GetCharacterAsync(account, token))!;
             var failedBefore = NativeDungeonState.Create(failedBeforeCharacter, [], []);
             var failedAfterBytes = failedBefore.Bytes.ToArray();
-            Put(failedAfterBytes, 12, checked(failedBefore.Get(12) + 20u));
+            SetExperience(failedAfterBytes, checked(failedBefore.TotalExperience64 + 20));
             await db.ApplyNativeDungeonDeltaAsync(
                 account, character.Id, session, failedBefore,
                 new NativeDungeonState(failedAfterBytes), token, "pet-failed-settlement");
@@ -248,7 +248,7 @@ internal static class DungeonSaveChecks
             var firstClearCharacter = (await db.GetCharacterAsync(account, token))!;
             var firstClearBefore = NativeDungeonState.Create(firstClearCharacter, [], []);
             var firstClearAfterBytes = firstClearBefore.Bytes.ToArray();
-            Put(firstClearAfterBytes, 12, checked(firstClearBefore.Get(12) + 100u));
+            SetExperience(firstClearAfterBytes, checked(firstClearBefore.TotalExperience64 + 100));
             await db.ApplyNativeDungeonDeltaAsync(
                 account, character.Id, session, firstClearBefore,
                 new NativeDungeonState(firstClearAfterBytes), token, "pet-first-clear",
@@ -273,9 +273,8 @@ internal static class DungeonSaveChecks
                 var petBeforeCharacter = (await db.GetCharacterAsync(account, token))!;
                 petBefore = NativeDungeonState.Create(petBeforeCharacter, [], []);
                 var petAfterBytes = petBefore.Bytes.ToArray();
-                var nextPlayerExperience = checked(petBefore.Get(12) + 100u);
-                Put(petAfterBytes, 12, nextPlayerExperience);
-                Put(petAfterBytes, 8, checked((uint)CharacterProgression.CalculateLevel(nextPlayerExperience)));
+                var nextPlayerExperience = checked(petBefore.TotalExperience64 + 100);
+                SetExperience(petAfterBytes, nextPlayerExperience);
                 petAfter = new NativeDungeonState(petAfterBytes);
                 petCommit = $"pet-progression-check-{award}";
                 petApply = await db.ApplyNativeDungeonDeltaAsync(
@@ -392,6 +391,9 @@ internal static class DungeonSaveChecks
         for (var index = 4; index < frame.Length; index++) sum += frame[index];
         return BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(2, 2)) == (ushort)(sum ^ 0x0E0E);
     }
+
+    private static void SetExperience(byte[] data, long total)
+        => new NativeDungeonState(data).SetProgression(CharacterProgression.CalculateLevel(total), total);
 
     private static void Put(byte[] state, int offset, uint value)
         => BinaryPrimitives.WriteUInt32LittleEndian(state.AsSpan(offset), value);

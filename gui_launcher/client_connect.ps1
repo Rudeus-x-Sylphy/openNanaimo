@@ -25,6 +25,7 @@ $parsed=$null
 if($AdapterIP-notmatch '^\d{1,3}(\.\d{1,3}){3}$'-or-not[Net.IPAddress]::TryParse($AdapterIP,[ref]$parsed)-or$parsed.AddressFamily-ne[Net.Sockets.AddressFamily]::InterNetwork-or$parsed.ToString()-ne$AdapterIP){throw "无效的 IPv4 地址: $AdapterIP"}
 if(-not(Test-Path -LiteralPath $ProfileIni)){throw "缺少客户端资源配置: $ProfileIni"}
 if(-not(Test-Path -LiteralPath $Client -PathType Leaf)){throw "缺少客户端: $Client"}
+& (Join-Path $PSScriptRoot 'level200_client_check.ps1') -Client $Client
 if(-not(Test-Path -LiteralPath $Template)){throw "缺少 Network 模板: $Template"}
 $text=Get-Content -LiteralPath $Template -Raw;$text=$text-replace '(?m)^ServerIP=.*$',("ServerIP={0}"-f$AdapterIP)
 $args=[string[]]@('-q',':1:1:0:3:4:-i','5:-r',("6:7:1:{0}:"-f$AdapterIP))

@@ -71,7 +71,7 @@ internal static class LauncherProfileChecks
             await database.RestoreNativeDungeonProgressAsync(second.Id, state, CancellationToken.None);
             Check(state.Get(NativeDungeonState.DungeonGradeOffset) == 39,
                 "launcher dungeon grade missing from the managed/native state bridge");
-            Check(state.Get(NativeDungeonState.AttackModifierOffset) == CharacterCombatProgression.NativeAttack(second.Strength, second.Agility, 3456) && state.Get(NativeDungeonState.DefenseFlatOffset) == CharacterCombatProgression.NativeDefense(second.Vitality, second.Strength, 789), "combat values missing from native bridge");
+            Check(state.Get(NativeDungeonState.AttackModifierOffset) == CharacterCombatProgression.NativeAttack(second.Level, 3456) && state.Get(NativeDungeonState.DefenseFlatOffset) == CharacterCombatProgression.NativeDefense(second.Level, 789), "combat values missing from native bridge");
             Check(state.Get(NativeDungeonState.PetCombatLevelOffset) == 3, "Selina combat level missing from native bridge");
             var cf72Payload = new byte[108];
             BinaryPrimitives.WriteUInt16LittleEndian(cf72Payload.AsSpan(0, 2), checked((ushort)second.Id));

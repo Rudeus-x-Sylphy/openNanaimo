@@ -71,12 +71,15 @@ def collect(root=ROOT):
     # header hash; do not authorize a raw game catalog as exported source.
     if (root / 'release/components/combat_economy/combat_score_resource_data.inc').resolve() in seen:
         for rel in ('scripts/combat-score-generator/Program.cs',
-                    'scripts/combat-score-generator/CombatScoreGenerator.csproj'):
+                    'scripts/combat-score-generator/CombatScoreGenerator.csproj',
+                    'scripts/normalize_combat_score_resources.py',
+                    'scripts/generate_lumineos_combat.py'):
             path = root / rel
             if not path.is_file(): raise ValueError('missing combat score input: ' + rel)
             seen.add(path.resolve())
     if any(p.name == 'character_experience_table.inc' for p in seen):
         for rel in ('release/components/dungeon_progression/character_experience.csv',
+                    'release/components/dungeon_progression/character_experience_v2.csv',
                     'scripts/generate_character_experience.py'):
             path = root / rel
             if not path.is_file(): raise ValueError('missing character experience input: ' + rel)
@@ -88,6 +91,10 @@ def collect(root=ROOT):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--build-root", type=Path, help="Explicit directory containing all three freshly built native EXEs")
+    args = parser.parse_args()
     files = [{'path': p.relative_to(ROOT).as_posix(), 'size': p.stat().st_size,
               'sha256': hashlib.sha256(p.read_bytes()).hexdigest().upper()} for p in collect()]
     previous_path = ROOT / 'manifest/source_closure.json'
@@ -100,12 +107,13 @@ def main():
     }
     for name, build_name in build_names.items():
         rel = 'adapter/' + name
-        candidates = (ROOT / rel, ROOT / 'build' / build_name, ROOT / 'build' / name)
+        candidates = ((args.build_root.resolve() / name,) if args.build_root else
+                      (ROOT / rel, ROOT / 'build' / build_name, ROOT / 'build' / name))
         path = next((candidate for candidate in candidates if candidate.is_file()), None)
         if path is not None:
             outputs[rel] = {'size': path.stat().st_size,
                             'sha256': hashlib.sha256(path.read_bytes()).hexdigest().upper()}
-        elif rel in previous.get('build_outputs', {}):
+        elif not args.build_root and rel in previous.get('build_outputs', {}):
             outputs[rel] = previous['build_outputs'][rel]
         else:
             raise ValueError('missing reviewed build output contract: ' + rel)

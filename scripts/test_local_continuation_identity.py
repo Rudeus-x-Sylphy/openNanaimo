@@ -37,10 +37,8 @@ class LocalContinuationIdentityTests(unittest.TestCase):
                     reset = receive(connection, 0xCF8C, captured)
                     self.assertEqual(reset[0x2E], epoch)
                     clears = [item for item in captured if struct.unpack_from("<H", item, 6)[0] == 0xCF6D]
-                    self.assertEqual(len(clears), 1)
-                    self.assertEqual(clears[0][8:10], bytes((10, 1)))
-                    self.assertEqual(struct.unpack_from("<I", clears[0], 0x10)[0], 33)
-                # The reported trace requests its roster twice after CF8C.
+                    self.assertEqual(clears, [])  # CF6D is reserved for members that sent CF99.
+                # Repeated roster requests preserve the same continuation owner.
                 for _ in range(2):
                     connection.sendall(frame(0xC587))
                     receive(connection, 0xC588)

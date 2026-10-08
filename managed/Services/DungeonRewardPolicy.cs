@@ -4,7 +4,10 @@ internal readonly record struct DungeonSettlementReward(
     byte Rating,
     int CharacterExperience,
     int PetExperience,
-    int Hans);
+    int Hans)
+{
+    public int RelationshipBonusScore { get; init; }
+}
 
 internal static class DungeonRewardPolicy
 {

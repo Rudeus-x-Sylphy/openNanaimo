@@ -1,15 +1,23 @@
 #ifndef NANAIMO_MANAGED_BRIDGE_INC
 #define NANAIMO_MANAGED_BRIDGE_INC
-/* Loopback worker protocol, v1. Offsets are payload-relative and little endian.
-   F100 imports a 5124-byte state; F101 snapshots; F102 replies.
+/* Loopback worker protocol, v4. Offsets are payload-relative and little endian.
+   F100 imports a 5704-byte state; F101 snapshots; F102 replies.
    Combat packets and dungeon state machines remain in gs_runtime.inc. */
-#define MANAGED_STATE_SIZE 5124u
+#define MANAGED_STATE_VERSION 4u
+#define MANAGED_STATE_SIZE 5704u
+#define MANAGED_EXTENDED_CARDS_OFFSET 5144u
+/* The old 420 picture slots end BEFORE the item-count field at +1952.
+   Never place SP/event/special cards in that item array. */
+static unsigned managed_card_offset(unsigned i){return i<CARD_BASE_COUNT?272u+i*4u:MANAGED_EXTENDED_CARDS_OFFSET+(i-CARD_BASE_COUNT)*4u;}
+#define MANAGED_EXP64_OFFSET 5136u
 #define MANAGED_COUPLE_PARTNER_OFFSET 5120u
 #define MANAGED_PET_LEVEL_OFFSET 152u
 #define MANAGED_PET_EXPERIENCE_OFFSET 156u
 #define MANAGED_PET_COMBAT_LEVEL_OFFSET 5116u
 static unsigned managed_get(const unsigned char*p,unsigned o){return (unsigned)p[o]|((unsigned)p[o+1]<<8)|((unsigned)p[o+2]<<16)|((unsigned)p[o+3]<<24);}
 static void managed_put(unsigned char*p,unsigned o,unsigned v){p[o]=(unsigned char)v;p[o+1]=(unsigned char)(v>>8);p[o+2]=(unsigned char)(v>>16);p[o+3]=(unsigned char)(v>>24);}
+static unsigned long long managed_get64(const unsigned char*p,unsigned o){return (unsigned long long)managed_get(p,o)|((unsigned long long)managed_get(p,o+4u)<<32);}
+static void managed_put64(unsigned char*p,unsigned o,unsigned long long v){managed_put(p,o,(unsigned)v);managed_put(p,o+4u,(unsigned)(v>>32));}
 /* Maxima in the bridge remain BASE values. Validate absolute current against
    only this import's selected PET and gems, before touching globals or disk. */
 static int managed_bridge_resources_valid(const unsigned char*p){
@@ -35,8 +43,9 @@ static int managed_bridge_import(const unsigned char*p){
     unsigned i,n=managed_get(p,1952),nl=managed_get(p,88),same_progression_actor;
     struct progression_progression_state st;
     struct progression_dungeon_grade_state grade;
-    if(managed_get(p,0)!=1u||n>255u||nl<1u||nl>14u||managed_get(p,4)<1u||managed_get(p,4)>65535u)return managed_bridge_import_reject(__LINE__);
-    if(managed_get(p,8)!=progression_progression_level_for_exp(managed_get(p,12)))return managed_bridge_import_reject(__LINE__);
+    if(managed_get(p,0)!=MANAGED_STATE_VERSION||managed_get(p,5124)!=MANAGED_STATE_VERSION||managed_get(p,5128)!=MANAGED_STATE_SIZE||managed_get(p,5132)!=3u||managed_get(p,12)!=0u||managed_get64(p,MANAGED_EXP64_OFFSET)>progression_progression_next(200u)||n>255u||nl<1u||nl>14u||managed_get(p,4)<1u||managed_get(p,4)>65535u)return managed_bridge_import_reject(__LINE__);
+    for(i=0u;i<CARD_COUNT;i++)if(managed_get(p,managed_card_offset(i))>CARD_QUANTITY_MAX)return managed_bridge_import_reject(__LINE__);
+    if(managed_get(p,8)!=progression_progression_level_for_exp(managed_get64(p,MANAGED_EXP64_OFFSET)))return managed_bridge_import_reject(__LINE__);
     if(!managed_bridge_resources_valid(p)||managed_get(p,MANAGED_COUPLE_PARTNER_OFFSET)>65535u)return managed_bridge_import_reject(__LINE__);
     same_progression_actor=g_multi_current>=0&&g_multi_current<MULTI_MAX_PLAYERS
         &&g_multi_conn[g_multi_current].uid==managed_get(p,4)&&g_stable_name_len==nl;
@@ -69,14 +78,14 @@ static int managed_bridge_import(const unsigned char*p){
     g_skill_progress_loaded=0;skill_progress_load();g_skill_progress_sp=managed_get(p,48);g_skill_progress_sp_meat=managed_get(p,5112)>>16;
     g_skill_progress_slots[0]=managed_get(p,52);g_skill_progress_slots[1]=managed_get(p,56);
     for(i=0;i<16u;i++)g_skill_progress_grade[i]=(unsigned char)managed_get(p,160+i*4);
-    g_card_loaded=0;card_db_load();for(i=0;i<CARD_COUNT;i++)g_card_counts[i]=card_quantity_clamp(managed_get(p,272+i*4));
+    g_card_loaded=0;card_db_load();for(i=0;i<CARD_COUNT;i++)g_card_counts[i]=card_quantity_clamp(managed_get(p,managed_card_offset(i)));
     g_card_synth_items_loaded=0;card_synth_items_load();g_card_synth_item_n=n;
     for(i=0;i<n;i++){g_card_synth_items[i].code=managed_get(p,1956+i*8);g_card_synth_items[i].count=managed_get(p,1960+i*8);}
     g_quickbar_loaded=0;quickbar_load();for(i=0;i<6u;i++){g_quickbar_code[i]=managed_get(p,224+i*8);g_quickbar_instance[i]=managed_get(p,228+i*8);}
     g_quickbar_handle_account[0]=0;quickbar_handles_load();for(i=0;i<256u;i++)g_quickbar_handles[i]=managed_get(p,4000+i*4);
     g_quickbar_entitlement_loaded=0;quickbar_entitlement_load();g_quickbar_entitlement_expiry=managed_get(p,64);
     g_game_session_revival_loaded=0;game_session_revival_load();g_game_session_revival_uses=managed_get(p,60);
-    st.level=g_stable_level;st.exp_total=managed_get(p,12);st.lower=progression_progression_threshold(st.level);st.next=progression_progression_next(st.level);
+    st.level=g_stable_level;st.exp_total=managed_get64(p,MANAGED_EXP64_OFFSET);st.lower=progression_progression_threshold(st.level);st.next=progression_progression_next(st.level);
     g_progression_profile_exp_total=st.exp_total;
     memset(&grade,0,sizeof(grade));grade.grade=managed_get(p,5024);grade.frontier_valid=managed_get(p,5028);
     grade.frontier.hd=managed_get(p,5032);grade.frontier.episode=managed_get(p,5036);grade.frontier.dungeon=managed_get(p,5040);
@@ -100,7 +109,7 @@ static void managed_bridge_snapshot(SOCKET c,unsigned status){
     skill_progress_load();card_db_load();card_synth_items_load();quickbar_load();quickbar_handles_load();quickbar_entitlement_load();game_session_revival_load();
     progression_progression_snapshot_name(g_stable_name,g_stable_name_len,STABLE_LEVEL,&st);
     n=g_card_synth_item_n;if(n>255u){status=0;n=0;}
-    managed_put(p,0,status);managed_put(p,4,multiplayer_current_uid());managed_put(p,8,st.level);managed_put(p,12,st.exp_total);
+    managed_put(p,0,status?MANAGED_STATE_VERSION:0u);managed_put(p,5124,MANAGED_STATE_VERSION);managed_put(p,5128,MANAGED_STATE_SIZE);managed_put(p,5132,3u);managed_put(p,4,multiplayer_current_uid());managed_put(p,8,st.level);managed_put(p,12,0u);managed_put64(p,MANAGED_EXP64_OFFSET,st.exp_total);
     managed_put(p,16,g_profile_hp_max);managed_put(p,20,g_profile_hp_current);managed_put(p,24,g_profile_mp_max);managed_put(p,28,g_profile_mp_current);
     managed_put(p,32,(unsigned)g_profile_coin_hans);managed_put(p,36,(unsigned)(g_profile_coin_hans>>32));managed_put(p,40,(unsigned)g_profile_nana_cash);managed_put(p,44,(unsigned)(g_profile_nana_cash>>32));
     managed_put(p,48,g_skill_progress_sp);managed_put(p,52,g_skill_progress_slots[0]);managed_put(p,56,g_skill_progress_slots[1]);managed_put(p,60,g_game_session_revival_uses);managed_put(p,64,g_quickbar_entitlement_expiry);
@@ -119,7 +128,7 @@ static void managed_bridge_snapshot(SOCKET c,unsigned status){
     for(i=0;i<5u;i++)managed_put(p,112+i*4,g_stable_equip[i]);managed_put(p,132,g_stable_effect);managed_put(p,136,g_profile_quickbar_current);
     for(i=0;i<16u;i++)managed_put(p,160+i*4,g_skill_progress_grade[i]);
     for(i=0;i<6u;i++){managed_put(p,224+i*8,g_quickbar_code[i]);managed_put(p,228+i*8,g_quickbar_instance[i]);}
-    for(i=0;i<CARD_COUNT;i++)managed_put(p,272+i*4,g_card_counts[i]);managed_put(p,1952,n);
+    for(i=0;i<CARD_COUNT;i++)managed_put(p,managed_card_offset(i),g_card_counts[i]);managed_put(p,1952,n);
     for(i=0;i<n;i++){managed_put(p,1956+i*8,g_card_synth_items[i].code);managed_put(p,1960+i*8,g_card_synth_items[i].count);}
     for(i=0;i<256u;i++)managed_put(p,4000+i*4,g_quickbar_handles[i]);
     progression_dungeon_grade_snapshot_name(g_stable_name,g_stable_name_len,&grade);
@@ -163,18 +172,20 @@ static int managed_bridge_handle(SOCKET c,int type,int len,const unsigned char*f
     /* Managed DB has already committed this absolute progression. Never import
        an old inventory/HP snapshot and never rebuild an existing combat actor. */
     if(type==0xF10B){
-        unsigned level,exp,old_level,healed;struct progression_progression_state st;char p[4096];
-        if(len!=40||g_multi_current<0||g_multi_current>=MULTI_MAX_PLAYERS||!g_multi_conn[g_multi_current].active||managed_get(f,8)!=g_multi_conn[g_multi_current].uid
-            ||managed_get(f,36)!=g_teamplay_authority.battle_epoch)return 1;
-        level=managed_get(f,12);exp=managed_get(f,16);
-        if(level<1u||level>99u||level<g_stable_level||exp<g_progression_profile_exp_total
-            ||exp>progression_progression_next(99u)||level!=progression_progression_level_for_exp(exp)
-            ||managed_get(f,20)<1u||managed_get(f,20)>65535u||managed_get(f,24)>65535u
-            ||managed_get(f,32)>65535u)return 1;
+        unsigned level,old_level,healed;unsigned long long exp;struct progression_client_experience display;struct progression_progression_state st;char p[4096];
+        if(len!=56||managed_get(f,8)!=3u||managed_get(f,12)!=48u||managed_get(f,16)!=3u||g_multi_current<0||g_multi_current>=MULTI_MAX_PLAYERS||!g_multi_conn[g_multi_current].active||managed_get(f,20)!=g_multi_conn[g_multi_current].uid
+            ||managed_get(f,52)!=g_teamplay_authority.battle_epoch)return 1;
+        level=managed_get(f,24);exp=managed_get64(f,28);
+        if(level<1u||level>200u||level<g_stable_level||exp<g_progression_profile_exp_total
+            ||exp>progression_progression_next(200u)||level!=progression_progression_level_for_exp(exp)
+            ||managed_get(f,36)<1u||managed_get(f,36)>65535u||managed_get(f,40)>65535u
+            ||managed_get(f,48)>65535u)return 1;
+        st.level=level;st.exp_total=exp;st.lower=progression_progression_threshold(level);st.next=progression_progression_next(level);
+        if(!progression_project_client_experience(level,exp,&display)||!progression_progression_save_name(g_stable_name,g_stable_name_len,&st))return 1;
         old_level=g_stable_level;
         g_stable_level=level;g_progression_profile_exp_total=exp;
-        g_profile_hp_max=managed_get(f,20);g_profile_mp_max=managed_get(f,24);
-        g_profile_attack_modifier=managed_get(f,28);g_profile_defense_flat=managed_get(f,32);
+        g_profile_hp_max=managed_get(f,36);g_profile_mp_max=managed_get(f,40);
+        g_profile_attack_modifier=managed_get(f,44);g_profile_defense_flat=managed_get(f,48);
         /* Native current resources, not a stale DB/checkpoint, own liveness.
            An absolute duplicate receipt can resync UI but never heal twice. */
         healed=level>old_level&&g_profile_hp_current>0u
@@ -183,16 +194,17 @@ static int managed_bridge_handle(SOCKET c,int type,int len,const unsigned char*f
         if(healed){g_profile_hp_current=pet_crafting_pet_effective_hp_max();g_profile_mp_current=pet_crafting_pet_effective_mp_max();}
         g_multi_conn[g_multi_current].profile.level=level;
         st.level=level;st.exp_total=exp;st.lower=progression_progression_threshold(level);st.next=progression_progression_next(level);
-        progression_progression_save_name(g_stable_name,g_stable_name_len,&st);
         /* C57C -> 6EB6F0 is a battle-dispatch progression notification, not CF88.
            +29=255 selects the statically proven silent/default branch. */
-        mkpkt(p,0xC57C,52,1);stable_put32(p,12,exp);stable_put32(p,16,st.lower);stable_put32(p,20,st.next);
+        mkpkt(p,0xC57C,52,1);stable_put32(p,12,display.current);stable_put32(p,16,display.lower);stable_put32(p,20,display.next);
         stable_resource_put16(p,24,g_profile_hp_current);stable_resource_put16(p,26,pet_crafting_pet_effective_mp_current());
         p[28]=(char)level;p[29]=(char)255;sendbuf(c,p,52);
-        managed_bridge_broadcast_actor_level(c,level);
-        send_cf72_dynamic_actor_refresh_phase(c,multiplayer_current_uid(),native_cf72_phase_for_socket(c));
-        multiplayer_broadcast_actor_resources_current();
-        printf("  [LIVE_LEVEL] actor=%u epoch=%u level=%u->%u exp=%u heal=%u hp=%u/%u mp=%u/%u C57C/C60D/CF72\n",multiplayer_current_uid(),g_teamplay_authority.battle_epoch,old_level,level,exp,healed,g_profile_hp_current,pet_crafting_pet_effective_hp_max(),g_profile_mp_current,pet_crafting_pet_effective_mp_max());fflush(0);
+        if(level>old_level){
+            managed_bridge_broadcast_actor_level(c,level);
+            send_cf72_dynamic_actor_refresh_phase(c,multiplayer_current_uid(),native_cf72_phase_for_socket(c));
+            multiplayer_broadcast_actor_resources_current();
+        }
+        printf("  [LIVE_LEVEL] actor=%u epoch=%u level=%u->%u exp=%llu heal=%u hp=%u/%u mp=%u/%u C57C/C60D/CF72\n",multiplayer_current_uid(),g_teamplay_authority.battle_epoch,old_level,level,exp,healed,g_profile_hp_current,pet_crafting_pet_effective_hp_max(),g_profile_mp_current,pet_crafting_pet_effective_mp_max());fflush(0);
         return 1;
     }
     if(type==0xF109){

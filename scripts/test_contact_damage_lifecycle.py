@@ -20,6 +20,7 @@ int main(int argc,char**argv){
     struct skill_effect_cleanup_context skill;
     memset(req,0,sizeof(req));memset(&skill,0,sizeof(skill));
     pSd=capture;pT=clock_fixed;g_multi_current=0;g_profile_defense_flat=0;
+    memset(g_stable_equip,0,sizeof(g_stable_equip));g_stable_effect=0;g_stable_pet=0;
     g_multi_conn[0].active=1;g_multi_conn[0].uid=21;g_multi_conn[0].socket=100;
     g_multi_transport_alive[0]=1;g_multi_conn[0].room_active=1;
     teamplay_score_begin(1u);g_teamplay_authority.score_by_player[0]=789u;
@@ -51,6 +52,11 @@ int main(int argc,char**argv){
     CHECK(frame[29]==kind&&word(12)==789);
     if(kind==40u){CHECK(word(26)==9&&frame[30]==0&&frame[31]==0&&word(32)==9);}
     if(mode==2u){CHECK(word(26)==17u&&frame[29]==60u&&word(30)==0u);}if(mode==3u){CHECK(word(26)==263u&&frame[29]==60u&&word(30)==0u);}
+    /* Authored accessory +3 must affect the actual D010 absolute HP, not just C377. */
+    g_stable_equip[4]=10150103u;hp=5000;
+    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill));
+    CHECK(hp==5000u-(expected-3u)&&word(16)==hp&&word(18)==expected-3u);
+    g_stable_equip[4]=0;
     g_profile_defense_flat=10000;hp=5;
     CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill));
     CHECK(hp==4&&word(18)==1);

@@ -12,8 +12,8 @@
 #define COMBAT_ECONOMY_PON_INCOMING_FALLBACK_DAMAGE 200u
 #endif
 #define COMBAT_ECONOMY_COLLISION_PLAYER_DAMAGE 100u
-#define COMBAT_ECONOMY_REWARD_MIN_HP 200u
-#define COMBAT_ECONOMY_COIN_HP_DIVISOR 50u
+/* Kill rewards have no separate HP200 threshold. */
+#define COMBAT_ECONOMY_COIN_HP_DIVISOR 100u
 /* Card eligibility is intentionally independent of the Hans floor above. */
 #ifndef CARD_ORDINARY_DROP_MIN_HP
 #define CARD_ORDINARY_DROP_MIN_HP 0u
@@ -88,7 +88,7 @@ static unsigned combat_economy_rating(unsigned score,unsigned cleared,const stru
     if(basis>=4000ull)return 2u;
     return 1u;
 }
-static unsigned combat_economy_coin_amount_for_hp(unsigned monster_hp){return monster_hp<COMBAT_ECONOMY_REWARD_MIN_HP?0u:monster_hp/COMBAT_ECONOMY_COIN_HP_DIVISOR;}
-static int combat_economy_reward_hp_eligible(unsigned monster_hp){return monster_hp>=COMBAT_ECONOMY_REWARD_MIN_HP;}
+static unsigned combat_economy_coin_amount_for_hp(unsigned monster_hp){return monster_hp/COMBAT_ECONOMY_COIN_HP_DIVISOR;}
+
 static int card_ordinary_drop_hp_eligible(unsigned monster_hp){return monster_hp>0u&&monster_hp>=CARD_ORDINARY_DROP_MIN_HP;}
 #endif

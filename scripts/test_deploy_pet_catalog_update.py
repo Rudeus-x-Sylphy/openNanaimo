@@ -12,8 +12,8 @@ class DeploymentTests(unittest.TestCase):
         (self.root/'pi._D7').write_bytes(b'old');(self.root/'game.db').write_bytes(b'private')
         self.data={'pi._D7':b'new','new.json':b'new-file'}
         self.guard=patch.object(d.io,'assert_not_running');self.guard.start();self.addCleanup(self.guard.stop)
-        self.payload=patch.object(d,'build_payloads',return_value=self.data);self.payload.start();self.addCleanup(self.payload.stop)
-        self.check=patch.object(d,'verify_installed');self.check.start();self.addCleanup(self.check.stop)
+        self.payload=patch.object(d,'build_payloads',return_value=self.data);self.build_mock=self.payload.start();self.addCleanup(self.payload.stop)
+        self.check=patch.object(d,'verify_installed');self.verify_mock=self.check.start();self.addCleanup(self.check.stop)
     def test_dry_run_preserves_everything(self):
         self.assertEqual(d.deploy(self.root)['changed'],2)
         self.assertEqual((self.root/'pi._D7').read_bytes(),b'old');self.assertFalse((self.root/'new.json').exists())
@@ -35,6 +35,23 @@ class DeploymentTests(unittest.TestCase):
         with patch.object(d.io,'assert_not_running',side_effect=ValueError('active')):
             with self.assertRaisesRegex(ValueError,'active'):d.deploy(self.root,True)
         self.assertEqual((self.root/'pi._D7').read_bytes(),b'old')
+    def test_resources_only_reuses_backup_and_verification(self):
+        with patch.object(d,'build_resource_payloads',return_value=self.data) as scoped:
+            result=d.deploy(self.root,True,resources_only=True)
+        scoped.assert_called_once_with(self.root.resolve())
+        self.assertEqual(result['status'],'installed')
+        self.build_mock.assert_not_called();self.verify_mock.assert_called_once()
+        self.assertEqual((self.root/'game.db').read_bytes(),b'private')
+        d.rollback(self.root,result['receipt'])
+        self.assertEqual((self.root/'pi._D7').read_bytes(),b'old')
+
+    def test_resources_only_preflight_failure_preserves_installation(self):
+        with patch.object(d,'build_resource_payloads',side_effect=ValueError('source pin mismatch')):
+            with self.assertRaisesRegex(ValueError,'pin mismatch'):
+                d.deploy(self.root,True,resources_only=True)
+        self.assertEqual((self.root/'pi._D7').read_bytes(),b'old')
+        self.assertFalse((self.root/'deployment_backups').exists())
+
     def test_wrong_receipt_and_escape_rejected(self):
         result=d.deploy(self.root,True);path=self.root/result['receipt'];j=d.io.load(path);j['client']='elsewhere';d.io.atomic(path,d.io.encoded(j))
         with self.assertRaisesRegex(ValueError,'Wrong'):d.rollback(self.root,result['receipt'])

@@ -97,8 +97,9 @@ internal static partial class Program
         }
         Check((await f.Service.GraduateMentorshipAsync(Id(f.Teacher), relation.Id)).Code == MentorshipResultCode.Ineligible,
             "completed coursework still requires student level twenty");
-        await f.ExecuteAsync("UPDATE Characters SET Level = 20 WHERE Id = $id", ("$id", Character(f.Student).Id));
+        await f.ExecuteAsync($"UPDATE Characters SET Level = 20, Experience = {CharacterProgression.ExperienceRequiredForLevel(20)} WHERE Id = $id", ("$id", Character(f.Student).Id));
         Character(f.Student).Level = 20;
+        Character(f.Student).Experience = CharacterProgression.ExperienceRequiredForLevel(20);
         Check((await Dispatch(f, f.Teacher, 0xC578, [])) is { Length: 288 },
             "teacher profile completes eligible level-twenty graduation");
         var graduated = (await f.Database.GetMentorshipRelationsAsync(Actor(f.Student), true)).Single();

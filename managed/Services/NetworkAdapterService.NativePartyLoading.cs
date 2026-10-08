@@ -39,7 +39,8 @@ public sealed partial class NetworkAdapterService
     private bool NativePartyReadyForMap(Party party, ConnectionSession owner)
         => owner.NativeLease is { } lease && party.Members.Values.All(member =>
             IsTrackedWorldSession(member.Session) && member.Session.NativeDungeon is not null
-            && member.Session.NativeContinuationRosterRequested
+            && (member.Session.NativeContinuationRosterRequested
+                || HasNativeDungeonContinuationReload(member.Session))
             && member.Session.NativeLease?.Port == lease.Port
             && member.Session.NativeLease?.Generation == lease.Generation);
 
@@ -95,6 +96,11 @@ public sealed partial class NetworkAdapterService
             }
         }
         if (pending?.Owner.NativeDungeon is { } worker && pending.Owner.NativeBattleEpoch == pending.Epoch)
-            await worker.SendAsync(pending.Request, token);
+        {
+            if (IsNativeDungeonContinuationProfileRequest(pending.Owner, pending.Request))
+                await HandleNativeDungeonContinuationProfileAsync(pending.Owner, pending.Request, token);
+            else
+                await worker.SendAsync(pending.Request, token);
+        }
     }
 }

@@ -14,11 +14,12 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ('package_korean_resource_kit.py', 'port_lumineos_resources.py',
          'lumineos_codec.py', 'lumineos_scenes.py', 'dungeon7_visuals.py',
          'prepare_client_compatibility.py', 'apartment_exterior_panel.py',
-         'dungeon_experience_compat.py', 'dungeon_result_compat.py', 'prepare_hero_dragon.py', 'prepare_korean_pets.py')
+         'dungeon_experience_compat.py', 'dungeon_result_compat.py', 'entertainment_mode_compat.py', 'level200_compat.py', 'prepare_hero_dragon.py', 'prepare_korean_pets.py')
 RECIPES = ('hero_dragon_resources.json', 'korean_pet_resources.json', 'lumineos_resource_port.json')
 GUIDE = 'docs/韩服L7-L8与宠物资源说明.md'
 EXTRA_DOCS = (GUIDE, 'docs/韩服宠物佩戴等级下放方案.md',
-              'docs/完整适配器与客户端兼容说明.md')
+              'docs/完整适配器与客户端兼容说明.md', 'docs/客户端二进制补丁.md',
+              'docs/level200/README.md', 'docs/level200/internal-layout.md')
 SCHEMA = 'openNanaimo.korean-resource-kit.v1'
 
 

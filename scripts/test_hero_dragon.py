@@ -54,7 +54,7 @@ class HeroDragonTests(unittest.TestCase):
         merged = hero.merge_pet(self.before, self.source_table)
         _, rows, tail = hero.read_pet(merged, hero.CN_KEY, 'gbk')
         self.assertEqual(rows[0], pet(15000001))
-        self.assertEqual(rows[-1][0:2], [str(hero.CODE), '95'])
+        self.assertEqual(rows[-1][0:2], [str(hero.CODE), '120'])
         self.assertEqual(rows[-1][22:24], ['3', '3'])
         self.assertEqual(tail, ['0', ''])
         self.assertEqual(hero.merge_pet(merged, self.source_table), merged)
@@ -167,7 +167,7 @@ class HeroDragonTests(unittest.TestCase):
             self.assertEqual(sum(r[key]==hero.CODE for r in rows),1)
         rows=json.loads((ROOT/'gui_launcher/data/pets.json').read_text('utf8'))
         p=next(r for r in rows if r['id']==hero.CODE)
-        self.assertEqual((p['min_age'],p['max_age'],p['level_requirement']),(3,3,95))
+        self.assertEqual((p['min_age'],p['max_age'],p['level_requirement']),(3,3,120))
         self.assertTrue(p['gui_direct_assignment_ignores_level'])
 
     @unittest.skipUnless(os.name=='nt' and (ROOT/'tools/tcc/tcc.exe').exists(),'requires native toolchain')

@@ -128,17 +128,30 @@ internal static partial class Program
             "insufficient advertising balance leaves state unchanged");
         var host = Auxiliary(f.Teacher, 1); var guest = Auxiliary(f.Student, 1);
         var create = new byte[44]; Encoding.ASCII.GetBytes("Playroom").CopyTo(create, 0);
+        BinaryPrimitives.WriteUInt16LittleEndian(create.AsSpan(24), 100);
+        Check(await Send(host, 0xCF6C, create) is not null, "single-player room creation");
+        var soloRoom = Room("_entertainmentRooms", host, "EntertainmentRoomId");
+        Check((int)Get(soloRoom, "Capacity")! == 1, "single-player room has one slot");
+        var soloEnter = new byte[12];
+        BinaryPrimitives.WriteUInt16LittleEndian(soloEnter, 20);
+        BinaryPrimitives.WriteUInt16LittleEndian(soloEnter.AsSpan(2), checked((ushort)(int)Get(soloRoom, "Id")!));
+        Check((await Send(guest, 0xCF75, soloEnter))![8] == 20, "single-player capacity is enforced");
+        Check(await Send(host, 0xCFE5, []) is not null, "single player starts with the same board lifecycle");
         BinaryPrimitives.WriteUInt16LittleEndian(create.AsSpan(24), 200);
         Check(await Send(host, 0xCF6C, create) is not null, "entertainment creates an owned room");
         var room = Room("_entertainmentRooms", host, "EntertainmentRoomId");
         var roomId = checked((ushort)(int)Get(room, "Id")!);
+        var listing = await Send(host, 0xCF0F, [0, 0, 100, 100]);
+        Check(listing is { Length: 52 } && listing[37] == 200
+            && BinaryPrimitives.ReadUInt16LittleEndian(listing.AsSpan(48)) == roomId,
+            "room list publishes its selected mode and exact room identifier");
         var settings = new byte[36]; Encoding.ASCII.GetBytes("Password room").CopyTo(settings, 0);
         Encoding.ASCII.GetBytes("123").CopyTo(settings, 24);
         Check(await Send(host, 0xCF79, settings) is not null, "room owner updates title and password");
         Check(await Send(guest, 0xCF79, settings) is null, "room settings reject non-members");
         var enter = new byte[12]; BinaryPrimitives.WriteUInt16LittleEndian(enter, 20);
         BinaryPrimitives.WriteUInt16LittleEndian(enter.AsSpan(2), roomId);
-        Check((await Send(guest, 0xCF75, enter))![8] == 20, "password room rejects an empty password");
+        Check((await Send(guest, 0xCF75, enter))![8] == 40, "password room rejects an empty password");
         Encoding.ASCII.GetBytes("123").CopyTo(enter, 4);
         Check((await Send(guest, 0xCF75, enter))![8] == 10, "password room accepts the matching password");
         Set(guest, "EntertainmentReady", true);
@@ -283,17 +296,31 @@ internal static partial class Program
         Check(first is not null && first.Length == 24 && first[14] == (byte)Get(attacker, "ArenaSlotIndex")!
             && first[15] == (byte)Get(victim, "ArenaSlotIndex")!, "PvP publishes source and victim slots with a complete response");
         var firstHp = BinaryPrimitives.ReadUInt16LittleEndian(first!.AsSpan(16));
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(first.AsSpan(20)) == 5000 - firstHp
+            && BinaryPrimitives.ReadUInt16LittleEndian(first.AsSpan(22)) == 5000 - firstHp,
+            "PvP damage digits equal the authoritative HP reduction");
         Check(firstHp < 4990 && firstHp > 0, "PvP uses character attack rather than a constant ten");
         Check(await Send(victim, 0xD014, hit) is null, "immediate duplicate collision is rejected");
         BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), 248);
         var second = await Send(victim, 0xD014, hit);
         var secondHp = BinaryPrimitives.ReadUInt16LittleEndian(second!.AsSpan(16));
         Check(5000 - firstHp == firstHp - secondHp, "first and subsequent attacks apply the same damage policy");
+        Character(attacker).Level += 10;
+        BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), 244);
+        var leveled = await Send(victim, 0xD014, hit);
+        var leveledHp = BinaryPrimitives.ReadUInt16LittleEndian(leveled!.AsSpan(16));
+        Check(secondHp - leveledHp == 5000 - firstHp + 10, "PvP earned attack adds exactly one per level");
+        Character(victim).Level += 20;
+        BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), 245);
+        var defended = await Send(victim, 0xD014, hit);
+        var defendedHp = BinaryPrimitives.ReadUInt16LittleEndian(defended!.AsSpan(16));
+        Check(leveledHp - defendedHp == secondHp - leveledHp - 10,
+            "PvP earned defense feeds the existing half-defense damage policy exactly once");
         Character(attacker).AttackModifier = 100;
         BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), 246);
         var boosted = await Send(victim, 0xD014, hit);
-        Check(secondHp - BinaryPrimitives.ReadUInt16LittleEndian(boosted!.AsSpan(16)) > firstHp - secondHp,
-            "PvP applies the persistent attack modifier");
+        Check(defendedHp - BinaryPrimitives.ReadUInt16LittleEndian(boosted!.AsSpan(16)) == leveledHp - defendedHp + 100,
+            "PvP applies the persistent attack modifier once, independently from earned attack");
         Set(victim, "ArenaTeamCode", (byte)1);
         Check(await Send(victim, 0xD014, hit) is null, "PvP rejects friendly fire");
         Set(victim, "ArenaTeamCode", (byte)2);

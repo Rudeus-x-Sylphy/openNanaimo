@@ -11,35 +11,22 @@ static int terminal_item_drop_is_authored(const struct hp_sync_target_def*td,
     while(lo<hi){unsigned mid=lo+(hi-lo)/2u;if(terminal_item_drop_rows[mid]<row)lo=mid+1u;else hi=mid;}
     return lo<TERMINAL_ITEM_DROP_ROW_COUNT&&terminal_item_drop_rows[lo]==row;
 }
-#ifndef CARD_ORDINARY_DROP_PERCENT
-#define CARD_ORDINARY_DROP_PERCENT 10u
-#endif
-#define CARD_DROP_BUILD_TAG 2026100502u
-/* COMBAT_ECONOMY private card roll. The roll uses CARD_ORDINARY_DROP_PERCENT and
-   the card-only floor CARD_ORDINARY_DROP_MIN_HP; it must not reuse
-   COMBAT_ECONOMY_REWARD_MIN_HP, which belongs to the Hans economy (max_hp/50 with
-   its own 200 floor). A card terminal replaces the Hans visual; otherwise Hans is
-   exact max_hp/50. */
+#define CARD_DROP_BUILD_TAG 2026100701u
+/* Authored rate groups replace the fixed ordinary/SP gates. Card eligibility
+ * remains independent of the Hans amount calculation; a card replaces this terminal's
+ * Hans visual, and a miss falls through to the existing coin economy. */
 static unsigned g_card_terminal_policy_card_wins[MULTI_MAX_PLAYERS];
 static int card_terminal_policy_card_denied_name(const char*name){
     if(!name)return 1;
-    return flight_items_contains(name,"block")||flight_items_contains(name,"obj_")||flight_items_contains(name,"eventbox")||
+    return flight_items_contains(name,"block")||flight_items_contains(name,"obj_")||
            flight_items_contains(name,"item_")||flight_items_contains(name,"guide")||flight_items_contains(name,"escape");
 }
-static int card_roll_card_roll_trace(unsigned pct,unsigned *roll){
-    if(!roll)return 0;if(pct==0u){*roll=0u;return 0;}if(pct>=100u){*roll=0u;return 1;}*roll=card_rand_bounded(100u);return *roll<pct;
-}
-static unsigned card_ordinary_drop_basis_points(unsigned bonus){
-    unsigned long long threshold=(unsigned long long)CARD_ORDINARY_DROP_PERCENT*(100ull+bonus)*flight_items_flight_card_percent()/100ull;
-    return threshold>10000ull?10000u:(unsigned)threshold;
-}
-static int card_roll_basis_points(unsigned basis_points,unsigned *roll){
-    if(!roll)return 0;if(!basis_points){*roll=0u;return 0;}if(basis_points>=10000u){*roll=0u;return 1;}
-    *roll=card_rand_bounded(10000u);return *roll<basis_points;
+static unsigned card_ordinary_drop_basis_points(unsigned rate,unsigned bonus){
+    return card_cn_basis_points(rate,bonus,flight_items_flight_card_percent());
 }
 static void combat_economy_select_ordinary_terminal_reward(const struct hp_sync_target_def*td,const struct hp_sync_profile_def*profile,const char*resource,unsigned selector,
         unsigned old_hp,unsigned new_hp,unsigned monster_hp,unsigned*subtype,unsigned*code){
-    unsigned roll=0u,hans=0u;int eligible,card_won=0;int ci=flight_items_coin_index();const struct card_cn_pool*pool=0;*subtype=0u;*code=0u;
+    unsigned basis_points=0u,hans=0u;int eligible,card_won=0;int ci=flight_items_coin_index();const struct card_cn_pool*pool=0;*subtype=0u;*code=0u;
     /* Called only on an accepted terminal D00E, shared by projectile, meat,
        and collision paths. Do not replace the native effect with Hans/cards.
        The normal HP terminal ledger suppresses repeats before this call. */
@@ -49,21 +36,20 @@ static void combat_economy_select_ordinary_terminal_reward(const struct hp_sync_
         return;
     }
     eligible=(td&&td->reward_kind==0u&&td->raw_hp>0u&&td->target_type!=4u&&old_hp>0u&&new_hp==0u&&!card_terminal_policy_card_denied_name(resource));
-    /* Exact resource tuple, never album/name-only or episode-wide fallback. */
+    /* Exact resource tuple, never album/name-only or episode-wide fallback.
+       Positive-HP event boxes use their authored event-card pool here, only
+       after the same first-terminal HP gate. Missing pools, type4 controllers,
+       zero-HP visuals and reward_kind=5 supply crates remain ineligible. */
     if(eligible&&profile)pool=card_cn_lookup(profile->hd_id,profile->stage_id,profile->dungeon_id,profile->stage_index,resource);
     if(eligible&&card_ordinary_drop_hp_eligible(monster_hp)&&pool){
-        if(card_cn_weight(pool,2u)&&card_roll_basis_points(CARD_SKILL_POINT_DROP_BASIS_POINTS,&roll)){
-            *code=card_cn_drop_create(2u,selector,pool,2u);
-        }
-        if(!*code&&card_cn_weight(pool,1u)&&card_roll_basis_points(card_ordinary_drop_basis_points(pet_crafting_pet_economy_percent(7u)),&roll)){
-            *code=card_cn_drop_create(2u,selector,pool,1u);
-        }
+        basis_points=card_ordinary_drop_basis_points(card_cn_total_rate(pool),pet_crafting_pet_economy_percent(7u));
+        *code=card_cn_drop_create(2u,selector,pool,basis_points);
         if(*code){*subtype=30u;card_won=1;g_card_terminal_policy_card_wins[ci]++;combat_economy_coin_note_card_replacement(monster_hp);}
-        printf("  [CARD_ECONOMY] csv-terminal tag=%u selector=%u resource=%s monster_hp=%u pct=%u roll=%u won=%d code=%u\n",(unsigned)CARD_DROP_BUILD_TAG,selector,resource?resource:"<unknown>",monster_hp,(unsigned)CARD_ORDINARY_DROP_PERCENT,roll,card_won,*code);fflush(0);
+        printf("  [CARD_ECONOMY] csv-terminal tag=%u selector=%u resource=%s monster_hp=%u base_rate=%u bp=%u won=%d code=%u\n",(unsigned)CARD_DROP_BUILD_TAG,selector,resource?resource:"<unknown>",monster_hp,card_cn_total_rate(pool),basis_points,card_won,*code);fflush(0);
     }
     if(eligible&&!pool){printf("  [CARD_ECONOMY] no-csv-source selector=%u resource=%s\n",selector,resource?resource:"<unknown>");fflush(0);}
     if(!card_won){hans=flight_items_coin_on_terminal(td,resource,selector,old_hp,new_hp,monster_hp);if(hans){*subtype=20u;*code=hans;}}
-    if(!*subtype)printf("  [ECONOMY] terminal-no-drop selector=%u monster_hp=%u eligible=%d below_card_floor=%d below_hans_floor=%d\n",selector,monster_hp,eligible,monster_hp<CARD_ORDINARY_DROP_MIN_HP,monster_hp<COMBAT_ECONOMY_REWARD_MIN_HP);fflush(0);
+    if(!*subtype)printf("  [ECONOMY] terminal-no-drop selector=%u monster_hp=%u eligible=%d below_card_floor=%d zero_base_hans=%d\n",selector,monster_hp,eligible,monster_hp<CARD_ORDINARY_DROP_MIN_HP,combat_economy_coin_amount_for_hp(monster_hp)==0u);fflush(0);
 }
 /* D00D target damage still follows the established target HP/defence policy.
    Score is no longer awarded per hit: exactly one max-HP award is committed on
