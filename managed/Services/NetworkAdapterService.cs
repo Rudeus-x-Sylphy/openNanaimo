@@ -17390,7 +17390,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         => character.Items
             .Where(item => item.Quantity > 0
                 && ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
-                && catalogItem.Section == InventorySection.Furniture)
+                && catalogItem.Section == InventorySection.Furniture
+                // A lapsed furniture item is not published, matching the wardrobe rule.
+                && (!catalogItem.HasExpiry || ClothingExpirationTime.IsActive(item.ItemExpiration, DateTime.Now)))
             .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
             .Take(InteriorInventoryCapacity)
             .ToArray();

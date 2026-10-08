@@ -578,8 +578,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.ApartmentInventory.cs",
-      "size": 17612,
-      "sha256": "480AE35F3EAE44CC365BD54CBD3BC0EDD51BA8EBCEC233A031A1C2ABB2CD9F18"
+      "size": 17868,
+      "sha256": "A646990A49FABDBDDDAB50042FDBB58E96620C54F4C132DEECA2F3C540B8EBDD"
     },
     {
       "path": "managed/Services/DatabaseService.ApartmentLauncher.cs",
@@ -663,8 +663,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.LuckyCards.cs",
-      "size": 22005,
-      "sha256": "67553C46DA55695AA24173D79AA7BF4D2BC4DA682D4F092B848435800E6BD609"
+      "size": 21950,
+      "sha256": "C390622D670445F33643F1465609CF20444AE7BCBE7520BFFA01EDF69DB24245"
     },
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",
@@ -723,8 +723,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 590349,
-      "sha256": "0529B6F9AB20D780AF747D1DFBB95F98D975EF350352C0A5DB1F7AF3A2D89224"
+      "size": 590295,
+      "sha256": "744B54C83B09129040DCB09FAFE95CF5370F45F7060E5C598D144F5697A2C205"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -1048,8 +1048,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 988232,
-      "sha256": "1F5615E650EDD225F53A63104410361AC00BE57B65AA906C71393E31F78A179F"
+      "size": 988437,
+      "sha256": "3C2E26015FC5CCD45AD1F35082B8940587C39B39058C3556E1AFF8F4FCE4DD1E"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1068,8 +1068,8 @@
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
-      "size": 47202,
-      "sha256": "4134FBF00DB3AD16F65BFC694CE4A70218AEF5B635F199E64673302DF4BB29BA"
+      "size": 47338,
+      "sha256": "845CF89E8371FD569A274F55588218CE08CA138DB64062475DEBA029225E99B6"
     },
     {
       "path": "managed/Services/PrivateChatProtocol.cs",
