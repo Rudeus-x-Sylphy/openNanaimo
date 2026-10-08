@@ -138,6 +138,15 @@ await Seed(22000011);var extended=await Draw(22000011,9970);
 Check(extended.Success&&extended.Reward==15009016&&await Items(15009016)==1&&await Cards(22000011)==1,"duration pet repeat draw extends without a duplicate instance");
 Check(ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016"),out var secondPetExpiry)
     &&secondPetExpiry-firstPetExpiry>=TimeSpan.FromDays(14),"duration pet extension adds the authored days");
+// A lapsed pet stops being owned: it is not published, does not block the draw, and the
+// drawn copy takes a fresh term instead of inheriting a past date.
+await Reset();await Seed(22000011);await Item(15009016,1);
+await Sql("UPDATE CharacterItems SET ItemExpiration=$e WHERE CharacterId=$id AND ItemCode=15009016",("$e",ClothingExpirationTime.Encode(new DateTime(2020,1,1,0,0,0))));
+Check(WirePetExpiration(NetworkAdapterService.BuildPetInventoryPayload((await db.GetCharacterAsync(account))!),15009016)==0,"lapsed pet is not published as owned");
+var lapsed=await Draw(22000011,9970);
+Check(lapsed.Success
+    &&ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009016"),out var lapsedUntil)
+    &&lapsedUntil>DateTime.Now.AddDays(14),"lapsed pet takes a fresh term from the draw");
 // A duration pet with no stored expiry (legacy rows and pre-fix grants) starts its
 // lifespan from the grant, exactly like timed clothing, so the draw is never blank.
 await Sql("UPDATE CharacterItems SET ItemExpiration=0 WHERE CharacterId=$id AND ItemCode=15009016");
@@ -238,9 +247,29 @@ Check(legacyCopy.Success&&legacyCopy.Message!="已拥有该奖励"
     &&await Items(15009016)==1&&await Sql("SELECT COUNT(*) FROM CharacterCards WHERE CharacterId=$id")==0,"legacy pet row takes a real lifespan from the event-card draw");
 Check(WirePetExpiration(NetworkAdapterService.BuildPetInventoryPayload((await db.GetCharacterAsync(account))!),15009016)==(uint)legacyExpiration,"C44C reports the lifespan written by a legacy-row draw");
 Check(await Sql("SELECT COUNT(*) FROM EventCardPendingDraws WHERE CharacterId=$id")==0,"lifespan draw does not pin the page");
+// A pet authored with duration zero that is already owned settles as a blank draw: the
+// set is consumed, nothing is granted, and the page is not left pinned.
 Config(15000004);await Reset();await SeedSet(1);await Item(15000004,1);
 var permanentPet=await Redeem();
-Check(!permanentPet.Success&&permanentPet.Message=="已拥有该奖励"&&await Cards(50000001)==1&&await Items(15000004)==1,"permanent pet duplicate keeps the fixed already-owned text");
+Check(permanentPet.Success&&permanentPet.Message=="已拥有该奖励"
+    &&await Cards(50000001)==0&&await Items(15000004)==1
+    &&await Sql("SELECT COUNT(*) FROM EventCardPendingDraws WHERE CharacterId=$id")==0,"permanently owned pet settles as a blank draw and consumes the set");
+// One authored creature is one pet: a longer life variant of an owned family extends the
+// same row instead of adding a second instance of the same animal.
+Config(15009238);await Reset();await SeedSet(1);
+Check((await Redeem()).Success&&await Items(15009238)==1,"family life variant granted");
+var firstTerm=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238");
+Config(15009246);await SeedSet(1);Check((await Redeem()).Success,"longer family variant drawn");
+Check(await Sql("SELECT COUNT(*) FROM CharacterItems WHERE CharacterId=$id AND ItemCode/1000000=15")==1
+    &&await Items(15009238)==1&&await Items(15009246)==0,"a longer variant merges into the owned pet's row");
+Check(ClothingExpirationTime.TryDecode((uint)firstTerm,out var termBefore)
+    &&ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238"),out var termAfter)
+    &&termAfter-termBefore>=TimeSpan.FromDays(90),"merged term adds the drawn variant's authored days");
+// A drawn permanent variant makes the whole family permanent.
+Config(15009337);await Reset();await SeedSet(1);Check((await Redeem()).Success,"timed family variant drawn");
+Config(15003362);await SeedSet(1);Check((await Redeem()).Success,"permanent family variant drawn");
+Check(await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009337")==0
+    &&await Items(15003362)==0&&await Sql("SELECT COUNT(*) FROM CharacterItems WHERE CharacterId=$id AND ItemCode/1000000=15")==1,"a drawn permanent variant makes the owned pet permanent");
 Config();
 File.WriteAllText(config,JsonSerializer.Serialize(new {Version=1,Pages=new[]{new {Page=1,Rewards=new[]{new {Code=46000008,Quantity=1,Weight=2500},new {Code=46000002,Quantity=1,Weight=7500}}}}}));
 var weighted=EventCardPolicy.Load(config)[1];

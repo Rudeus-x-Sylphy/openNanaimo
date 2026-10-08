@@ -3749,7 +3749,7 @@ public sealed partial class DatabaseService
         var newQuantity = checked((ushort)(currentQuantity + quantity));
         var purchaseTime = DateTime.Now;
         var expiration = currentExpiration;
-        if (catalogItem.Section == InventorySection.Clothing)
+        if (catalogItem.HasExpiry)
             for (var index = 0; index < quantity; index++)
                 expiration = ClothingExpirationTime.Extend(expiration, catalogItem.DurationDays, purchaseTime);
         else
@@ -4192,7 +4192,7 @@ public sealed partial class DatabaseService
 
         var newQuantity = checked((ushort)(currentQuantity + quantity));
         var expiration = currentExpiration;
-        if (catalogItem.Section == InventorySection.Clothing)
+        if (catalogItem.HasExpiry)
             for (var index = 0; index < quantity; index++)
                 expiration = ClothingExpirationTime.Extend(expiration, catalogItem.DurationDays, purchaseTime);
         else
@@ -4649,7 +4649,7 @@ public sealed partial class DatabaseService
 
         var newQuantity = checked((ushort)(currentQuantity + quantity));
         var expiration = currentExpiration;
-        if (catalogItem.Section == InventorySection.Clothing)
+        if (catalogItem.HasExpiry)
             for (var index = 0; index < quantity; index++)
                 expiration = ClothingExpirationTime.Extend(expiration, catalogItem.DurationDays, purchaseTime);
         else

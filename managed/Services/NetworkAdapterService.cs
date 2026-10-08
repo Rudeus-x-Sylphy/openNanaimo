@@ -17521,7 +17521,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             yield return 15_000_000u + (uint)character.PetVariant;
         foreach (var item in character.Items)
         {
-            if (item.Quantity > 0 && item.ItemCode / 1_000_000 == 15)
+            // A lapsed pet stops being owned, the same way timed clothing leaves the
+            // wardrobe when its wire expiration passes. Permanent rows carry none.
+            if (item.Quantity > 0 && item.ItemCode / 1_000_000 == 15
+                && ClothingExpirationTime.IsActive(item.ItemExpiration, DateTime.Now))
                 yield return item.ItemCode;
         }
     }
