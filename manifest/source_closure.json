@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 23542784,
-      "sha256": "2A174FB24DCD14CDCC710ECDA6DB3DE41DAB384D4115DEED84C29DDD6DFEDA47"
+      "size": 23543296,
+      "sha256": "2C72A2046188E0ED11C801253398C7CFD592359FEA0C2E5D80E5FA9CFCBAFE2D"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 23542784,
-      "sha256": "9BD2876A50B9EC331AEEAEE3B67653A3383CC22CCD9A08B6D0DD3C0ADDA78838"
+      "size": 23543296,
+      "sha256": "2DA249F7CFB2F27B4594F42D907ADDA654452B516A35DC71EA979AD026E5EC09"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
       "size": 23624192,
-      "sha256": "4183E47858FD9D6744D065AE4071F230ADC0A7E2713D4FC886A74FA5FF525EAE"
+      "sha256": "7DDD4FCDE8150319CD57DF221DA7605C2462889A7E7FEB3A65D029E3B0179585"
     }
   },
   "files": [
@@ -533,8 +533,8 @@
     },
     {
       "path": "managed/Services/CharacterCombatProfile.cs",
-      "size": 2006,
-      "sha256": "B0F45064652009B3BD1350F2124B0E7BC53CEE28BC4FED4083CB4B6504AE3494"
+      "size": 2991,
+      "sha256": "6812C7126B800EBD1511F860673E8D680357DBF8A64213D0AE4794B1ED73890D"
     },
     {
       "path": "managed/Services/CharacterCombatProgression.cs",
@@ -1413,8 +1413,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 147856,
-      "sha256": "6D02277322262369BE9E30B7049058FBED1B43669320AC8DD6AD6EF4A8AD7C24"
+      "size": 150481,
+      "sha256": "3DFB24B2CF9EF56023764937A9E1F3827D98A63C7DBE9536E783CB59E4F9389B"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
