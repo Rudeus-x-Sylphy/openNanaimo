@@ -69,7 +69,7 @@ int main(int argc,char**argv){
   count=0;memset(&skill,0,sizeof(skill));
   stage_damage_damage_begin(&ctx,0,1,2,0,2,1,1);
   injury[8]=60;injury[10]=475&255;injury[11]=475>>8;injury[12]=2;
-  CHECK(player_collision_apply_player_d00f_injury(100,62050,injury,60,123400,1,1,1,1,1,&hp,&dead,13684,5116,&ctx,&skill));
+  CHECK(player_collision_apply_player_d00f_injury(100,62050,injury,60,123400,1,1,1,1,1,&hp,&dead,13684,5116,&ctx,&skill,0u));
   CHECK(hp==13504&&!dead&&word(frames[0],6)==0xD010&&word(frames[0],16)==13504&&word(frames[0],18)==180);
  }
  printf("PICKUP_RESOURCE_SYNC_PASS item=%u peers=%u\n",item,peers);return 0;

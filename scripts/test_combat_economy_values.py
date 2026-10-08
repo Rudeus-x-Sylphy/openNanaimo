@@ -87,8 +87,10 @@ int main(void){
     send_d00e_score_update(101,999999u,0u,0u,1u,7u);
     CHECK(boss_hp_sync_get32(captured,8)==4002u&&boss_hp_sync_get32(captured,12)==4075u&&boss_hp_sync_get32(captured,16)==4000u);
     {unsigned char req[40];memset(req,0,sizeof(req));req[8]=20;
-        send_d010_injury_injury_resource(101,req,11u,900u,100u,0,999999u);
+        send_d010_injury_injury_resource(101,req,11u,900u,100u,0,999999u,321u);
         CHECK(boss_hp_sync_get32(injury,12)==4075u);
+        /* kind20 must carry the applied target damage at WORD+0x22. */
+        CHECK(((unsigned char)injury[0x22]|((unsigned char)injury[0x23]<<8))==321u);
     }
     /* Leaving player does not transfer points when room slots compact. */
     g_multi_conn[0].active=0;g_multi_transport_alive[0]=0;
