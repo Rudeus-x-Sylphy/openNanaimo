@@ -22,8 +22,17 @@ static int meat_skill_code(unsigned code){return code>=52000008u&&code<=52000015
 static unsigned meat_skill_damage(unsigned code,unsigned grade){unsigned i,g;if(!meat_skill_code(code))return 0u;i=code-52000008u;g=grade>5u?5u:grade;return (unsigned)g_meat_damage[i][g];}
 static unsigned meat_tick_delta(unsigned now,unsigned before){return before?now-before:MEAT_RECENT_NONE;}
 static void meat_collision_reset(unsigned room_epoch,unsigned battle_epoch){
+    /* The client's own Boss identity is learned from its D011 boss recording and
+       is a per-battle fact, not window state: activating the meat window must not
+       forget it, or the kind40 contact has no entity id to carry in D010
+       WORD+0x1A and the client silently drops the damage number. */
+    struct meat_collision_runtime keep=g_meat_collision;
     memset(&g_meat_collision,0,sizeof(g_meat_collision));
     g_meat_collision.room_epoch=room_epoch;g_meat_collision.battle_epoch=battle_epoch;
+    g_meat_collision.last_d011_valid=keep.last_d011_valid;g_meat_collision.last_d011_tick=keep.last_d011_tick;
+    g_meat_collision.last_d011_owner=keep.last_d011_owner;g_meat_collision.last_d011_source=keep.last_d011_source;
+    g_meat_collision.last_d011_mode=keep.last_d011_mode;g_meat_collision.last_d011_child=keep.last_d011_child;
+    g_meat_collision.last_d011_ordinal=keep.last_d011_ordinal;
 }
 static void meat_collision_activate(unsigned code,unsigned grade,unsigned room_epoch,unsigned battle_epoch,unsigned now){
     if(!meat_skill_code(code)||grade==0u)return;

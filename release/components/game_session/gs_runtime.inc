@@ -1049,6 +1049,7 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                                 {unsigned boss_contact_entity=g_meat_collision.last_d011_valid
                                                         ?g_meat_collision.last_d011_owner
                                                         :(unsigned)((unsigned char)buf[off+0x12]|((unsigned char)buf[off+0x13]<<8));
+                                                 printf("  [GS %d] [MEAT_BOSS_NUMBER] d011_valid=%u d011_owner=%u d011_source=%u d011_mode=%u d011_child=%u d011_ordinal=%u fallback=%u entity=%u t=%lds\n",port,g_meat_collision.last_d011_valid,g_meat_collision.last_d011_owner,g_meat_collision.last_d011_source,g_meat_collision.last_d011_mode,g_meat_collision.last_d011_child,g_meat_collision.last_d011_ordinal,(unsigned)((unsigned char)buf[off+0x12]|((unsigned char)buf[off+0x13]<<8)),boss_contact_entity,sec());fflush(0);
                                                  send_d010_boss_meat_contact_number(c,multiplayer_current_uid(),combat_hp,meat_boss_result.applied_damage,boss_contact_entity);}
                                                 if(pending_super_cf87&&boss_hp_sync_final_terminal_seen(&boss_ctx)&&pending_super_cf87_epoch==boss_ctx.battle_epoch){select_reply_control0(pending_super_cf87_low);teamplay_send_cf88_room_playable(c,score_ctx.total);settlement_sent=1;pending_super_cf87=0;boss_hp_sync_mark_settled(&boss_ctx);}
                                             }

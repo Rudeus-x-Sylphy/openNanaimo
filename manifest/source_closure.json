@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 23543808,
-      "sha256": "3FCCFD9376601D74F85C1E93D86B3BB39A1901EE8D9409CB54C4F3D109FBF434"
+      "size": 23544320,
+      "sha256": "67CC24404B54E2FF1FD5E8C238AE335BFDCBFA8139EC36F46C03FC36E5F949FE"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 23543808,
-      "sha256": "370878BC0518F0920F826D2D161C8A726C8F4226DE924D9104886E0B16F8F4FB"
+      "size": 23544320,
+      "sha256": "404DFFD49339FC5A42697950721C7B536E6274BC324AD0ED0478D7AB5338A489"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 23624704,
-      "sha256": "6F4085604D07EE0734438A0C23D258827D616F480DA07A5542741D470150A188"
+      "size": 23625216,
+      "sha256": "622D7979709CBB6193C46E822CFD1EE36458EFFCFEB25742DF13DC51786CF05C"
     }
   },
   "files": [
@@ -1293,8 +1293,8 @@
     },
     {
       "path": "release/components/combat_attribution/meat_collision_runtime.inc",
-      "size": 5275,
-      "sha256": "6C0F1E3C2FC5C805D8F88240E2209ED639A143924329202B2E81242B487A53AC"
+      "size": 6040,
+      "sha256": "0069FD0FC929826F33A450D7E370CF13A1686EADCC74E5015B8CA1B20766CA7E"
     },
     {
       "path": "release/components/combat_attribution/monster_hp_resource_policy.inc",
@@ -1413,8 +1413,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 153573,
-      "sha256": "C3BB8B190DDCC2DD0716EF9B1963F7BB399FF245C4AED764EB75DD03466BB269"
+      "size": 154095,
+      "sha256": "1BF2B1074F36336618769D7118881B4F74806726B93F17BD2AA00A744129A9AD"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
