@@ -1046,10 +1046,21 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                                    attributes it by WORD+0x1A, so use the Boss identity it reported
                                                    in its own D011 Boss recording; fall back to the request's contact
                                                    field only when no recording was seen in this battle epoch. */
-                                                {unsigned boss_contact_entity=g_meat_collision.last_d011_valid
-                                                        ?g_meat_collision.last_d011_owner
-                                                        :(unsigned)((unsigned char)buf[off+0x12]|((unsigned char)buf[off+0x13]<<8));
-                                                 printf("  [GS %d] [MEAT_BOSS_NUMBER] d011_valid=%u d011_owner=%u d011_source=%u d011_mode=%u d011_child=%u d011_ordinal=%u fallback=%u entity=%u t=%lds\n",port,g_meat_collision.last_d011_valid,g_meat_collision.last_d011_owner,g_meat_collision.last_d011_source,g_meat_collision.last_d011_mode,g_meat_collision.last_d011_child,g_meat_collision.last_d011_ordinal,(unsigned)((unsigned char)buf[off+0x12]|((unsigned char)buf[off+0x13]<<8)),boss_contact_entity,sec());fflush(0);
+                                                {/* Which entity the client will attach the number to.  The client's own
+                                                   collision reports (D00D) name the object it just hit in its own
+                                                   numbering, and a Boss keeps reporting its parts there through the
+                                                   fight - so the most recent one inside this battle is the best
+                                                   identity we can send.  The D011 boss recording is the second
+                                                   source, the kind40 request's own contact field the last. */
+                                                 unsigned boss_idle_now=tickms();unsigned boss_d00d_delta=meat_tick_delta(boss_idle_now,g_meat_collision.last_d00d_tick);
+                                                 unsigned boss_contact_entity;
+                                                 if(g_meat_collision.last_d00d_valid&&boss_d00d_delta!=MEAT_RECENT_NONE&&boss_d00d_delta<=60000u)
+                                                     boss_contact_entity=g_meat_collision.last_d00d_owner;
+                                                 else if(g_meat_collision.last_d011_valid)
+                                                     boss_contact_entity=g_meat_collision.last_d011_owner;
+                                                 else
+                                                     boss_contact_entity=(unsigned)((unsigned char)buf[off+0x12]|((unsigned char)buf[off+0x13]<<8));
+                                                 printf("  [GS %d] [MEAT_BOSS_NUMBER] d00d_valid=%u d00d_delta_ms=%u d00d_owner=%u d00d_selector=%u d011_valid=%u d011_owner=%u fallback=%u entity=%u t=%lds\n",port,g_meat_collision.last_d00d_valid,boss_d00d_delta,g_meat_collision.last_d00d_owner,g_meat_collision.last_d00d_selector,g_meat_collision.last_d011_valid,g_meat_collision.last_d011_owner,(unsigned)((unsigned char)buf[off+0x12]|((unsigned char)buf[off+0x13]<<8)),boss_contact_entity,sec());fflush(0);
                                                  send_d010_boss_meat_contact_number(c,multiplayer_current_uid(),combat_hp,meat_boss_result.applied_damage,boss_contact_entity);}
                                                 if(pending_super_cf87&&boss_hp_sync_final_terminal_seen(&boss_ctx)&&pending_super_cf87_epoch==boss_ctx.battle_epoch){select_reply_control0(pending_super_cf87_low);teamplay_send_cf88_room_playable(c,score_ctx.total);settlement_sent=1;pending_super_cf87=0;boss_hp_sync_mark_settled(&boss_ctx);}
                                             }

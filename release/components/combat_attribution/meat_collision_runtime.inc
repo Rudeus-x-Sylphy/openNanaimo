@@ -33,6 +33,13 @@ static void meat_collision_reset(unsigned room_epoch,unsigned battle_epoch){
     g_meat_collision.last_d011_owner=keep.last_d011_owner;g_meat_collision.last_d011_source=keep.last_d011_source;
     g_meat_collision.last_d011_mode=keep.last_d011_mode;g_meat_collision.last_d011_child=keep.last_d011_child;
     g_meat_collision.last_d011_ordinal=keep.last_d011_ordinal;
+    /* Same reasoning for the client's collision reports: the most recent D00D
+       object id is what the client itself calls the thing it just hit, and the
+       Boss keeps reporting its parts through that stream.  The 2s recency rule
+       stays a caller-side decision, so the record survives the reset. */
+    g_meat_collision.last_d00d_valid=keep.last_d00d_valid;g_meat_collision.last_d00d_tick=keep.last_d00d_tick;
+    g_meat_collision.last_d00d_selector=keep.last_d00d_selector;g_meat_collision.last_d00d_owner=keep.last_d00d_owner;
+    g_meat_collision.last_d00d_source=keep.last_d00d_source;
 }
 static void meat_collision_activate(unsigned code,unsigned grade,unsigned room_epoch,unsigned battle_epoch,unsigned now){
     if(!meat_skill_code(code)||grade==0u)return;
