@@ -47,18 +47,50 @@ public static class CardCatalog
         uint slot0,
         uint slot1,
         uint slot2,
-        out uint resolvedToken)
+        out uint resolvedToken,
+        out uint[] cardCodes)
     {
-        resolvedToken = token;
-        if (TryGetSkillPointToken(token, out _))
-            return true;
+        resolvedToken = 0;
+        cardCodes = [];
 
-        // The client may submit a zero token while echoing one selected card in
-        // all three slots. Mixed-card submissions are not a valid SP action.
-        if (token != 0 || !IsSkillPointCard(slot0) || slot1 != slot0 || slot2 != slot0)
-            return false;
+        // The synthesis controller fills one card slot per selected card
+        // (frame +0x10/+0x14/+0x18) and zeroes the unused slots, so the number of
+        // non-zero slots is the requested multiplicity: one card leaves +0x14 and
+        // +0x18 zero, three cards fill all three. A submission with no card slot
+        // at all names a single card through its token instead.
+        Span<uint> slots = [slot0, slot1, slot2];
+        var count = 0;
+        foreach (var slot in slots)
+        {
+            if (slot != 0)
+                slots[count++] = slot;
+        }
 
-        resolvedToken = 0xFFF0BDC0u + (slot0 - 12_000_000u);
+        if (count == 0)
+        {
+            if (!TryGetSkillPointToken(token, out var singleCard))
+                return false;
+            slots[0] = singleCard;
+            count = 1;
+        }
+
+        var page = 0;
+        for (var index = 0; index < count; index++)
+        {
+            if (!IsSkillPointCard(slots[index]) || !TryGet(slots[index], out var entry))
+                return false;
+            if (index == 0)
+                page = entry.Page;
+            // The C3EE completion carries a single point delta against the visible
+            // counter of one family, so a submission cannot mix card pages.
+            else if (entry.Page != page)
+                return false;
+        }
+
+        cardCodes = slots[..count].ToArray();
+        resolvedToken = TryGetSkillPointToken(token, out _)
+            ? token
+            : 0xFFF0BDC0u + (slots[0] - 12_000_000u);
         return true;
     }
 

@@ -4318,7 +4318,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(8, 4)),
                             BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(12, 4)),
                             BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(16, 4)),
-                            out var spToken))
+                            out var spToken,
+                            out var spCards))
                     {
                         _log($"{channel}:{remote} SP card synthesis rejected: type={unionType} token={recipeToken:X8} invalid card slots");
                         return BuildNativeFrame(frame, 0xC3EE, spResponse, session);
@@ -4334,18 +4335,17 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             BuildSkillPointSynthesisResultPayload(
                                 BinaryPrimitives.ReadUInt32LittleEndian(cachedResult) == 600, 0), session);
 
-                    var sp = await _database.SynthesizeSkillPointCardAsync(
+                    var sp = await _database.SynthesizeSkillPointCardsAsync(
                         session.AccountId,
                         session.Character.Id,
                         session.SessionId,
-                        recipeToken,
+                        spCards,
                         token);
                     if (sp.Success)
                     {
-                        // SP completion applies a point delta and its dedicated success animation.
-                        // The transaction owns both the card debit and family-specific credit.
-                        CardCatalog.TryGet(sp.OutputCode, out var creditedCard);
-                        spResponse = BuildSkillPointSynthesisResultPayload(true, creditedCard.SkillPointValue);
+                        // SP completion applies one point delta and its dedicated success animation.
+                        // The transaction owns every card debit and the summed credit.
+                        spResponse = BuildSkillPointSynthesisResultPayload(true, sp.Credit);
                         await RefreshSessionCharacterAsync(session, token);
                     }
 
@@ -4353,7 +4353,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     session.LastSkillPointUnionToken = recipeToken;
                     session.LastSkillPointUnionUtc = DateTime.UtcNow;
                     session.LastSkillPointUnionResult = spResponse.ToArray();
-                    _log($"{channel}:{remote} SP card synthesis: token={recipeToken:X8} success={sp.Success} sp={sp.SkillPoints} padding=0x{padding:X4} error={sp.Error}");
+                    _log($"{channel}:{remote} SP card synthesis: token={recipeToken:X8} cards={string.Join('/', spCards)} success={sp.Success} sp={sp.SkillPoints} delta={sp.Credit} padding=0x{padding:X4} error={sp.Error}");
                     return BuildNativeFrame(frame, 0xC3EE, spResponse, session);
                 }
 
