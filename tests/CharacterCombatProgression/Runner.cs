@@ -50,8 +50,10 @@ for (int level = 1; level <= 200; level++)
         && BinaryPrimitives.ReadUInt16LittleEndian(personal.AsSpan(36)) == expectedMp, "remote profile effective HP/MP");
     Check(BinaryPrimitives.ReadUInt16LittleEndian(personal.AsSpan(38)) == (11 + level - 1) * 4,
         "profile defense includes authored GM top +300 percent of base");
-    Check(BinaryPrimitives.ReadUInt16LittleEndian(personal.AsSpan(48)) == 9 + level - 1,
-        "profile attack base includes growth without adding client/PET display twice");
+    var petPanelAttack = PetProgression.GetTotalAttack(PetProgression.GetState(c, c.EquippedPetItemCode));
+    Check(petPanelAttack > 0, "the selected pet contributes a panel attack to the profile");
+    Check(BinaryPrimitives.ReadUInt16LittleEndian(personal.AsSpan(48)) == 9 + level - 1 + petPanelAttack,
+        "profile attack word sums character growth and the pet panel attack exactly once");
     var native = NativeDungeonState.Create(c, [], []);
     Check(native.GetEffectiveResourceMaximums() == ((ushort)expectedHp, (ushort)expectedMp), "native resource projection agrees");
     Check(native.Get(16) == c.MaxHp && native.Get(24) == c.MaxMp, "bridge maxima remain base");
@@ -231,11 +233,39 @@ try
         "export does not double-count equipment");
     c.EquippedPetItemCode = 0;
     Check(CharacterCombatProfile.EffectiveDefense(c) == c.Defense, "unequipped gem contributes nothing");
+    // The panel attack carries the selected pet's own panel value: catalog base
+    // plus its type1 gem increment under that pet's own cap. Both are display
+    // terms; the damage carriers must stay on the bare character defense.
+    var attackPet = ShopCatalog.All.First(item => item.Section == InventorySection.Pet
+        && item.PetGemSlotCount == 3 && item.PetBaseAttack > 0 && item.PetAttackBonusCap > 0);
+    var attackGem = ShopCatalog.All.First(item => item.PetAccessoryEffects.Any(effect =>
+        effect.Enabled && effect.Type == 1 && effect.FixedValue > 0));
+    var attackGemValue = attackGem.PetAccessoryEffects
+        .Where(effect => effect.Enabled && effect.Type == 1)
+        .Sum(effect => (int)Math.Truncate((double)effect.FixedValue));
+    var petPanelAttack = attackPet.PetBaseAttack + Math.Min(attackPet.PetAttackBonusCap, attackGemValue);
+    Check(petPanelAttack > attackPet.PetBaseAttack, "the type1 gem raises the pet panel attack");
+    var attackPanel = Enumerable.Repeat((byte)0xA5, 128).ToArray();
+    c.EquippedPetItemCode = attackPet.ItemCode;
+    c.Items = [new CharacterItemRecord { ItemCode = attackPet.ItemCode, Quantity = 1,
+        PetAccessory0 = attackGem.ItemCode }];
+    CharacterCombatProfile.WriteProfileStats(attackPanel, c);
+    Check(CharacterCombatProfile.DisplayAttack(c) == c.Attack + petPanelAttack,
+        "panel attack adds the catalog pet base and its type1 gem increment under the pet cap");
+    Check(BinaryPrimitives.ReadUInt16LittleEndian(attackPanel.AsSpan(48)) == c.Attack + petPanelAttack,
+        "profile attack word carries the pet panel attack");
+    Check(BinaryPrimitives.ReadUInt16LittleEndian(attackPanel.AsSpan(38)) == c.Defense
+        && NativeDungeonState.Create(c, [], []).Get(NativeDungeonState.DefenseFlatOffset) == c.Defense,
+        "the pet panel attack never reaches the defense or damage carriers");
+    c.EquippedPetItemCode = 0;
+    CharacterCombatProfile.WriteProfileStats(attackPanel, c);
+    Check(BinaryPrimitives.ReadUInt16LittleEndian(attackPanel.AsSpan(48)) == c.Attack,
+        "unequipping the pet removes the panel attack");
     await Set($"Level=99,Experience={CharacterProgression.ExperienceRequiredForLevel(99)},Strength=103,Vitality=103,Agility=103,Intelligence=103,Luck=103");
     var reopened = new DatabaseService(root);
     await reopened.InitializeAsync();
     Growth((await reopened.GetCharacterAsync(account))!, 99, 103, 7);
-    Console.WriteLine("CHARACTER_COMBAT_PROGRESSION_PASS thresholds=200 grant/dungeon/native duplicate/stale/reopen equipment-base-separation");
+    Console.WriteLine("CHARACTER_COMBAT_PROGRESSION_PASS thresholds=200 grant/dungeon/native duplicate/stale/reopen equipment-base-separation pet-panel-attack");
 }
 finally
 {
