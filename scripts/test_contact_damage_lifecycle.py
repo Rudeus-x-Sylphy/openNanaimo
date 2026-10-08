@@ -15,7 +15,7 @@ static int __attribute__((stdcall)) capture(SOCKET c,const char*p,int n,int flag
 static DWORD __attribute__((stdcall)) clock_fixed(void){return 123400u;}
 static unsigned word(unsigned o){return frame[o]|((unsigned)frame[o+1]<<8);}
 int main(int argc,char**argv){
-    unsigned char req[28];unsigned hp=5000u,i,kind,mode,expected;int dead=0,rc;
+    unsigned char req[28];unsigned hp=5000u,i,kind,mode,expected,tgt;int dead=0,rc;
     struct stage_damage_damage_context ctx;struct stage_damage_damage_lookup lookup;
     struct skill_effect_cleanup_context skill;
     memset(req,0,sizeof(req));memset(&skill,0,sizeof(skill));
@@ -25,6 +25,7 @@ int main(int argc,char**argv){
     g_multi_transport_alive[0]=1;g_multi_conn[0].room_active=1;
     teamplay_score_begin(1u);g_teamplay_authority.score_by_player[0]=789u;
     mode=(unsigned)atoi(argv[1]);kind=mode==0u?20u:mode==1u?40u:60u;req[8]=kind;
+    tgt=kind==20u?321u:0u;
     if(mode==7u){
         stage_damage_damage_begin(&ctx,0,2,1,0,0,1,1);req[10]=85;req[11]=1;
     }else if(mode==6u){
@@ -46,33 +47,37 @@ int main(int argc,char**argv){
     if(mode==6u){CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_SCENE_ASSOCIATED_RESOURCE);
         CHECK(lookup.owner==438u&&lookup.associated_selector==439u);
         CHECK(!strcmp(lookup.resource,"ani_obj_ep04_dg02_03_01.mmo"));}
-    rc=player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill);
+    rc=player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt);
     CHECK(rc==1&&sends==1&&size==36&&word(6)==0xD010&&word(8)==21&&word(10)==100);
     CHECK(hp==(5000u-expected)&&word(16)==hp&&word(18)==5000-hp);
     CHECK(frame[29]==kind&&word(12)==789);
+    /* WORD+0x22 is the contact carrier the client pops over the collided target.
+       Reference capture: every kind20 D010 frame has it non-zero, every kind10
+       frame has it zero.  It must hold the damage applied to the target. */
+    CHECK(word(34)==tgt);
     if(kind==40u){CHECK(word(26)==9&&frame[30]==0&&frame[31]==0&&word(32)==9);}
     if(mode==2u){CHECK(word(26)==17u&&frame[29]==60u&&word(30)==0u);}if(mode==3u){CHECK(word(26)==263u&&frame[29]==60u&&word(30)==0u);}
     /* Authored accessory +3 must affect the actual D010 absolute HP, not just C377. */
     g_stable_equip[4]=10150103u;hp=5000;
-    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill));
+    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt));
     CHECK(hp==5000u-(expected-3u)&&word(16)==hp&&word(18)==expected-3u);
     g_stable_equip[4]=0;
     g_profile_defense_flat=10000;hp=5;
-    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill));
+    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt));
     CHECK(hp==4&&word(18)==1);
     g_profile_defense_flat=0;hp=1;
-    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill));
+    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt));
     CHECK(dead&&hp==0&&word(10)==200&&word(18)==1);i=sends;
-    CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i);
+    CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt)&&sends==i);
     /* Revival restores HP/death state within the same battle epoch. */
     hp=5000;dead=0;
-    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i+1);
+    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt)&&sends==i+1);
     CHECK(hp==(5000u-expected));i=sends;
     hp=5000;dead=0;
-    CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,2,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i);
+    CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,2,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt)&&sends==i);
     skill_effect_cleanup_arm(&skill,52000015,5,1,1,123000);
-    CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i);
-    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,135001,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill)&&sends==i+1);
+    CHECK(!player_collision_apply_player_d00f_injury(100,62050,req,kind,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt)&&sends==i);
+    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kind,135001,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt)&&sends==i+1);
     meat_collision_activate(52000015,5,1,1,123000);
     CHECK(!meat_collision_active(1,1,135001)&&g_meat_collision.code!=0);
     stage_damage_damage_begin(&ctx,0,15,2,0,2,1,1);
@@ -92,7 +97,7 @@ int main(int argc,char**argv){
     memset(&skill,0,sizeof(skill));g_profile_defense_flat=10000;
     CHECK(stage_damage_player_d00f_damage(&ctx,req,20u,&lookup)==0u);
     CHECK(lookup.status==STAGE_DAMAGE_DAMAGE_EXACT_ZERO);
-    rc=player_collision_apply_player_d00f_injury(100,62050,req,20u,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill);
+    rc=player_collision_apply_player_d00f_injury(100,62050,req,20u,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,tgt);
     CHECK(hp==5000u&&!dead);
     CHECK((!rc&&sends==i)||(rc&&sends==i+1&&word(18)==0u&&word(16)==5000u));
     for(i=0;i<MONSTER_CONTACT_ROW_COUNT;i++){
@@ -105,6 +110,16 @@ int main(int argc,char**argv){
         CHECK(stage_damage_player_d00f_damage(&ctx,req,20u,&lookup)==r->attack);
         CHECK(lookup.status==(r->attack?STAGE_DAMAGE_DAMAGE_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_EXACT_ZERO));
     }
+    /* WORD+0x22 is populated for kind20/30 only and carries the applied target
+       damage verbatim; kind10 projectile hits must leave it zero. */
+    stage_damage_damage_begin(&ctx,0,3,2,1,1,1,1);g_profile_defense_flat=0;hp=5000;dead=0;
+    memset(&skill,0,sizeof(skill));memset(req,0,sizeof(req));req[8]=20;req[10]=9;req[11]=1;
+    i=sends;
+    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,20u,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,777u)&&sends==i+1);
+    CHECK(word(34)==777u&&frame[29]==20u);
+    hp=5000;dead=0;req[8]=10;req[0x12]=9;i=sends;
+    CHECK(player_collision_apply_player_d00f_injury(100,62050,req,10u,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,777u)&&sends==i+1);
+    CHECK(word(34)==0u&&frame[29]==10u);
     return 0;
 }
 '''

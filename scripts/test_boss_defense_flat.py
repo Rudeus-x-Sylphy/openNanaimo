@@ -25,7 +25,7 @@ int main(void){
         for(d=0;d<5;d++){
             g_profile_defense_flat=defenses[d];hp=65535;dead=0;before=sends;
             expected=raw>defenses[d]?raw-defenses[d]:1u;if(expected>hp)expected=hp;
-            CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kinds[k],123400,1,1,1,1,1,&hp,&dead,65535,789,&ctx,&skill));
+            CHECK(player_collision_apply_player_d00f_injury(100,62050,req,kinds[k],123400,1,1,1,1,1,&hp,&dead,65535,789,&ctx,&skill,0u));
             CHECK(sends==before+1&&size==36&&word(6)==0xD010);
             CHECK(hp==65535-expected&&word(16)==hp&&word(18)==expected);
             CHECK(multiplayer_combat_profile_reduce_damage(0)==0);

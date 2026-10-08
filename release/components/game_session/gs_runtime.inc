@@ -220,7 +220,7 @@ static void game_session_send_claimed_pickup_result(SOCKET c,const unsigned char
 
 /* INJURY_RESOURCE: D010 DWORD+0x0C is the live battle-score carrier consumed by
    client 0x6EF06B -> 0x748990.  Do not zero it on injury. */
-static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,unsigned local_uid,unsigned hp,unsigned damage,int terminal,unsigned battle_score){
+static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,unsigned local_uid,unsigned hp,unsigned damage,int terminal,unsigned battle_score,unsigned target_damage){
     char p[4096];battle_score=teamplay_current_score();mkpkt(p,0xD010,0x24,1);
     stable_resource_put16(p,0x08,local_uid);stable_resource_put16(p,0x0A,terminal?200u:100u);
     stable_put32(p,0x0C,battle_score);stable_resource_put16(p,0x10,hp);stable_resource_put16(p,0x12,damage);
@@ -229,10 +229,16 @@ static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,un
         p[0x1A]=req[0x12];p[0x1B]=req[0x13];
         p[0x1E]=req[0x10];p[0x1F]=req[0x11];p[0x20]=req[0x12];p[0x21]=req[0x13];
     }
+    /* WORD+0x22 is the client's contact-hit carrier: reference captures populate
+       it for every kind20/30 collision and leave it zero for kind10.  Its value
+       is the damage actually applied to the collided target (min(policy, target
+       hp)), which is why it groups by target type.  Client read sites:
+       0x6EF09F (BYTE+0x1D, unconditional) and 0x6EF241/0x6EF4E5 (WORD+0x22). */
+    if(req[0x08]==20u||req[0x08]==30u)stable_resource_put16(p,0x22,target_damage);
     g_profile_hp_current=hp;sendbuf(c,p,0x24);
     multiplayer_broadcast_raw(0xD010,(const unsigned char*)p,0x24);
     multiplayer_broadcast_actor_resources_current();
-    printf("  S0xD010 INJURY_RESOURCE injury actor=%u hp=%u damage=%u terminal=%d score=%u meta=%u kind=%u len=36 t=%lds\n",local_uid,hp,damage,terminal,battle_score,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),(unsigned char)p[0x1D],sec());fflush(0);
+    printf("  S0xD010 INJURY_RESOURCE injury actor=%u hp=%u damage=%u target_damage=%u terminal=%d score=%u meta=%u kind=%u len=36 t=%lds\n",local_uid,hp,damage,target_damage,terminal,battle_score,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),(unsigned char)p[0x1D],sec());fflush(0);
 }
 
 /* Player injury settlement for D00F projectile, exact associated scene, and
@@ -240,7 +246,7 @@ static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,un
  * battle epoch, immunity gates and death latch. */
 static int player_collision_apply_player_d00f_injury(SOCKET c,int port,const unsigned char*req,unsigned request_kind,unsigned injury_now,
         unsigned dungeon_room_epoch,unsigned battle_epoch,int injury_armed,unsigned injury_room_epoch,unsigned injury_battle_epoch,
-        unsigned*combat_hp,int*injury_dead,unsigned max_hp,unsigned battle_score,const struct stage_damage_damage_context*damage_ctx,const struct skill_effect_cleanup_context*skill_cleanup_ctx){
+        unsigned*combat_hp,int*injury_dead,unsigned max_hp,unsigned battle_score,const struct stage_damage_damage_context*damage_ctx,const struct skill_effect_cleanup_context*skill_cleanup_ctx,unsigned target_damage){
     unsigned source_field_140=(unsigned char)req[0x0A]|((unsigned char)req[0x0B]<<8);
     unsigned collision_index=(unsigned char)req[0x0C]|((unsigned char)req[0x0D]<<8);
     unsigned source_field_14=(unsigned char)req[0x0E]|((unsigned char)req[0x0F]<<8);
@@ -272,7 +278,7 @@ static int player_collision_apply_player_d00f_injury(SOCKET c,int port,const uns
     if(*combat_hp!=0u)wire_damage=0u;
 #endif
     printf("  [INJURY_SCENE] route=%s kind=%u -> D010 actor=%u hp=%u/%u policy_damage=%u actual_damage=%u wire_damage=%u terminal=%u score=%u source_field=%u collision_index=%u source_aux=%u room=%u battle=%u len=36 echo=0 probe_damage0=%u t=%lds\n",route,request_kind,multiplayer_current_uid(),*combat_hp,max_hp,damage,applied,wire_damage,*injury_dead?1u:0u,battle_score,source_field_140,collision_index,source_field_14,injury_room_epoch,injury_battle_epoch,(unsigned)(wire_damage!=applied),sec());
-    fflush(0);send_d010_injury_injury_resource(c,req,multiplayer_current_uid(),*combat_hp,wire_damage,*injury_dead,battle_score);return 1;
+    fflush(0);send_d010_injury_injury_resource(c,req,multiplayer_current_uid(),*combat_hp,wire_damage,*injury_dead,battle_score,target_damage);return 1;
 }
 static int meat_residual_meat_residual_window_active(unsigned activation_room_epoch,unsigned activation_battle_epoch,unsigned residual_until_tick,unsigned room_epoch,unsigned battle_epoch,unsigned now){
     return activation_battle_epoch!=0u&&activation_room_epoch==room_epoch&&activation_battle_epoch==battle_epoch&&residual_until_tick!=0u&&(int)(residual_until_tick-now)>=0;
@@ -958,7 +964,7 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                         d00f_total++;
                         if(scene_injury_direct_projectile_d00f_kind(request_kind)){
                             unsigned injury_now=tickms();
-                            player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,injury_now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
+                            player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,injury_now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx,0u);
                         } else {
                             int send_nonlocal_echo=1;
                             if(request_kind==60u){
@@ -966,7 +972,7 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                 if(scene_damage&&stage_damage_scene_injury_status(scene_resolved.status)){
                                     unsigned injury_now=tickms();const char *scene_route=scene_resolved.status==STAGE_DAMAGE_DAMAGE_SCENE_HAZARD_RESOURCE?"terrain-hazard":"associated-target";send_nonlocal_echo=0;
                                     printf("  [INJURY_SCENE] route=%s kind60 selector=%u parent=%u resource=%s damage=%u -> player-injury/no-echo t=%lds\n",scene_route,scene_resolved.owner,scene_resolved.associated_selector,scene_resolved.resource?scene_resolved.resource:"<none>",scene_damage,sec());fflush(0);
-                                    player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,injury_now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
+                                    player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,injury_now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx,0u);
                                 }else{
                                     printf("  [INJURY_SCENE] fixed-scene kind=60 reason=no-damaging-scene-classification -> echo-only/no-authoritative-HP t=%lds\n",sec());fflush(0);
                                 }
@@ -985,6 +991,12 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                 meat_collision_log_contact_fields(port,dungeon_room_epoch,boss_ctx.battle_epoch,now,request_kind,w0a,d0c,d10,d14,d18,candidate,carrier);
                                 if(active){
                                     handle_meat_collision_report(c,port,monster_hp_ctx,crate_policy,&score_ctx,teamplay_authoritative_stage(current_stage),dungeon_room_epoch,boss_ctx.battle_epoch,candidate,(unsigned)((unsigned char)buf[off]|((unsigned char)buf[off+1]<<8)),g_meat_collision.code,g_meat_collision.grade,carrier,&mr);
+                                    /* Reference capture: an active meat window still answers every kind20
+                                       contact with a full D010/36.  The player is immune, so WORD+0x12
+                                       stays 0, while WORD+0x22 carries the damage the meat skill dealt to
+                                       the collided target - that is the number the client pops over the
+                                       monster (read at 0x6EF241/0x6EF4E5). */
+                                    if(request_kind==20u)send_d010_injury_injury_resource(c,(const unsigned char*)&buf[off],multiplayer_current_uid(),combat_hp,0u,injury_dead,score_ctx.total,mr.damage_applied);
                                     if(mr.damage_applied)inventory_migration_apply_absorb(c,mr.damage_applied,&combat_hp,&injury_dead,score_ctx.total,&lifesteal_remainder,&mp_absorb_remainder,"D00F-meat-target");
                                     if(mr.reject_reason==MEAT_REJECT_UNBOUND){int boss_meat_applied=0;
 #if TEAMPLAY_FEATURE_MEAT_BOSS_DAMAGE
@@ -1015,15 +1027,27 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                     if(request_kind==40u){
                                         send_nonlocal_echo=0;
                                         printf("  [INJURY_SCENE] inactive kind40 classified=boss-player-contact -> player-injury/no-echo t=%lds\n",sec());fflush(0);
-                                        player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
+                                        player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx,0u);
                                     }else if(request_kind==20u&&!residual_grace_active){
-                                        unsigned hp_before_293=combat_hp;
+                                        unsigned target_damage;
                                         send_nonlocal_echo=0;
-                                        printf("  [GS %d] [MEAT_RESIDUAL] inactive kind20 classified=ordinary-player-collision active=0 residual-grace-active=0 inactive=%u -> player-injury/no-echo; COLLISION_DAMAGE also settles the collided target t=%lds\n",port,g_meat_collision.inactive_count,sec());fflush(0);
-                                        player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx);
-                                        collision_damage_collision_target_damage(c,port,monster_hp_ctx,crate_policy,&score_ctx,teamplay_authoritative_stage(current_stage),dungeon_room_epoch,boss_ctx.battle_epoch,now,candidate,(unsigned)((hp_before_293>combat_hp)?(hp_before_293-combat_hp):0u),(unsigned)((unsigned char)buf[off]|((unsigned char)buf[off+1]<<8)),carrier);
+                                        printf("  [GS %d] [MEAT_RESIDUAL] inactive kind20 classified=ordinary-player-collision active=0 residual-grace-active=0 inactive=%u -> COLLISION_DAMAGE settles the target first, then ONE full D010/36 carries both sides t=%lds\n",port,g_meat_collision.inactive_count,sec());fflush(0);
+                                        /* Settle the collided target first: the single D010 below needs the applied
+                                           target damage for WORD+0x22.  player_applied_damage is only logged by that
+                                           policy (it is explicitly voided in the enabled branch), so 0 is passed. */
+                                        target_damage=collision_damage_collision_target_damage(c,port,monster_hp_ctx,crate_policy,&score_ctx,teamplay_authoritative_stage(current_stage),dungeon_room_epoch,boss_ctx.battle_epoch,now,candidate,0u,(unsigned)((unsigned char)buf[off]|((unsigned char)buf[off+1]<<8)),carrier);
+                                        player_collision_apply_player_d00f_injury(c,port,(const unsigned char*)&buf[off],request_kind,now,dungeon_room_epoch,boss_ctx.battle_epoch,injury_armed,injury_room_epoch,injury_battle_epoch,&combat_hp,&injury_dead,pet_crafting_pet_effective_hp_max(),score_ctx.total,&incoming_damage_ctx,&skill_cleanup_ctx,target_damage);
                                     }else{
-                                        printf("  [GS %d] [MEAT_RESIDUAL] contact decision carrier=%s selector=%u candidate_dispatched=0 damage_applied=0 terminal_repeat=0 binding=0 reject=inactive-or-epoch inactive=%u residual_grace_active=%d residual_remaining_ms=%u activation_room=%u activation_battle=%u code=%u grade=%u -> echo-only\n",port,carrier,candidate,g_meat_collision.inactive_count,residual_grace_active,residual_grace_active?(unsigned)(meat_residual_until_tick-now):0u,meat_activated_room_epoch,meat_activated_battle_epoch,g_meat_collision.code,g_meat_collision.grade);fflush(0);
+                                        printf("  [GS %d] [MEAT_RESIDUAL] contact decision carrier=%s selector=%u candidate_dispatched=0 damage_applied=0 terminal_repeat=0 binding=0 reject=inactive-or-epoch inactive=%u residual_grace_active=%d residual_remaining_ms=%u activation_room=%u activation_battle=%u code=%u grade=%u t=%lds\n",port,carrier,candidate,g_meat_collision.inactive_count,residual_grace_active,residual_grace_active?(unsigned)(meat_residual_until_tick-now):0u,meat_activated_room_epoch,meat_activated_battle_epoch,g_meat_collision.code,g_meat_collision.grade,sec());fflush(0);
+                                        /* Residual-grace kind20 stays under meat protection: no player damage and no
+                                           target settlement (CF9D already cleared the skill root).  It must still answer
+                                           with a full 36-byte D010 however - the client reads BYTE+0x1D unconditionally
+                                           and WORD+0x22 in the contact branch, and the legacy 28-byte echo is too short. */
+                                        if(request_kind==20u){
+                                            send_nonlocal_echo=0;
+                                            printf("  [GS %d] [MEAT_RESIDUAL] residual-grace kind20 -> full D010/36 damage=0 target_damage=0 t=%lds\n",port,sec());fflush(0);
+                                            send_d010_injury_injury_resource(c,(const unsigned char*)&buf[off],multiplayer_current_uid(),combat_hp,0u,injury_dead,score_ctx.total,0u);
+                                        }
                                     }
                                 }
                             }
