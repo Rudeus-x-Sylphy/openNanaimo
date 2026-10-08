@@ -247,6 +247,12 @@ Check(legacyCopy.Success&&legacyCopy.Message!="已拥有该奖励"
     &&await Items(15009016)==1&&await Sql("SELECT COUNT(*) FROM CharacterCards WHERE CharacterId=$id")==0,"legacy pet row takes a real lifespan from the event-card draw");
 Check(WirePetExpiration(NetworkAdapterService.BuildPetInventoryPayload((await db.GetCharacterAsync(account))!),15009016)==(uint)legacyExpiration,"C44C reports the lifespan written by a legacy-row draw");
 Check(await Sql("SELECT COUNT(*) FROM EventCardPendingDraws WHERE CharacterId=$id")==0,"lifespan draw does not pin the page");
+// A legacy row already displays its catalog lifetime, so a repeat draw stacks onto that term
+// instead of replacing it: 15 days shown plus 15 days drawn leaves 30 days.
+Config(15009238);await Reset();await SeedSet(1);await Item(15009238,1);
+Check((await Redeem()).Success,"legacy row drawn again");
+Check(ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238"),out var stacked)
+    &&stacked>DateTime.Now.AddDays(29)&&stacked<DateTime.Now.AddDays(31),"a legacy row stacks the drawn days onto the term it displayed");
 // A pet authored with duration zero that is already owned settles as a blank draw: the
 // set is consumed, nothing is granted, and the page is not left pinned.
 Config(15000004);await Reset();await SeedSet(1);await Item(15000004,1);

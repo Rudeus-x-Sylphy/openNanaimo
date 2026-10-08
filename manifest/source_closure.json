@@ -663,8 +663,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.LuckyCards.cs",
-      "size": 21669,
-      "sha256": "621B79D81CD121120C95749B76BB86E59C93DB379DA183C364F410BD2414C6AE"
+      "size": 22005,
+      "sha256": "67553C46DA55695AA24173D79AA7BF4D2BC4DA682D4F092B848435800E6BD609"
     },
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",

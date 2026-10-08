@@ -203,7 +203,7 @@ public sealed partial class DatabaseService
      *  it; the tutorial pet has no row but reports as a permanently owned family.
      *  Permanent is decided by the owned code's authored duration, not by the stored value: a
      *  zero expiration on a duration pet is a legacy row that has simply never carried a term. */
-    private static async Task<(uint Code, uint Expiration, bool Permanent)?> FindPetFamilyRowAsync(
+    private static async Task<(uint Code, uint Expiration, bool Permanent, ushort Days)?> FindPetFamilyRowAsync(
         SqliteConnection connection, SqliteTransaction tx, long id, ShopCatalogItem item, CancellationToken token)
     {
         await using var command = connection.CreateCommand();
@@ -215,7 +215,7 @@ public sealed partial class DatabaseService
             {
                 var code = checked((uint)rows.GetInt64(0));
                 if (ShopCatalog.TryGet(code, out var owned) && owned.PetFamilyKey == item.PetFamilyKey)
-                    return (code, checked((uint)rows.GetInt64(1)), owned.DurationDays == 0);
+                    return (code, checked((uint)rows.GetInt64(1)), owned.DurationDays == 0, owned.DurationDays);
             }
         await using var variant = connection.CreateCommand();
         variant.Transaction = tx;
@@ -225,8 +225,20 @@ public sealed partial class DatabaseService
         if (value is null || Convert.ToInt32(value) is not (>= 1 and <= 3)) return null;
         var starter = 15000000u + (uint)Convert.ToInt32(value);
         return ShopCatalog.TryGet(starter, out var starterItem) && starterItem.PetFamilyKey == item.PetFamilyKey
-            ? (starter, 0u, true) : null;
+            ? (starter, 0u, true, starterItem.DurationDays) : null;
     }
+
+    /** The term a family row takes when an item lands on it. A legacy row carries no stored value
+     *  because nothing ever wrote one, while the client already shows its catalog lifetime: the
+     *  grant therefore stacks onto that authored term so a repeat draw adds days instead of
+     *  replacing the term the player could already see. A zero-duration item makes it permanent. */
+    private static uint MergedPetTerm((uint Code, uint Expiration, bool Permanent, ushort Days) family,
+        ShopCatalogItem item, int quantity, DateTime grantTime)
+        => item.DurationDays > 0
+            ? ClothingExpirationTime.Extend(
+                family.Expiration != 0 ? family.Expiration : ClothingExpirationTime.Extend(0, family.Days, grantTime),
+                (ushort)Math.Min(ushort.MaxValue, item.DurationDays * Math.Max(1, quantity)), grantTime)
+            : 0u;
 
     /** Grants a pet onto the row of its authored family instead of inserting another instance of
      *  the same animal, and reports whether the family row satisfied the grant. A permanently
@@ -239,11 +251,7 @@ public sealed partial class DatabaseService
         var owned = await FindPetFamilyRowAsync(connection, tx, characterId, item, token);
         if (owned is not { } family) return false;
         if (family.Permanent) return true;
-        // A permanent variant makes the pet permanent; a timed one adds its authored days.
-        var term = item.DurationDays > 0
-            ? ClothingExpirationTime.Extend(family.Expiration,
-                (ushort)Math.Min(ushort.MaxValue, item.DurationDays * Math.Max(1, quantity)), grantTime)
-            : 0u;
+        var term = MergedPetTerm(family, item, quantity, grantTime);
         await using var update = connection.CreateCommand();
         update.Transaction = tx;
         update.CommandText = "UPDATE CharacterItems SET ItemExpiration=$term,UpdatedAt=$now WHERE CharacterId=$id AND ItemCode=$code";
@@ -280,12 +288,7 @@ public sealed partial class DatabaseService
                     // draw never downgrades it; the caller still settles and consumes the draw
                     // so the page is not left pinned.
                     if (row.Permanent) return CardRewardGrant.AlreadyOwned;
-                    // A drawn permanent variant makes the pet permanent; a timed one adds its
-                    // authored days to the remaining term, counting from the grant when the
-                    // stored row never carried one.
-                    var term = item.DurationDays > 0
-                        ? ClothingExpirationTime.Extend(row.Expiration, item.DurationDays, DateTime.Now)
-                        : 0u;
+                    var term = MergedPetTerm(row, item, 1, DateTime.Now);
                     command.Parameters.AddWithValue("$owned", row.Code);
                     command.CommandText = "UPDATE CharacterItems SET ItemExpiration=$term,UpdatedAt=$now WHERE CharacterId=$id AND ItemCode=$owned";
                     command.Parameters.AddWithValue("$term", term);
