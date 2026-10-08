@@ -270,6 +270,21 @@ Config(15009337);await Reset();await SeedSet(1);Check((await Redeem()).Success,"
 Config(15003362);await SeedSet(1);Check((await Redeem()).Success,"permanent family variant drawn");
 Check(await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009337")==0
     &&await Items(15003362)==0&&await Sql("SELECT COUNT(*) FROM CharacterItems WHERE CharacterId=$id AND ItemCode/1000000=15")==1,"a drawn permanent variant makes the owned pet permanent");
+// Buying another life variant of an owned pet extends that pet's term; a pet with no owned
+// family still lands as its own row.
+await Reset();await Sql("UPDATE Characters SET Hans=99999999,Cash=99999999 WHERE Id=$id");
+await Item(15009238,1);
+await Sql("UPDATE CharacterItems SET ItemExpiration=$e WHERE CharacterId=$id AND ItemCode=15009238",("$e",ClothingExpirationTime.Encode(DateTime.Now.AddDays(10))));
+var beforeBuy=await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238");
+Check(ShopCatalog.TryGet(15009246,out var shopPet),"shop pet catalogued");
+var bought=await db.PurchaseShopItemForAccountAsync(account,15009246,1,shopPet.PurchasePrice,shopPet.PaysWithCash);
+Check(bought.Success&&await Sql("SELECT COUNT(*) FROM CharacterItems WHERE CharacterId=$id AND ItemCode/1000000=15")==1
+    &&await Items(15009238)==1&&await Items(15009246)==0,"shop life variant merges into the owned pet's row");
+Check(ClothingExpirationTime.TryDecode((uint)beforeBuy,out var buyBefore)
+    &&ClothingExpirationTime.TryDecode((uint)await Sql("SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode=15009238"),out var buyAfter)
+    &&buyAfter-buyBefore>=TimeSpan.FromDays(90),"shop purchase adds the bought variant's authored days");
+await Reset();var freshBuy=await db.PurchaseShopItemForAccountAsync(account,15009246,1,shopPet.PurchasePrice,shopPet.PaysWithCash);
+Check(freshBuy.Success&&await Items(15009246)==1,"shop pet with no owned family lands as its own row");
 Config();
 File.WriteAllText(config,JsonSerializer.Serialize(new {Version=1,Pages=new[]{new {Page=1,Rewards=new[]{new {Code=46000008,Quantity=1,Weight=2500},new {Code=46000002,Quantity=1,Weight=7500}}}}}));
 var weighted=EventCardPolicy.Load(config)[1];

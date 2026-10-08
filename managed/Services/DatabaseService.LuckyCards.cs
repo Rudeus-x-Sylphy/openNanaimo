@@ -228,6 +228,32 @@ public sealed partial class DatabaseService
             ? (starter, 0u, true) : null;
     }
 
+    /** Grants a pet onto the row of its authored family instead of inserting another instance of
+     *  the same animal, and reports whether the family row satisfied the grant. A permanently
+     *  owned pet keeps its term and gains nothing: the paid flows deliberately settle that as a
+     *  spent purchase rather than refunding it. */
+    private static async Task<bool> TryMergePetFamilyGrantAsync(SqliteConnection connection, SqliteTransaction tx,
+        long characterId, ShopCatalogItem item, int quantity, DateTime grantTime, CancellationToken token)
+    {
+        if (item.PetFamilyKey.Length == 0) return false;
+        var owned = await FindPetFamilyRowAsync(connection, tx, characterId, item, token);
+        if (owned is not { } family) return false;
+        if (family.Permanent) return true;
+        // A permanent variant makes the pet permanent; a timed one adds its authored days.
+        var term = item.DurationDays > 0
+            ? ClothingExpirationTime.Extend(family.Expiration,
+                (ushort)Math.Min(ushort.MaxValue, item.DurationDays * Math.Max(1, quantity)), grantTime)
+            : 0u;
+        await using var update = connection.CreateCommand();
+        update.Transaction = tx;
+        update.CommandText = "UPDATE CharacterItems SET ItemExpiration=$term,UpdatedAt=$now WHERE CharacterId=$id AND ItemCode=$code";
+        update.Parameters.AddWithValue("$term", term);
+        update.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+        update.Parameters.AddWithValue("$id", characterId);
+        update.Parameters.AddWithValue("$code", family.Code);
+        return await update.ExecuteNonQueryAsync(token) == 1;
+    }
+
     // Shared transactional grant for explicitly configured event rewards and resource-authored lucky rewards.
     private static async Task<CardRewardGrant> GrantCardRewardAsync(SqliteConnection connection, SqliteTransaction tx,
         long id, uint reward, CancellationToken token)
