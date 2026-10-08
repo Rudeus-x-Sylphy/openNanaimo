@@ -135,7 +135,7 @@ internal static class Program
                 "town relationship name and ring tier agree");
             var control = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(52));
             Check((control >> 20) == WireIdentityAllocator.GetSceneEntityId(subject.Id)
-                && ((control >> 13) & 127) == 52 && ((control >> 6) & 127) == 16,
+                && ((control >> 12) & 255) == 52 && ((control >> 6) & 63) == 16,
                 "relationship projection preserves identity, level and dungeon title");
             Check(BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(80)) == (417u << 2 | 99u << 12)
                 && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(102)) == 2,

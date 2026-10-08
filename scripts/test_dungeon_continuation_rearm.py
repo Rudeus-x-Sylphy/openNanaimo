@@ -31,6 +31,7 @@ static unsigned response_stage,response_dungeon;
 static int shop_catalogs_next_dungeon_exists(unsigned a,unsigned b,unsigned d,unsigned e){return next_exists;}
 static int hp_sync_find_profile(unsigned a,unsigned b,unsigned c,unsigned d,unsigned e,unsigned f){return super;}
 static void native_cf72_continue_room(void){}
+static void multiplayer_cf99_roster_begin_room_epoch(void){}
 static int multiplayer_cf99_surrender_room_pending(void){return pending;}
 static void multiplayer_broadcast_cf6d_super_rearm(void){ops[count++]=0xCF6D;pending=0;}
 static void teamplay_continuation_arm_room(unsigned real,unsigned show,unsigned diff,unsigned dungeon,unsigned mode){}
@@ -78,7 +79,7 @@ puts("CONTINUATION_REARM_PASS modes=1,2 short/CF99 normal/super invalid=0,3 no-u
 #include <assert.h>
 #include <stdio.h>
 #define MULTI_MAX_PLAYERS 3
-static struct {int active,room_active,socket;unsigned uid;} g_multi_conn[3];
+static struct {int active,room_active,socket;unsigned uid,cf99_roster_guard,cf99_roster_seen;} g_multi_conn[3];
 static int g_multi_current,g_multi_transport_alive[3],sent[3];
 static unsigned g_surrender_rearm_cf99_surrender_mask=0u;
 static void multi_switch_to(int i,int src){assert(src==g_multi_current);}
@@ -93,6 +94,11 @@ int main(void){int i;
  g_multi_current=0;assert(multiplayer_cf99_surrender_room_pending());
  multiplayer_broadcast_cf6d_super_rearm();assert(!sent[0]&&sent[1]==1&&!sent[2]);
  assert(!multiplayer_cf99_surrender_room_pending());
+ assert(!multiplayer_cf99_roster_suppress_current()); /* untouched owner */
+ g_multi_current=1;assert(!multiplayer_cf99_roster_suppress_current());
+ assert(multiplayer_cf99_roster_suppress_current());assert(!multiplayer_cf99_roster_suppress_current());
+ multiplayer_cf99_roster_begin_room_epoch();assert(!multiplayer_cf99_roster_suppress_current());
+ g_multi_current=0;
  multiplayer_broadcast_cf6d_super_rearm();assert(sent[1]==1);
  /* Departed peers neither trigger nor receive a clear. Reuse clears the bit. */
  g_multi_current=2;multiplayer_cf99_surrender_mark_current();g_multi_conn[2].room_active=0;
@@ -106,7 +112,9 @@ int main(void){int i;
  /* A member initiating the action does not change which actor needs a clear. */
  g_multi_current=0;multiplayer_cf99_surrender_mark_current();
  g_multi_current=1;multiplayer_broadcast_cf6d_super_rearm();assert(sent[0]==1&&sent[1]==1&&!sent[2]);
- g_multi_current=-1;assert(!multiplayer_cf99_surrender_room_pending());multiplayer_broadcast_cf6d_super_rearm();
+ g_multi_current=0;assert(!multiplayer_cf99_roster_suppress_current());assert(multiplayer_cf99_roster_suppress_current());
+ multiplayer_cf99_surrender_clear_current();assert(!multiplayer_cf99_roster_suppress_current());
+ g_multi_current=-1;assert(!multiplayer_cf99_roster_suppress_current());assert(!multiplayer_cf99_surrender_room_pending());multiplayer_broadcast_cf6d_super_rearm();
  puts("CONTINUATION_CF99_SCOPE_PASS marked-only reuse leave disconnect owner/member");return 0;
 }
 """

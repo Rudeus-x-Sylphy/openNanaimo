@@ -20,11 +20,13 @@ MANAGED = (
     'managed/Services/DatabaseService.ExperienceCards.cs', 'managed/Services/ExperienceCardPolicy.cs',
     'managed/Services/DatabaseService.LuckyCards.cs', 'managed/Services/LuckyCardPolicy.cs',
     'managed/Services/DatabaseService.EventCards.cs', 'managed/Services/EventCardPolicy.cs',
+    'managed/Services/DatabaseService.CardPageUnion.cs', 'managed/Services/CardPageUnionPolicy.cs',
 )
 BINARIES = tuple('adapter_runtime/' + n for n in (
     'Nanaimo.Adapter.dll', 'Nanaimo.Adapter.pdb', 'Nanaimo.Gameplay.dll', 'Nanaimo.Gameplay.pdb'))
 EXTRAS = ('docs/event-card-rewards.md', 'tests/CardUseRegression/CardUseRegression.csproj',
-          'tests/CardUseRegression/Program.cs')
+          'tests/CardUseRegression/Program.cs', 'tests/CardPageUnionRegression/CardPageUnionRegression.csproj',
+          'tests/CardPageUnionRegression/Program.cs')
 
 
 def record(raw):
@@ -35,8 +37,11 @@ def encode(obj):
     return (json.dumps(obj, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
 
 
-def stage(client: Path, candidate: Path, snapshot: Path, output: Path):
+def stage(client: Path, candidate: Path, snapshot: Path, output: Path, source_root: Path | None = None):
     client = client.resolve(); candidate = candidate.resolve(); output = output.resolve()
+    sources = source_root.resolve() if source_root else ROOT
+    if sources != ROOT and not sources.is_relative_to(ROOT / 'build'):
+        raise ValueError('An isolated compiled source must remain within repository build/')
     if not output.is_relative_to(ROOT / 'build') or output.exists():
         raise ValueError('Use a fresh stage directory within repository build/')
     io.assert_not_running(client)
@@ -45,7 +50,7 @@ def stage(client: Path, candidate: Path, snapshot: Path, output: Path):
     closure = io.load(client / 'manifest/source_closure.json')
     runtime = io.load(client / 'adapter_runtime/adapter_manifest.json')
     compiled = {r['path']: r for r in io.load(snapshot)}
-    verify.verify_records(ROOT, compiled.items())
+    verify.verify_records(sources, compiled.items())
     cm = io.load(candidate / 'adapter_manifest.json')
     verify.verify_records(candidate, ((r['name'], r) for r in cm['files']))
     old = {r['path']: r for r in closure['files']}
@@ -80,7 +85,8 @@ def stage(client: Path, candidate: Path, snapshot: Path, output: Path):
     # Verify the copied baseline, guarding concurrent installation changes.
     verify.verify_records(output, manifest['critical_files'].items())
     verify.verify_records(output, ((r['path'], r) for r in closure['files']))
-    data = {n: io.safe(ROOT, n).read_bytes() for n in MANAGED + EXTRAS}
+    data = {n: io.safe(sources, n).read_bytes() for n in MANAGED}
+    data.update({n: io.safe(ROOT, n).read_bytes() for n in EXTRAS})
     data.update({n: io.safe(candidate, n.removeprefix('adapter_runtime/')).read_bytes() for n in BINARIES})
     for name in MANAGED:
         if record(data[name])['sha256'].lower() != compiled[name]['sha256'].lower():
@@ -113,6 +119,7 @@ def main():
     p.add_argument('--client-root', type=Path, required=True)
     p.add_argument('--candidate', type=Path)
     p.add_argument('--compiled-snapshot', type=Path)
+    p.add_argument('--source-root', type=Path, help='Optional isolated compiler inputs under repository build/')
     p.add_argument('--stage', type=Path)
     p.add_argument('--apply', action='store_true')
     p.add_argument('--rollback')
@@ -122,7 +129,7 @@ def main():
         print(json.dumps(transaction.rollback(args.client_root, args.rollback), indent=2)); return
     if not all((args.candidate, args.compiled_snapshot, args.stage)):
         p.error('candidate, compiled-snapshot and fresh stage are required')
-    staged = stage(args.client_root, args.candidate, args.compiled_snapshot, args.stage)
+    staged = stage(args.client_root, args.candidate, args.compiled_snapshot, args.stage, args.source_root)
     # Current checked-in transaction code, not an archived publication writer.
     transaction.ROOT = staged
     payloads = transaction.build_payloads(args.client_root.resolve())

@@ -32,14 +32,14 @@ internal static class Program
         var payload = Enumerable.Range(0, TownTitleProjection.UserInfoPayloadLength)
             .Select(value => unchecked((byte)(value * 17))).ToArray();
         const ushort sceneId = 0xA3F;
-        const uint initialControl = ((uint)sceneId << 20) | (39u << 13) | (127u << 6) | (2u << 3) | 5u;
+        const uint initialControl = ((uint)sceneId << 20) | (39u << 12) | (63u << 6) | (2u << 3) | 5u;
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(TownTitleProjection.ControlOffset), initialControl);
         var initial = payload.ToArray();
         foreach (var grade in Enumerable.Range(0, 256).Select(value => (byte)value))
         {
             Check(TownTitleProjection.TryApply(payload, sceneId, grade), "title projection accepts its subject identity");
             var control = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(TownTitleProjection.ControlOffset));
-            Check(((control >> 6) & 127) == CharacterTitleState.Normalize(grade), "title projection uses the normalized grade");
+            Check(((control >> 6) & 63) == CharacterTitleState.Normalize(grade), "title projection uses the normalized grade");
             Check((control & ~TownTitleProjection.GradeMask) == (initialControl & ~TownTitleProjection.GradeMask),
                 "title projection preserves level, construction mode and scene identity");
             Check(payload.AsSpan(0, TownTitleProjection.ControlOffset).SequenceEqual(initial.AsSpan(0, TownTitleProjection.ControlOffset))
@@ -54,11 +54,11 @@ internal static class Program
         }
         foreach (var length in new[] { 0, 52, 103, 105 })
             Check(!TownTitleProjection.TryApply(new byte[length], sceneId, 1), "invalid character state length is rejected");
-        foreach (var level in new[] { -1, 0, 1, 39, 42, 52, 99, 100, int.MaxValue })
+        foreach (var level in new[] { -1, 0, 1, 39, 42, 52, 99, 100, 127, 128, 199, 200, 201, int.MaxValue })
         {
             Check(TownTitleProjection.TryApply(payload, sceneId, 16, level), "complete town projection accepts the subject level");
             var control = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(TownTitleProjection.ControlOffset));
-            Check(((control >> 6) & 127) == 16 && ((control >> 13) & 127) == Math.Clamp(level, 1, CharacterProgression.MaximumLevel),
+            Check(((control >> 6) & 63) == 16 && ((control >> 12) & 255) == Math.Clamp(level, 1, CharacterProgression.MaximumLevel),
                 "complete town projection independently bounds grade and character level");
             Check((control & ~(TownTitleProjection.GradeMask | TownTitleProjection.LevelMask))
                 == (initialControl & ~(TownTitleProjection.GradeMask | TownTitleProjection.LevelMask)),
@@ -107,10 +107,10 @@ internal static class Program
         frame[1] = 42;
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(4), 112);
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(6), 0xC36A);
-        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(60), (106u << 20) | (39u << 13) | 16u);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(60), (106u << 20) | (39u << 12) | 16u);
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(110), 65530);
         Check(NetworkAdapterService.PatchTownTitleFrame(frame, 106, 23), "a complete town character state receives its title");
-        Check((BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(60)) >> 6 & 127) == 23,
+        Check((BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(60)) >> 6 & 63) == 23,
             "title correction updates the dedicated grade bits");
         Check(frame[0] == 0x71 && frame[1] == 42 && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(110)) == 65530,
             "title correction preserves ordered transport and character UID");
@@ -133,7 +133,7 @@ internal static class Program
         Check(NetworkAdapterService.PatchTownTitleFrame(frame, 106, 16, 52),
             "complete state correction projects the subject title and character level together");
         var completeControl = BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(60));
-        Check(((completeControl >> 6) & 127) == 16 && ((completeControl >> 13) & 127) == 52,
+        Check(((completeControl >> 6) & 63) == 16 && ((completeControl >> 12) & 255) == 52,
             "complete state correction restores both independent fields");
     }
 
@@ -151,7 +151,7 @@ internal static class Program
             && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(118)) == 0xC47F,
             "subject initialization preserves construction-before-attachment ordering");
         var control = BinaryPrimitives.ReadUInt32LittleEndian(response.AsSpan(60));
-        Check(((control >> 13) & 127) == 39 && ((control >> 6) & 127) == 23,
+        Check(((control >> 12) & 255) == 39 && ((control >> 6) & 63) == 23,
             "the subject's character level and title remain independent of the viewer");
         Check(control >> 20 == WireIdentityAllocator.GetSceneEntityId(subject.Id)
             && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(120)) == control >> 20,
@@ -168,7 +168,7 @@ internal static class Program
         subject.Level = 4;
         response = InvokeStatic<byte[]>("BuildTownPeerInfoResponse", request, viewer, subject, (ushort)499, (ushort)123);
         control = BinaryPrimitives.ReadUInt32LittleEndian(response.AsSpan(60));
-        Check(((control >> 6) & 127) == 42 && ((control >> 13) & 127) == 4,
+        Check(((control >> 6) & 63) == 42 && ((control >> 12) & 255) == 4,
             "a refreshed title remains independent of the character level");
     }
 
@@ -225,7 +225,7 @@ internal static class Program
                 && ReferenceEquals(Get<object>(queued[1]!, "Target"), viewerPresence),
                 "subject state routes to the viewer rather than its owner");
             var payload = Get<byte[]>(queued[0]!, "Payload");
-            Check(((BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(52)) >> 6) & 127) == 23,
+            Check(((BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(52)) >> 6) & 63) == 23,
                 "queued town construction contains the subject's current title");
             Check(BinaryPrimitives.ReadUInt16LittleEndian(Get<byte[]>(queued[1]!, "Payload")) == subjectSceneId,
                 "queued attachment uses the subject's scene identity");
@@ -234,14 +234,14 @@ internal static class Program
             Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", viewer, viewerPresence, subject, false)
                 && Get<byte[]>(queued[0]!, "Payload").SequenceEqual(preserved),
                 "a refreshed subject title preserves an earlier queued snapshot");
-            Check(((BinaryPrimitives.ReadUInt32LittleEndian(Get<byte[]>(queued[4]!, "Payload").AsSpan(52)) >> 6) & 127) == 39,
+            Check(((BinaryPrimitives.ReadUInt32LittleEndian(Get<byte[]>(queued[4]!, "Payload").AsSpan(52)) >> 6) & 63) == 39,
                 "the next subject snapshot carries the latest title");
             Check(InvokeInstance<bool>(service, "QueueTownPeerSnapshot", subject, subjectPresence, viewer, false),
                 "the reverse direction queues the viewer as the other visible subject");
             var reverseQueued = Get<IList>(subject, "PendingBroadcasts");
             var reversePayload = Get<byte[]>(reverseQueued[0]!, "Payload");
             var reverseControl = BinaryPrimitives.ReadUInt32LittleEndian(reversePayload.AsSpan(52));
-            Check(reverseQueued.Count == 3 && ((reverseControl >> 6) & 127) == 1 && ((reverseControl >> 13) & 127) == 7,
+            Check(reverseQueued.Count == 3 && ((reverseControl >> 6) & 63) == 1 && ((reverseControl >> 12) & 255) == 7,
                 "both directions display each subject's own title and character level");
             Check(ReferenceEquals(Get<object>(reverseQueued[0]!, "Target"), subjectPresence)
                 && reverseControl >> 20 == WireIdentityAllocator.GetSceneEntityId(Get<CharacterRecord>(viewer, "Character").Id),
@@ -301,6 +301,7 @@ internal static class Program
             AccountId = characterId,
             Name = name,
             Level = level,
+            Experience = CharacterProgression.ExperienceRequiredForLevel(level),
             DungeonGrade = grade,
             TutorialCompleted = true,
             Appearance = new byte[36],
@@ -315,8 +316,8 @@ internal static class Program
             [typeof(CharacterRecord), typeof(ushort), typeof(ushort), typeof(ushort), typeof(ushort)], null)!;
         var payload = (byte[])builder.Invoke(null, [subject, (ushort)3412, (ushort)63211, (ushort)417, (ushort)99])!;
         var control = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(52));
-        Check(((control >> 6) & 127) == 16, "the shared town builder projects the persisted title grade");
-        Check(((control >> 13) & 127) == 52, "the shared town builder projects the independent character level");
+        Check(((control >> 6) & 63) == 16, "the shared town builder projects the persisted title grade");
+        Check(((control >> 12) & 255) == 52, "the shared town builder projects the independent character level");
         Check(control >> 20 == 3412 && ((control >> 3) & 7) == 2,
             "the shared town builder preserves scene identity and construction mode");
         Check(BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(102)) == 2,
@@ -324,7 +325,7 @@ internal static class Program
         Check(BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(80)) == (417u << 2 | 99u << 12),
             "the shared town builder preserves active scene coordinates");
         var profile = InvokeStatic<byte[]>("BuildProfileResponsePayload", subject);
-        Check(profile[31] == ((control >> 13) & 127) && profile[33] == ((control >> 6) & 127),
+        Check(profile[31] == ((control >> 12) & 255) && profile[33] == ((control >> 6) & 63),
             "shared town construction and profile detail agree on both progression fields");
     }
 

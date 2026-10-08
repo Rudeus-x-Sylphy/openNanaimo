@@ -395,6 +395,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte[]? LastSkillSlotExpansionResultPayload { get; set; }
         public LuckyCardRequestWindow LuckyCardRequests { get; } = new();
         public LuckyCardRequestWindow EventCardRequests { get; } = new();
+        public LuckyCardRequestWindow CardPageRequests { get; } = new();
         public ushort? LastSkillPointUnionControl { get; set; }
         public uint LastSkillPointUnionToken { get; set; }
         public DateTime LastSkillPointUnionUtc { get; set; }
@@ -2862,23 +2863,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return BuildNativeFrame(
                         frame,
                         0xC59A,
-                        submittedId == 5
-                            ? BuildApartmentGuideCompletionPayload(
-                                guideCompletion.Success,
-                                guideCompletion.Character ?? session.Character,
-                                rewardChanged,
-                                submittedTaskType,
-                                session.NonCombatResourceSnapshot)
-                            : BuildTaskCompletionResultPayload(
+                        BuildStoryGuideCompletionPayload(
                             guideCompletion.Success,
                             submittedId,
                             guideCompletion.Character ?? session.Character,
                             rewardChanged,
-                            0,
-                            completionKindOverride: submittedTaskType,
-                            // Apartment guide result 1 changes the client to its exit state.
-                            // Result 3 is the recoverable completion-rejection branch.
-                            failureResult: submittedId == 5 ? (byte)3 : (byte)1),
+                            submittedTaskType,
+                            session.NonCombatResourceSnapshot),
                         session);
                 }
 
@@ -4277,6 +4268,20 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 {
                     _log($"{channel}:{remote} card synthesis request invalid: length={payload.Length}; returning C3EE failure");
                     return BuildNativeFrame(frame, 0xC3EE, BuildCardSynthesisResultPayload(false, 0), session);
+                }
+
+                if (unionType == 20)
+                {
+                    if (!CardPageUnionPolicy.TryParse(payload, out var page))
+                        return BuildNativeFrame(frame, 0xC3EE, CardPageUnionPolicy.Result(false), session);
+                    var requestId = session.CardPageRequests.Get(
+                        BinaryPrimitives.ReadUInt16LittleEndian(frame), page, DateTime.UtcNow);
+                    var result = await _database.SynthesizeCardPageAsync(session.AccountId, session.Character.Id,
+                        session.SessionId, requestId, page, token);
+                    if (result.Success) await RefreshSessionCharacterAsync(session, token);
+                    _log($"{channel}:{remote} card-page union page={page} request={requestId} success={result.Success} reward={result.Reward} error={result.Error}");
+                    // The album controller owns refresh through subsequent requests.
+                    return BuildNativeFrame(frame, 0xC3EE, CardPageUnionPolicy.Result(result.Success), session);
                 }
 
                 if (unionType == 40)

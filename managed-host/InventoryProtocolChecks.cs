@@ -49,9 +49,18 @@ internal static class InventoryProtocolChecks
         foreach (var catalogPet in ShopCatalog.All.Where(item => item.Category == 15))
         {
             var normalized = PetProgression.NormalizeState(new PetState(catalogPet.ItemCode, 3, 3, 0, 0, 0, 0, 0, 100));
-            Check(normalized.MaximumStage <= catalogPet.PetUpgradeStage
+            var canStrengthen = catalogPet.PetGoldDustItemCode != 0
+                && ShopCatalog.TryGet(19,catalogPet.PetGoldDustItemCode,out _);
+            var supportedMaximum = canStrengthen ? 3 : catalogPet.PetUpgradeStage;
+            Check(normalized.MaximumStage == supportedMaximum
                 && normalized.CurrentStage <= normalized.MaximumStage,
-                $"PET {catalogPet.ItemCode} stage stays inside its resource maximum");
+                $"PET {catalogPet.ItemCode} preserves dust allowance but respects non-upgrade resource bounds");
+            var initial = PetProgression.NormalizeState(new PetState(catalogPet.ItemCode,0,0,0,0,0,0,0,100));
+            Check(initial.MaximumStage == catalogPet.PetUpgradeStage,
+                $"PET {catalogPet.ItemCode} without earned dust keeps its initial allowance");
+            var malformed = PetProgression.NormalizeState(new PetState(catalogPet.ItemCode,255,255,0,0,0,0,0,100));
+            Check(malformed.CurrentStage == supportedMaximum && malformed.MaximumStage == supportedMaximum,
+                $"PET {catalogPet.ItemCode} rejects out-of-resource stage values");
         }
         var identities=new InventoryIdentityMap();
         identities.Synchronize(new uint[]{14000003,14000003,14000003,14000013,14000013,14000013});

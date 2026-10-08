@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using OpenNanaimo.Adapter.Services;
 
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 int checks = 0;
 void Check(bool value, string label)
 {
@@ -23,10 +24,7 @@ async Task<byte[]> ReadFrame(NetworkStream stream)
 }
 NativeDungeonState State(uint marker)
 {
-    var bytes = new byte[NativeDungeonState.Size];
-    BinaryPrimitives.WriteUInt32LittleEndian(bytes, 1);
-    BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4), marker);
-    return new NativeDungeonState(bytes);
+    return NativeDungeonState.Create(new OpenNanaimo.Adapter.Models.CharacterRecord { Id = marker, Name = "Transport" }, [], []);
 }
 async Task ExpectFailure(Func<Task> request, string expected)
 {

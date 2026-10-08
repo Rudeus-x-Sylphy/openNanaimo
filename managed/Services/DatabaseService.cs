@@ -891,6 +891,7 @@ public sealed partial class DatabaseService
         await MigrateSkillPointCardsAsync(connection, cancellationToken);
         await InitializeLuckyCardUsesAsync(connection, cancellationToken);
         await InitializeEventCardUsesAsync(connection, cancellationToken);
+        await InitializeCardPageUnionsAsync(connection, cancellationToken);
         await InitializeCardExchangeAsync(cancellationToken);
         await InitializeMentorshipAsync(cancellationToken);
         await ExpireMentorshipRequestsAsync(cancellationToken);

@@ -735,7 +735,14 @@ static void gs_thread(void* arg){
                     } else if(type==0xCF70){
                         multiplayer_mark_room(1);
                         printf("  [GS %d] GOT CF70 room-user-info request -> CF71 local owner\n",port); fflush(0);
-                        sleep(0); multiplayer_send_roster_current();
+                        sleep(0);
+#if TEAMPLAY_FEATURE_CF99_SUPER_REARM_CLEAR
+                        /* CF6D's P2P reply and CF8C reload independently request
+                           CF70. Only the first local CF71 may place this actor. */
+                        multiplayer_send_roster_current_filtered(multiplayer_cf99_roster_suppress_current());
+#else
+                        multiplayer_send_roster_current();
+#endif
                         teamplay_send_initial_roster_states_current();
                         teamplay_roster_after_current_cf70();
                         teamplay_preload_late_member_current();
@@ -1144,6 +1151,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                                reload. A late local CF71 overwrites the entry
                                position. Only observed CF99 writers need +7
                                cleared; death alone does not authorize re-entry. */
+                            multiplayer_cf99_roster_begin_room_epoch();
                             if(multiplayer_cf99_surrender_room_pending()){
                                 sleep(0);multiplayer_broadcast_cf6d_super_rearm();
                             }

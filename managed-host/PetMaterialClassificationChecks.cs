@@ -144,13 +144,13 @@ internal static class PetMaterialClassificationChecks
     {
         await using var f = await Fixture.CreateAsync(0);
         await f.ResetAsync();
-        var pet = ShopCatalog.All.First(x => x.Category == 15 && x.PetGoldDustItemCode != 0
-            && ShopCatalog.TryGet(x.PetGoldDustItemCode, out var dust) && dust.Category == 19);
+        var pet = ShopCatalog.All.Single(x => x.ItemCode == 15005007); // dark-cloud fairy catalog entry
         const uint gem = 17018835;
         await f.SeedAsync(pet.ItemCode,1);
         await f.SeedAsync(gem,2);
         await f.SeedAsync(pet.PetGoldDustItemCode,2);
         await f.ExecuteAsync($"UPDATE CharacterItems SET PetCurrentStage=1,PetMaximumStage=1 WHERE CharacterId={f.CharacterId} AND ItemCode={pet.ItemCode};");
+        await f.ExecuteAsync($"UPDATE Characters SET EquippedPetItemCode={pet.ItemCode} WHERE Id={f.CharacterId};");
         var list = await f.DispatchAsync(0xC44B,[]);
         var gemSelected = Identity(list,gem,1);
         var gemSurvivor = Identity(list,gem,0);
@@ -168,7 +168,16 @@ internal static class PetMaterialClassificationChecks
             "socket consumption preserves surviving gem and dust identities");
         var upgrade = new byte[16]; BinaryPrimitives.WriteUInt16LittleEndian(upgrade,2);
         upgrade[2]=(byte)petHandle; upgrade[5]=(byte)dustSelected;
-        Check(U16(await f.DispatchAsync(0xC44F,upgrade),8)==2000, "domain19 upgrade resolves BYTE+13 C44C material identity");
+        var upgradeResponse = await f.DispatchAsync(0xC44F,upgrade);
+        Check(U16(upgradeResponse,8)==2000, "domain19 upgrade resolves BYTE+13 C44C material identity");
+        var responseFrames = SplitFrames(upgradeResponse);
+        Check(responseFrames.Select(x => U16(x,6)).SequenceEqual(new ushort[] {0xC450,0xC47F,0xC379,0xC44C}),
+            "upgrade refresh ordering remains request driven");
+        CheckPetStages(responseFrames.Single(x => U16(x,6)==0xC44C),pet.ItemCode,1,3,"immediate refresh");
+        var actor = responseFrames.Single(x => U16(x,6)==0xC47F);
+        var box = responseFrames.Single(x => U16(x,6)==0xC379);
+        Check(actor[10]==1 && actor[11]==3 && box[174]==1 && box[175]==3,
+            "equipped actor and box agree with the upgraded inventory");
         var afterUpgrade=await f.ReadAsync();
         Check(afterUpgrade.Items.Single(x=>x.ItemCode==pet.ItemCode).PetMaximumStage==3
             && afterUpgrade.Items.Single(x=>x.ItemCode==pet.PetGoldDustItemCode).Quantity==1,
@@ -178,6 +187,26 @@ internal static class PetMaterialClassificationChecks
         string baseline=await f.SnapshotAsync();
         Check(U16(await f.DispatchAsync(0xC44F,socket),8)==0 && U16(await f.DispatchAsync(0xC44F,upgrade),8)==0
             && await f.SnapshotAsync()==baseline, "socket and upgrade consumed-handle replays fail");
+        // A fresh, still-owned dust identity must also fail without another debit.
+        list = await f.DispatchAsync(0xC44B,[]);
+        upgrade[5] = (byte)Identity(list,pet.PetGoldDustItemCode,0);
+        Check(U16(await f.DispatchAsync(0xC44F,upgrade),8)==0 && await f.SnapshotAsync()==baseline,
+            "already strengthened pet rejects another owned dust without consumption");
+        CheckPetStages(await f.DispatchAsync(0xC44B,[]),pet.ItemCode,1,3,"reopened bag");
+        await f.ReinitializeAsync();
+        await f.ReloginAsync();
+        CheckPetStages(await f.DispatchAsync(0xC44B,[]),pet.ItemCode,1,3,"new session after DB reopen");
+        var reloaded = await f.ReadAsync();
+        var native = NativeDungeonState.Create(reloaded,[],[]);
+        Check(native.Get(68)==pet.ItemCode && native.Get(72)==1 && native.Get(76)==3,
+            "native dungeon export preserves the earned maximum after reloading");
+        var state = PetProgression.GetState(reloaded,pet.ItemCode);
+        Check(state.CurrentStage==1 && state.MaximumStage==3 && state.Accessory0==gem,
+            "reloaded upgraded state and accessory survive projection");
+        Check(ShopCatalog.TryGetPetGrowthStage(pet.PetGrowthClass,1,out var growth),"fairy growth table");
+        var progressed = PetProgression.AddExperience(state with { Level=growth.MaximumLevel },1).State;
+        Check(progressed.CurrentStage==2 && progressed.MaximumStage==3,
+            "earned experience can cross the original catalog stage cap after dust");
         Console.WriteLine("PET_MATERIAL_SOCKET_UPGRADE_PASS");
     }
 
@@ -221,6 +250,24 @@ internal static class PetMaterialClassificationChecks
         Console.WriteLine("PET_MATERIAL_LEGACY_QUICKSLOT_MIGRATION_PASS");
     }
 
+    private static List<byte[]> SplitFrames(byte[] bytes)
+    {
+        var frames = new List<byte[]>();
+        for (var offset=0; offset<bytes.Length;)
+        {
+            var length=U16(bytes,offset+4);
+            Check(length>=8 && offset+length<=bytes.Length,"complete response frame");
+            frames.Add(bytes.AsSpan(offset,length).ToArray()); offset+=length;
+        }
+        return frames;
+    }
+    private static void CheckPetStages(byte[] frame,uint code,byte current,byte maximum,string boundary)
+    {
+        var row=Enumerable.Range(0,frame[10]).Single(i=>U32(frame,12+36*i)==code);
+        Check(frame[22+36*row]==current && frame[23+36*row]==maximum,
+            boundary+" preserves earned C44C current/maximum stages");
+    }
+
     private static byte[] DeleteRequest(uint code, ushort identity)
     {
         var p=new byte[36]; BinaryPrimitives.WriteUInt32LittleEndian(p,code);
@@ -260,6 +307,17 @@ internal static class PetMaterialClassificationChecks
             f.Set("ListenerPort", 12050); f.Set("OnlineTracked", true); f.Set("TownId", (byte)1); f.Set("TownPage", (byte)0);
             f.Set("Character", await f.ReadAsync());
             return f;
+        }
+        public async Task ReloginAsync()
+        {
+            await service.DisposeAsync();
+            service = new NetworkAdapterService(database, _ => { }, root);
+            session = Activator.CreateInstance(typeof(NetworkAdapterService).GetNestedType("ConnectionSession", BindingFlags.NonPublic)!, true)!;
+            string sessionId = (string)session.GetType().GetProperty("SessionId")!.GetValue(session)!;
+            Check(await database.BeginWorldSessionAsync(accountId, CharacterId, sessionId, 1, "127.0.0.1"), "fixture relogin");
+            Set("AccountId",accountId); Set("Username","gameitems"); Set("ChannelId",1);
+            Set("ListenerPort",12050); Set("OnlineTracked",true); Set("TownId",(byte)1); Set("TownPage",(byte)0);
+            Set("Character",await ReadAsync());
         }
         private void Set(string name, object value) => session.GetType().GetProperty(name)!.SetValue(session, value);
         public async Task<byte[]> DispatchAsync(ushort opcode, byte[] payload, ushort? control = null)

@@ -15,9 +15,13 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
     'scripts/deploy_card_use_update.py',
+    'scripts/prepare_card_page_update.py',
+    'scripts/test_card_page_update.py',
     'docs/event-card-rewards.md',
     'tests/CardUseRegression/CardUseRegression.csproj',
     'tests/CardUseRegression/Program.cs',
+    'tests/CardPageUnionRegression/CardPageUnionRegression.csproj',
+    'tests/CardPageUnionRegression/Program.cs',
     'scripts/refresh_manifest.py',
     'scripts/refresh_source_manifest.py',
     'gui_launcher/data/inventory_cards.json',

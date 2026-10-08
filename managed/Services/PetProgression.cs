@@ -52,10 +52,17 @@ internal static class PetProgression
     {
         if (!ShopCatalog.TryGet(15, state.ItemCode, out var pet))
             return state;
-        var catalogMaximum = Math.Clamp((int)pet.PetUpgradeStage, 1, 3);
-        var minimum = Math.Clamp((int)pet.PetMinimumModelStage, 1, catalogMaximum);
+        // PET field22 defines the initial growth allowance:
+        // ChangePetItemAsync(action2) persists a dust upgrade as MaximumStage=3.
+        // Preserve that earned allowance only for pets with a supported dust;
+        // pets without one (including starter roaches) keep their catalog cap.
+        var initialMaximum = Math.Clamp((int)pet.PetUpgradeStage, 1, 3);
+        var supportedMaximum = pet.PetGoldDustItemCode != 0
+            && ShopCatalog.TryGet(19, pet.PetGoldDustItemCode, out _)
+            ? 3 : initialMaximum;
+        var minimum = Math.Clamp((int)pet.PetMinimumModelStage, 1, supportedMaximum);
         var maximum = (byte)Math.Clamp(
-            (int)(state.MaximumStage == 0 ? catalogMaximum : state.MaximumStage), minimum, catalogMaximum);
+            (int)(state.MaximumStage == 0 ? initialMaximum : state.MaximumStage), minimum, supportedMaximum);
         var current = (byte)Math.Clamp(
             (int)(state.CurrentStage == 0 ? pet.PetModelStage : state.CurrentStage), minimum, maximum);
         var level = state.Level;

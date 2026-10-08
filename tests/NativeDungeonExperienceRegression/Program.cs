@@ -64,7 +64,7 @@ internal static class Program
             settlementBefore, new NativeDungeonState(boostedBytes), null,
             storedLevel: 1, storedExperience: beforeExperience, vitality: 0, intelligence: 0,
             storedMaxHp: 160, storedMaxMp: 100);
-        Check(boosted.MaxHp == 1440 && boosted.MaxMp == 100
+        Check(boosted.MaxHp == CharacterProgression.CalculateMaxHp(1) && boosted.MaxMp == CharacterProgression.CalculateMaxMp(1)
             && boosted.CurrentHp == 2500 && boosted.CurrentMp == 350,
             "equipped-resource recovery persists full current HP/MP independently of base maxima");
         Put(boostedBytes, 20, 9999); Put(boostedBytes, 28, 9999);

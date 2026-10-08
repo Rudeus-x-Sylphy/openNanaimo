@@ -11,6 +11,7 @@
     <ProjectReference Include="../../managed/Nanaimo.Gameplay.csproj" />
     <Compile Include="../../managed-host/PureNewPlayerChecks.cs" Link="PureNewPlayerChecks.cs" />
     <Compile Include="../../managed-host/TutorialAppearanceChecks.cs" Link="TutorialAppearanceChecks.cs" />
+    <Compile Include="../../managed-host/EquipmentInitializationChecks.cs" Link="EquipmentInitializationChecks.cs" />
     <Content Include="../../adapter_runtime/资源/数据/**/*" Link="资源/数据/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

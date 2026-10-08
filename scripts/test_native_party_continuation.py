@@ -20,7 +20,13 @@ BRIDGE = Path(os.environ.get("NANAIMO_SOCIAL_BRIDGE", ROOT / "adapter_runtime/na
 
 class NativePartyContinuationTests(unittest.TestCase):
     def test_solo_observed_continuation_without_reentering_room(self):
-        """The failed UID4 run: CF8B -> one roster -> CFEB, without CF77/CF6C."""
+        self.run_solo_continuation(False)
+
+    def test_solo_cf99_duplicate_roster_does_not_reposition(self):
+        self.run_solo_continuation(True)
+
+    def run_solo_continuation(self, surrender):
+        """UID4 continuation with P2P-first and reload-first CF70 orderings."""
         port = None
         for candidate in range(62100, 64000, 10):
             reserved = []
@@ -78,17 +84,30 @@ class NativePartyContinuationTests(unittest.TestCase):
                     struct.pack_into("<I", state, 28, 44)
                     exchange(0xF100, state, 0xF102)
                     selection = bytearray(32); selection[26] = 1
+                    selection[28] = 2 if surrender else 0
                     exchange(0xCF6C, selection, 0xCF6D)
                     total_rosters = 0
                     for epoch in range(3):
+                        real_stage = int(surrender and epoch > 0)
+                        if surrender and epoch == 1:
+                            exchange(0xCFD1, bytes(20), 0xCFD2)
                         exchange(0xC587, b"", 0xC588)
                         roster, records = exchange(0xCF70, bytes(4), 0xCF71)
                         self.assertEqual(sum(struct.unpack_from("<H", x, 6)[0] == 0xCF71 for x in records), 1)
                         self.assertEqual(struct.unpack_from("<HH", roster, 0x18), (4, 4))
                         self.assertEqual(roster[0x56], 0)
                         total_rosters += 1
+                        if surrender and epoch:
+                            if epoch == 2:
+                                exchange(0xCFD1, bytes(20), 0xCFD2)
+                            exchange(0xC587, b"", 0xC588)
+                            # The delayed P2P/reload request still gets vitals,
+                            # ready state and peers, but never repositions self.
+                            _, duplicate = exchange(0xCF70, bytes(4), 0xCF72, low=5+epoch)
+                            self.assertFalse(any(struct.unpack_from("<H", x, 6)[0] == 0xCF71 for x in duplicate))
+                            self.assertTrue(any(struct.unpack_from("<H", x, 6)[0] == 0xCF7E for x in duplicate))
                         exchange(0xCFD9, b"", 0xCFDA)
-                        exchange(0xCFEB, bytes(4), 0xCFEC)
+                        exchange(0xCFEB, struct.pack("<HH", real_stage, 0), 0xCFEC)
                         exchange(0xCFD3, b"", 0xCFD4)
                         exchange(0xCFD5, struct.pack("<I", 1), 0xCFD6)
                         start, records = exchange(0xCF7F, b"", 0xCF80)
@@ -98,19 +117,23 @@ class NativePartyContinuationTests(unittest.TestCase):
                             # Exercise the native post-authorization loading
                             # branch, not Boss defeat or managed settlement
                             # permission (covered by DungeonTransitionRegression).
-                            reset, records = exchange(0xCF8B, bytes((0, 0, 2, 0)), 0xCF8C, low=9+epoch)
+                            if surrender:
+                                exchange(0xCF99, b"", 0xCF9A)
+                            reset, records = exchange(0xCF8B, bytes((1 if surrender else 0, 0, 1 if surrender else 2, 0)), 0xCF8C, low=9+epoch)
                             ops = [struct.unpack_from("<H", x, 6)[0] for x in records]
-                            self.assertNotIn(0xCF6D, ops)
+                            self.assertEqual(ops.count(0xCF6D), int(surrender))
+                            if surrender:
+                                self.assertLess(ops.index(0xCF6D), ops.index(0xCF8C))
                             self.assertNotIn(0xCF71, ops)
                             self.assertNotIn(0xCF80, ops)
                             self.assertEqual(len(reset), 48)
-                            self.assertEqual(reset[0x28:0x2A], bytes(2))
-                            self.assertEqual(struct.unpack_from("<H", reset, 0x2E)[0], epoch + 1)
+                            self.assertEqual(reset[0x28:0x2A], bytes((int(surrender), 0)))
+                            self.assertEqual(struct.unpack_from("<H", reset, 0x2E)[0], 2 if surrender else epoch + 1)
                     for index in range(105):
                         exchange(0xF101, b"", 0xF102, low=9 if index % 2 else 14)
                     self.assertGreaterEqual(sequence_wraps, 1)
                     self.assertEqual(total_rosters, 3)
-                    print("SOLO_CONTINUATION_PASS uid=4 epochs=3 no-reentry no-unsolicited-roster/start sequence-ring checksum request-low")
+                    print(f"SOLO_CONTINUATION_PASS uid=4 epochs=3 cf99={surrender} one-local-roster-per-epoch sequence-ring checksum request-low")
                 except Exception:
                     output.flush()
                     print((root / "native.txt").read_text("utf-8", errors="replace")[-12000:])
@@ -234,8 +257,18 @@ int main(void){
                         member_data = receive(member, 0xCFEC)
                         self.assertEqual(owner_data[8:0x2DA], member_data[8:0x2DA])
                         self.assertEqual(owner_data[0x2DA:0x2DE], member_data[0x2DA:0x2DE])
+                        member.sendall(frame(0xF101))
+                        receive(member, 0xF102)  # fence previous roster/preload frames
                         member.sendall(frame(0xCF70))
-                        receive(member, 0xCF71)
+                        member.sendall(frame(0xF101))
+                        refreshed = []
+                        receive(member, 0xF102, refreshed)
+                        own_rows = [x for x in refreshed if struct.unpack_from("<H", x, 6)[0] == 0xCF71
+                                    and struct.unpack_from("<H", x, 0x1A)[0] == 12]
+                        self.assertEqual(len(own_rows), 0 if surrender_member and epoch == 1 else 1)
+                        self.assertTrue(any(struct.unpack_from("<H", x, 6)[0] == 0xCF71
+                                            and struct.unpack_from("<H", x, 0x1A)[0] == 11 for x in refreshed))
+                        self.assertTrue(any(struct.unpack_from("<HH", x, 6) == (0xCF72, 12) for x in refreshed))
                         if epoch == 1:
                             member.sendall(frame(0xCFEB, struct.pack("<HH", real_stage, 0)))
                             member_requested_data = receive(member, 0xCFEC)

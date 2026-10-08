@@ -41,21 +41,19 @@ var full = NetworkAdapterService.MergeNativeDungeonQuickItemResources(resources,
 Check(full.CurrentHp == 2000 && full.CurrentMp == 1000, "recovery clamps to each actor's effective maxima");
 foreach (var blocked in new[] { resources with { SettlementFrozen = true }, resources with { CurrentHp = 0 } })
     Check(ReferenceEquals(blocked, NetworkAdapterService.MergeNativeDungeonQuickItemResources(blocked, null, [Effect()], 12)), "no recovery after death or settlement freeze");
-var legacy = new byte[NativeDungeonState.LegacySize];
-new Random(1729).NextBytes(legacy);
-BinaryPrimitives.WriteUInt32LittleEndian(legacy, 1);
-BinaryPrimitives.WriteUInt32LittleEndian(legacy.AsSpan(1952), 0);
-var upgraded = new NativeDungeonState(legacy);
-Check(upgraded.Bytes.Length == NativeDungeonState.Size
-    && upgraded.Bytes.AsSpan(0, NativeDungeonState.LegacySize).SequenceEqual(legacy),
-    "legacy state retains every byte including grades and clear masks");
+// Live protocol accepts schema4 only; old payloads require explicit offline migration.
+foreach (var length in new[] { 5119, 5120, 5121, 5124, 5125, 5144, NativeDungeonState.Size - 1, NativeDungeonState.Size + 1 })
+{
+    var legacy = new byte[length]; new Random(1729).NextBytes(legacy);
+    var archived = legacy.ToArray(); bool rejected = false;
+    try { _ = new NativeDungeonState(legacy); } catch (InvalidDataException) { rejected = true; }
+    Check(rejected && !NativeDungeonState.IsSupportedSize(length) && legacy.SequenceEqual(archived),
+        "legacy or malformed live state rejected without mutating archived bytes: " + length);
+}
+var upgraded = NativeDungeonState.Create(new OpenNanaimo.Adapter.Models.CharacterRecord { Id = 1, Name = "CoupleFixture" }, [], []);
 Check(upgraded.Get(NativeDungeonState.CouplePartnerUidOffset) == 0,
-    "legacy state has no inherited live partner authorization");
-Check(NativeDungeonState.IsSupportedSize(5120) && NativeDungeonState.IsSupportedSize(5124)
-    && !NativeDungeonState.IsSupportedSize(5119) && !NativeDungeonState.IsSupportedSize(5121)
-    && !NativeDungeonState.IsSupportedSize(5125), "persisted state size compatibility is explicit and bounded");
-var originalByte = legacy[5024]; upgraded.Bytes[5024] ^= 255;
-Check(legacy[5024] == originalByte, "legacy upgrade does not mutate the archived input buffer");
+    "new current state has no inherited live partner authorization");
+Check(NativeDungeonState.IsSupportedSize(NativeDungeonState.Size), "current schema size is explicitly supported");
 Check(ReferenceEquals(upgraded.Bytes, new NativeDungeonState(upgraded.Bytes).Bytes),
     "current-size state retains normal in-place projection semantics");
 var catalog = CardCatalog.DecryptFields("OpenNanaimo.Adapter.ClientData.CI._D28");
@@ -97,7 +95,7 @@ try
     var nativeResources = BattleResourceSnapshot.Capture(before, 4);
     Set("NativeCheckpoint", before); Set("NativeBattleResources", nativeResources);
     CoupleBenefitPolicy.WriteNativePartner(before, 99);
-    Check(before.Get(NativeDungeonState.CouplePartnerUidOffset) == 99 && before.Get(5116) > 0 && before.Bytes.Length == 5124,
+    Check(before.Get(NativeDungeonState.CouplePartnerUidOffset) == 99 && before.Get(5116) > 0 && before.Bytes.Length == NativeDungeonState.Size,
         "partner has independent state storage");
     CoupleBenefitPolicy.WriteNativePartner(before, (ushort)character.Id);
     Check(before.Get(NativeDungeonState.CouplePartnerUidOffset) == 0, "self cannot be its own sharing partner");

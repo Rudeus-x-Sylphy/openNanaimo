@@ -109,7 +109,10 @@ def party(dungeon=2, difficulty=2, episode=0, stage=0, quick_entry=False, show_s
                 receive(clients[0], 0xCFEC)
                 if late_roster:
                     clients[1].sendall(frame(0xCF70))
-                preload = drain(clients[1])
+                # Synchronize on the required preload response before checking readiness.
+                preload = []
+                receive(clients[1], 0xCFEC, preload)
+                preload.extend(drain(clients[1]))
                 operations = [struct.unpack_from('<H', item, 6)[0] for item in preload]
                 assert 0xCFEC in operations and 0xCF80 not in operations
                 for connection in clients:

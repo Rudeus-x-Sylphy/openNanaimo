@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 349,
+  "count": 351,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 22510592,
-      "sha256": "ED098A16C13B4F82FD809D742FD0052616F5C315F9BA1A953ED7167B0D88C2F6"
+      "size": 22511104,
+      "sha256": "3160C1C298FB9F7CE44DFD4B284ED4AE397E17DA75FF059AECB13B18AECB87BA"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 22510592,
-      "sha256": "8C367384DFAFD8D4397A3B6468986039B8291C25F96ABA72485D375547C2B479"
+      "size": 22511104,
+      "sha256": "B42B9219879CE1D29308A4814D2B6874A832DAB941037755F3EE5ECB9EEC103F"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 22591488,
-      "sha256": "686EF1B015DF2F313A9C60D20AF46A3D856C827FB6E78DA7D7E44CCE6E6B903C"
+      "size": 22592000,
+      "sha256": "5D2064A03C0F761444285F2EF2DC4C65BA3541C22CA3C76DC0DCFDCD4137C26B"
     }
   },
   "files": [
@@ -48,8 +48,8 @@
     },
     {
       "path": "managed-host/ApartmentGuideLifecycleChecks.cs",
-      "size": 11688,
-      "sha256": "A69DA8437FC9D3612CDE6D04C2677E6833FEE0002F486C1D02BD7A368B4B18CE"
+      "size": 15717,
+      "sha256": "8A3979B7331BA5CB9C10F6456B92C3686E46CC7A3E8182EDA56753B404A66C2F"
     },
     {
       "path": "managed-host/ApartmentHousingChecks.cs",
@@ -183,8 +183,8 @@
     },
     {
       "path": "managed-host/InventoryProtocolChecks.cs",
-      "size": 30096,
-      "sha256": "8B14EDF142EA9AB28865267813C258EC37DF894136FEDA57E163852CD740A768"
+      "size": 30926,
+      "sha256": "10308BAA23D5BED52DDE52134F4A3ACB9B23C9C8B0504F8A18CD4838222BC126"
     },
     {
       "path": "managed-host/InventoryQuickbarChecks.cs",
@@ -268,8 +268,8 @@
     },
     {
       "path": "managed-host/PetMaterialClassificationChecks.cs",
-      "size": 20016,
-      "sha256": "7B6EFA35EC1527C93FAA536CAF3089AD7F1398D74A2A066E6091EA678ECFF4C9"
+      "size": 23804,
+      "sha256": "E9F75A8664442D83A76C718392AC32B6737EEDBBB54ACC73FA55D5E43242E4B5"
     },
     {
       "path": "managed-host/PetRevivalVillageChecks.cs",
@@ -522,6 +522,11 @@
       "sha256": "171E94B23DAEE21061D0B97C60A5758049E220A22C67951FB9414DEAF23F248D"
     },
     {
+      "path": "managed/Services/CardPageUnionPolicy.cs",
+      "size": 1647,
+      "sha256": "528FE7A47FDA9DC91FD4D2C8708EE73477999BDC50B9A159A867347308763F1E"
+    },
+    {
       "path": "managed/Services/CardSynthesisCatalog.cs",
       "size": 3819,
       "sha256": "B11419E9AF53A2975AA25BF32C210F73C6B555EC23A63D0D9928A69E2CBC7EA2"
@@ -595,6 +600,11 @@
       "path": "managed/Services/DatabaseService.CardExchange.cs",
       "size": 25446,
       "sha256": "FA8729639C2BED8E75495797AE1F8CD9DF772D11653968887A4016876CC2506C"
+    },
+    {
+      "path": "managed/Services/DatabaseService.CardPageUnion.cs",
+      "size": 5150,
+      "sha256": "14455E0BD9B68B7DF91F527866ECBB0120E3B170D39173F9CBDF033946A657B0"
     },
     {
       "path": "managed/Services/DatabaseService.CoupleBenefits.cs",
@@ -708,8 +718,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 584376,
-      "sha256": "DDCD07EEE9E17BC39AC6906528B2C112076C0AAB5115C8D57D182B5C2EB2364F"
+      "size": 584452,
+      "sha256": "147D4371051895D592B062948A20620334A24EDDF4C92C195B34B6292F7F6F59"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -818,8 +828,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.ApartmentGuideLifecycle.cs",
-      "size": 1528,
-      "sha256": "0215263CF65D3D637C7DFB58509501AC657119A28DDF1E09B4F34FC48F14B74C"
+      "size": 2012,
+      "sha256": "6D4C3A533008F13F4920981BE4FB6A22A33AA8E8ED0BEB4D24642D9472AF9D23"
     },
     {
       "path": "managed/Services/NetworkAdapterService.ApartmentHousing.cs",
@@ -1028,8 +1038,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 985886,
-      "sha256": "41A10E91B0C5D85FBE35DABD698A67CC4F9174A29F9CAACC889DB66279610740"
+      "size": 986353,
+      "sha256": "2FECCB8776677364D7C12D3BEF9E9D6D9CD346D4CB2F6E277B0621656933B065"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1043,8 +1053,8 @@
     },
     {
       "path": "managed/Services/PetProgression.cs",
-      "size": 10655,
-      "sha256": "9F03B2F127A24E9B1AFB50490D3951490ED846D7C53ED1858ACBED1CF03150C3"
+      "size": 11125,
+      "sha256": "414C31081F90273CD0471C8ED0FDD12DDBF82BBB1C09B77416B7913770C121A8"
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
@@ -1089,7 +1099,7 @@
     {
       "path": "managed/Services/TownTitleProjection.cs",
       "size": 2413,
-      "sha256": "5C7BEBA8299E284A9D27AB17D4B6986771652891F66DFD0C4F94F2239EE1D281"
+      "sha256": "1040D09BFB5041B4649F43CC864F9930E5BA53864311B263ADCB41A6038A20CE"
     },
     {
       "path": "managed/Services/TownTravelPolicy.cs",
@@ -1393,8 +1403,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 147427,
-      "sha256": "D2CAB6AE941EE515AFF46A4E0DAD2F021284B5B913D5E8179C7AA969C4ACB0FB"
+      "size": 147856,
+      "sha256": "6D02277322262369BE9E30B7049058FBED1B43669320AC8DD6AD6EF4A8AD7C24"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
@@ -1478,8 +1488,8 @@
     },
     {
       "path": "release/components/multiplayer_combat/realtime_runtime.inc",
-      "size": 38474,
-      "sha256": "7CDB36D70FB77E5E3F102746C894A41B1B2A3F6EA41558E81B90CBEE0FFA13FC"
+      "size": 39780,
+      "sha256": "75D9D17E62CE1E48AA7D6139E617DC10E602687A4B2CCAAF44F6F9D6EC603435"
     },
     {
       "path": "release/components/multiplayer_combat/start_runtime.inc",
@@ -1488,8 +1498,8 @@
     },
     {
       "path": "release/components/multiplayer_combat/teamplay_runtime.inc",
-      "size": 2175,
-      "sha256": "D16AC2C42D2922DA95A04079C46347B5DF5A771B42AC81B40E020791DA9519D6"
+      "size": 2778,
+      "sha256": "A67FA3ACAE98F53BF2C1D121177A3296B5427068E1E32D98CF6BDE95DB950ECC"
     },
     {
       "path": "release/components/network/network_main.inc",

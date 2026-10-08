@@ -172,7 +172,8 @@ internal static class Program
             foreach (var session in new[] { owner, member })
             {
                 var exported = new NativeDungeonState(((NativeDungeonState)Get(session, "NativeCheckpoint")!).Bytes.ToArray());
-                Put32(exported.Bytes, 12, exported.Get(12) + 100);
+                var total = exported.TotalExperience64 + 100;
+                exported.SetProgression(CharacterProgression.CalculateLevel(total), total);
                 await using var worker = new Worker(Result(owner, member), exported);
                 await using var client = new NativeDungeonClient(_ => Task.CompletedTask, worker.Port);
                 await client.ConnectAsync(Token); Set(session, "NativeDungeon", client);

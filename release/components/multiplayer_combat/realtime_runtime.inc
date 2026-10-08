@@ -15,6 +15,7 @@ struct multiplayer_profile {
 };
 struct multiplayer_connection {
     unsigned managed_owner_uid,managed_room_slot,managed_room_identity;
+    unsigned cf99_roster_guard,cf99_roster_seen;
     int active,room_active,party_active,port;
     int village_active,village_actor_ready;
     SOCKET socket;
@@ -127,11 +128,17 @@ static void multiplayer_broadcast_reset(unsigned real_stage,unsigned show_stage,
 #if TEAMPLAY_FEATURE_CF99_SUPER_REARM_CLEAR
 static unsigned g_surrender_rearm_cf99_surrender_mask=0u;
 static void multiplayer_cf99_surrender_mark_current(void){int src=g_multi_current;if(src>=0&&src<MULTI_MAX_PLAYERS){g_surrender_rearm_cf99_surrender_mask|=1u<<(unsigned)src;printf("  [MULTI] CF99 surrender flag uid=%u mask=0x%X\n",g_multi_conn[src].uid,g_surrender_rearm_cf99_surrender_mask);fflush(0);}}
-static void multiplayer_cf99_surrender_clear_current(void){int src=g_multi_current;if(src>=0&&src<MULTI_MAX_PLAYERS)g_surrender_rearm_cf99_surrender_mask&=~(1u<<(unsigned)src);}
+static void multiplayer_cf99_surrender_clear_current(void){int src=g_multi_current;if(src>=0&&src<MULTI_MAX_PLAYERS){g_surrender_rearm_cf99_surrender_mask&=~(1u<<(unsigned)src);g_multi_conn[src].cf99_roster_guard=0u;g_multi_conn[src].cf99_roster_seen=0u;}}
+/* An accepted continuation starts a new roster epoch for every live member.
+   Only the two CF70 requests caused by CF99 re-entry are coalesced; later
+   explicit refreshes and
+   owner-change pushes retain their existing full roster behavior. */
+static void multiplayer_cf99_roster_begin_room_epoch(void){int i;if(g_multi_current<0)return;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){g_multi_conn[i].cf99_roster_guard=0u;g_multi_conn[i].cf99_roster_seen=0u;}}
+static int multiplayer_cf99_roster_suppress_current(void){int src=g_multi_current;if(src<0||src>=MULTI_MAX_PLAYERS||!g_multi_conn[src].active||!g_multi_transport_alive[src]||!g_multi_conn[src].room_active||!g_multi_conn[src].cf99_roster_guard)return 0;if(!g_multi_conn[src].cf99_roster_seen){g_multi_conn[src].cf99_roster_seen=1u;return 0;}g_multi_conn[src].cf99_roster_guard=0u;g_multi_conn[src].cf99_roster_seen=0u;printf("  [MULTI] CF99 roster coalesced uid=%u: retain peers/CF72/CF7E, no repeat local CF71 position write\n",g_multi_conn[src].uid);fflush(0);return 1;}
 static int multiplayer_cf99_surrender_room_pending(void){int i,src=g_multi_current;if(src<0)return 0;for(i=0;i<MULTI_MAX_PLAYERS;i++)if((g_surrender_rearm_cf99_surrender_mask&(1u<<(unsigned)i))&&g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active)return 1;return 0;}
 /* A peer's CF99 must not restart the untouched clients' entry controllers.
    The mask is connection/room-local and is cleared on reuse, create and leave. */
-static void multiplayer_broadcast_cf6d_super_rearm(void){int i,src=g_multi_current,n=0;if(src<0)return;for(i=0;i<MULTI_MAX_PLAYERS;i++)if((g_surrender_rearm_cf99_surrender_mask&(1u<<(unsigned)i))&&g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){multi_switch_to(i,src);send_cf6d_entry(g_multi_conn[i].socket);multi_switch_back(src,i);g_surrender_rearm_cf99_surrender_mask&=~(1u<<(unsigned)i);n++;}printf("  [MULTI] SURRENDER_REARM CF99 Super-Boss pre-CF8C CF6D rearm peers=%d remaining_mask=0x%X\n",n,g_surrender_rearm_cf99_surrender_mask);fflush(0);}
+static void multiplayer_broadcast_cf6d_super_rearm(void){int i,src=g_multi_current,n=0;if(src<0)return;for(i=0;i<MULTI_MAX_PLAYERS;i++)if((g_surrender_rearm_cf99_surrender_mask&(1u<<(unsigned)i))&&g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){g_multi_conn[i].cf99_roster_guard=1u;g_multi_conn[i].cf99_roster_seen=0u;multi_switch_to(i,src);send_cf6d_entry(g_multi_conn[i].socket);multi_switch_back(src,i);g_surrender_rearm_cf99_surrender_mask&=~(1u<<(unsigned)i);n++;}printf("  [MULTI] SURRENDER_REARM CF99 Super-Boss pre-CF8C CF6D rearm peers=%d remaining_mask=0x%X\n",n,g_surrender_rearm_cf99_surrender_mask);fflush(0);}
 #endif
 static void multiplayer_send_roster_current(void){int i,src=g_multi_current;unsigned owner;struct multiplayer_profile target;if(src<0)return;owner=multiplayer_owner_uid();multi_capture_profile(&target);for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){multi_apply_profile(&g_multi_conn[i].profile);send_cf71_member(g_multi_conn[src].socket,owner,g_multi_conn[i].uid);}multi_apply_profile(&target);}
 static void multiplayer_send_peer_list_current(void){char p[4096];int i,n=0,src=g_multi_current,r;if(src<0)return;mkpkt(p,0xCFD4,0x0C+0x18*(MULTI_MAX_PLAYERS-1),1);p[8]=(char)0x90;p[9]=1;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(i!=src&&g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){r=0x0C+n*0x18;p[r+1]=(char)n;p[r+2]=40;stable_write_advertised_ip(p,r+4);stable_resource_put16(p,r+0x14,12050u);stable_resource_put16(p,r+0x16,g_multi_conn[i].uid);n++;}p[0x0A]=(char)n;p[0x0B]=0;stable_resource_put16(p,4,0x0C+n*0x18);sendbuf(g_multi_conn[src].socket,p,0x0C+n*0x18);printf("  S0xCFD4 multiplayer peers=%d len=%u uid=%u\n",n,0x0C+n*0x18,g_multi_conn[src].uid);fflush(0);}

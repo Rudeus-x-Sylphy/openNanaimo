@@ -26,7 +26,7 @@ async Task<object?> Sql(string sql)
     await con.OpenAsync(); await using var cmd = con.CreateCommand(); cmd.CommandText = sql;
     return await cmd.ExecuteScalarAsync();
 }
-await Sql($"UPDATE Characters SET Hans=321,Cash=654,Level=12,MaxHp=2345,MaxMp=345,AttackModifier=6,DefenseFlat=7 WHERE Id={sourceCharacter.Id}");
+await Sql($"UPDATE Characters SET Hans=321,Cash=654,Level=12,Experience={CharacterProgression.ExperienceRequiredForLevel(12)},CurveVersion={CharacterProgression.CurveVersion},MaxHp=2345,MaxMp=345,AttackModifier=6,DefenseFlat=7 WHERE Id={sourceCharacter.Id}");
 await Sql($"INSERT INTO CharacterCards(CharacterId,CardCode,Quantity,UpdatedAt) VALUES({sourceCharacter.Id},12000001,1,'protected'),({sourceCharacter.Id},13000001,2,'catalog')");
 var appearance=sourceCharacter.Appearance.ToArray();
 BinaryPrimitives.WriteUInt32LittleEndian(appearance.AsSpan(20),10150103);

@@ -42,6 +42,36 @@ internal static class ApartmentGuideLifecycleChecks
         payload = NetworkAdapterService.BuildApartmentGuideCompletionPayload(true, character, false, 0, null);
         Check(U16(payload, 12) == 1 && U16(payload, 14) == 1, "legacy zero maxima use the same nonzero bound as recovery");
 
+        // All seven story guides use effective resource maxima for HUD sizing.
+        // Cover current HP=64500 with base HP=21500 and pet-adjusted resources.
+        var shopCharacter = new CharacterRecord { Level = 200, Experience = CharacterProgression.ExperienceRequiredForLevel(200), MaxHp = 21500, MaxMp = 2100,
+            CurrentHp = 64500, CurrentMp = 7510 };
+        var shopResources = new BattleResourceSnapshot(64500, 7510, 2)
+            { MaximumHp = 64500, MaximumMp = 8520 };
+        for (uint guide = 0; guide <= 6; ++guide)
+        {
+            var kind = guide == 6 ? (ushort)7 : (ushort)0;
+            payload = NetworkAdapterService.BuildStoryGuideCompletionPayload(
+                true, guide, shopCharacter, true, kind, shopResources);
+            Check(payload.Length == 28 && payload[0] == 0 && payload[1] == 1
+                && U32(payload, 4) == guide && U16(payload, 8) == kind && payload[11] == 200,
+                $"guide {guide} preserves result, reward flag, ID, kind, level and extent");
+            Check(U16(payload, 12) == 64500 && U16(payload, 14) == 8520
+                && shopResources.CurrentHp * 100.0 / U16(payload, 12) <= 100
+                && shopResources.CurrentMp * 100.0 / U16(payload, 14) <= 100,
+                $"guide {guide} keeps effective resources inside HUD bounds");
+            payload = NetworkAdapterService.BuildStoryGuideCompletionPayload(
+                false, guide, shopCharacter, true, kind, shopResources);
+            Check(payload[0] == (guide == 5 ? 3 : 1) && payload.Skip(1).All(x => x == 0),
+                $"guide {guide} preserves its own rejection branch without resources");
+            payload = NetworkAdapterService.BuildStoryGuideCompletionPayload(
+                true, guide, shopCharacter, false, kind, null);
+            Check(U16(payload, 12) == 21500 && U16(payload, 14) == 2100 && payload[1] == 0,
+                $"guide {guide} no-snapshot fallback and repeated reward flag unchanged");
+        }
+        Check(shopCharacter.MaxHp == 21500 && shopCharacter.CurrentHp == 64500
+            && shopResources.CurrentHp == 64500, "shared guide construction never mutates saved or live resources");
+
         var root = Path.Combine(Path.GetTempPath(), "open-nanaimo-apartment-guide-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try
@@ -84,8 +114,31 @@ internal static class ApartmentGuideLifecycleChecks
             completion[0] = 0;
             BinaryPrimitives.WriteUInt32LittleEndian(completion.AsSpan(4), 0);
             var other = await Send(service, session, 0xC599, completion);
-            Check(other is { Length: 36 } && U16(other, 20) == character.MaxHp,
-                "out-of-order other-guide completion keeps its own unchanged contract");
+            Check(other is { Length: 36 } && U32(other, 12) == 0 && U16(other, 20) == resources.MaximumHp,
+                "intro guide completion shares effective maxima and retains its own identity");
+            // Exercise the production C599 dispatch, DB reward transaction, retry and reopen.
+            Set(session, "NonCombatResourceSnapshot", shopResources);
+            BinaryPrimitives.WriteUInt32LittleEndian(completion.AsSpan(4), 1);
+            var shopBefore = (await db.GetCharacterAsync(account))!;
+            var petShop = await Send(service, session, 0xC599, completion);
+            Check(petShop is { Length: 36 } && petShop[8] == 0 && petShop[9] == 1
+                && U32(petShop, 12) == 1 && U16(petShop, 20) == 64500 && U16(petShop, 22) == 8520,
+                "pet-shop C599 returns exactly one full C59A with effective maxima");
+            var shopAfter = (await db.GetCharacterAsync(account))!;
+            uint[] gifts = [15005007u, 17000003u, 21000001u, 14000005u];
+            foreach (var gift in gifts)
+                Check(shopAfter.Items.Single(x => x.ItemCode == gift).Quantity
+                    == (shopBefore.Items.FirstOrDefault(x => x.ItemCode == gift)?.Quantity ?? 0) + 1,
+                    $"pet-shop gift {gift} committed once without changing its code");
+            petShop = await Send(service, session, 0xC599, completion);
+            Check(petShop is { Length: 36 } && petShop[8] == 0 && petShop[9] == 0
+                && U16(petShop, 20) == 64500, "pet-shop retry keeps resources and does not grant again");
+            var reopened = await new DatabaseService(root).GetCharacterAsync(account);
+            foreach (var gift in gifts)
+                Check(reopened!.Items.Single(x => x.ItemCode == gift).Quantity
+                    == shopAfter.Items.Single(x => x.ItemCode == gift).Quantity,
+                    $"pet-shop gift {gift} survives reopen without duplication");
+            Set(session, "NonCombatResourceSnapshot", resources);
             var beforeGuideReward = (await db.GetCharacterAsync(account))!;
             var hansBefore = beforeGuideReward.Hans;
             var certificatesBefore = beforeGuideReward.Items.FirstOrDefault(

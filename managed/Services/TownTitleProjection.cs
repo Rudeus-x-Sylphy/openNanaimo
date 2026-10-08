@@ -7,9 +7,9 @@ internal static class TownTitleProjection
     internal const int UserInfoPayloadLength = 104;
     internal const int ControlOffset = 52;
     internal const int GradeShift = 6;
-    internal const uint GradeMask = 0x7Fu << GradeShift;
-    internal const int LevelShift = 13;
-    internal const uint LevelMask = 0x7Fu << LevelShift;
+    internal const uint GradeMask = 0x3Fu << GradeShift;
+    internal const int LevelShift = 12;
+    internal const uint LevelMask = 0xFFu << LevelShift;
     internal const ushort MaximumSceneId = 0x0FFF;
     internal const int DisplayModeOffset = 102; // C36A full-frame +0x6E, NOT a UID
     internal const int LoadDisplayModeOffset = 0x2D4 - 8;
