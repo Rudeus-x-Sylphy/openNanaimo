@@ -126,9 +126,9 @@ int main(int argc,char**argv){
        contact index, WORD+0x12 stays 0 (meat window = player immune) and WORD+0x0A
        stays 100 so the terminal side effects remain on the kind40 frame + D012. */
     memset(req,0,sizeof(req));req[8]=40;req[0x12]=9;req[0x13]=0;i=sends;
-    send_d010_boss_meat_contact_number(100,req,21u,4321u,3960u);
+    send_d010_boss_meat_contact_number(100,21u,4321u,3960u,717u);
     CHECK(sends==i+1&&size==36u&&word(6)==0xD010&&word(8)==21u&&word(10)==100u);
-    CHECK(word(16)==4321u&&word(18)==0u&&word(26)==9u&&frame[29]==20u&&word(34)==3960u);
+    CHECK(word(16)==4321u&&word(18)==0u&&word(26)==717u&&frame[29]==20u&&word(34)==3960u);
     return 0;
 }
 '''

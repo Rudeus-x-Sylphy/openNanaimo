@@ -9,15 +9,15 @@
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
       "size": 23543808,
-      "sha256": "E0DF46B6D067D80B202A61F9F57493C1F981F82E125B1E9120A54D5A3DF64B23"
+      "sha256": "3FCCFD9376601D74F85C1E93D86B3BB39A1901EE8D9409CB54C4F3D109FBF434"
     },
     "adapter/nanaimo_adapter_testports.exe": {
       "size": 23543808,
-      "sha256": "1F6F55E4F06D3A420084965D154F9B8D5A71D143196734BF12CB6FD02F2BEB98"
+      "sha256": "370878BC0518F0920F826D2D161C8A726C8F4226DE924D9104886E0B16F8F4FB"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
       "size": 23624704,
-      "sha256": "4D586C671641775DDB3458461770319EA68DF5007677815F214BF467550BC634"
+      "sha256": "6F4085604D07EE0734438A0C23D258827D616F480DA07A5542741D470150A188"
     }
   },
   "files": [
@@ -1413,8 +1413,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 152609,
-      "sha256": "44DD3E68BAC124309C42C5647AF1BC4400CDAA4D3F9C2BCD0472475E08E0FAF1"
+      "size": 153573,
+      "sha256": "C3BB8B190DDCC2DD0716EF9B1963F7BB399FF245C4AED764EB75DD03466BB269"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",

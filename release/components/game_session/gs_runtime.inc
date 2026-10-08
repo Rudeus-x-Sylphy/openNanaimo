@@ -248,17 +248,20 @@ static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,un
    (0x6EF241/0x6EF4E5), and the reference capture populates WORD+0x22 on 51 of
    51 kind20 frames while leaving it zero on every kind10 frame.
 
-   A Boss meat hit therefore publishes the number on its own kind20-styled
-   contact frame: WORD+0x1A keeps the request's contact index (the field the
-   kind20 branch reads for attribution), WORD+0x12 stays 0 because the player
-   is inside the meat window and takes no damage, and WORD+0x0A stays 100 so
-   the terminal side effects remain owned by the kind40 frame and the D012
-   Boss sync that already ran.  BOSS 肉弹命中不再只有血条变化而没有数字。 */
-static void send_d010_boss_meat_contact_number(SOCKET c,const unsigned char*req,unsigned local_uid,unsigned hp,unsigned target_damage){
+   The client draws that number only for the entity whose own id equals
+   WORD+0x1A: its 0x2EE58D..0x2EE5A1 loop walks the scene entity array, asks
+   each entity for its id and skips every frame that does not match.  A kind40
+   request carries no selector (+0x0A is always 0), so the identity cannot come
+   from it; it comes from the Boss identity the client itself reported in its
+   D011 Boss recording (owner at request +0x0C), which g_meat_collision already
+   retains.  WORD+0x12 stays 0 because the player is inside the meat window and
+   takes no damage, and WORD+0x0A stays 100 so the terminal side effects remain
+   owned by the kind40 frame and the D012 Boss sync that already ran. */
+static void send_d010_boss_meat_contact_number(SOCKET c,unsigned local_uid,unsigned hp,unsigned target_damage,unsigned contact_entity){
     char p[4096];mkpkt(p,0xD010,0x24,1);
     stable_resource_put16(p,0x08,local_uid);stable_resource_put16(p,0x0A,100u);
     stable_put32(p,0x0C,teamplay_current_score());stable_resource_put16(p,0x10,hp);stable_resource_put16(p,0x12,0u);
-    p[0x1A]=req[0x12];p[0x1B]=req[0x13];p[0x1D]=20u;
+    p[0x1A]=(unsigned char)(contact_entity&0xFFu);p[0x1B]=(unsigned char)((contact_entity>>8)&0xFFu);p[0x1D]=20u;
     stable_resource_put16(p,0x22,target_damage);
     sendbuf(c,p,0x24);multiplayer_broadcast_raw(0xD010,(const unsigned char*)p,0x24);
     printf("  S0xD010 BOSS_MEAT_CONTACT_NUMBER actor=%u hp=%u target_damage=%u index=%u kind=20 len=36 t=%lds\n",local_uid,hp,target_damage,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),sec());fflush(0);
@@ -1039,8 +1042,14 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                                 }
                                                 if(meat_boss_result.applied_damage)inventory_migration_apply_absorb(c,meat_boss_result.applied_damage,&combat_hp,&injury_dead,score_ctx.total,&lifesteal_remainder,&mp_absorb_remainder,"D00F-meat-boss");
                                                 /* The Boss HP sync above owns the bar; this frame owns the damage
-                                                   number the player expects to see pop over the Boss. */
-                                                send_d010_boss_meat_contact_number(c,(const unsigned char*)&buf[off],multiplayer_current_uid(),combat_hp,meat_boss_result.applied_damage);
+                                                   number the player expects to see pop over the Boss.  The client
+                                                   attributes it by WORD+0x1A, so use the Boss identity it reported
+                                                   in its own D011 Boss recording; fall back to the request's contact
+                                                   field only when no recording was seen in this battle epoch. */
+                                                {unsigned boss_contact_entity=g_meat_collision.last_d011_valid
+                                                        ?g_meat_collision.last_d011_owner
+                                                        :(unsigned)((unsigned char)buf[off+0x12]|((unsigned char)buf[off+0x13]<<8));
+                                                 send_d010_boss_meat_contact_number(c,multiplayer_current_uid(),combat_hp,meat_boss_result.applied_damage,boss_contact_entity);}
                                                 if(pending_super_cf87&&boss_hp_sync_final_terminal_seen(&boss_ctx)&&pending_super_cf87_epoch==boss_ctx.battle_epoch){select_reply_control0(pending_super_cf87_low);teamplay_send_cf88_room_playable(c,score_ctx.total);settlement_sent=1;pending_super_cf87=0;boss_hp_sync_mark_settled(&boss_ctx);}
                                             }
                                         }
