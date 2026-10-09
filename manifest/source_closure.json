@@ -103,8 +103,8 @@
     },
     {
       "path": "managed-host/BattleResourceSnapshotChecks.cs",
-      "size": 17308,
-      "sha256": "C4FBB7D6A219ACC2A106F893C60034D47B48243400D376FEDA7F3EDB8BA0F04F"
+      "size": 17318,
+      "sha256": "6D0ADBB04F8A5EB9086851BA2CB8B8C53CDD1F049CC84BE411084C4D837A1D54"
     },
     {
       "path": "managed-host/CardSynthesisChecks.cs",
@@ -298,8 +298,8 @@
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
-      "size": 55411,
-      "sha256": "18EDD2BF4037F4D70E91D0D46E5DD75F80DFF622A3239C672FC4FDA76F719AF2"
+      "size": 55413,
+      "sha256": "1FF89F4A66EFD81D672B77D90C7E7B42AFF836843FD670055477C314E09347F3"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -513,8 +513,8 @@
     },
     {
       "path": "managed/Services/BattleResourceSnapshot.cs",
-      "size": 7706,
-      "sha256": "FE8168C3FD14A743E802232B3975DEE13FFDBFC74EC75DD3279C9C8466BB0D26"
+      "size": 7993,
+      "sha256": "AC4ADCBA01E23B58AB3FDD8DB556D71F313D9C4E4B419C44CD630D3432923CD4"
     },
     {
       "path": "managed/Services/CardCatalog.cs",
@@ -733,8 +733,8 @@
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
-      "size": 16299,
-      "sha256": "F009F133A337874178C7F79375DC2BAF5B5389A9315ED1445D84DBD788D6AB70"
+      "size": 16494,
+      "sha256": "1E70B2F2BDA4D4D91215C78186EA41FA147C9534B23B4A5D6CFAC00C583AE97A"
     },
     {
       "path": "managed/Services/DungeonExperiencePolicy.cs",
@@ -973,8 +973,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 93199,
-      "sha256": "BEB33B2D27BAB2115E72C11C8D9C4EE9701FF69A2CD6AF0E97599857423BF58A"
+      "size": 93759,
+      "sha256": "DEC3B16D9436CCEA808DACB7BD1F3AF96546553F9BABB2E3589AC6B0DEA3783C"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
@@ -1053,8 +1053,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 990403,
-      "sha256": "C15BE3EC07D36AA0D1F595E2AE9AD2362F0D9EC492622D267F087EB37B2B9516"
+      "size": 990533,
+      "sha256": "BA2E3DABB86E8AB6B812ED3AA3B1E850AAC4D3CFBED8B9C61DA591A99AAAAFE1"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

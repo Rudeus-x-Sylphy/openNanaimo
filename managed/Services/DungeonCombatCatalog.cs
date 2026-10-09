@@ -55,6 +55,12 @@ internal static class DungeonCombatCatalog
         dungeon = legacyL7Boss ? (byte)1 : (byte)0;
     }
 
+    public static byte ResolveResourceEpisode(byte hd, byte episode, byte dungeon, byte stage)
+    {
+        ResourceIdentity(hd, stage, ref episode, ref dungeon);
+        return episode;
+    }
+
     public static bool HasStage(byte hd, byte episode, byte dungeon, byte stage)
     {
         ResourceIdentity(hd, stage, ref episode, ref dungeon);

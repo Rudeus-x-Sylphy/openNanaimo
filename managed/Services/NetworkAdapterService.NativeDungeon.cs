@@ -1108,7 +1108,12 @@ public sealed partial class NetworkAdapterService
             foreach (var response in exchange.Frames)
                 if (response.Length == 24 && BinaryPrimitives.ReadUInt32LittleEndian(response.AsSpan(16)) is 2 or 3)
                     pickupResources = pickupResources.ApplySuccessfulPickup(response, checked((ushort)next.Get(4)),
-                        pickupResources.MaximumHp, pickupResources.MaximumMp);
+                        pickupResources.MaximumHp, pickupResources.MaximumMp,
+                        DungeonCombatCatalog.ResolveResourceEpisode(
+                            session.NativeDungeonHdIndex,
+                            session.NativeDungeonEpisode,
+                            session.NativeDungeonDungeon,
+                            session.NativeDungeonStage));
             session.NativeBattleResources = pickupResources;
         }
         if (requestOpcode == 0xCF9B && session.NativeBattleResources is { SettlementFrozen: false } skillResources
@@ -1298,7 +1303,12 @@ public sealed partial class NetworkAdapterService
                 response,
                 GetSceneEntityId(resourceCharacter),
                 checked((ushort)Math.Clamp(resourceCharacter.MaxHp, 0, ushort.MaxValue)),
-                checked((ushort)Math.Clamp(resourceCharacter.MaxMp, 0, ushort.MaxValue)));
+                checked((ushort)Math.Clamp(resourceCharacter.MaxMp, 0, ushort.MaxValue)),
+                DungeonCombatCatalog.ResolveResourceEpisode(
+                    session.NativeDungeonHdIndex,
+                    session.NativeDungeonEpisode,
+                    session.NativeDungeonDungeon,
+                    session.NativeDungeonStage));
             if (updated != resources)
             {
                 session.NativeBattleResources = updated;

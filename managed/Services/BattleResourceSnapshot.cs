@@ -155,7 +155,8 @@ public sealed record BattleResourceSnapshot(
         ReadOnlySpan<byte> frame,
         ushort collectorUid,
         ushort maximumHp,
-        ushort maximumMp)
+        ushort maximumMp,
+        byte resourceEpisode = 0)
     {
         if (SettlementFrozen
             || frame.Length != 24
@@ -172,10 +173,18 @@ public sealed record BattleResourceSnapshot(
             2 => this with
             {
                 MaximumHp = effectiveMaximumHp,
-                CurrentHp = effectiveMaximumHp,
+                CurrentHp = (ushort)Math.Min(
+                    effectiveMaximumHp,
+                    CurrentHp + 304 + 80 * resourceEpisode),
                 HpAuthority = BattleHpAuthority.Pickup
             },
-            3 => this with { MaximumMp = effectiveMaximumMp, CurrentMp = effectiveMaximumMp },
+            3 => this with
+            {
+                MaximumMp = effectiveMaximumMp,
+                CurrentMp = (ushort)Math.Min(
+                    effectiveMaximumMp,
+                    CurrentMp + 26 + 10 * resourceEpisode)
+            },
             _ => this
         };
     }

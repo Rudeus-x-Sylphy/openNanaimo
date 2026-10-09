@@ -463,7 +463,7 @@ def _referral_patch_sites():
          b'\xE8' + _rel32(REFERRAL_QUERY_VA + 5, REFERRAL_GUARD_VA)),
         ('referral_parent_guard', REFERRAL_GUARD_VA, b'\xCC' * REFERRAL_CAVE_SPAN, guard),
         ('referral_local_retry', REFERRAL_RESET_VA, b'\xCC' * REFERRAL_CAVE_SPAN, reset),
-    ] + entertainment_mode_compat.patch_sites()
+    ]
     for name, va in zip(('referral_empty_retry', 'referral_self_retry'), REFERRAL_LOCAL_RESULT_SITES):
         sites.append((name, va, REFERRAL_LOCAL_RESULT_OLD,
                       b'\xE8' + _rel32(va + 5, REFERRAL_RESET_VA)))
@@ -623,7 +623,7 @@ def social_gameplay_patch_sites():
          b'\xE9' + struct.pack('<i', base - 0x0040B37A - 5)),
         ('dungeon_result_data_gate', 0x0066CD71, bytes.fromhex('741a'), bytes.fromhex('eb1a')),
         ('dungeon_party_result_data_gate', 0x0066CD45, bytes.fromhex('741a'), bytes.fromhex('eb1a')),
-    ]
+    ] + entertainment_mode_compat.patch_sites()
 
 
 def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:

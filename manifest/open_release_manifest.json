@@ -3228,7 +3228,7 @@
     },
     "scripts/prepare_client_compatibility.py": {
       "size": 75155,
-      "sha256": "1ADBFC50157E2AE2D96C6EB03AE140B9F04A00388B0C2B88DEA0B7872B783D15"
+      "sha256": "39A9B81609BCBDD38B8187470B89BE643CD86965EEDC9E184702AB12EC67D527"
     },
     "scripts/prepare_entertainment_resources.py": {
       "size": 3024,

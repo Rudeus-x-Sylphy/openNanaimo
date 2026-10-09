@@ -100,16 +100,16 @@ internal static class BattleResourceSnapshotChecks
         BinaryPrimitives.WriteUInt16LittleEndian(hpPickup.AsSpan(8, 2), 77);
         BinaryPrimitives.WriteUInt16LittleEndian(hpPickup.AsSpan(12, 2), 40);
         BinaryPrimitives.WriteUInt32LittleEndian(hpPickup.AsSpan(16, 4), 2);
-        var healed = new BattleResourceSnapshot(222, 123, 2).ApplySuccessfulPickup(hpPickup, 77, 1000, 500);
-        Check(healed.CurrentHp == 1000 && healed.CurrentMp == 123 && healed.AttackMode == 2,
+        var healed = new BattleResourceSnapshot(222, 123, 2).ApplySuccessfulPickup(hpPickup, 77, 5000, 5000, 23);
+        Check(healed.CurrentHp == 2366 && healed.CurrentMp == 123 && healed.AttackMode == 2,
             "successful local category40 HP pickup updates only live HP");
 
         var mpPickup = BuildFrame(0xD035, 24);
         BinaryPrimitives.WriteUInt16LittleEndian(mpPickup.AsSpan(8, 2), 77);
         BinaryPrimitives.WriteUInt16LittleEndian(mpPickup.AsSpan(12, 2), 40);
         BinaryPrimitives.WriteUInt32LittleEndian(mpPickup.AsSpan(16, 4), 3);
-        var restoredMp = healed.ApplySuccessfulPickup(mpPickup, 77, 1000, 500);
-        Check(restoredMp.CurrentHp == 1000 && restoredMp.CurrentMp == 500 && restoredMp.AttackMode == 2,
+        var restoredMp = healed.ApplySuccessfulPickup(mpPickup, 77, 5000, 5000, 23);
+        Check(restoredMp.CurrentHp == 2366 && restoredMp.CurrentMp == 379 && restoredMp.AttackMode == 2,
             "successful local category40 MP pickup updates only live MP");
 
 

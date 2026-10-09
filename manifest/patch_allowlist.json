@@ -427,8 +427,8 @@
     {
       "path": "managed-host/BattleResourceSnapshotChecks.cs",
       "layer": "source",
-      "size": 17308,
-      "sha256": "c4fbb7d6a219acc2a106f893c60034d47b48243400d376feda7f3edb8ba0f04f",
+      "size": 17318,
+      "sha256": "6d0adbb04f8a5eb9086851ba2cb8b8c53cdd1f049cc84be411084c4d837a1d54",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -739,8 +739,8 @@
     {
       "path": "managed-host/Resources/client-compatibility.json",
       "layer": "source",
-      "size": 55411,
-      "sha256": "18edd2bf4037f4d70e91d0d46e5dd75f80dff622a3239c672fc4fda76f719af2",
+      "size": 55413,
+      "sha256": "1ff89f4a66efd81d672b77d90c7e7b42aff836843fd670055477c314e09347f3",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1083,8 +1083,8 @@
     {
       "path": "managed/Services/BattleResourceSnapshot.cs",
       "layer": "source",
-      "size": 7706,
-      "sha256": "fe8168c3fd14a743e802232b3975dee13ffdbfc74ec75dd3279c9c8466bb0d26",
+      "size": 7993,
+      "sha256": "ac4adcba01e23b58ab3fdd8db556d71f313d9c4e4b419c44cd630d3432923cd4",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1435,8 +1435,8 @@
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
       "layer": "source",
-      "size": 16299,
-      "sha256": "f009f133a337874178c7f79375dc2baf5b5389a9315ed1445d84dbd788d6ab70",
+      "size": 16494,
+      "sha256": "1e70b2f2bda4d4d91215c78186ea41fa147c9534b23b4a5d6cfac00c583ae97a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1819,8 +1819,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
       "layer": "source",
-      "size": 93199,
-      "sha256": "beb33b2d27bab2115e72c11c8d9c4ee9701ff69a2cd6af0e97599857423bf58a",
+      "size": 93759,
+      "sha256": "dec3b16d9436ccea808dacb7bd1f3af96546553f9babb2e3589ac6b0dea3783c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1947,8 +1947,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.cs",
       "layer": "source",
-      "size": 990403,
-      "sha256": "c15be3ec07d36aa0d1f595e2ae9ad2362f0d9ec492622d267f087eb37b2b9516",
+      "size": 990533,
+      "sha256": "ba2e3dabb86e8ab6b812ed3aa3b1e850aac4d3cfbed8b9c61da591a99aaaafe1",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2124,7 +2124,7 @@
       "path": "manifest/source_closure.json",
       "layer": "source",
       "size": 64937,
-      "sha256": "2af5fdd3bcdb5c02ee096638e956e2bdcb2d5ed850f2fdac3d61aa3bf8f3b8e3",
+      "sha256": "0b6e8deba7d40144a1170e6cb1fafa512a7e0283f52d1ff0681bec5b16ef1aea",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3412,7 +3412,7 @@
       "path": "scripts/prepare_client_compatibility.py",
       "layer": "source",
       "size": 75155,
-      "sha256": "1adbfc50157e2ae2d96c6eb03ae140b9f04a00388b0c2b88dea0b7872b783d15",
+      "sha256": "39a9b81609bcbdd38b8187470b89be643cd86965eedc9e184702ab12ec67d527",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

@@ -53,26 +53,6 @@
     },
     {
       "group": "character-creation",
-      "va": 7221824,
-      "target": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "known": [
-        "9c6068240100006880326e00688b326e006800000000ff158022d90083f806750866c745e86400eb0666c745e8c800619dc3ccccccccccccccccccccccccccccb4b4bda8d3e9c0d6cad200cac7b7f1b4b4bda8b5a5c8cbb7bfbce4a3bf0d0acac7a3bab5a5c8cbc4a3cabda3a831c8cba3a90d0ab7f1a3bab6e0c8cbc4a3cabda3a8d7eeb6e036c8cba3a900cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-      ],
-      "operation": "remove_entertainment_room_mode_body",
-      "known_hashes": []
-    },
-    {
-      "group": "character-creation",
-      "va": 7828557,
-      "target": "66c745e8c800",
-      "known": [
-        "e8eebdf6ff90"
-      ],
-      "operation": "remove_entertainment_room_mode_entry",
-      "known_hashes": []
-    },
-    {
-      "group": "character-creation",
       "va": 5137862,
       "target": "e855e0ffff",
       "known": [
@@ -229,6 +209,26 @@
         "741a"
       ],
       "operation": "patch_dungeon_party_result_data_gate",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7221824,
+      "target": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "known": [
+        "9c6068240100006880326e00688b326e006800000000ff158022d90083f806750866c745e86400eb0666c745e8c800619dc3ccccccccccccccccccccccccccccb4b4bda8d3e9c0d6cad200cac7b7f1b4b4bda8b5a5c8cbb7bfbce4a3bf0d0acac7a3bab5a5c8cbc4a3cabda3a831c8cba3a90d0ab7f1a3bab6e0c8cbc4a3cabda3a8d7eeb6e036c8cba3a900cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "patch_remove_entertainment_room_mode_body",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7828557,
+      "target": "66c745e8c800",
+      "known": [
+        "e8eebdf6ff90"
+      ],
+      "operation": "patch_remove_entertainment_room_mode_entry",
       "known_hashes": []
     },
     {

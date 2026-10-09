@@ -7341,7 +7341,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                             ApplyDungeonUpgradePickupRecovery(
                                 session.Character,
                                 checked((byte)pickupValue),
-                                pickupBattle.PartySizeAtStart);
+                                DungeonCombatCatalog.ResolveResourceEpisode(
+                                    pickupBattle.HdIndex,
+                                    pickupBattle.Episode,
+                                    pickupBattle.Dungeon,
+                                    pickupBattle.Stage));
                             recoveryApplied = session.Character.CurrentHp != hpBeforeRecovery
                                 || session.Character.CurrentMp != mpBeforeRecovery;
                         }
@@ -13024,22 +13028,18 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private static void ApplyDungeonUpgradePickupRecovery(
         CharacterRecord character,
         byte subtype,
-        int partySize)
+        byte resourceEpisode)
     {
         if (subtype == 2)
         {
-            var restored = partySize > 1
-                ? (int)(Math.Max(0, character.MaxHp) * 0.3d)
-                : 300;
+            var restored = checked(304 + 80 * resourceEpisode);
             character.CurrentHp = Math.Min(
                 Math.Max(0, character.MaxHp),
                 (int)Math.Min(int.MaxValue, (long)Math.Max(0, character.CurrentHp) + restored));
         }
         else if (subtype == 3)
         {
-            var restored = partySize > 1
-                ? (int)(Math.Max(0, character.MaxMp) * 0.3d)
-                : 30;
+            var restored = checked(26 + 10 * resourceEpisode);
             character.CurrentMp = Math.Min(
                 Math.Max(0, character.MaxMp),
                 (int)Math.Min(int.MaxValue, (long)Math.Max(0, character.CurrentMp) + restored));
