@@ -129,7 +129,7 @@ public sealed partial class DatabaseService
         await command.ExecuteNonQueryAsync(token);
         await transaction.CommitAsync(token);
         // A permanently owned copy still consumes the card and key; the draw grants
-        // nothing, which the operator log records under its own tag.
+        // nothing.
         return new(900, reward, grant == CardRewardGrant.AlreadyOwned
             ? "permanent copy already owned; blank draw" : string.Empty);
     }

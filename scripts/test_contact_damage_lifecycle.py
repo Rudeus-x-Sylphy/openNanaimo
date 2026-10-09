@@ -52,7 +52,7 @@ int main(int argc,char**argv){
     CHECK(hp==(5000u-expected)&&word(16)==hp&&word(18)==5000-hp);
     CHECK(frame[29]==kind&&word(12)==789);
     /* WORD+0x22 is the contact carrier the client pops over the collided target.
-       Reference capture: every kind20 D010 frame has it non-zero, every kind10
+       Every kind20 D010 frame carries it non-zero and every kind10
        frame has it zero.  It must hold the damage applied to the target. */
     CHECK(word(34)==tgt);
     if(kind==40u){CHECK(word(26)==9&&frame[30]==0&&frame[31]==0&&word(32)==9);}

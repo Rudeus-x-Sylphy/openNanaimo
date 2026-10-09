@@ -229,8 +229,8 @@ static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,un
         p[0x1A]=req[0x12];p[0x1B]=req[0x13];
         p[0x1E]=req[0x10];p[0x1F]=req[0x11];p[0x20]=req[0x12];p[0x21]=req[0x13];
     }
-    /* WORD+0x22 is the client's contact-hit carrier: reference captures populate
-       it for every kind20/30 collision and leave it zero for kind10.  Its value
+    /* WORD+0x22 is the client's contact-hit carrier: it is populated
+       for every kind20/30 collision and stays zero for kind10.  Its value
        is the damage actually applied to the collided target (min(policy, target
        hp)), which is why it groups by target type.  Client read sites:
        0x6EF09F (BYTE+0x1D, unconditional) and 0x6EF241/0x6EF4E5 (WORD+0x22). */
@@ -245,8 +245,8 @@ static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,un
    reads BYTE+0x1F (child) and WORD+0x20 (ordinal) and never WORD+0x22 - see
    0x6EF3BB/0x6EF43B in knowledge/authority/08.  The contact damage number the
    client pops over the target is consumed on the kind20/30 branch instead
-   (0x6EF241/0x6EF4E5), and the reference capture populates WORD+0x22 on 51 of
-   51 kind20 frames while leaving it zero on every kind10 frame.
+   (0x6EF241/0x6EF4E5), and WORD+0x22 is populated on every kind20 frame
+   while staying zero on every kind10 frame.
 
    The client draws that number only for the entity whose own id equals
    WORD+0x1A: its 0x2EE58D..0x2EE5A1 loop walks the scene entity array, asks
@@ -1017,8 +1017,8 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                 meat_collision_log_contact_fields(port,dungeon_room_epoch,boss_ctx.battle_epoch,now,request_kind,w0a,d0c,d10,d14,d18,candidate,carrier);
                                 if(active){
                                     handle_meat_collision_report(c,port,monster_hp_ctx,crate_policy,&score_ctx,teamplay_authoritative_stage(current_stage),dungeon_room_epoch,boss_ctx.battle_epoch,candidate,(unsigned)((unsigned char)buf[off]|((unsigned char)buf[off+1]<<8)),g_meat_collision.code,g_meat_collision.grade,carrier,&mr);
-                                    /* Reference capture: an active meat window still answers every kind20
-                                       contact with a full D010/36.  The player is immune, so WORD+0x12
+                                    /* An active meat window still answers every
+                                       kind20 contact with a full D010/36.  The player is immune, so WORD+0x12
                                        stays 0, while WORD+0x22 carries the damage the meat skill dealt to
                                        the collided target - that is the number the client pops over the
                                        monster (read at 0x6EF241/0x6EF4E5). */
