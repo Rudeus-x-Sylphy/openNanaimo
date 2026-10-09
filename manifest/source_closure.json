@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 23544320,
-      "sha256": "40056593C0A627CBB187AC3897A42BC5CF90A16D095462517EA69CD70B868D43"
+      "size": 23542784,
+      "sha256": "2A174FB24DCD14CDCC710ECDA6DB3DE41DAB384D4115DEED84C29DDD6DFEDA47"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 23544320,
-      "sha256": "778BAB9D8220B8D95460B93FF9FC5AEAE0E059640DBA32D236BACF3E20F7FD61"
+      "size": 23542784,
+      "sha256": "9BD2876A50B9EC331AEEAEE3B67653A3383CC22CCD9A08B6D0DD3C0ADDA78838"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 23625216,
-      "sha256": "F828E7F05B72D8E00633DFBE9B55E46BB3C4B67FE0C2E510195D03E0B7A25A34"
+      "size": 23624192,
+      "sha256": "4183E47858FD9D6744D065AE4071F230ADC0A7E2713D4FC886A74FA5FF525EAE"
     }
   },
   "files": [
@@ -108,8 +108,8 @@
     },
     {
       "path": "managed-host/CardSynthesisChecks.cs",
-      "size": 26150,
-      "sha256": "E684500E787303AC1EB6A2CEF6B404261A5076A1CFCA76FD56584EC925395BE7"
+      "size": 29354,
+      "sha256": "D0089BDBA09CFD7C265C9797BFB1E52DE8617E3F16CB3AE9427166E16176F40F"
     },
     {
       "path": "managed-host/ChannelReentryChecks.cs",
@@ -513,8 +513,8 @@
     },
     {
       "path": "managed/Services/CardCatalog.cs",
-      "size": 20149,
-      "sha256": "63FD1356B5C7F0D9F025DB9AC754E65ABDE70C89048FA3ECA344B61AA2C6D63B"
+      "size": 21262,
+      "sha256": "F00109A9278ABAB9A101DB3855E2BD97D8E40EEFEA804EDF42270591B0282F51"
     },
     {
       "path": "managed/Services/CardExchangeProtocol.cs",
@@ -703,8 +703,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.SkillPointCards.cs",
-      "size": 8151,
-      "sha256": "5551EDF6BFA9D2E36BC15C28E5422E2797EE038E5A9AA76EAE07D318AE035B36"
+      "size": 9822,
+      "sha256": "63D2F8F652C402C04420C19EBCA3F191CC1F98435C4A077E9A6AC8AB10301D87"
     },
     {
       "path": "managed/Services/DatabaseService.SkillSlotExpansion.cs",
@@ -1048,8 +1048,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 989266,
-      "sha256": "C73B6A81BF71F9FB62BDCE865B715A08342FDBBB1B8F95DB46ED68B685867453"
+      "size": 989254,
+      "sha256": "FAB2B61D7AF2877F9EC07355F15E2ECB544EFC4A6422232398ED70F65DC97639"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
