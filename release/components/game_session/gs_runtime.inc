@@ -230,41 +230,24 @@ static void send_d010_injury_injury_resource(SOCKET c,const unsigned char*req,un
         p[0x1E]=req[0x10];p[0x1F]=req[0x11];p[0x20]=req[0x12];p[0x21]=req[0x13];
     }
     /* WORD+0x22 is the client's contact-hit carrier: it is populated
-       for every kind20/30 collision and stays zero for kind10.  Its value
+       for kind20/30 ordinary and kind40 Boss collisions, and stays zero for
+       kind10. Its value
        is the damage actually applied to the collided target (min(policy, target
        hp)), which is why it groups by target type.  Client read sites:
        0x6EF09F (BYTE+0x1D, unconditional) and 0x6EF241/0x6EF4E5 (WORD+0x22). */
-    if(req[0x08]==20u||req[0x08]==30u)stable_resource_put16(p,0x22,target_damage);
+    if(req[0x08]==20u||req[0x08]==30u||req[0x08]==40u)stable_resource_put16(p,0x22,target_damage);
     g_profile_hp_current=hp;sendbuf(c,p,0x24);
     multiplayer_broadcast_raw(0xD010,(const unsigned char*)p,0x24);
     multiplayer_broadcast_actor_resources_current();
     printf("  S0xD010 INJURY_RESOURCE injury actor=%u hp=%u damage=%u target_damage=%u terminal=%d score=%u meta=%u kind=%u len=36 t=%lds\n",local_uid,hp,damage,target_damage,terminal,battle_score,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),(unsigned char)p[0x1D],sec());fflush(0);
 }
 
-/* MEAT_BOSS_CONTACT_NUMBER: a Boss contact arrives as kind40, whose D010 branch
-   reads BYTE+0x1F (child) and WORD+0x20 (ordinal) and never WORD+0x22 - see
-   0x6EF3BB/0x6EF43B in knowledge/authority/08.  The contact damage number the
-   client pops over the target is consumed on the kind20/30 branch instead
-   (0x6EF241/0x6EF4E5), and WORD+0x22 is populated on every kind20 frame
-   while staying zero on every kind10 frame.
-
-   The client draws that number only for the entity whose own id equals
-   WORD+0x1A: its 0x2EE58D..0x2EE5A1 loop walks the scene entity array, asks
-   each entity for its id and skips every frame that does not match.  A kind40
-   request carries no selector (+0x0A is always 0), so the identity cannot come
-   from it; it comes from the Boss identity the client itself reported in its
-   D011 Boss recording (owner at request +0x0C), which g_meat_collision already
-   retains.  WORD+0x12 stays 0 because the player is inside the meat window and
-   takes no damage, and WORD+0x0A stays 100 so the terminal side effects remain
-   owned by the kind40 frame and the D012 Boss sync that already ran. */
-static void send_d010_boss_meat_contact_number(SOCKET c,unsigned local_uid,unsigned hp,unsigned target_damage,unsigned contact_entity){
-    char p[4096];mkpkt(p,0xD010,0x24,1);
-    stable_resource_put16(p,0x08,local_uid);stable_resource_put16(p,0x0A,100u);
-    stable_put32(p,0x0C,teamplay_current_score());stable_resource_put16(p,0x10,hp);stable_resource_put16(p,0x12,0u);
-    p[0x1A]=(unsigned char)(contact_entity&0xFFu);p[0x1B]=(unsigned char)((contact_entity>>8)&0xFFu);p[0x1D]=20u;
-    stable_resource_put16(p,0x22,target_damage);
-    sendbuf(c,p,0x24);multiplayer_broadcast_raw(0xD010,(const unsigned char*)p,0x24);
-    printf("  S0xD010 BOSS_MEAT_CONTACT_NUMBER actor=%u hp=%u target_damage=%u index=%u kind=20 len=36 t=%lds\n",local_uid,hp,target_damage,(unsigned)((unsigned char)p[0x1A]|((unsigned char)p[0x1B]<<8)),sec());fflush(0);
+/* Boss numbers use the kind40 list, not the kind20 ordinary-target list.
+   0x6EF3BB/0x6EF43B select child/ordinal, then 0x6EF4E5 reads WORD+0x22.
+   Send before D013/D012 can retire the addressed component. */
+static void send_d010_boss_meat_contact_number(SOCKET c,const unsigned char*req,unsigned local_uid,unsigned hp,unsigned target_damage){
+    send_d010_injury_injury_resource(c,req,local_uid,hp,0u,0,teamplay_current_score(),target_damage);
+    printf("  S0xD010 BOSS_MEAT_CONTACT_NUMBER actor=%u hp=%u target_damage=%u mode=%u child=%u ordinal=%u kind=40 len=36 t=%lds\n",local_uid,hp,target_damage,(unsigned)req[0x10],(unsigned)req[0x11],(unsigned)(req[0x12]|((unsigned)req[0x13]<<8)),sec());fflush(0);
 }
 
 /* Player injury settlement for D00F projectile, exact associated scene, and
@@ -382,6 +365,7 @@ static void gs_thread(void* arg){
         map_identity_runtime map_identity;map_identity_init(&map_identity);
 #endif
         struct projectile_activation_context projectile_ctx; projectile_activation_reset(&projectile_ctx,0u,0u,"connection");
+        struct charge_mp_context charge_mp_ctx;memset(&charge_mp_ctx,0,sizeof(charge_mp_ctx));
         struct stage_damage_damage_context incoming_damage_ctx; stage_damage_damage_reset(&incoming_damage_ctx);
 #if TEAMPLAY_FEATURE_CF9D_PROJECTILE_COMPLETION
         struct skill_effect_cleanup_context skill_cleanup_ctx;memset(&skill_cleanup_ctx,0,sizeof(skill_cleanup_ctx));skill_effect_cleanup_reset(&skill_cleanup_ctx,0u,0u,"connection");
@@ -1016,6 +1000,7 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                 active=meat_collision_active(dungeon_room_epoch,boss_ctx.battle_epoch,now);
                                 meat_collision_log_contact_fields(port,dungeon_room_epoch,boss_ctx.battle_epoch,now,request_kind,w0a,d0c,d10,d14,d18,candidate,carrier);
                                 if(active){
+                                    if(request_kind==40u)send_nonlocal_echo=0;
                                     handle_meat_collision_report(c,port,monster_hp_ctx,crate_policy,&score_ctx,teamplay_authoritative_stage(current_stage),dungeon_room_epoch,boss_ctx.battle_epoch,candidate,(unsigned)((unsigned char)buf[off]|((unsigned char)buf[off+1]<<8)),g_meat_collision.code,g_meat_collision.grade,carrier,&mr);
                                     /* An active meat window still answers every
                                        kind20 contact with a full D010/36.  The player is immune, so WORD+0x12
@@ -1033,6 +1018,7 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                             if(meat_boss_rc==BOSS_HP_SYNC_OK&&meat_boss_result.applied_damage){
                                                 unsigned total=combat_economy_score_boss_terminal(&score_ctx,&boss_ctx,&meat_boss_result);
                                                 g_meat_collision.boss_damage_applied_count++;boss_meat_applied=1;
+                                                send_d010_boss_meat_contact_number(c,(const unsigned char*)&buf[off],multiplayer_current_uid(),combat_hp,meat_boss_result.applied_damage);
                                                 printf("  [GS %d] [MEAT_DAMAGE] boss-contact policy=exact-current-component contact=%u mode=%u child=%u ordinal=%u damage=%u component_hp=%u child_hp=%u hp=%u total=%u final=%u\n",port,g_meat_collision.boss_damage_applied_count,meat_boss_result.wire_mode,meat_boss_result.wire_child,meat_boss_result.target_ordinal,meat_boss_result.applied_damage,meat_boss_result.component_hp,meat_boss_result.child_hp,meat_boss_result.hp,total,meat_boss_result.final_terminal);fflush(0);
                                                 if(!meat_boss_result.scripted_report_suppressed){
 #if TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
@@ -1041,27 +1027,6 @@ meat_collision_activate(skill_code,grade,dungeon_room_epoch,boss_ctx.battle_epoc
                                                     shop_catalogs_send_boss_result(c,&meat_boss_result,score_ctx.total,&boss_final_retire_sent);
                                                 }
                                                 if(meat_boss_result.applied_damage)inventory_migration_apply_absorb(c,meat_boss_result.applied_damage,&combat_hp,&injury_dead,score_ctx.total,&lifesteal_remainder,&mp_absorb_remainder,"D00F-meat-boss");
-                                                /* The Boss HP sync above owns the bar; this frame owns the damage
-                                                   number the player expects to see pop over the Boss.  The client
-                                                   attributes it by WORD+0x1A, so use the Boss identity it reported
-                                                   in its own D011 Boss recording; fall back to the request's contact
-                                                   field only when no recording was seen in this battle epoch. */
-                                                {/* Which entity the client will attach the number to.  The client's own
-                                                   collision reports (D00D) name the object it just hit in its own
-                                                   numbering, and a Boss keeps reporting its parts there through the
-                                                   fight - so the most recent one inside this battle is the best
-                                                   identity we can send.  The D011 boss recording is the second
-                                                   source, the kind40 request's own contact field the last. */
-                                                 unsigned boss_idle_now=tickms();unsigned boss_d00d_delta=meat_tick_delta(boss_idle_now,g_meat_collision.last_d00d_tick);
-                                                 unsigned boss_contact_entity;
-                                                 if(g_meat_collision.last_d00d_valid&&boss_d00d_delta!=MEAT_RECENT_NONE&&boss_d00d_delta<=60000u)
-                                                     boss_contact_entity=g_meat_collision.last_d00d_owner;
-                                                 else if(g_meat_collision.last_d011_valid)
-                                                     boss_contact_entity=g_meat_collision.last_d011_owner;
-                                                 else
-                                                     boss_contact_entity=(unsigned)((unsigned char)buf[off+0x12]|((unsigned char)buf[off+0x13]<<8));
-                                                 printf("  [GS %d] [MEAT_BOSS_NUMBER] d00d_valid=%u d00d_delta_ms=%u d00d_owner=%u d00d_selector=%u d011_valid=%u d011_owner=%u fallback=%u entity=%u t=%lds\n",port,g_meat_collision.last_d00d_valid,boss_d00d_delta,g_meat_collision.last_d00d_owner,g_meat_collision.last_d00d_selector,g_meat_collision.last_d011_valid,g_meat_collision.last_d011_owner,(unsigned)((unsigned char)buf[off+0x12]|((unsigned char)buf[off+0x13]<<8)),boss_contact_entity,sec());fflush(0);
-                                                 send_d010_boss_meat_contact_number(c,multiplayer_current_uid(),combat_hp,meat_boss_result.applied_damage,boss_contact_entity);}
                                                 if(pending_super_cf87&&boss_hp_sync_final_terminal_seen(&boss_ctx)&&pending_super_cf87_epoch==boss_ctx.battle_epoch){select_reply_control0(pending_super_cf87_low);teamplay_send_cf88_room_playable(c,score_ctx.total);settlement_sent=1;pending_super_cf87=0;boss_hp_sync_mark_settled(&boss_ctx);}
                                             }
                                         }
@@ -1355,10 +1320,25 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                     } else if(type==0xC4E0 && len==32){printf("  [MULTI] C4E0 invite from=%u\n",multiplayer_current_uid());fflush(0);multiplayer_forward_invite((const unsigned char*)&buf[off],len);
                     } else if(type==0xC4E1 && len==12){unsigned inviter=(unsigned char)buf[off+10]|((unsigned char)buf[off+11]<<8);printf("  [MULTI] C4E1 accept uid=%u inviter=%u\n",multiplayer_current_uid(),inviter);fflush(0);multiplayer_accept_party(inviter);
                     } else if(type==0xC4E7 && len==8){printf("  [MULTI] C4E7 exit uid=%u\n",multiplayer_current_uid());fflush(0);multiplayer_exit_party();
+                    } else if(type==0x044C && len==40){
+                        if(teamplay_realtime_relay_allowed()){
+                            unsigned before=pet_crafting_pet_effective_mp_current();
+                            unsigned after=before;
+                            unsigned spent=charge_mp_apply(&charge_mp_ctx,(const unsigned char*)&buf[off],(unsigned)len,
+                                dungeon_room_epoch,boss_ctx.battle_epoch,
+                                injury_armed&&!settlement_sent&&injury_room_epoch==dungeon_room_epoch&&injury_battle_epoch==boss_ctx.battle_epoch,
+                                injury_dead,combat_hp,pet_crafting_pet_effective_mp_max(),&after);
+                            if(spent){
+                                g_profile_mp_current=after;
+                                printf("  [CHARGE_MP] uid=%u room=%u battle=%u tick=%u mp=%u->%u spent=%u source=044C-subtype20-post-debit\n",
+                                    multiplayer_current_uid(),dungeon_room_epoch,boss_ctx.battle_epoch,charge_mp_ctx.last_tick,before,after,spent);fflush(0);
+                            }
+                            multiplayer_broadcast_raw((unsigned)type,(const unsigned char*)&buf[off],len);
+                        }else{printf("  [MULTI_BARRIER] suppress early relay type=0x%04X uid=%u len=%d\n",type,multiplayer_current_uid(),len);fflush(0);}
 #if TEAMPLAY_FEATURE_PRESTART_0578_RELAY
-                    } else if((type==0x03E8&&len==76)||(type==0x044C&&len==40)||(type==0x0578&&len==16)||(type==0x05DC&&len==16)||(type==0x0514&&len==12)||(type==0x0640&&len==16)){if(teamplay_relay_allowed_for_packet((unsigned)type,len)){if(!teamplay_realtime_relay_allowed()&&type==0x0578)printf("  [MULTI_ROOM] SESSION_SKILL_POLICY prestart 0x0578 relay uid=%u event=%u len=%d\n",multiplayer_current_uid(),(unsigned)((unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8)|((unsigned char)buf[off+14]<<16)|((unsigned char)buf[off+15]<<24)),len);multiplayer_broadcast_raw((unsigned)type,(const unsigned char*)&buf[off],len);printf("  [MULTI] relay type=0x%04X uid=%u len=%d\n",type,multiplayer_current_uid(),len);fflush(0);}else{printf("  [MULTI_BARRIER] suppress early relay type=0x%04X uid=%u len=%d\n",type,multiplayer_current_uid(),len);fflush(0);}
+                    } else if((type==0x03E8&&len==76)||(type==0x0578&&len==16)||(type==0x05DC&&len==16)||(type==0x0514&&len==12)||(type==0x0640&&len==16)){if(teamplay_relay_allowed_for_packet((unsigned)type,len)){if(!teamplay_realtime_relay_allowed()&&type==0x0578)printf("  [MULTI_ROOM] SESSION_SKILL_POLICY prestart 0x0578 relay uid=%u event=%u len=%d\n",multiplayer_current_uid(),(unsigned)((unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8)|((unsigned char)buf[off+14]<<16)|((unsigned char)buf[off+15]<<24)),len);multiplayer_broadcast_raw((unsigned)type,(const unsigned char*)&buf[off],len);printf("  [MULTI] relay type=0x%04X uid=%u len=%d\n",type,multiplayer_current_uid(),len);fflush(0);}else{printf("  [MULTI_BARRIER] suppress early relay type=0x%04X uid=%u len=%d\n",type,multiplayer_current_uid(),len);fflush(0);}
 #else
-                    } else if((type==0x03E8&&len==76)||(type==0x044C&&len==40)||(type==0x0578&&len==16)||(type==0x05DC&&len==16)||(type==0x0514&&len==12)||(type==0x0640&&len==16)){if(teamplay_realtime_relay_allowed()){multiplayer_broadcast_raw((unsigned)type,(const unsigned char*)&buf[off],len);printf("  [MULTI] relay type=0x%04X uid=%u len=%d\n",type,multiplayer_current_uid(),len);fflush(0);}else{printf("  [MULTI_BARRIER] suppress early relay type=0x%04X uid=%u len=%d\n",type,multiplayer_current_uid(),len);fflush(0);}
+                    } else if((type==0x03E8&&len==76)||(type==0x0578&&len==16)||(type==0x05DC&&len==16)||(type==0x0514&&len==12)||(type==0x0640&&len==16)){if(teamplay_realtime_relay_allowed()){multiplayer_broadcast_raw((unsigned)type,(const unsigned char*)&buf[off],len);printf("  [MULTI] relay type=0x%04X uid=%u len=%d\n",type,multiplayer_current_uid(),len);fflush(0);}else{printf("  [MULTI_BARRIER] suppress early relay type=0x%04X uid=%u len=%d\n",type,multiplayer_current_uid(),len);fflush(0);}
 #endif
                     } else if(type==0xC37A && len==12){printf("  [GS %d] GOT C37A balance request uid=%u -> C37B\n",port,multiplayer_current_uid());fflush(0);send_c37b_balance_snapshot(c);
                     } else if(type==0xC3E7 && len==12){

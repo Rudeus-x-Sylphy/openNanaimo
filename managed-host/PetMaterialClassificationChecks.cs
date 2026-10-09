@@ -192,6 +192,9 @@ internal static class PetMaterialClassificationChecks
         upgrade[5] = (byte)Identity(list,pet.PetGoldDustItemCode,0);
         Check(U16(await f.DispatchAsync(0xC44F,upgrade),8)==0 && await f.SnapshotAsync()==baseline,
             "already strengthened pet rejects another owned dust without consumption");
+        socket[4] = (byte)Identity(list,gem,0);
+        Check(U16(await f.DispatchAsync(0xC44F,socket),8)==2000,
+            "socket after dust succeeds without reducing earned allowance");
         CheckPetStages(await f.DispatchAsync(0xC44B,[]),pet.ItemCode,1,3,"reopened bag");
         await f.ReinitializeAsync();
         await f.ReloginAsync();
@@ -207,6 +210,16 @@ internal static class PetMaterialClassificationChecks
         var progressed = PetProgression.AddExperience(state with { Level=growth.MaximumLevel },1).State;
         Check(progressed.CurrentStage==2 && progressed.MaximumStage==3,
             "earned experience can cross the original catalog stage cap after dust");
+        Check(ShopCatalog.TryGetPetGrowthStage(pet.PetGrowthClass,2,out var secondGrowth),"second growth row");
+        var reward=PetProgression.GetNativeClearReward(state with { CurrentStage=2 });
+        await f.ExecuteAsync($"UPDATE CharacterItems SET PetCurrentStage=2,PetLevel={secondGrowth.MaximumLevel-1},PetExperience={secondGrowth.ExperiencePerLevel-reward},PetDurability=48 WHERE CharacterId={f.CharacterId} AND ItemCode={pet.ItemCode};");
+        await f.SettlePetAsync();
+        await f.ReinitializeAsync();
+        await f.ReloginAsync();
+        CheckPetStages(await f.DispatchAsync(0xC44B,[]),pet.ItemCode,3,3,"exact-threshold settlement and DB reopen");
+        var settled=PetProgression.GetState(await f.ReadAsync(),pet.ItemCode);
+        Check(settled.Level==0 && settled.Experience==0 && settled.Durability==48 && settled.Accessory0==gem,
+            "settlement preserves durability and gems while advancing to third stage");
         Console.WriteLine("PET_MATERIAL_SOCKET_UPGRADE_PASS");
     }
 
@@ -328,6 +341,18 @@ internal static class PetMaterialClassificationChecks
                 [frame, opcode, "WorldAdapter", "127.0.0.1:30000", "127.0.0.1", session, CancellationToken.None])!)!;
         }
         public Task ReinitializeAsync() => new DatabaseService(root).InitializeAsync();
+        public async Task SettlePetAsync()
+        {
+            var before=NativeDungeonState.Create(await ReadAsync(),[],[]);
+            var after=new NativeDungeonState(before.Bytes.ToArray());
+            BinaryPrimitives.WriteUInt32LittleEndian(after.Bytes.AsSpan(5112),1);
+            after.Bytes[5052]=1;
+            string sessionId=(string)session.GetType().GetProperty("SessionId")!.GetValue(session)!;
+            var result=new NativeDungeonSettlementRecord(0,0,0,0,0,5,100,
+                CharacterExperienceAward:100,SettlementId:"dust-exact-stage");
+            await database.ApplyNativeDungeonDeltaAsync(accountId,CharacterId,sessionId,before,after,
+                CancellationToken.None,"dust-result",settlement:result);
+        }
         public async Task<CharacterRecord> ReadAsync() => (await new DatabaseService(root).GetCharacterAsync(accountId))!;
         public async Task<string> SnapshotAsync()
         {

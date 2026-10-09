@@ -20,6 +20,7 @@ internal static class MigrationChecks
         await InventoryDiscardChecks.RunAsync();
         await InventoryExpansionChecks.RunAsync();
         await PetMaterialClassificationChecks.RunAsync();
+        PetProgressionChecks.Run();
         await ChannelReentryChecks.RunAsync();
         await ShopCurrencyPaginationChecks.RunAsync();
         await DungeonRankingChecks.RunAsync();

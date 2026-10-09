@@ -317,6 +317,7 @@ static void send_cf72_initial_owner_reset_initial_owner_policy_policy(SOCKET c){
 #include "components/pet_growth/petitem_runtime.inc"
 #include "components/inventory_instances/shop_runtime.inc"
 #include "components/inventory_instances/item_lifesteal_runtime.inc"
+#include "components/pet/charge_mp_runtime.inc"
 #include "components/game_session/revival_runtime.inc"
 static void shopping_inventory_bootstrap(void){shopping_inventory_bootstrap_inventory_profile_base_base();inventory_migration_migrate_native_cash_units_to_bundles();inventory_instances_instances_reconcile();game_session_revival_load();pet_crafting_pet_sync_selected_age();}
 /* APARTMENTS keeps C40A routing and hardens apartment transactions, work buffers and scene snapshots. */

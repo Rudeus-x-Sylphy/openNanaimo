@@ -34,6 +34,7 @@ static long sec(void){return 0;}
 static int shop_purchase_shop_item_find(unsigned c){return 0;}
 static int inventory_instances_instance_exchange(unsigned c,unsigned t,unsigned n,unsigned*r){return 0;}
 #include "release/components/inventory_instances/item_lifesteal_runtime.inc"
+#include "release/components/pet/charge_mp_runtime.inc"
 int main(void){
  unsigned hp=50,h=0,m=0;int dead=0;
  assert(inventory_migration_selected_absorb_tenths(9)==3);
@@ -52,6 +53,39 @@ int main(void){
  hp=50;g_stable_pet=99;m=900;
  inventory_migration_apply_absorb(0,10000,&hp,&dead,0,&h,&m,"unequipped");
  assert(g_profile_mp_current==10&&hp==50&&m==0);
+ /* Full MP + charged miss + multi-hit absorption through production helpers. */
+ {
+  struct charge_mp_context charge={0};unsigned char p[40]={0};unsigned before;
+  g_stable_pet=42;g_profile_mp_current=100;hp=100;h=m=0;
+  inventory_migration_apply_absorb(0,1000,&hp,&dead,0,&h,&m,"full-before-charge");
+  assert(g_profile_mp_current==100&&m==0);
+  p[4]=40;p[6]=0x4c;p[7]=4;p[16]=20;p[22]=56;p[28]=10;
+  assert(charge_mp_apply(&charge,p,40,1,1,1,0,hp,100,&g_profile_mp_current)==44);
+  assert(g_profile_mp_current==56); /* No hit: cost still recorded. */
+  inventory_migration_apply_absorb(0,100,&hp,&dead,0,&h,&m,"D00D");
+  assert(g_profile_mp_current==56&&m==300);
+  inventory_migration_apply_absorb(0,234,&hp,&dead,0,&h,&m,"D011");
+  assert(g_profile_mp_current==57&&m==2);
+  assert(!charge_mp_apply(&charge,p,40,1,1,1,0,hp,100,&g_profile_mp_current));
+  assert(g_profile_mp_current==57&&m==2);
+  before=refreshes;
+  inventory_migration_apply_absorb(0,0,&hp,&dead,0,&h,&m,"duplicate-hit");
+  assert(g_profile_mp_current==57&&m==2&&refreshes==before);
+  inventory_migration_apply_absorb(0,100000,&hp,&dead,0,&h,&m,"terminal");
+  assert(g_profile_mp_current==100&&m==0);
+  assert(!charge_mp_apply(&charge,p,40,1,1,1,0,hp,100,&g_profile_mp_current));
+  assert(g_profile_mp_current==100);
+  /* Empty MP still accumulates fractional recovery and emits an absolute refresh. */
+  p[22]=0;p[28]=20;
+  assert(charge_mp_apply(&charge,p,40,1,1,1,0,hp,100,&g_profile_mp_current)==100);
+  before=refreshes;
+  inventory_migration_apply_absorb(0,100,&hp,&dead,0,&h,&m,"zero-mp-hit1");
+  assert(g_profile_mp_current==0&&m==300&&refreshes==before);
+  inventory_migration_apply_absorb(0,234,&hp,&dead,0,&h,&m,"zero-mp-hit2");
+  assert(g_profile_mp_current==1&&m==2&&refreshes==before+1);
+  assert(!charge_mp_apply(&charge,p,40,1,1,1,0,hp,100,&g_profile_mp_current));
+  assert(g_profile_mp_current==1&&m==2);
+ }
  puts("ABSORPTION_PASS");return 0;
 }
 '''

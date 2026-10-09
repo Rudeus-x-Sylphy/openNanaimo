@@ -49,7 +49,11 @@ class PetLocalizationPolicyTests(unittest.TestCase):
             self.assertEqual(actual[1],original[1])
             self.assertEqual(int(actual[1]),p['source_required_level'])
             for field in set(range(35))-{2,16,17,18}:
-                self.assertEqual(actual[field],original[field],(p['code'],field))
+                if p['code'] == h.CODE and field == 9:
+                    self.assertEqual(actual[field], '50')
+                    self.assertEqual(original[field], '20')
+                else:
+                    self.assertEqual(actual[field],original[field],(p['code'],field))
         self.assertEqual({c:int(by_id[c][1]) for c in [15003358,15003359,15003360,15003361,15003366]},
                          {15003358:110,15003359:110,15003360:110,15003361:120,15003366:99})
 

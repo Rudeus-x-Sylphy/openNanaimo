@@ -6,6 +6,19 @@ from unittest.mock import patch
 import deploy_pet_catalog_update as d
 
 class DeploymentTests(unittest.TestCase):
+    def test_new_target_requires_exact_reviewed_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'check.py';path.write_bytes(b'old')
+            for review in ({},{'check.py':'wrong'},{'other.py':d.io.digest(b'old')}):
+                with self.assertRaisesRegex(ValueError,'Unmanaged'):
+                    d.verify_new_target('check.py',path,b'new',set(),review)
+            d.verify_new_target('check.py',path,b'new',set(),{'check.py':d.io.digest(b'old')})
+            self.assertEqual(path.read_bytes(),b'old')
+            path.write_bytes(b'concurrent edit')
+            with self.assertRaisesRegex(ValueError,'Unmanaged'):
+                d.verify_new_target('check.py',path,b'new',set(),{'check.py':d.io.digest(b'old')})
+            d.verify_new_target('check.py',path,b'concurrent edit',set(),{})
+
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(prefix='nanaimo-pet-deploy-')
         self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)

@@ -294,10 +294,14 @@ int main(int argc,char**argv){char b[100];FILE*f=fopen("accounts.dat","r");if(ar
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);(root/'manifest').mkdir();client=root/'client';client.mkdir();data=b'catalog';(client/'pi._D7').write_bytes(data)
             sha=lambda b:hashlib.sha256(b).hexdigest()
-            hero={'required_level':99,'source_required_level':120,'resources':[],'shared_resources':[]};(root/'manifest/hero_dragon_resources.json').write_text(json.dumps(hero),'utf-8')
-            receipt={'schema':'openNanaimo.hero-dragon-install.v1','item_code':15003361,'model_stage':3,'required_level':99,'source_required_level':120,'catalog_count':990,'pet_catalog':{'size':len(data),'sha256':sha(data)}}
+            hero={'required_level':99,'source_required_level':120,'max_durability':50,'resources':[],'shared_resources':[]};(root/'manifest/hero_dragon_resources.json').write_text(json.dumps(hero),'utf-8')
+            receipt={'schema':'openNanaimo.hero-dragon-install.v1','item_code':15003361,'model_stage':3,'required_level':99,'source_required_level':120,'max_durability':50,'catalog_count':990,'pet_catalog':{'size':len(data),'sha256':sha(data)}}
             (client/'.openNanaimo-hero-dragon.json').write_text(json.dumps(receipt),'utf-8')
             self.assertEqual(call('verify-resources','--kind','hero','--root',root,'--client-root',client)['status'],'HERO_DRAGON_RESOURCES_PASS')
+            receipt.pop('max_durability')
+            (client/'.openNanaimo-hero-dragon.json').write_text(json.dumps(receipt),'utf-8')
+            call('verify-resources','--kind','hero','--root',root,'--client-root',client,ok=False)
+            receipt['max_durability']=50
             receipt['required_level']=120
             (client/'.openNanaimo-hero-dragon.json').write_text(json.dumps(receipt),'utf-8')
             call('verify-resources','--kind','hero','--root',root,'--client-root',client,ok=False)

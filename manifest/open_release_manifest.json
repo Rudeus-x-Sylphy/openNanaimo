@@ -86,16 +86,16 @@
         "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
       },
       "adapter_runtime/Nanaimo.Adapter.dll": {
-        "size": 1535488,
-        "sha256": "5AD8AC92921FE5EC595FCCEC7A43F1AD5BE98041D1DBC460DF826BA1ED228F89"
+        "size": 1541632,
+        "sha256": "3679DFCCC89E18CF4DEFFA0C1CD8AF620F7B6F6EB588F2996B08E9F1E15DB526"
       },
       "adapter_runtime/Nanaimo.Adapter.exe": {
         "size": 151552,
-        "sha256": "1A1BCA44B77500875EDE01294799DCFDE6A73F3929EEAB8D6E4C4BBECE18F635"
+        "sha256": "FFF502E463A46D7FC7E659B4C07483678DF1C1E135C9B705710576E98B0BFCF4"
       },
       "adapter_runtime/Nanaimo.Adapter.pdb": {
-        "size": 221548,
-        "sha256": "BA35F2548A281D7684933E21B4E34F957A5299CA22994E82AD9EC312A344EA70"
+        "size": 222476,
+        "sha256": "D6C0F9B47D0D26F30A419654FCD6072811063F534360914B933EF30B80CF75D2"
       },
       "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
         "size": 372,
@@ -103,11 +103,11 @@
       },
       "adapter_runtime/Nanaimo.Gameplay.dll": {
         "size": 5366784,
-        "sha256": "CAD6F280DA8153BC12A972E6EFC6BB238D1339DCF86321A2846DB6DE092D37A9"
+        "sha256": "0A5DC611714D2ED29806A61EC8238FA0039F42AFC4E62742B64A3E1E5066B856"
       },
       "adapter_runtime/Nanaimo.Gameplay.pdb": {
-        "size": 551368,
-        "sha256": "7E5CA118E6F13A929DEE5CD13B748754E4ABC27034D628383679F4B253DEF732"
+        "size": 551376,
+        "sha256": "CEC227C4E9AB38263484D481548B4C7B1964F434ED5879CD69BCB616E400FB95"
       },
       "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
         "size": 5120,
@@ -771,7 +771,7 @@
       },
       "adapter_runtime/adapter_manifest.json": {
         "size": 52662,
-        "sha256": "DE2890BD589AE05A6E1037D200A4B91A0B5F7BFED36B687106A3B0480688AF96"
+        "sha256": "FD87CD2F2492B247A636412834230FC02C699FB944BE9B0F7018FBE41A571293"
       },
       "adapter_runtime/clretwrc.dll": {
         "size": 310568,
@@ -830,8 +830,8 @@
         "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
       },
       "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-        "size": 23625216,
-        "sha256": "F828E7F05B72D8E00633DFBE9B55E46BB3C4B67FE0C2E510195D03E0B7A25A34"
+        "size": 23625728,
+        "sha256": "237A75DAF2DB234084AADE9C3AED1A63BFF54001B6F430F753CEC0070C328728"
       },
       "adapter_runtime/netstandard.dll": {
         "size": 100648,
@@ -923,7 +923,7 @@
       },
       "adapter_runtime/资源/数据/pi._D7": {
         "size": 550496,
-        "sha256": "0E3BD4C5B7D3647BD4BFC5544DF43D1285F4C249CCAF0CF61748B9439F86A698"
+        "sha256": "0388592AD03CAE6025409410578D58F3276983E409A350033AE2B2613E6C906A"
       }
     },
     "delivery": "release-archive-required",
@@ -956,11 +956,11 @@
     },
     "gui_launcher/data/inventory_catalog_summary.json": {
       "size": 2625,
-      "sha256": "879F0ED35D52B9EB5CF4CD7A1F8604304EE09B82648297CDA3E97DD3EC8878B4"
+      "sha256": "EED7D4B8675EFA6923B33F243169C18593AAF13A4CAB4FFB7F095B3338922096"
     },
     "gui_launcher/data/inventory_pets.json": {
       "size": 2553148,
-      "sha256": "5641EF76A9C6544E22132FC0A92B5691CB86E7B08EC118725FA06A426272B91D"
+      "sha256": "3B639F475DBD66FC862F3BEC158D8D7FB176F4AFF60ACBAA4C967CCEB6F6ED2E"
     },
     "gui_launcher/data/pet_attack_modes.json": {
       "size": 1541978,
@@ -968,7 +968,7 @@
     },
     "gui_launcher/data/pets.json": {
       "size": 2493949,
-      "sha256": "B58BD1C67F0700EE04757D546551B59E36E01D10752E8D73357A317647AAD938"
+      "sha256": "798C260AC822240A4A3936ECEF57C8CD48139872B0EE22E0C65E87A1514670AF"
     },
     "gui_launcher/data/previews/basketball.png": {
       "size": 2162,
@@ -3087,12 +3087,12 @@
       "sha256": "49914ACBA1F40F1139E80F2F27E788AA895372A1D0C90DAFF62D141569BD11E1"
     },
     "manifest/hero_dragon_resources.json": {
-      "size": 16042,
-      "sha256": "B9D076A9BB2FB348855181E1FA46233A02D4C361B841B5F6175320AB316D1463"
+      "size": 17803,
+      "sha256": "D3772C723536ACD0CE0C6A4207508C7B594CB7EACCF33BB27A1A1D28AB7F49E5"
     },
     "manifest/korean_pet_resources.json": {
-      "size": 775415,
-      "sha256": "991EB449647DE80D9C68682733C8F6F34D5839FF78E4EBBBC7B7F348D49E15CC"
+      "size": 882389,
+      "sha256": "4A3F31E412C04AB2DACEA3415C27D35397223FC418F605DE5709E02A4609B444"
     },
     "manifest/lumineos_combat.json": {
       "size": 58341,
@@ -3155,8 +3155,8 @@
       "sha256": "932E9D6A0B2C5C39097B0671DDF1F17B0C01EA1FB22FCAE466D69753D8EE4002"
     },
     "scripts/deploy_pet_catalog_update.py": {
-      "size": 13134,
-      "sha256": "E0D5A37A022F7A0FDD0D964DBBF32D05DBB80DA28934730B4904771C921B3423"
+      "size": 13730,
+      "sha256": "41C6DF797E3EDFCFF43989C693C23B929CA1F7E823CA31BFE9A6FF53581E262E"
     },
     "scripts/dungeon7_visuals.py": {
       "size": 12178,
@@ -3231,20 +3231,20 @@
       "sha256": "3390493053DB943CC34DB89EC3E2DB7C7A5EBE53705ECB5B597898BA3A19BC3F"
     },
     "scripts/prepare_hero_dragon.py": {
-      "size": 14096,
-      "sha256": "FFE9968BC06A580CBC3230D6D3ACF1FED26815DA796B10D9FD0E6E0E3658A8F2"
+      "size": 14397,
+      "sha256": "57008A4D98EE6F9D557405102F0479ECD5DFA4B408349B734A7B3FF6E5A9DF09"
     },
     "scripts/prepare_korean_pets.py": {
-      "size": 12046,
-      "sha256": "882FCAF9F3998C09EEA856EB0BE29E508222223F131810B4FACFDC0BA5321075"
+      "size": 12195,
+      "sha256": "771B31B6F69975C4DF7D313563CD2F5071CE24CAF2ABBF18BA5F1183E9AA33CE"
     },
     "scripts/prepare_projectile_diy.ps1": {
       "size": 6809,
       "sha256": "C39201979F023102B0D62C1BFAD95497DCFE870B020D97E79342B0ADBBBFC242"
     },
     "scripts/refresh_manifest.py": {
-      "size": 10793,
-      "sha256": "4A75FECD4913349DF5DD4E9026BE44757029C287D625B9141D087B48FFF2D2C7"
+      "size": 11035,
+      "sha256": "848FF76679B6191A93F37760918A55A9F64D92F7F02C2E181A6F5369DAAAEC14"
     },
     "scripts/refresh_source_manifest.py": {
       "size": 7291,
@@ -3258,9 +3258,25 @@
       "size": 3571,
       "sha256": "78EC8F070D7D953AC1FDD28012EADCDC8DFFFA6126B3C1E39140C19330D282B6"
     },
+    "scripts/test_boss_meat_contact_number.py": {
+      "size": 8916,
+      "sha256": "68011045E61FF5F185A25AA3177AF707DFA28818780A5E27CD4F6D9827A8A7FA"
+    },
     "scripts/test_card_page_update.py": {
       "size": 2054,
       "sha256": "2F73D779F59F078668CD372956DBB5B5D043E0C3F7911D8EF1B71F6F4607D2A9"
+    },
+    "scripts/test_charge_mp.py": {
+      "size": 5022,
+      "sha256": "BEC172159EA52EA5F746CDC78FC6FE36B62910B50EBF4871773CE616AA984191"
+    },
+    "scripts/test_charge_mp_wire.py": {
+      "size": 5993,
+      "sha256": "C3C921B3972BBD47E53AE794E8D4D8696FBC5BDB6FB6ABD769D2AB4BABA45B44"
+    },
+    "scripts/test_contact_damage_lifecycle.py": {
+      "size": 10359,
+      "sha256": "6901FF92B435CCAAF20C76E070B3CEC43D7AAF5C070A808E6F15264804B05AD1"
     },
     "scripts/test_deploy_adapter_runtime.py": {
       "size": 2773,
@@ -3293,6 +3309,14 @@
     "scripts/test_live_dungeon_experience.py": {
       "size": 12272,
       "sha256": "89B3E5D1F45784A36507F2DD1C7E3AEB881C35718DBE0A33ACDE720ED542EB35"
+    },
+    "scripts/test_mana_absorption.py": {
+      "size": 6024,
+      "sha256": "D6F8D2943BC35809A11990495E2E5B80C692301AB9637F81973F34F34EDF9EA9"
+    },
+    "scripts/test_pet_lifetime.py": {
+      "size": 2928,
+      "sha256": "CDE080158856E19F36A53207ED324A6732DE4D6ECC12E494056CEB061D3AD3CB"
     },
     "scripts/test_preloaded_scene_wire.py": {
       "size": 2581,
@@ -3363,16 +3387,16 @@
       "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
     },
     "adapter_runtime/Nanaimo.Adapter.dll": {
-      "size": 1535488,
-      "sha256": "5AD8AC92921FE5EC595FCCEC7A43F1AD5BE98041D1DBC460DF826BA1ED228F89"
+      "size": 1541632,
+      "sha256": "3679DFCCC89E18CF4DEFFA0C1CD8AF620F7B6F6EB588F2996B08E9F1E15DB526"
     },
     "adapter_runtime/Nanaimo.Adapter.exe": {
       "size": 151552,
-      "sha256": "1A1BCA44B77500875EDE01294799DCFDE6A73F3929EEAB8D6E4C4BBECE18F635"
+      "sha256": "FFF502E463A46D7FC7E659B4C07483678DF1C1E135C9B705710576E98B0BFCF4"
     },
     "adapter_runtime/Nanaimo.Adapter.pdb": {
-      "size": 221548,
-      "sha256": "BA35F2548A281D7684933E21B4E34F957A5299CA22994E82AD9EC312A344EA70"
+      "size": 222476,
+      "sha256": "D6C0F9B47D0D26F30A419654FCD6072811063F534360914B933EF30B80CF75D2"
     },
     "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
       "size": 372,
@@ -3380,11 +3404,11 @@
     },
     "adapter_runtime/Nanaimo.Gameplay.dll": {
       "size": 5366784,
-      "sha256": "CAD6F280DA8153BC12A972E6EFC6BB238D1339DCF86321A2846DB6DE092D37A9"
+      "sha256": "0A5DC611714D2ED29806A61EC8238FA0039F42AFC4E62742B64A3E1E5066B856"
     },
     "adapter_runtime/Nanaimo.Gameplay.pdb": {
-      "size": 551368,
-      "sha256": "7E5CA118E6F13A929DEE5CD13B748754E4ABC27034D628383679F4B253DEF732"
+      "size": 551376,
+      "sha256": "CEC227C4E9AB38263484D481548B4C7B1964F434ED5879CD69BCB616E400FB95"
     },
     "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
       "size": 5120,
@@ -4048,7 +4072,7 @@
     },
     "adapter_runtime/adapter_manifest.json": {
       "size": 52662,
-      "sha256": "DE2890BD589AE05A6E1037D200A4B91A0B5F7BFED36B687106A3B0480688AF96"
+      "sha256": "FD87CD2F2492B247A636412834230FC02C699FB944BE9B0F7018FBE41A571293"
     },
     "adapter_runtime/clretwrc.dll": {
       "size": 310568,
@@ -4107,8 +4131,8 @@
       "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
     },
     "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-      "size": 23625216,
-      "sha256": "F828E7F05B72D8E00633DFBE9B55E46BB3C4B67FE0C2E510195D03E0B7A25A34"
+      "size": 23625728,
+      "sha256": "237A75DAF2DB234084AADE9C3AED1A63BFF54001B6F430F753CEC0070C328728"
     },
     "adapter_runtime/netstandard.dll": {
       "size": 100648,
@@ -4200,10 +4224,10 @@
     },
     "adapter_runtime/资源/数据/pi._D7": {
       "size": 550496,
-      "sha256": "0E3BD4C5B7D3647BD4BFC5544DF43D1285F4C249CCAF0CF61748B9439F86A698"
+      "sha256": "0388592AD03CAE6025409410578D58F3276983E409A350033AE2B2613E6C906A"
     }
   },
-  "source_closure_count": 353,
+  "source_closure_count": 355,
   "public_export_policy": {
     "mode": "explicit-reviewed-allowlist-only",
     "exclude_private_profiles_states_logs_backups": true,

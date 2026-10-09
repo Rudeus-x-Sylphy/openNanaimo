@@ -72,6 +72,11 @@ static async Task RunAsync(string[] args)
         await PetMaterialClassificationChecks.RunAsync();
         return;
     }
+    if (args.Contains("--pet-progression-self-test"))
+    {
+        PetProgressionChecks.Run();
+        return;
+    }
     if (args.Contains("--inventory-discard-self-test"))
     {
         await InventoryDiscardChecks.RunAsync();

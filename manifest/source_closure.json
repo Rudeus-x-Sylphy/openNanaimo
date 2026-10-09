@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 353,
+  "count": 355,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 23542784,
-      "sha256": "2A174FB24DCD14CDCC710ECDA6DB3DE41DAB384D4115DEED84C29DDD6DFEDA47"
+      "size": 23544832,
+      "sha256": "BC099301BCD81E35FF55CBF6B3396E6EE4E802594F435433F892487E0271A3BC"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 23542784,
-      "sha256": "9BD2876A50B9EC331AEEAEE3B67653A3383CC22CCD9A08B6D0DD3C0ADDA78838"
+      "size": 23544832,
+      "sha256": "BF94F4482D32CAAC3ECEE8049C1E8D2ADAFFE6F455FA3B412133BB0211132E20"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 23624192,
-      "sha256": "4183E47858FD9D6744D065AE4071F230ADC0A7E2713D4FC886A74FA5FF525EAE"
+      "size": 23625728,
+      "sha256": "237A75DAF2DB234084AADE9C3AED1A63BFF54001B6F430F753CEC0070C328728"
     }
   },
   "files": [
@@ -203,8 +203,8 @@
     },
     {
       "path": "managed-host/LauncherTools.Compatibility.cs",
-      "size": 13303,
-      "sha256": "452723F3073A5661ABF0251F5F8D1B0AB13070D3819466386758885575257C21"
+      "size": 13360,
+      "sha256": "2815D76B582E879F58920B3A4D22092BC863F07D78CC2CAACC92BD92E8182273"
     },
     {
       "path": "managed-host/LauncherTools.Inventory.cs",
@@ -243,8 +243,8 @@
     },
     {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 34032,
-      "sha256": "2BA25EC20DBAD520B684F7C4A7D1B99FC18BA8BA80E1BB41B6436B42B94EFE3D"
+      "size": 34068,
+      "sha256": "2F7E67ED75B36D9FA9A7AA663600C5805041B2B9DA1A4E8D8473897D94E5AE15"
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
@@ -268,8 +268,13 @@
     },
     {
       "path": "managed-host/PetMaterialClassificationChecks.cs",
-      "size": 23804,
-      "sha256": "E9F75A8664442D83A76C718392AC32B6737EEDBBB54ACC73FA55D5E43242E4B5"
+      "size": 25695,
+      "sha256": "8BFB47F146A6123A578B68C4A95539BAB1FF4BA0C08606A28BC186BB5F59F3AB"
+    },
+    {
+      "path": "managed-host/PetProgressionChecks.cs",
+      "size": 3550,
+      "sha256": "884438D887D4C0578D1162C00136248677464602F438D0302ED08E6FB33593C9"
     },
     {
       "path": "managed-host/PetRevivalVillageChecks.cs",
@@ -278,8 +283,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 14673,
-      "sha256": "7199531B767199B65FA67ECD8049A05AE3683EA88904C31C1F8C4AC7F542D10F"
+      "size": 14791,
+      "sha256": "160240136AF48CDD3A10EF4998EF258889B6EC36A6AA0B21ED833EF0FFCC35C6"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -1063,8 +1068,8 @@
     },
     {
       "path": "managed/Services/PetProgression.cs",
-      "size": 11125,
-      "sha256": "414C31081F90273CD0471C8ED0FDD12DDBF82BBB1C09B77416B7913770C121A8"
+      "size": 11232,
+      "sha256": "FDFE21BE46BDE4D2EE92F7589508C22CCE564B478528FE5BA3269C40F6C688E4"
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
@@ -1293,8 +1298,8 @@
     },
     {
       "path": "release/components/combat_attribution/meat_collision_runtime.inc",
-      "size": 6644,
-      "sha256": "12960087A5200F00896EC75B44CDFF9DBA3E13EC9C69D3F099F54B064415D87E"
+      "size": 6244,
+      "sha256": "DA98C02461E26CE4DF9F1BFA16AAA239002A55FB55F9BEBB75ACB39E9E6DC5D6"
     },
     {
       "path": "release/components/combat_attribution/monster_hp_resource_policy.inc",
@@ -1413,8 +1418,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 155278,
-      "sha256": "971E29912EAEE523D21D56DFA8F481C0682995960F7A4C3A7DEA279B98B90A6D"
+      "size": 152902,
+      "sha256": "0CEE82E6223E92DA939B83892510259B8267FC05CA43AF081A987FD8F1532065"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
@@ -1525,6 +1530,11 @@
       "path": "release/components/pet/attack_mode_powerup.inc",
       "size": 1100,
       "sha256": "123FAF89AB5B45208797B71B5DC471EBF0710876CA5F4CE7EB8E767F76D77E15"
+    },
+    {
+      "path": "release/components/pet/charge_mp_runtime.inc",
+      "size": 1520,
+      "sha256": "85BA4E47D738F32C7139D7D5287156CDC25AA1F8A4513BD07CECF0682B93140D"
     },
     {
       "path": "release/components/pet_crafting/pet_growth_catalog.inc",
@@ -1728,8 +1738,8 @@
     },
     {
       "path": "release/teamplay_common.inc",
-      "size": 14886,
-      "sha256": "4F0C8481DF08F037540A185928A6362B413A832AB5EAD0B65E99FC544AA337D7"
+      "size": 14934,
+      "sha256": "331B88DCF7176362BFD3E2FDF47711C8352F5B4D6056F2D038FB276C2BB50298"
     },
     {
       "path": "scripts/build_complete_adapter.ps1",

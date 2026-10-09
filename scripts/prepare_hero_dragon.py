@@ -72,7 +72,8 @@ def merge_pet(base: bytes, source: bytes, recipe=None) -> bytes:
     hero[2] = '英雄龙'
     hero[16] = '成长到3岁的英雄龙'
     hero[17] = '成长:3岁'
-    hero[18] = '初攻:922(火焰) 槽:3 寿命:20'
+    hero[9] = str(recipe.get('max_durability', 50))
+    hero[18] = '初攻:922(火焰) 槽:3 寿命:' + hero[9]
     position = next((i for i, r in enumerate(rows) if r[0] == str(CODE)), None)
     expected = [r.copy() for r in rows]
     if position is not None:
@@ -83,8 +84,9 @@ def merge_pet(base: bytes, source: bytes, recipe=None) -> bytes:
                           if m['before'] == {'size': len(base), 'sha256': digest(base)}), None)
         def row_hash(row):
             return digest((json.dumps(row, ensure_ascii=False, indent=2) + '\n').encode('utf8'))
-        if (not migration or migration.get('allowed_fields') != [1]
-                or [i for i in range(35) if existing[i] != hero[i]] != [1]
+        differing = [i for i in range(35) if existing[i] != hero[i]]
+        if (not migration or not set(differing).issubset({1, 9, 18})
+                or differing != migration.get('allowed_fields')
                 or migration['before_row_sha256'] != row_hash(existing)
                 or migration['after_row_sha256'] != row_hash(hero)):
             raise ValueError('Conflicting existing Hero Dragon definition')
@@ -184,6 +186,7 @@ def prepare(source_root: Path, client_root: Path, output_root: Path, *, apply=Fa
     _, installed_rows, _ = read_pet(plan['pi._D7'], CN_KEY, 'gbk')
     receipt = {'schema': 'openNanaimo.hero-dragon-install.v1', 'item_code': CODE,
                'required_level': recipe['required_level'], 'source_required_level': recipe['source_required_level'], 'model_stage': 3, 'catalog_count': len(installed_rows),
+               'max_durability': int(next(r for r in installed_rows if r[0] == str(CODE))[9]),
                'pet_catalog': {'size': len(plan['pi._D7']), 'sha256': digest(plan['pi._D7'])}}
     plan[RECEIPT_NAME] = encode_receipt(receipt)
     originals = {}
@@ -253,6 +256,7 @@ def verify_installed(client_root: Path, recipe_path=RECIPE):
     if (receipt.get('schema') != 'openNanaimo.hero-dragon-install.v1'
             or receipt.get('item_code') != CODE or receipt.get('model_stage') != 3
             or receipt.get('required_level') != recipe['required_level']
+            or receipt.get('max_durability') != recipe.get('max_durability', 50)
             or receipt.get('source_required_level') != recipe['source_required_level'] or receipt.get('catalog_count', 0) < 1):
         raise ValueError('Installed Hero Dragon receipt is missing or incompatible')
     checked(client_root / 'pi._D7', receipt['pet_catalog'])

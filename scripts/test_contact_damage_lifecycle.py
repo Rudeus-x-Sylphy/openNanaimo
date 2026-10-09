@@ -120,15 +120,15 @@ int main(int argc,char**argv){
     hp=5000;dead=0;req[8]=10;req[0x12]=9;i=sends;
     CHECK(player_collision_apply_player_d00f_injury(100,62050,req,10u,123400,1,1,1,1,1,&hp,&dead,5000,789,&ctx,&skill,777u)&&sends==i+1);
     CHECK(word(34)==0u&&frame[29]==10u);
-    /* A Boss meat contact arrives as kind40, whose layout carries child/ordinal at
-       +0x1F/+0x20 and never WORD+0x22.  The damage number therefore rides its own
-       kind20-styled contact frame: kind stays 20, WORD+0x1A keeps the request's
-       contact index, WORD+0x12 stays 0 (meat window = player immune) and WORD+0x0A
-       stays 100 so the terminal side effects remain on the kind40 frame + D012. */
-    memset(req,0,sizeof(req));req[8]=40;req[0x12]=9;req[0x13]=0;i=sends;
-    send_d010_boss_meat_contact_number(100,21u,4321u,3960u,717u);
+    /* Boss numbers keep kind40 and address the request's child/ordinal.
+       Uninitialized request bytes and recent projectile owners are irrelevant. */
+    memset(req,0xA5,sizeof(req));req[8]=40;req[9]=0;req[0x10]=2;req[0x11]=3;
+    req[0x12]=9;req[0x13]=1;i=sends;
+    send_d010_boss_meat_contact_number(100,req,21u,4321u,3960u);
     CHECK(sends==i+1&&size==36u&&word(6)==0xD010&&word(8)==21u&&word(10)==100u);
-    CHECK(word(16)==4321u&&word(18)==0u&&word(26)==717u&&frame[29]==20u&&word(34)==3960u);
+    CHECK(word(16)==4321u&&word(18)==0u&&word(26)==265u&&frame[29]==40u&&word(34)==3960u);
+    CHECK(frame[30]==2u&&frame[31]==3u&&word(32)==265u);
+    CHECK(frame[20]==0u&&frame[21]==0u&&frame[22]==0u&&frame[23]==0u&&frame[24]==0u&&frame[25]==0u&&frame[28]==0u);
     return 0;
 }
 '''

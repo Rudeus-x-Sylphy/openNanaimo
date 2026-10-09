@@ -16,7 +16,15 @@ import verify_package as package
 ROOT=Path(__file__).resolve().parents[1]
 
 
-def build_payloads(client):
+def verify_new_target(name,path,raw,known,reviewed_before):
+    if name in known or not path.exists():return
+    current=path.read_bytes()
+    if current!=raw and io.digest(current)!=reviewed_before.get(name):
+        raise ValueError('Unmanaged existing deployment target: '+name)
+
+
+def build_payloads(client,reviewed_before=None):
+    reviewed_before=reviewed_before or {}
     manifest=io.load(ROOT/'manifest/open_release_manifest.json')
     closure=io.load(ROOT/'manifest/source_closure.json')
     package.verify_records(ROOT,((r['path'],r) for r in closure['files']))
@@ -57,7 +65,7 @@ def build_payloads(client):
     hr=io.load(ROOT/'manifest/hero_dragon_resources.json')
     data[hero.RECEIPT_NAME]=hero.encode_receipt({'schema':'openNanaimo.hero-dragon-install.v1',
         'item_code':hero.CODE,'required_level':hr['required_level'],
-        'source_required_level':hr['source_required_level'],'model_stage':3,
+        'source_required_level':hr['source_required_level'],'model_stage':3,'max_durability':hr.get('max_durability',50),
         'catalog_count':recipe['catalog_count'],'pet_catalog':recipe['installed_catalog']})
     data[pets.RECEIPT]=pets.encode_json({'schema':pets.SCHEMA,
         'recipe_sha256':hero.digest((ROOT/'manifest/korean_pet_resources.json').read_bytes()),
@@ -67,8 +75,7 @@ def build_payloads(client):
         'manifest/source_closure.json','manifest/open_release_manifest.json','pi._D7',hero.RECEIPT_NAME,pets.RECEIPT}
     for name,raw in data.items():
         path=io.safe(client,name)
-        if name not in known and path.exists() and path.read_bytes()!=raw:
-            raise ValueError('Unmanaged existing deployment target: '+name)
+        verify_new_target(name,path,raw,known,reviewed_before)
     return data
 
 
@@ -114,7 +121,7 @@ def build_resource_payloads(client):
             hero.checked(io.safe(client,row['path']),expected)
     data[hero.RECEIPT_NAME]=hero.encode_receipt({'schema':'openNanaimo.hero-dragon-install.v1',
         'item_code':hero.CODE,'required_level':hr['required_level'],
-        'source_required_level':hr['source_required_level'],'model_stage':3,
+        'source_required_level':hr['source_required_level'],'model_stage':3,'max_durability':hr.get('max_durability',50),
         'catalog_count':recipe['catalog_count'],'pet_catalog':recipe['installed_catalog']})
     data[pets.RECEIPT]=pets.encode_json({'schema':pets.SCHEMA,
         'recipe_sha256':hero.digest(data['manifest/korean_pet_resources.json']),
@@ -167,11 +174,11 @@ def restore(client,journal):
         else:io.atomic(target,io.safe(client,row['backup']).read_bytes())
 
 
-def deploy(client,apply=False,*,resources_only=False):
+def deploy(client,apply=False,*,resources_only=False,reviewed_before=None):
     client=io.clean_root(client)
     if client==ROOT:raise ValueError('Select a separate installed client, not the source repository')
     io.assert_not_running(client)  # Includes Game.openNanaimo-social-001/002.exe and adapter workers.
-    data=build_resource_payloads(client) if resources_only else build_payloads(client)
+    data=build_resource_payloads(client) if resources_only else build_payloads(client,reviewed_before)
     changed=[n for n,b in data.items() if io.file_hash(io.safe(client,n))!=io.digest(b)]
     if not apply:return {'status':'dry-run','files':len(data),'changed':len(changed)}
     prefix='deployment_backups/pet-catalog-'+uuid.uuid4().hex
@@ -209,6 +216,7 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--client-root',required=True,type=Path);parser.add_argument('--apply',action='store_true')
     parser.add_argument('--resources-only',action='store_true',help='Install pinned PET/GUI resources only; retain verified installed source and binaries')
+    parser.add_argument('--reviewed-before',type=Path,help='Explicit relative paths mapped to reviewed installed SHA-256 values')
     parser.add_argument('--rollback');args=parser.parse_args()
     if args.rollback and args.apply:parser.error('rollback cannot be combined with apply')
-    print(json.dumps(rollback(args.client_root,args.rollback) if args.rollback else deploy(args.client_root,args.apply,resources_only=args.resources_only),indent=2))
+    print(json.dumps(rollback(args.client_root,args.rollback) if args.rollback else deploy(args.client_root,args.apply,resources_only=args.resources_only,reviewed_before=io.load(args.reviewed_before) if args.reviewed_before else None),indent=2))

@@ -164,6 +164,8 @@ def prepare(source_root, client_root, output_root, *, apply=False, recipe_path=R
         if preserved_hero:
             receipt.update(required_level=int(preserved_hero['localized_fields']['1']),
                            source_required_level=preserved_hero['source_required_level'])
+            if '9' in preserved_hero['localized_fields']:
+                receipt['max_durability'] = int(preserved_hero['localized_fields']['9'])
         plan[hero.RECEIPT_NAME] = hero.encode_receipt(receipt)
     plan[RECEIPT] = encode_json({'schema': SCHEMA, 'recipe_sha256': hero.digest(recipe_path.read_bytes()),
         'catalog_count': recipe['catalog_count'], 'pet_codes': [p['code'] for p in recipe['pets']],

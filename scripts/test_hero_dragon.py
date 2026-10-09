@@ -56,6 +56,8 @@ class HeroDragonTests(unittest.TestCase):
         self.assertEqual(rows[0], pet(15000001))
         self.assertEqual(rows[-1][0:2], [str(hero.CODE), '120'])
         self.assertEqual(rows[-1][22:24], ['3', '3'])
+        self.assertEqual(rows[-1][9], '50')
+        self.assertTrue(rows[-1][18].endswith(':50'))
         self.assertEqual(tail, ['0', ''])
         self.assertEqual(hero.merge_pet(merged, self.source_table), merged)
 
@@ -80,6 +82,32 @@ class HeroDragonTests(unittest.TestCase):
         path.write_text(json.dumps(receipt),'utf8')
         with self.assertRaisesRegex(ValueError, 'receipt'):
             hero.verify_installed(self.client,self.recipe)
+
+    def test_old_lifetime_receipt_rejected(self):
+        self.prepare(True)
+        path = self.client / hero.RECEIPT_NAME
+        receipt = json.loads(path.read_text('utf8'))
+        receipt.pop('max_durability')
+        path.write_text(json.dumps(receipt), 'utf8')
+        with self.assertRaisesRegex(ValueError, 'receipt'):
+            hero.verify_installed(self.client, self.recipe)
+
+    def test_reviewed_lifetime_migration_is_exact_and_idempotent(self):
+        recipe = json.loads(self.recipe.read_text('utf8'))
+        target = hero.merge_pet(self.before, self.source_table, recipe)
+        _, rows, _ = hero.read_pet(target, hero.CN_KEY, 'gbk')
+        old_rows = [r.copy() for r in rows]
+        old_rows[-1][9] = '20'
+        old_rows[-1][18] = old_rows[-1][18][:-2] + '20'
+        old = catalog(old_rows, hero.CN_KEY, 'gbk')
+        row_hash = lambda row: hero.digest((json.dumps(row, ensure_ascii=False, indent=2)+'\n').encode('utf8'))
+        recipe['catalog_migrations'] = [dict(before=dict(size=len(old), sha256=hero.digest(old)),
+            allowed_fields=[9, 18], before_row_sha256=row_hash(old_rows[-1]), after_row_sha256=row_hash(rows[-1]))]
+        self.assertEqual(hero.merge_pet(old, self.source_table, recipe), target)
+        self.assertEqual(hero.merge_pet(target, self.source_table, recipe), target)
+        old_rows[-1][19] = '999'
+        with self.assertRaisesRegex(ValueError, 'Conflicting'):
+            hero.merge_pet(catalog(old_rows, hero.CN_KEY, 'gbk'), self.source_table, recipe)
 
     def test_full_catalog_requires_batch_migration_before_writes(self):
         recipe=json.loads(self.recipe.read_text('utf8'))

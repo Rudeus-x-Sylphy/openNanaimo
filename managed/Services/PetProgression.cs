@@ -250,8 +250,7 @@ internal static class PetProgression
         var experience = state.Experience;
         var changed = false;
 
-        while (amount > 0
-            && ShopCatalog.TryGetPetGrowthStage(pet.PetGrowthClass, currentStage, out var growth)
+        while (ShopCatalog.TryGetPetGrowthStage(pet.PetGrowthClass, currentStage, out var growth)
             && growth.MaximumLevel > 0
             && growth.ExperiencePerLevel > 0)
         {
@@ -265,6 +264,10 @@ internal static class PetProgression
                 changed = true;
                 continue;
             }
+
+            // Complete a stage even when the last level used the exact reward.
+            if (amount == 0)
+                break;
 
             var needed = growth.ExperiencePerLevel > experience
                 ? growth.ExperiencePerLevel - experience

@@ -24,6 +24,7 @@ __pycache__/
 /dist/
 /exports/
 /.private/
+/.claude/worktrees/
 /adapter/*.rebuilt.exe
 /adapter/*.exe
 # Official installers are supplied separately, never as patch payload
