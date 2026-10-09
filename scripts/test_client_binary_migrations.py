@@ -202,7 +202,8 @@ class UserOwnedNativeWindowTests(unittest.TestCase):
             off = compat._va_offset(output, va, span)
             allowed.update(range(off, off + span))
         for _, va, old, _ in (compat.level200_compat.patch_sites()
-                              + tuple(compat.dungeon_result_compat.sorting_sites())):
+                              + tuple(compat.dungeon_result_compat.sorting_sites())
+                              + tuple(compat.player_trade_compat.patch_sites())):
             off = compat._va_offset(output, va, len(old))
             allowed.update(range(off, off + len(old)))
         self.assertEqual(len(output), len(self.original))

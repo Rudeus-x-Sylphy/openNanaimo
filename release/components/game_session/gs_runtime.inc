@@ -203,18 +203,28 @@ static void send_c481_quickbar_expansion(SOCKET c,int success,unsigned row,unsig
 /* sub_8005F0 case0xF5 -> sub_81D440. Success consumes status, code and
    the same object identity used by C430/C46D; failure consumes status only. */
 static void send_c46e_item_use_result(SOCKET c,int success,unsigned code,unsigned identity){char p[4096];int n=success?20:12;mkpkt(p,0xC46E,n,1);stable_put32(p,8,success?1u:2u);if(success){stable_put32(p,12,code);stable_put32(p,16,identity);}sendbuf(c,p,n);printf("  S0xC46E PROFILE_SNAPSHOT item-use success=%d status=%u code=%u identity=%u len=%d t=%lds\n",success,success?1u:2u,code,identity,n,sec());fflush(0);}
-/* D035 applies a client-side incremental HP/MP pickup, whereas this server's
- * accepted resource pickup policy fills to the effective cap. Publish the
- * absolute result to the collector immediately; peer broadcast excludes self.
- * Use the existing CF72 lifecycle gate so this is not a PET/Power rebuild. */
-static void game_session_send_claimed_pickup_result(SOCKET c,const unsigned char*req,unsigned uid,struct attack_mode_powerup_context*power_ctx){
+/* D035 applies a client-side incremental HP/MP pickup. Resolve the same
+ * resource episode used by the target/resource identity layer before applying
+ * the server-side absolute state, then use CF72 only as the matching sync. */
+static unsigned game_session_pickup_resource_episode(unsigned hd,unsigned episode,unsigned dungeon,unsigned stage_index){
+    unsigned resource_episode=episode,resource_dungeon=dungeon;
+    lumineos_resource_identity(hd,stage_index,&resource_episode,&resource_dungeon);
+    return resource_episode;
+}
+static unsigned game_session_pickup_clamped_add(unsigned current,unsigned maximum,unsigned base,unsigned per_episode,unsigned episode){
+    unsigned add=base+per_episode*episode;
+    if(current>=maximum)return maximum;
+    if(add>maximum-current)return maximum;
+    return current+add;
+}
+static void game_session_send_claimed_pickup_result(SOCKET c,const unsigned char*req,unsigned uid,struct attack_mode_powerup_context*power_ctx,unsigned resource_episode){
     unsigned category=(unsigned)req[0]|((unsigned)req[1]<<8);
     unsigned item_type=(unsigned)req[4]|((unsigned)req[5]<<8)|((unsigned)req[6]<<16)|((unsigned)req[7]<<24);
     send_d035_playable(c,req,uid,power_ctx);
     if(category==40u&&(item_type==2u||item_type==3u)){
         send_cf72_dynamic_actor_refresh_phase(c,uid,native_cf72_phase_for_socket(c));
         multiplayer_broadcast_actor_resources_current();
-        printf("  [PICKUP_RESOURCE] collector=%u item=%u hp=%u/%u mp=%u/%u sync=D035-then-local-CF72 policy=effective-cap\n",uid,item_type,pet_crafting_pet_effective_hp_current(),pet_crafting_pet_effective_hp_max(),pet_crafting_pet_effective_mp_current(),pet_crafting_pet_effective_mp_max());fflush(0);
+        printf("  [PICKUP_RESOURCE] collector=%u item=%u episode=%u hp=%u/%u mp=%u/%u sync=D035-then-local-CF72 policy=client-increment\n",uid,item_type,resource_episode,pet_crafting_pet_effective_hp_current(),pet_crafting_pet_effective_hp_max(),pet_crafting_pet_effective_mp_current(),pet_crafting_pet_effective_mp_max());fflush(0);
     }
 }
 
@@ -1207,7 +1217,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                         if(grant){sleep(0);send_d035_playable(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}
 #endif
                         }
-                        else{int claim_ok=teamplay_drop_claim(category,scene_uid,item_type,multiplayer_current_uid());if(claim_ok){if(category==40u&&item_type==2u){combat_hp=pet_crafting_pet_effective_hp_max();g_profile_hp_current=combat_hp;injury_dead=0;}if(category==40u&&item_type==3u)g_profile_mp_current=pet_crafting_pet_effective_mp_max();sleep(0);game_session_send_claimed_pickup_result(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx);}else{printf("  [MULTI_DROP] suppress duplicate/unoffered pickup uid=%u category=%u scene=%u item=%u\n",multiplayer_current_uid(),category,scene_uid,item_type);fflush(0);}}
+                        else{int claim_ok=teamplay_drop_claim(category,scene_uid,item_type,multiplayer_current_uid());if(claim_ok){unsigned pickup_episode=game_session_pickup_resource_episode(current_hd,current_stage,current_dungeon,current_stage_index);if(category==40u&&item_type==2u){combat_hp=game_session_pickup_clamped_add(pet_crafting_pet_effective_hp_current(),pet_crafting_pet_effective_hp_max(),304u,80u,pickup_episode);g_profile_hp_current=combat_hp;injury_dead=0;}if(category==40u&&item_type==3u)g_profile_mp_current=game_session_pickup_clamped_add(pet_crafting_pet_effective_mp_current(),pet_crafting_pet_effective_mp_max(),26u,10u,pickup_episode);sleep(0);game_session_send_claimed_pickup_result(c,(const unsigned char*)&buf[off+8],teamplay_pickup_uid(),&power_ctx,pickup_episode);}else{printf("  [MULTI_DROP] suppress duplicate/unoffered pickup uid=%u category=%u scene=%u item=%u\n",multiplayer_current_uid(),category,scene_uid,item_type);fflush(0);}}
                     } else if(type==0xCF73 && len==8){
                         post_reset_pending=post_reset_seen_c587=post_reset_seen_cf70=0;pending_super_cf87=0;
 #if TEAMPLAY_FEATURE_CF99_SUPER_REARM_CLEAR

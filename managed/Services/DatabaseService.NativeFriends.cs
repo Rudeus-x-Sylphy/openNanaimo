@@ -7,6 +7,7 @@ public sealed partial class DatabaseService
     internal async Task<IReadOnlyList<CharacterRecord>> GetNativeFriendContactsAsync(long characterId, CancellationToken token)
     {
         await using var connection = await OpenConnectionAsync(token);
+        await MaterializeAcceptedFriendRelationsAsync(connection, token);
         var ids = new List<long>();
         await using (var command = connection.CreateCommand())
         {

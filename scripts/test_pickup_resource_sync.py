@@ -43,13 +43,18 @@ int main(int argc,char**argv){
  send_cf72_dynamic_actor_refresh_phase(100,33,NATIVE_CF72_PROFILE);
  multiplayer_broadcast_actor_resources_current();count=0;
  attack_mode_powerup_reset(&power,0,1);power.observed_power_stage=2;
+ CHECK(game_session_pickup_resource_episode(0u,100u,0u,0u)==16u);
+ CHECK(game_session_pickup_resource_episode(0u,100u,6u,1u)==22u);
+ CHECK(game_session_pickup_clamped_add(1000u,5000u,304u,80u,23u)==3144u);
+ CHECK(game_session_pickup_clamped_add(100u,1000u,26u,10u,23u)==356u);
+ CHECK(game_session_pickup_clamped_add(4900u,5000u,304u,80u,23u)==5000u);
  if(item==3){g_profile_hp_current=3406;hp=3406;g_profile_mp_current=2750;}
  req[4]=(unsigned char)item;
 #ifdef REPLAY_OLD_PICKUP
  send_d035_playable(100,req,33,&power);
  if(item==2||item==3)multiplayer_broadcast_actor_resources_current();
 #else
- game_session_send_claimed_pickup_result(100,req,33,&power);
+ game_session_send_claimed_pickup_result(100,req,33,&power,23u);
 #endif
  for(i=0;i<count;i++){
   if(sockets[i]==100){

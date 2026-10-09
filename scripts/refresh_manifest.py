@@ -14,6 +14,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
+    'scripts/player_trade_compat.py',
+    'scripts/test_player_trade_compat.py',
+    'tests/CardExchangeRegression/CardTradeChecks.cs',
     'scripts/deploy_card_use_update.py',
     'scripts/prepare_card_page_update.py',
     'scripts/test_card_page_update.py',

@@ -22,6 +22,7 @@ try:
     from . import dungeon_result_compat
     from . import dungeon_experience_compat
     from . import level200_compat
+    from . import player_trade_compat
 except ImportError:
     import apartment_exterior_panel as exterior_panel
     import dungeon7_visuals
@@ -30,6 +31,7 @@ except ImportError:
     import dungeon_result_compat
     import dungeon_experience_compat
     import level200_compat
+    import player_trade_compat
 from pathlib import Path
 
 ROUTE = [8, 7, 6, 11, 16, 17, 18, 19, 14, 9, 4, 3, 2, 1, 0, 5, 10, 15, 20, 21, 22, 23, 24]
@@ -461,7 +463,7 @@ def _referral_patch_sites():
          b'\xE8' + _rel32(REFERRAL_QUERY_VA + 5, REFERRAL_GUARD_VA)),
         ('referral_parent_guard', REFERRAL_GUARD_VA, b'\xCC' * REFERRAL_CAVE_SPAN, guard),
         ('referral_local_retry', REFERRAL_RESET_VA, b'\xCC' * REFERRAL_CAVE_SPAN, reset),
-    ]
+    ] + entertainment_mode_compat.patch_sites()
     for name, va in zip(('referral_empty_retry', 'referral_self_retry'), REFERRAL_LOCAL_RESULT_SITES):
         sites.append((name, va, REFERRAL_LOCAL_RESULT_OLD,
                       b'\xE8' + _rel32(va + 5, REFERRAL_RESET_VA)))
@@ -621,7 +623,7 @@ def social_gameplay_patch_sites():
          b'\xE9' + struct.pack('<i', base - 0x0040B37A - 5)),
         ('dungeon_result_data_gate', 0x0066CD71, bytes.fromhex('741a'), bytes.fromhex('eb1a')),
         ('dungeon_party_result_data_gate', 0x0066CD45, bytes.fromhex('741a'), bytes.fromhex('eb1a')),
-    ] + entertainment_mode_compat.patch_sites()
+    ]
 
 
 def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
@@ -650,11 +652,13 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     data, level200 = level200_compat.patch(data, _patch_site)
     data, boss_health = patch_boss_health_display(data)
     data, quickbar = patch_quickbar_refresh(data)
+    data, player_trade = player_trade_compat.patch(data, _patch_site)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
         other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power, result_entry=result_entry,
         social_gameplay=_migration_report('patch_social_gameplay', **gameplay),
         settlement_experience=experience, actor_level=actor_level, level200=_migration_report("patch_level200", **level200), boss_health=boss_health, quickbar=quickbar,
-        member_town=_migration_report('patch_settlement_member_town', **member_town))
+        member_town=_migration_report('patch_settlement_member_town', **member_town),
+        player_trade=_migration_report('patch_player_trade', **player_trade))
 
 
 def _gift_preview_patch_bytes() -> tuple[bytes, bytes]:
@@ -1109,6 +1113,7 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
         expected_sites.extend((name, va, new) for name, va, _, new in quickbar_refresh_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in SETTLEMENT_MEMBER_TOWN_SITES)
         expected_sites.extend((name, va, new) for name, va, _, new in social_gameplay_patch_sites())
+        expected_sites.extend((name, va, new) for name, va, _, new in player_trade_compat.patch_sites())
         expected_sites.extend((name, va, new) for name, va, _, new
                               in dungeon_result_compat.continuation_sites() + dungeon_result_compat.sorting_sites())
         result_hook, result_code = dungeon_result_compat.encodings()

@@ -97,6 +97,18 @@ internal static class Program
         var contacts = await fixture.Database.GetNativeFriendContactsAsync(Character(first).Id, Token);
         Check(contacts.Select(item => item.Name).ToHashSet().SetEquals(firstView),
             "stored contacts agree with the successful addition results");
+
+        await PersistDungeonGradeAsync(fixture.Root, Character(second), 23);
+        var friendSnapshot = await fixture.Database.GetFriendListSnapshotAsync(Character(first).Id, Token);
+        var projectedFriend = friendSnapshot.Categories.SelectMany(item => item.Friends)
+            .Concat(friendSnapshot.Unrelated)
+            .Single(item => item.CharacterId == Character(second).Id);
+        Check(projectedFriend.DungeonGrade == 23,
+            "friend list reads the target's persisted dungeon grade instead of the owner's default");
+        var friendInfo = FriendProtocol.BuildFriendInfoResponse(projectedFriend, online: true, ownerVirtualId: 1);
+        Check(friendInfo[^7] == 23,
+            "friend info response carries the target dungeon grade used by the client icon");
+
         var presence = await Dispatch(fixture, first, 0xC5AC, []);
         Check(presence is not null && presence.Length == 12 + contacts.Count * 4
             && BinaryPrimitives.ReadUInt16LittleEndian(presence.AsSpan(8)) == contacts.Count
@@ -115,6 +127,13 @@ internal static class Program
                 .Select(item => item.CharacterName).ToHashSet().SetEquals(expected),
                 "managed categories and native contacts agree in both directions");
         }
+
+        var legacy = await fixture.CreateSessionAsync("friend-legacy", "Legacy", 0);
+        await InsertAcceptedRequestWithoutRelationAsync(
+            fixture.Root, Character(first).Id, Character(legacy).Id);
+        var repaired = await reopened.GetNativeFriendContactsAsync(Character(first).Id, Token);
+        Check(repaired.Any(item => item.Id == Character(legacy).Id),
+            "accepted legacy friend requests are materialized into persistent contacts");
     }
 
     private static async Task CheckGuardsAsync(Fixture fixture)
@@ -171,6 +190,45 @@ internal static class Program
         if (!condition) throw new InvalidOperationException(message);
         _checks++;
         Console.WriteLine("PASS " + message);
+    }
+
+    private static async Task PersistDungeonGradeAsync(string root, CharacterRecord character, byte grade)
+    {
+        var state = NativeDungeonState.Create(character, [], []).Bytes;
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            state.AsSpan(NativeDungeonState.DungeonGradeOffset, 4), grade);
+        await using var connection = new SqliteConnection($"Data Source={Path.Combine(root, "game.db")}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS NativeDungeonProfiles(
+                CharacterId INTEGER PRIMARY KEY REFERENCES Characters(Id),
+                State BLOB NOT NULL);
+            INSERT INTO NativeDungeonProfiles(CharacterId, State)
+            VALUES($id, $state)
+            ON CONFLICT(CharacterId) DO UPDATE SET State = excluded.State;
+            """;
+        command.Parameters.AddWithValue("$id", character.Id);
+        command.Parameters.Add("$state", SqliteType.Blob).Value = state;
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task InsertAcceptedRequestWithoutRelationAsync(
+        string root, long requesterCharacterId, long requesteeCharacterId)
+    {
+        await using var connection = new SqliteConnection($"Data Source={Path.Combine(root, "game.db")}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO FriendRequests(
+                RequesterCharacterId, RequesteeCharacterId, Message,
+                AddToNxFriend, Status, CreatedAt, UpdatedAt)
+            VALUES($requester, $requestee, '', 0, 1, $now, $now)
+            """;
+        command.Parameters.AddWithValue("$requester", requesterCharacterId);
+        command.Parameters.AddWithValue("$requestee", requesteeCharacterId);
+        command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+        await command.ExecuteNonQueryAsync();
     }
 
     private static object? Get(object target, string property)

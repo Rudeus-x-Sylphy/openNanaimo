@@ -84,8 +84,9 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0xF0000, 0x10000, 0x189400), # level-200 C5AA entry comparison
         (0x540000, 0x10000, 0x199400), # level-keyed item resource table
         (0x2D0000, 0x10000, 0x1A9400), # three-digit actor nameplate
+        (0x390000, 0x10000, 0x1B9400), # direct-trade C4BE controller
     ]
-    data = bytearray(0x1B9400)
+    data = bytearray(0x1C9400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -103,7 +104,12 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         return offset
     for _, va, old, _ in compat.social_gameplay_patch_sites():
         put(va, old)
+    # The retired entertainment selector must remain on the native path.
+    put(0x0077744D, bytes.fromhex('66c745e8c800'))
+    put(0x006E3240, b'\xcc' * 256)
     for _, va, old, _ in compat.quickbar_refresh_sites():
+        put(va, old)
+    for _, va, old, _ in compat.player_trade_compat.patch_sites():
         put(va, old)
     put(compat.dungeon7_visuals.MINIMAP_VA, compat.dungeon7_visuals.MINIMAP_OLD)
     for _, va, old, _ in compat.dungeon_experience_compat.patch_sites():

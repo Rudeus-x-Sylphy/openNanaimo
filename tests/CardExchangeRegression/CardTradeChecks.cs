@@ -109,17 +109,34 @@ internal static partial class Program
         ClearBroadcasts(buyer);
 
         var peerPut = TradeOffer(10, sellerUid, 1, otherCard, 1, oneBased: false);
-        Check(await NativeDispatchAsync(service, buyer, 0xC4BA, peerPut, 309) is null,
-            "offer mutation is blocked while either side is ready");
+        var peerPutResult = await NativeDispatchAsync(service, buyer, 0xC4BA, peerPut, 309);
+        Check(peerPutResult is not null && Opcode(peerPutResult) == 0xC4BB,
+            "unready peer can place a card after the first side is ready");
+        Check(await NativeDispatchAsync(service, seller, 0xC4BA, putCard, 3091) is null,
+            "ready side cannot change its frozen cards");
+        Check(await NativeDispatchAsync(service, seller, 0xC4BA, TradeHans(buyerUid, 0, 1), 3092) is null,
+            "ready side cannot change its frozen Hans");
+        var peerHans = await NativeDispatchAsync(service, buyer, 0xC4BA, TradeHans(sellerUid, 0, 200), 3093);
+        Check(peerHans is not null && peerHans[10] == 1,
+            "unready peer can enter Hans after the first side is ready");
+        Check(await NativeDispatchAsync(service, seller, 0xC4BF, [], 3094) is null
+            && !HasBroadcast(seller, 0xC4BF), "final requires both ready snapshots");
         var peerReady = await NativeDispatchAsync(service, buyer, 0xC4BC, [], 310);
-        Check(peerReady is null && HasBroadcast(buyer, 0xC4BD),
-            "peer ready state is sent only to the sender");
+        Check(peerReady is null && HasBroadcast(buyer, 0xC4BD, payload => payload.Length == 48
+            && BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(12)) == OtherCard
+            && BinaryPrimitives.ReadUInt64LittleEndian(payload.AsSpan(40)) == 200),
+            "peer ready snapshot contains the accepted card and Hans exactly");
         ClearBroadcasts(seller);
         ClearBroadcasts(buyer);
 
         Check(await NativeDispatchAsync(service, seller, 0xC4BF, [], 311) is null
             && HasBroadcast(seller, 0xC4BF),
             "first final confirmation is forwarded to the peer");
+        ClearBroadcasts(seller);
+        Check(await NativeDispatchAsync(service, seller, 0xC4BC, [], 3111) is null
+            && !HasBroadcast(seller, 0xC4BD), "duplicate ready cannot revoke final confirmation");
+        Check(await NativeDispatchAsync(service, seller, 0xC4BF, [], 3112) is null
+            && !HasBroadcast(seller, 0xC4BF), "duplicate final does not emit another peer confirmation");
         ClearBroadcasts(buyer);
         var completed = await NativeDispatchAsync(service, buyer, 0xC4BF, [], 312);
         Check(completed is not null && Opcode(completed) == 0xC4C0
@@ -128,8 +145,15 @@ internal static partial class Program
         Check(HasBroadcast(buyer, 0xC4C0, payload => BinaryPrimitives.ReadUInt32LittleEndian(payload) == 10),
             "trade completion result is broadcast to the peer");
         Check(await f.QuantityAsync(f.Seller, Card) == 1
-            && await f.QuantityAsync(f.Buyer, Card) == 2,
+            && await f.QuantityAsync(f.Buyer, Card) == 2
+            && await f.QuantityAsync(f.Seller, OtherCard) == 1
+            && await f.QuantityAsync(f.Buyer, OtherCard) == 2,
             "completed trade transfers the offered cards atomically");
+        Check((await f.WalletAsync(f.Seller)).Coins == 700
+            && (await f.WalletAsync(f.Buyer)).Coins == 1300,
+            "completed trade exchanges both Hans offers exactly once");
+        Check(await NativeDispatchAsync(service, buyer, 0xC4BF, [], 3121) is null,
+            "replayed final after completion cannot repeat payment");
         ClearBroadcasts(seller);
         ClearBroadcasts(buyer);
 
@@ -150,8 +174,89 @@ internal static partial class Program
         Check(HasBroadcast(buyer, 0xC4BE), "cancel state is broadcast to the peer");
         var afterCancel = await NativeDispatchAsync(service, buyer, 0xC4BA,
             TradeOffer(20, sellerUid, 0, card, 1, oneBased: false), 316);
-        Check(afterCancel is not null && BinaryPrimitives.ReadUInt16LittleEndian(afterCancel.AsSpan(8)) == 1,
-            "cancel clears confirmation gates without closing the room");
+        Check(afterCancel is null, "cancel clears the server offer, not just confirmation locks");
+        ClearBroadcasts(buyer);
+        await NativeDispatchAsync(service, buyer, 0xC4BC, [], 317);
+        Check(HasBroadcast(buyer, 0xC4BD, payload => payload.All(b => b == 0)),
+            "ready after cancel publishes an empty card and Hans snapshot");
+        await NativeDispatchAsync(service, buyer, 0xC4BE, [], 318);
+        var restart = await NativeDispatchAsync(service, buyer, 0xC4BA, cancelCard, 319);
+        Check(restart is not null && Opcode(restart) == 0xC4BB,
+            "cancel leaves the room editable for a fresh offer");
+        // Both offers must reset, even after one final confirmation.
+        await NativeDispatchAsync(service, seller, 0xC4BA, TradeHans(buyerUid, 0, 100), 320);
+        await NativeDispatchAsync(service, seller, 0xC4BC, [], 321);
+        await NativeDispatchAsync(service, buyer, 0xC4BC, [], 322);
+        await NativeDispatchAsync(service, seller, 0xC4BF, [], 323);
+        await NativeDispatchAsync(service, buyer, 0xC4BE, [], 324);
+        ClearBroadcasts(seller); ClearBroadcasts(buyer);
+        Check(await NativeDispatchAsync(service, buyer, 0xC4BF, [], 325) is null
+            && !HasBroadcast(buyer, 0xC4BF), "cancel revokes an outstanding final confirmation");
+        await NativeDispatchAsync(service, seller, 0xC4BC, [], 326);
+        await NativeDispatchAsync(service, buyer, 0xC4BC, [], 327);
+        Check(HasBroadcast(seller, 0xC4BD, p => p.All(b => b == 0))
+            && HasBroadcast(buyer, 0xC4BD, p => p.All(b => b == 0)),
+            "cancel removes cards and Hans from both participant ledgers");
+        await NativeDispatchAsync(service, seller, 0xC4BF, [], 328);
+        await NativeDispatchAsync(service, buyer, 0xC4BF, [], 329);
+        Check((await f.WalletAsync(f.Seller)).Coins == 700
+            && (await f.WalletAsync(f.Buyer)).Coins == 1300
+            && await f.QuantityAsync(f.Buyer, Card) == 2,
+            "empty restarted trade cannot transfer canceled cards or Hans");
+        ClearBroadcasts(seller); ClearBroadcasts(buyer);
+        // Duplicate slots cannot promise more cards than the participant owns.
+        await NativeDispatchAsync(service, seller, 0xC4BA,
+            TradeOffer(10, buyerUid, 0, card, 1, false), 330);
+        Check(await NativeDispatchAsync(service, seller, 0xC4BA,
+            TradeOffer(10, buyerUid, 1, card, 1, false), 331) is null,
+            "multiple trade slots cannot overpromise the same owned card");
+        Check(await NativeDispatchAsync(service, seller, 0xC4BA,
+            TradeHans(sellerUid, 0, 100), 332) is null, "offer requires the exact joined peer identity");
+        await NativeDispatchAsync(service, seller, 0xC4BE, [], 333);
+
+        // Force a late DB failure after both sides' native ready snapshots.
+        await NativeDispatchAsync(service, seller, 0xC4BA, TradeHans(buyerUid, 0, 100), 334);
+        await NativeDispatchAsync(service, buyer, 0xC4BA, cancelCard, 335);
+        await NativeDispatchAsync(service, buyer, 0xC4BC, [], 336);
+        await NativeDispatchAsync(service, seller, 0xC4BC, [], 337);
+        await f.ExecuteAsync("CREATE TRIGGER fail_player_trade BEFORE UPDATE OF Hans ON Characters BEGIN SELECT RAISE(ABORT,'trade write failure'); END;");
+        await NativeDispatchAsync(service, buyer, 0xC4BF, [], 338);
+        var failed = await NativeDispatchAsync(service, seller, 0xC4BF, [], 339);
+        Check(failed is not null && Code(failed) == 70 && HasBroadcast(seller, 0xC4C0, p => BinaryPrimitives.ReadUInt32LittleEndian(p) == 70),
+            "database failure delivers a terminal trade refusal to both participants");
+        Check((await f.WalletAsync(f.Seller)).Coins == 700
+            && (await f.WalletAsync(f.Buyer)).Coins == 1300
+            && await f.QuantityAsync(f.Buyer, Card) == 2
+            && await f.QuantityAsync(f.Seller, Card) == 1,
+            "failed trade rolls back card and wallet changes together");
+        await f.ExecuteAsync("DROP TRIGGER fail_player_trade;");
+        Check(await NativeDispatchAsync(service, buyer, 0xC4BE, [], 340) is not null,
+            "database failure releases settling lock for cancel and retry");
+        Invoke<object?>(service, "LeaveTradeRoomScene", seller, "trade test disconnect");
+        Check(Get<int>(seller, "TradeRoomId") == 0 && Get<int>(buyer, "TradeRoomId") == 0
+            && HasBroadcast(seller, 0xC4C1), "disconnect clears both memberships and closes the peer trade page");
+        Check(await NativeDispatchAsync(service, buyer, 0xC4BC, [], 341) is null,
+            "stale ready cannot revive a disconnected trade room");
+        await CheckPlayerTradeTransactionFailuresAsync();
+    }
+
+    private static async Task CheckPlayerTradeTransactionFailuresAsync()
+    {
+        await using var f = await Fixture.CreateAsync();
+        await f.CardsAsync(f.Seller, Card, 2); await f.CardsAsync(f.Buyer, Card, 255);
+        await f.CoinsAsync(f.Seller, 100, 900); await f.CoinsAsync(f.Buyer, 200, 800);
+        Task<(uint ResultCode, long FirstHans, long SecondHans)> Trade(ulong hans, string? session = null)
+            => f.Database.CompletePlayerTradeAsync(f.Seller.Account, f.Seller.Character, f.Seller.Session,
+                hans, new Dictionary<uint, int> { [Card] = 1 }, f.Buyer.Account, f.Buyer.Character,
+                session ?? f.Buyer.Session, 0, new Dictionary<uint, int>());
+        Check((await Trade(0)).ResultCode == 30, "direct trade rejects destination card capacity overflow");
+        await f.CardsAsync(f.Buyer, Card, 1);
+        Check((await Trade(101)).ResultCode == 40, "direct trade rejects insufficient gold at commit");
+        Check((await Trade(0, "obsolete-session")).ResultCode == 20,
+            "direct trade cannot settle against a replaced session");
+        Check(await f.QuantityAsync(f.Seller, Card) == 2 && await f.QuantityAsync(f.Buyer, Card) == 1
+            && (await f.WalletAsync(f.Seller)).Coins == 100 && (await f.WalletAsync(f.Buyer)).Coins == 200,
+            "all commit refusals preserve both cards and independent wallets");
     }
 
     private static void PrepareTradeScene(object session)

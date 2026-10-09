@@ -822,6 +822,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public HashSet<string> ReadySessionIds { get; } = new(StringComparer.Ordinal);
         public HashSet<string> FinalSessionIds { get; } = new(StringComparer.Ordinal);
         public bool Settling { get; set; }
+        public long OfferEpoch { get; set; }
     }
 
     private sealed class TradeOffer
@@ -9730,6 +9731,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         token);
                     settlementResultCode = result.ResultCode;
                 }
+                catch (Exception ex) when (!token.IsCancellationRequested)
+                {
+                    _log($"{channel}:{remote} trade settlement transaction failed: room={settlement.RoomId} error={ex.Message}");
+                    result = (TradeResultFailed, 0, 0);
+                }
                 finally
                 {
                     // The protocol confirmation lock must not survive a cancelled or failed DB call.
@@ -11504,6 +11510,17 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(12, 4)));
         var hans = BinaryPrimitives.ReadUInt64LittleEndian(payload.AsSpan(16, 8));
 
+        // A peer can cancel while this participant awaits the inventory read.
+        // Do not let the old in-flight request recreate an invisible old offer.
+        TradeRoom requestRoom;
+        long requestEpoch;
+        lock (_tradeRoomGate)
+        {
+            if (!TryGetJoinedTradeContextLocked(member, out requestRoom, out _))
+                return null;
+            requestEpoch = requestRoom.OfferEpoch;
+        }
+
         IReadOnlyDictionary<uint, byte> ownedCards = new Dictionary<uint, byte>();
         if (putType == TradePutCard)
         {
@@ -11523,10 +11540,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         lock (_tradeRoomGate)
         {
             if (!TryGetJoinedTradeContextLocked(member, out var room, out var peer)
+                || !ReferenceEquals(room, requestRoom)
+                || room.OfferEpoch != requestEpoch
                 || peer.Character is null
                 || GetSceneEntityId(peer.Character) != peerUid
                 || room.Settling
-                || room.ReadySessionIds.Count != 0
+                || room.ReadySessionIds.Contains(member.SessionId)
                 || !_activeWorldSessions.ContainsKey(peer.SessionId))
                 return null;
 
@@ -11583,6 +11602,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         {
             if (!TryGetJoinedTradeContextLocked(member, out var room, out var peer)
                 || room.Settling
+                || room.ReadySessionIds.Contains(member.SessionId)
                 || !_activeWorldSessions.TryGetValue(peer.SessionId, out var resolvedPeerPresence))
                 return false;
 
@@ -11611,6 +11631,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             peerPresence = resolvedPeerPresence;
             room.ReadySessionIds.Clear();
             room.FinalSessionIds.Clear();
+            room.Offers.Clear();
+            room.OfferEpoch++;
             return true;
         }
     }
@@ -11632,7 +11654,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return false;
 
             peerPresence = resolvedPeerPresence;
-            room.FinalSessionIds.Add(member.SessionId);
+            if (!room.FinalSessionIds.Add(member.SessionId))
+                return false;
             if (room.FinalSessionIds.Count != 2)
                 return true;
 
@@ -11678,7 +11701,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             room.ReadySessionIds.Clear();
             room.FinalSessionIds.Clear();
             if (resultCode == TradeResultSuccess)
+            {
                 room.Offers.Clear();
+                room.OfferEpoch++;
+            }
         }
     }
 

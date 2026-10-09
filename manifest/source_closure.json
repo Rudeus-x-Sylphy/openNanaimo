@@ -298,8 +298,8 @@
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
-      "size": 54361,
-      "sha256": "9276363B7B95D68C1118C9E6C5E8C1ACEBD17F651829A520B5ED95599FAA697B"
+      "size": 55411,
+      "sha256": "18EDD2BF4037F4D70E91D0D46E5DD75F80DFF622A3239C672FC4FDA76F719AF2"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -428,8 +428,8 @@
     },
     {
       "path": "managed/Models/FriendAdminRecord.cs",
-      "size": 2901,
-      "sha256": "C712634E70628225C229B9BBB074F6E4C2ED0042E5A63BB34AD33C870934C8CB"
+      "size": 2944,
+      "sha256": "DA3AEDF1E3796377A89223C7BC593E2973DE7CF90B268DFF98500A483B313B32"
     },
     {
       "path": "managed/Models/GmCharacterEdit.cs",
@@ -633,8 +633,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.Friends.cs",
-      "size": 41788,
-      "sha256": "BC6C3F5AF009A29DDBDD1B4EA67D4B6FC13CB6514260F4A48B8E6E2407DDB908"
+      "size": 43834,
+      "sha256": "0774246C54C2BCAD8859B71D209D035E9EC1120B68CF1B67E65ECB478C409D34"
     },
     {
       "path": "managed/Services/DatabaseService.Gm.cs",
@@ -688,8 +688,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.NativeFriends.cs",
-      "size": 5113,
-      "sha256": "12DC0EF80A14FD245BC3810A27D1A102C9B1F6928CC4CDD22537A685754BF6C6"
+      "size": 5188,
+      "sha256": "BB4367B323A7FCDF2A2CB62E6AF490D194C75F1FDC40388A1E2B6A81B1DC7FA0"
     },
     {
       "path": "managed/Services/DatabaseService.PetMaterialMigration.cs",
@@ -783,8 +783,8 @@
     },
     {
       "path": "managed/Services/FriendProtocol.cs",
-      "size": 18922,
-      "sha256": "3DA86155D6A9D4E9678203E3FC6CC358B480E51D8C0A9F7CB699A5AA83C3C0CE"
+      "size": 18971,
+      "sha256": "16C345F59C7729618C0ACF664B04543E0B32A5326FD7C4702412E4235845F3AF"
     },
     {
       "path": "managed/Services/GmRuntimeControl.cs",
@@ -1053,8 +1053,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 989254,
-      "sha256": "FAB2B61D7AF2877F9EC07355F15E2ECB544EFC4A6422232398ED70F65DC97639"
+      "size": 990403,
+      "sha256": "C15BE3EC07D36AA0D1F595E2AE9AD2362F0D9EC492622D267F087EB37B2B9516"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1418,8 +1418,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 152902,
-      "sha256": "0CEE82E6223E92DA939B83892510259B8267FC05CA43AF081A987FD8F1532065"
+      "size": 153799,
+      "sha256": "49A2860E4B0D5DE4F632EE1043A57B85576A2FFEA445ACCF40AD58F403428D92"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",

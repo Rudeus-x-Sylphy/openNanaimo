@@ -53,6 +53,26 @@
     },
     {
       "group": "character-creation",
+      "va": 7221824,
+      "target": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "known": [
+        "9c6068240100006880326e00688b326e006800000000ff158022d90083f806750866c745e86400eb0666c745e8c800619dc3ccccccccccccccccccccccccccccb4b4bda8d3e9c0d6cad200cac7b7f1b4b4bda8b5a5c8cbb7bfbce4a3bf0d0acac7a3bab5a5c8cbc4a3cabda3a831c8cba3a90d0ab7f1a3bab6e0c8cbc4a3cabda3a8d7eeb6e036c8cba3a900cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "remove_entertainment_room_mode_body",
+      "known_hashes": []
+    },
+    {
+      "group": "character-creation",
+      "va": 7828557,
+      "target": "66c745e8c800",
+      "known": [
+        "e8eebdf6ff90"
+      ],
+      "operation": "remove_entertainment_room_mode_entry",
+      "known_hashes": []
+    },
+    {
+      "group": "character-creation",
       "va": 5137862,
       "target": "e855e0ffff",
       "known": [
@@ -209,26 +229,6 @@
         "741a"
       ],
       "operation": "patch_dungeon_party_result_data_gate",
-      "known_hashes": []
-    },
-    {
-      "group": "dungeon-state",
-      "va": 7221824,
-      "target": "9c6068240100006880326e00688b326e006800000000ff158022d90083f806750866c745e86400eb0666c745e8c800619dc3ccccccccccccccccccccccccccccb4b4bda8d3e9c0d6cad200cac7b7f1b4b4bda8b5a5c8cbb7bfbce4a3bf0d0acac7a3bab5a5c8cbc4a3cabda3a831c8cba3a90d0ab7f1a3bab6e0c8cbc4a3cabda3a8d7eeb6e036c8cba3a900cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "known": [
-        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-      ],
-      "operation": "patch_entertainment_room_mode_body",
-      "known_hashes": []
-    },
-    {
-      "group": "dungeon-state",
-      "va": 7828557,
-      "target": "e8eebdf6ff90",
-      "known": [
-        "66c745e8c800"
-      ],
-      "operation": "patch_entertainment_room_mode_entry",
       "known_hashes": []
     },
     {
@@ -461,6 +461,16 @@
         "e81d97d2ff"
       ],
       "operation": "quickbar_refresh_call_006f5b68",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7970716,
+      "target": "9c608bb53cfcffff31ff8b8cbe6004000085c974068b016a01ff10c784be60040000000000004783ff0a7cdec686ee01000000c6867005000000c786b4040000000000006a006a008bcee8f582ffff6a006a008bcee83a83ffff6a008bcee84175ffff6a016a008b8e9c040000e8028500006a016a018b8e9c040000e8f38400006a00e85c6fffff8b0d78ced800e801073400619de93700000090909090909090909090909090909090909090909090909090909090909090909090909090909090909090909090909090909090909090",
+      "known": [
+        "6a008b953cfcffff8b8a9c040000e8372ec8ff0fb7c083f802757c68d851c8008b0d68f3d60051e8439bc7ff83c4088d8d44fdffffe85fd6c6ff8d9544fdffff526a008b0d78ced800e8f6033400680c52c800a168f3d60050e8119bc7ff83c408683852c8008b0d68f3d60051e8fd9ac7ff83c4086a038b8d3cfcffffe8ab54c8ff6a016a008b953cfcffff8b8a9c040000e8e688c6ff8b0d78ced800e8f20634008b853cfcffffc680ee010000006a028b8d3cfcffffe898fbc7ff6a016a018b8d3cfcffff8b899c040000e8ac88c6ff"
+      ],
+      "operation": "patch_player_trade_cancel_reset",
       "known_hashes": []
     },
     {

@@ -48,6 +48,7 @@ internal sealed class FriendListRecord
     public string Username { get; init; } = string.Empty;
     public string CharacterName { get; init; } = string.Empty;
     public int Level { get; init; }
+    public byte DungeonGrade { get; set; }
     public string Memo { get; init; } = string.Empty;
     public bool IsBlocked { get; init; }
     public bool IsWaitingConfirmation { get; init; }

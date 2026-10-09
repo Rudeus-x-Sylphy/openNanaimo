@@ -288,7 +288,7 @@ internal static class FriendProtocol
         payload.WriteByte(online ? (byte)1 : (byte)0);
         payload.WriteUInt32((uint)Math.Max(0, friend.Level));
         payload.WriteUInt32(0);
-        payload.WriteByte(0);
+        payload.WriteByte(CharacterTitleState.Normalize(friend.DungeonGrade));
         payload.WriteByte(0);
         payload.WriteByte(0);
         return WrapObject(FriendInfoObjectHeader, payload.ToArray());

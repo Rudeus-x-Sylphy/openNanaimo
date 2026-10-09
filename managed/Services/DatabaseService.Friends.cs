@@ -29,6 +29,7 @@ public sealed partial class DatabaseService
         CancellationToken cancellationToken = default)
     {
         await using var connection = await OpenConnectionAsync(cancellationToken);
+        await MaterializeAcceptedFriendRelationsAsync(connection, cancellationToken);
         await EnsureDefaultFriendCategoryAsync(connection, null, ownerCharacterId, cancellationToken);
 
         var snapshot = new FriendListSnapshot();
@@ -58,6 +59,17 @@ public sealed partial class DatabaseService
         }
 
         var relatedIds = new HashSet<long>();
+        var dungeonGrades = new Dictionary<long, byte>();
+
+        async Task<byte> GetFriendDungeonGradeAsync(long characterId)
+        {
+            if (dungeonGrades.TryGetValue(characterId, out var grade))
+                return grade;
+            grade = await LoadDungeonGradeAsync(connection, characterId, cancellationToken);
+            dungeonGrades.Add(characterId, grade);
+            return grade;
+        }
+
         await using (var friendCommand = connection.CreateCommand())
         {
             friendCommand.CommandText = """
@@ -80,10 +92,15 @@ public sealed partial class DatabaseService
                 ORDER BY C.Name COLLATE NOCASE, CM.CategoryCode
                 """;
             friendCommand.Parameters.AddWithValue("$ownerCharacterId", ownerCharacterId);
+            var records = new List<FriendListRecord>();
             await using var reader = await friendCommand.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
+                records.Add(ReadFriendListRecord(reader, waitingConfirmation: false));
+            await reader.CloseAsync();
+
+            foreach (var record in records)
             {
-                var record = ReadFriendListRecord(reader, waitingConfirmation: false);
+                record.DungeonGrade = await GetFriendDungeonGradeAsync(record.CharacterId);
                 relatedIds.Add(record.CharacterId);
                 if (record.CategoryCode is { } categoryCode
                     && categories.TryGetValue(categoryCode, out var category))
@@ -107,10 +124,15 @@ public sealed partial class DatabaseService
                 ORDER BY R.CreatedAt, R.SerialNo
                 """;
             pendingCommand.Parameters.AddWithValue("$ownerCharacterId", ownerCharacterId);
+            var records = new List<FriendListRecord>();
             await using var reader = await pendingCommand.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
+                records.Add(ReadFriendListRecord(reader, waitingConfirmation: true));
+            await reader.CloseAsync();
+
+            foreach (var record in records)
             {
-                var record = ReadFriendListRecord(reader, waitingConfirmation: true);
+                record.DungeonGrade = await GetFriendDungeonGradeAsync(record.CharacterId);
                 if (!relatedIds.Contains(record.CharacterId)
                     && !snapshot.Unrelated.Any(item => item.CharacterId == record.CharacterId))
                     snapshot.Unrelated.Add(record);
@@ -689,6 +711,29 @@ public sealed partial class DatabaseService
         command.Parameters.AddWithValue("$first", first);
         command.Parameters.AddWithValue("$second", second);
         return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture) != 0;
+    }
+
+    private static async Task MaterializeAcceptedFriendRelationsAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT OR IGNORE INTO FriendRelations(
+                FirstCharacterId, SecondCharacterId, CreatedAt)
+            SELECT MIN(RequesterCharacterId, RequesteeCharacterId),
+                   MAX(RequesterCharacterId, RequesteeCharacterId),
+                   MIN(CreatedAt)
+            FROM FriendRequests
+            WHERE Status = 1
+              AND RequesterCharacterId <> RequesteeCharacterId
+            GROUP BY MIN(RequesterCharacterId, RequesteeCharacterId),
+                     MAX(RequesterCharacterId, RequesteeCharacterId)
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     private static FriendListRecord ReadFriendListRecord(SqliteDataReader reader, bool waitingConfirmation)
