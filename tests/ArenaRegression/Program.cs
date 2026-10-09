@@ -39,6 +39,12 @@ internal static class Program
                 "player hit publishes the same applied damage in both native display branches");
         }
         var scoreData = ArenaProtocol.BuildGameData(0, 0);
+        Check(scoreData.AsSpan(0x26E, 50).ToArray().All(value =>
+                value >= ArenaProtocol.SkyArenaItemTypeMinimum
+                && value <= ArenaProtocol.SkyArenaItemTypeMaximum),
+            "sky arena game data uses the dedicated item-type table");
+        Check(scoreData.AsSpan(0x2A0, 50).ToArray().All(value => value <= 4),
+            "sky arena score table contains only active positive score classes");
         Check(ArenaProtocol.ResolveScoreDelta(scoreData, 0) is >= -500 and <= 500,
             "arena game data exposes a bounded score delta");
         Console.WriteLine("ARENA_REGRESSION_PASS room-protocol damage-score-settlement-carriers");

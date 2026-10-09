@@ -790,6 +790,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public HashSet<string> ResultSessionIds { get; } = new(StringComparer.Ordinal);
         public HashSet<string> ResetSessionIds { get; } = new(StringComparer.Ordinal);
         public Dictionary<(string Victim, string Attacker, ushort Kind, ushort Object), long> PvpHitTicks { get; } = [];
+        public Dictionary<(string Attacker, string Victim), ushort> PvpDamageByMatchup { get; } = [];
         public Dictionary<string, ushort> CurrentHpBySession { get; } = new(StringComparer.Ordinal);
         public Dictionary<string, int> ScoreBySession { get; } = new(StringComparer.Ordinal);
         public HashSet<uint> ClearedEntityRuntimeUids { get; } = [];
@@ -7259,6 +7260,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         arenaPickupType,
                         arenaDropUid,
                         arenaPickupValue);
+                    if (firstClaim && arenaPickupType == 30)
+                    {
+                        arenaPickupRoom.ScoreBySession[session.SessionId] = checked((int)Math.Min(
+                            int.MaxValue,
+                            (long)arenaPickupRoom.ScoreBySession.GetValueOrDefault(session.SessionId)
+                                + arenaPickupValue));
+                    }
                     QueueArenaBroadcast(
                         session,
                         0xD035,
@@ -15485,7 +15493,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return null;
 
             if (room.ResultSessionIds.Add(requester.SessionId))
-                room.EndValuesBySession[requester.SessionId] = reportedValue;
+                room.EndValuesBySession[requester.SessionId] = checked((uint)Math.Max(
+                    0,
+                    room.ScoreBySession.GetValueOrDefault(requester.SessionId)));
             if (room.PvpResultPayload.Length != 0)
             {
                 return (
@@ -15574,7 +15584,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         .Max();
                     won = value > otherValue;
                 }
-                return BuildArenaPvpResultRecord(member.Character!, won ? (ushort)1 : (ushort)0);
+                return BuildArenaPvpResultRecord(
+                    member.Character!,
+                    won ? (ushort)1 : (ushort)0,
+                    checked((uint)Math.Max(0, (int)value)));
             }).ToArray();
             room.PvpResultPayload = ArenaProtocol.BuildPvpResults(records);
         }
@@ -15630,6 +15643,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         room.Started = false;
         room.GameDataPayload = [];
+        room.EndingSessionIds.Clear();
+        room.ResultSessionIds.Clear();
+        room.ResetSessionIds.Clear();
+        room.EndValuesBySession.Clear();
+        room.PvpResultPayload = [];
+        room.EliminationWinnerSessionId = null;
+        room.PvpHitTicks.Clear();
+        room.PvpDamageByMatchup.Clear();
         room.CurrentHpBySession.Clear();
         room.ScoreBySession.Clear();
         room.ClearedEntityRuntimeUids.Clear();
@@ -15714,6 +15735,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             room.PvpResultPayload = [];
             room.EliminationWinnerSessionId = null;
             room.PvpHitTicks.Clear();
+            room.PvpDamageByMatchup.Clear();
             room.CurrentHpBySession.Clear();
             room.ScoreBySession.Clear();
             room.ClearedEntityRuntimeUids.Clear();
@@ -15731,7 +15753,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         }
     }
 
-    private static ArenaPvpResultRecord BuildArenaPvpResultRecord(CharacterRecord character, ushort win)
+    private static ArenaPvpResultRecord BuildArenaPvpResultRecord(
+        CharacterRecord character,
+        ushort win,
+        uint addedExperience)
     {
         var levelStart = CharacterProgression.ExperienceRequiredForLevel(character.Level);
         var nextLevel = CharacterProgression.NextExperienceThreshold(character.Level);
@@ -15747,7 +15772,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             checked((byte)Math.Clamp(character.Level, 1, byte.MaxValue)),
             1,
             0,
-            0,
+            addedExperience,
             0,
             protocolExperience,
             protocolLevelStart,

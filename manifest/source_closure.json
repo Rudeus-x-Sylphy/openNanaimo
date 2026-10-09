@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 23544832,
-      "sha256": "BC099301BCD81E35FF55CBF6B3396E6EE4E802594F435433F892487E0271A3BC"
+      "size": 23542784,
+      "sha256": "2A174FB24DCD14CDCC710ECDA6DB3DE41DAB384D4115DEED84C29DDD6DFEDA47"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 23544832,
-      "sha256": "BF94F4482D32CAAC3ECEE8049C1E8D2ADAFFE6F455FA3B412133BB0211132E20"
+      "size": 23542784,
+      "sha256": "9BD2876A50B9EC331AEEAEE3B67653A3383CC22CCD9A08B6D0DD3C0ADDA78838"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 23625728,
-      "sha256": "237A75DAF2DB234084AADE9C3AED1A63BFF54001B6F430F753CEC0070C328728"
+      "size": 23624192,
+      "sha256": "4183E47858FD9D6744D065AE4071F230ADC0A7E2713D4FC886A74FA5FF525EAE"
     }
   },
   "files": [
@@ -503,8 +503,8 @@
     },
     {
       "path": "managed/Services/ArenaProtocol.cs",
-      "size": 16520,
-      "sha256": "F8802152DAEA0A0C252DCD6A0FA49E2C398170E72361239E4EBAF261ED4AA501"
+      "size": 16777,
+      "sha256": "CD0D67DD4DB254895931CAE9518C3B0A99646C8A82FDCD52336C0052A6900F55"
     },
     {
       "path": "managed/Services/AvatarEquipmentCatalog.cs",
@@ -863,8 +863,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.ArenaCombat.cs",
-      "size": 4386,
-      "sha256": "74DA4D9A4C72220D074685EDB5D6780FBCF37AC16D91CC705B7A0DECA147F814"
+      "size": 5734,
+      "sha256": "E337ADCD49148F336E08BA40FAAE1DAB3056364617B262F5A84983F20A56349A"
     },
     {
       "path": "managed/Services/NetworkAdapterService.AvatarInventoryIdentity.cs",
@@ -1053,8 +1053,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 990533,
-      "sha256": "BA2E3DABB86E8AB6B812ED3AA3B1E850AAC4D3CFBED8B9C61DA591A99AAAAFE1"
+      "size": 991699,
+      "sha256": "E40AF6EBB6EC78CA5C265DF230F84092CDB5310C3881A887DCEC3C02BFA8D3C2"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1739,7 +1739,7 @@
     {
       "path": "release/teamplay_common.inc",
       "size": 14934,
-      "sha256": "331B88DCF7176362BFD3E2FDF47711C8352F5B4D6056F2D038FB276C2BB50298"
+      "sha256": "163658A07E47559A439B2EB3210718479DE24697FF4D1833B00EF2F25B69FE2C"
     },
     {
       "path": "scripts/build_complete_adapter.ps1",

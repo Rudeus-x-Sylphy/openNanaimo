@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 import re
 root=Path(__file__).resolve().parents[1]
 protocol=(root/'managed/Services/ArenaProtocol.cs').read_text(encoding='utf-8')
@@ -11,7 +11,7 @@ checks=[
  ('target HP ledger', 'room.CurrentHpBySession[victim.SessionId] = hp;' in combat),
  ('elimination winner ledger', 'room.EliminationWinnerSessionId = attacker.SessionId;' in combat),
  ('score fallback', 'if (scoreDelta == 0)\n                    scoreDelta = 10;' in service),
- ('target identity validation', 'GetSceneEntityId(member.Character) == attackerUid' in combat),
+ ('attacker identity fallback', 'ResolveArenaPvpAttackerLocked' in combat),
  ('round reset clears winner', 'room.EliminationWinnerSessionId = null;' in service),
 ]
 for name,ok in checks:

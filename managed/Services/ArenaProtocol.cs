@@ -89,6 +89,8 @@ internal static class ArenaProtocol
     public const int PvpResultRecordLength = 56;
     public const int GameEventRequestLength = 20;
     public const int GameEventResponseLength = 36;
+    public const byte SkyArenaItemTypeMinimum = 10;
+    public const byte SkyArenaItemTypeMaximum = 17;
 
     internal static byte[] BuildPlayerHitResult(ushort kind, ushort objectId, ushort collisionIndex,
         byte attackerSlot, byte victimSlot, ushort remainingHp, ushort appliedDamage)
@@ -253,14 +255,16 @@ internal static class ArenaProtocol
         // table, so deterministic P2P simulation is preserved.
         payload.AsSpan(0x25A, 20).Clear();
 
-        // The original initializer creates 35 active item entries and leaves
-        // the remaining 15 empty. Object types are the inclusive range 1..3.
-        for (var index = 0; index < 35; index++)
-            payload[0x26E + index] = checked((byte)RandomNumberGenerator.GetInt32(1, 4));
-
-        // PVP score types 0..5 map to +10,+50,+100,+200,+500,-10.
+        // Sky Arena uses its own eight-type item table. All 50 slots are active;
+        // values 1..3 are ordinary HP/MP/Power pickups and must not be emitted
+        // for this mode because the client maps them to the regular dungeon UI.
         for (var index = 0; index < 50; index++)
-            payload[0x2A0 + index] = checked((byte)RandomNumberGenerator.GetInt32(0, 6));
+            payload[0x26E + index] = checked((byte)RandomNumberGenerator.GetInt32(
+                SkyArenaItemTypeMinimum, SkyArenaItemTypeMaximum + 1));
+
+        // The active score table uses five positive score classes.
+        for (var index = 0; index < 50; index++)
+            payload[0x2A0 + index] = checked((byte)RandomNumberGenerator.GetInt32(0, 5));
 
         payload[0x2D2] = checked((byte)Math.Min(stage, byte.MaxValue));
         payload[0x2D3] = checked((byte)Math.Min(map, byte.MaxValue));
