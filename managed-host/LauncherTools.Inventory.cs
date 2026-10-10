@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -29,24 +29,49 @@ internal static partial class LauncherTools
         Require(args.Length>0,"Missing tool command");
         if(args[0]=="compatibility"){Compatibility(args[1..]);return;}
         if(args[0]=="verify-resources"){VerifyResources(args[1..]);return;}
+        if(args[0]=="inventory-server"){await InventoryServer(args[1..]);return;}
         Root=Path.GetFullPath(Option(args,"--root",Directory.GetCurrentDirectory()));Db=Path.GetFullPath(Option(args,"--database",Path.Combine(Root,"adapter_data","game.db")));CatalogRoot=Path.GetFullPath(Option(args,"--catalog-root",Root));
         if(args[0]=="state"){StateCommand(args[1..]);return;}
-        Require(args[0]=="inventory"&&args.Length>=2,"Unknown tool command");LoadCatalogs();
-        string hex=Option(args,"--name-hex").ToUpperInvariant();long? id=long.TryParse(Option(args,"--character-id"),out var parsed)?parsed:null;
-        JsonNode result;
-        switch(args[1])
-        {
-            case "profiles":result=Profiles(hex);break;
-            case "snapshot":result=Snapshot(hex,id);break;
-            case "apply": result=Apply(hex,ReadJson(Option(args,"--input")),id);break;
-            case "clone":
-                var source=Snapshot(Option(args,"--source-name-hex"),long.TryParse(Option(args,"--source-character-id"),out var sourceId)?sourceId:null);
-                ValidateHex(hex);Require(!Profiles("").Any(p=>S(p,"name_hex")==hex||S(p,"username").Equals(ValidateHex(hex),StringComparison.OrdinalIgnoreCase)),"target profile already exists; select it instead");
-                result=Apply(hex,ReadJson(Option(args,"--input")),null,source);break;
-            case "selftest":result=Obj(new{status="INVENTORY_ADMIN_BACKEND_PASS",storage="sqlite",runtime="managed"});break;
-            default:throw new InvalidDataException("Unknown inventory command");
-        }
+        Require(args[0]=="inventory"&&args.Length>=2,"Unknown tool command");
+        var result=InventoryOperation(args[1..],false);
         var text=result.ToJsonString()+"\n";var output=Option(args,"--output");if(output.Length>0)AtomicWrite(output,Encoding.UTF8.GetBytes(text));else Console.Write(text);await Task.CompletedTask;
+    }
+    static JsonNode InventoryOperation(string[] args,bool catalogsLoaded)
+    {
+        Require(args.Length>=1,"Missing inventory operation");
+        // Profile discovery does not classify inventory; snapshots and writes do.
+        if(!catalogsLoaded&&(args[0] is "apply" or "clone" or "snapshot"))LoadCatalogs();
+        string hex=Option(args,"--name-hex").ToUpperInvariant();long? id=long.TryParse(Option(args,"--character-id"),out var parsed)?parsed:null;
+        return args[0] switch
+        {
+            "profiles"=>Profiles(hex),
+            "snapshot"=>Snapshot(hex,id),
+            "apply"=>Apply(hex,ReadJson(Option(args,"--input")),id, null, ParseTitleGrade(args)),
+            "clone"=>CloneOperation(args,hex),
+            "selftest"=>Obj(new{status="INVENTORY_ADMIN_BACKEND_PASS",storage="sqlite",runtime="managed"}),
+            _=>throw new InvalidDataException("Unknown inventory command")
+        };
+    }
+    static int? ParseTitleGrade(string[] args){var value=Option(args,"--title-grade","");return value.Length==0?null:int.Parse(value,CultureInfo.InvariantCulture);}
+    static JsonNode CloneOperation(string[] args,string hex)
+    {
+        var source=Snapshot(Option(args,"--source-name-hex"),long.TryParse(Option(args,"--source-character-id"),out var sourceId)?sourceId:null);
+        ValidateHex(hex);Require(!Profiles("").Any(p=>S(p,"name_hex")==hex||S(p,"username").Equals(ValidateHex(hex),StringComparison.OrdinalIgnoreCase)),"target profile already exists; select it instead");
+        return Apply(hex,ReadJson(Option(args,"--input")),null,source,ParseTitleGrade(args));
+    }
+    static async Task InventoryServer(string[] args)
+    {
+        Root=Path.GetFullPath(Option(args,"--root",Directory.GetCurrentDirectory()));Db=Path.GetFullPath(Option(args,"--database",Path.Combine(Root,"adapter_data","game.db")));CatalogRoot=Path.GetFullPath(Option(args,"--catalog-root",Root));var pipe=Option(args,"--pipe");Require(pipe.Length is >=1 and <=180,"Invalid inventory server pipe name");LoadCatalogs();
+        using var stop=new CancellationTokenSource();Console.CancelKeyPress+=(s,e)=>{e.Cancel=true;stop.Cancel();};
+        while(!stop.IsCancellationRequested)
+        {
+            using var server=new System.IO.Pipes.NamedPipeServerStream(pipe,System.IO.Pipes.PipeDirection.InOut,1,System.IO.Pipes.PipeTransmissionMode.Byte,System.IO.Pipes.PipeOptions.Asynchronous);
+            try{await server.WaitForConnectionAsync(stop.Token);}catch(OperationCanceledException){break;}
+            using var reader=new StreamReader(server,Encoding.UTF8,false,4096,true);using var writer=new StreamWriter(server,new UTF8Encoding(false),4096,true){AutoFlush=true};
+            var line=await reader.ReadLineAsync(stop.Token);if(string.IsNullOrWhiteSpace(line))continue;
+            try{var request=JsonNode.Parse(line)!.AsObject();var requestArgs=request["args"]!.AsArray().Select(x=>x!.GetValue<string>()).ToArray();var result=InventoryOperation(requestArgs,true);await writer.WriteLineAsync(Obj(new{ok=true,result}).ToJsonString());}
+            catch(Exception ex){await writer.WriteLineAsync(Obj(new{ok=false,error=ex.Message}).ToJsonString());}
+        }
     }
     static JsonObject ReadJson(string path)=>(JsonObject)(JsonNode.Parse(File.ReadAllBytes(path))??throw new InvalidDataException("Empty JSON"));
     static string ValidateHex(string hex)
@@ -86,7 +111,7 @@ internal static partial class LauncherTools
         if(Table(c,"CharacterApartmentItems"))foreach(var row in Rows(c,null,"SELECT * FROM CharacterApartmentItems WHERE CharacterId=$id ORDER BY SlotIndex",("$id",id))){var code=V(row,"ItemCode");var r=furniture.FirstOrDefault(x=>N(x,"code")==code&&!B(x,"placed"))?.AsObject();if(r is null){r=Obj(new{code});furniture.Add(r);}r["index"]=V(row,"SlotIndex")+1;r["placed"]=true;r["type"]=V(row,"InteriorType");r["x"]=V(row,"PositionX");r["y"]=V(row,"PositionY");r["z"]=V(row,"Layer");r["mirror"]=V(row,"Mirror");}
         var used=furniture.Select(x=>N(x,"index")).ToHashSet();int next=1;foreach(var r in furniture)if(N(r,"index")==0){while(used.Contains(next))next++;r!["index"]=next;used.Add(next++);}
         if(Table(c,"CharacterCards"))foreach(var row in Rows(c,null,"SELECT CardCode,Quantity FROM CharacterCards WHERE CharacterId=$id ORDER BY CardCode",("$id",id)))cards.Add(Obj(new{code=V(row,"CardCode"),count=V(row,"Quantity")}));
-        var profile=Obj(new{character_name=name,gender=V(ch,"Gender"),level=V(ch,"Level"),is_online=V(ch,"IsOnline")!=0,coin=V(ch,"Hans"),nana_point=V(ch,"Cash")});foreach(var(key,col) in ProfileFields)if(col!="ApartmentRecommendationPoints"||ch.ContainsKey(col))profile[key]=V(ch,col);
+        var profile=Obj(new{character_name=name,gender=V(ch,"Gender"),level=V(ch,"Level"),is_online=V(ch,"IsOnline")!=0,coin=V(ch,"Hans"),nana_point=V(ch,"Cash")});foreach(var(key,col) in ProfileFields)if(col!="ApartmentRecommendationPoints"||ch.ContainsKey(col))profile[key]=V(ch,col);if(Table(c,"NativeDungeonProfiles")){var native=Rows(c,null,"SELECT State FROM NativeDungeonProfiles WHERE CharacterId=$id",("$id",id));if(native.Count>0&&native[0]["State"] is byte[] data&&NativeDungeonState.IsSupportedSize(data.Length))profile["dungeon_grade"]=(long)BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(NativeDungeonState.DungeonGradeOffset));}
         if(ch.ContainsKey("SelectedSkill0")){profile["skill_slot_z"]=V(ch,"SelectedSkill0");profile["skill_slot_x"]=V(ch,"SelectedSkill1");profile["skill_slot_expiry"]=V(ch,"SkillSlotExpansionExpires");profile["skill_slot_expiry_apply"]=false;var grades=new long[16];foreach(var row in Rows(c,null,"SELECT SkillCode,Grade FROM CharacterSkills WHERE CharacterId=$id",("$id",id))){var index=V(row,"SkillCode")-52000000;if(index is >=0 and <16)grades[index]=V(row,"Grade");}for(int i=0;i<16;i++)profile["skill_grade"+i]=grades[i];profile["skill_projectile_route"]=Route(grades,0);profile["skill_meat_route"]=Route(grades,8);}
         return new JsonObject{{"version",2},{"source","database"},{"character_id",id},{"name_hex",Hex(name)},{"account_suffix","p_"+Hex(name)},{"profile",profile},{"shop",shop},{"clothing",clothes},{"pets",pets},{"game_items",games},{"furniture",furniture},{"cards",cards}};
     }

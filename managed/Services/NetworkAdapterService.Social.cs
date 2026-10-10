@@ -24,7 +24,7 @@ public sealed partial class NetworkAdapterService
         }
         if (payload.Length != 20) return null;
         var operation = BinaryPrimitives.ReadUInt16LittleEndian(payload);
-        if (operation != 1
+        if (operation is not (1 or 2)
             || !PrivateChatProtocol.TryReadText(payload.AsSpan(4, 16), out var peerName)) return null;
         var changed = await _database.ApplyNativeFriendCommandAsync(
             session.AccountId, session.Character.Id, session.SessionId, operation, peerName, token);
@@ -45,7 +45,8 @@ public sealed partial class NetworkAdapterService
                         "friend contact added"));
             }
         }
-        // A repeated or reciprocal addition still acknowledges the requested peer.
+        // Addition and deletion acknowledge exactly the requested peer.
+        // Deletion is idempotent and never emits an unsolicited contact result.
         // Its operation is independent of the number of persisted contacts.
         return BuildNativeFrame(frame, 0xC5AF, BuildNativeFriendResult(operation, peer), session);
     }

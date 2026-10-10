@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Security.Cryptography;
 using OpenNanaimo.Adapter.Models;
 
 namespace OpenNanaimo.Adapter.Services;
@@ -45,6 +46,7 @@ public sealed partial class NetworkAdapterService
         public bool CountdownStarted { get; set; }
         public HashSet<string> LoadedSessions { get; } = new(StringComparer.Ordinal);
         public ushort LuckyPoints { get; set; }
+        public Dictionary<string, List<uint>> LuckyCardsBySession { get; } = new(StringComparer.Ordinal);
         public SemaphoreSlim SettlementGate { get; } = new(1, 1);
         public byte[] EndGamePayload { get; set; } = [];
         public HashSet<string> ResultRecipients { get; } = new(StringComparer.Ordinal);
@@ -504,12 +506,14 @@ public sealed partial class NetworkAdapterService
             room.FinalScores = null;
             room.SettledCharacters.Clear();
             room.ScoresBySession.Clear();
+            room.LuckyCardsBySession.Clear();
             room.PicnicLivesBySession.Clear();
             foreach (var member in room.Members.Values)
             {
                 room.BoardsDelivered[member.SessionId] = 6;
                 room.CurrentBoards[member.SessionId] = 0;
                 room.ScoresBySession[member.SessionId] = 0;
+                room.LuckyCardsBySession[member.SessionId] = [];
                 room.PicnicLivesBySession[member.SessionId] = 3;
             }
             gameDataPage = room.InitialGameData.ToArray();
@@ -622,8 +626,12 @@ public sealed partial class NetworkAdapterService
             var delta = completionFlag != 0 && completionFlag == state
                 ? state * 100 + Math.Max(0, 22 - (int)elapsedSeconds) : 0;
             var luckyTotal = room.LuckyPoints + delta;
-            var luckyAward = luckyTotal >= 1000 ? 1000u : 0u;
+            var luckyAwardCount = luckyTotal / 1000;
+            var luckyAward = checked((uint)luckyAwardCount * 1000u);
             room.LuckyPoints = (ushort)(luckyTotal % 1000);
+            for (var index = 0; index < luckyAwardCount; index++)
+                room.LuckyCardsBySession[requester.SessionId].Add(
+                    LuckyCardPolicy.PickOpenCard(RandomNumberGenerator.GetInt32(10000)));
             var score = (ushort)Math.Min(ushort.MaxValue,
                 (ulong)room.ScoresBySession.GetValueOrDefault(requester.SessionId) + (uint)delta + luckyAward);
             room.ScoresBySession[requester.SessionId] = score;
@@ -714,12 +722,16 @@ public sealed partial class NetworkAdapterService
                     && item.CharacterId == member.Character!.Id && IsTrackedWorldSession(item.Session));
                 if (owner is null) continue;
                 var score = room.FinalScores.GetValueOrDefault(member.SessionId);
+                var luckyCards = room.LuckyCardsBySession.GetValueOrDefault(member.SessionId) is { } cards
+                    ? cards.ToArray()
+                    : [];
                 // Local reward policy: ten pet experience for participation, twenty for a non-tied victory.
                 var victory = members.Length > 1 && score > 0 && score == highest
                     && members.Count(other => room.FinalScores.GetValueOrDefault(other.SessionId) == highest) == 1;
                 var saved = await _database.ApplyDungeonRewardAsync(owner.AccountId, owner.CharacterId, owner.SessionId,
                     0, 0, 0, 0, 0, 0, 0, victory ? 20 : 10, 0, token, completed: false,
-                    activitySettlementKey: "entertainment:" + round.ToString("N"));
+                    activitySettlementKey: "entertainment:" + round.ToString("N"),
+                    entertainmentLuckyCards: luckyCards);
                 if (saved is null) return null;
                 member.Character = saved;
                 owner.Session.Character = saved;
@@ -732,11 +744,14 @@ public sealed partial class NetworkAdapterService
                 {
                     var character = room.SettledCharacters.GetValueOrDefault(member.SessionId) ?? member.Character!;
                     var display = CharacterProgression.ProjectClientExperience(character.Level, character.Experience);
+                    var luckyCards = room.LuckyCardsBySession.GetValueOrDefault(member.SessionId) ?? [];
                     return new EntertainmentEndGameRecord(GetSceneEntityId(character),
                         checked((byte)Math.Clamp(character.Level, 1, byte.MaxValue)),
                         CharacterTitleState.GetGrade(character), CharacterTitleState.GetGrade(character),
                         room.FinalScores.GetValueOrDefault(member.SessionId),
-                        display.Current, display.Lower, display.Next, 1, 0, 0, 0, 0, 0, 0);
+                        display.Current, display.Lower, display.Next, 1,
+                        luckyCards.ElementAtOrDefault(0), luckyCards.ElementAtOrDefault(1),
+                        luckyCards.ElementAtOrDefault(2), 0, 0, 0);
                 }).ToArray();
                 room.EndGamePayload = EntertainmentProtocol.BuildEndGameInfo(records);
                 room.Started = false;

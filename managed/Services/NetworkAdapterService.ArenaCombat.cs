@@ -14,7 +14,8 @@ public sealed partial class NetworkAdapterService
         lock (_arenaRoomGate)
         {
             if (!_arenaRooms.TryGetValue(victim.ArenaRoomId, out var room) || !room.Started
-                || room.EndingSessionIds.Count != 0 || room.EliminationWinnerSessionId is not null
+                || room.EndingSessionIds.Count != 0
+                || (!IsTimedScoreArena(room) && room.EliminationWinnerSessionId is not null)
                 || !room.Members.ContainsKey(victim.SessionId)
                 || !room.CurrentHpBySession.TryGetValue(victim.SessionId, out var hp) || hp == 0) return null;
             response = new byte[16];
@@ -60,10 +61,19 @@ public sealed partial class NetworkAdapterService
                     attacker.ArenaSlotIndex, victim.ArenaSlotIndex, hp, appliedDamage);
                 if (hp == 0)
                 {
-                    var living = room.Members.Values.Where(member => room.CurrentHpBySession.GetValueOrDefault(member.SessionId) > 0).ToArray();
-                    if (living.All(member => member.SessionId == attacker.SessionId
-                        || (attacker.ArenaTeamCode is 1 or 2 && member.ArenaTeamCode == attacker.ArenaTeamCode)))
-                        room.EliminationWinnerSessionId = attacker.SessionId;
+                    if (IsTimedScoreArena(room))
+                    {
+                        // The client shows the terminal hit and performs the
+                        // visible revive; keep the server ledger attackable.
+                        room.CurrentHpBySession[victim.SessionId] = GetArenaMaximumHp(victim);
+                    }
+                    else
+                    {
+                        var living = room.Members.Values.Where(member => room.CurrentHpBySession.GetValueOrDefault(member.SessionId) > 0).ToArray();
+                        if (living.All(member => member.SessionId == attacker.SessionId
+                            || (attacker.ArenaTeamCode is 1 or 2 && member.ArenaTeamCode == attacker.ArenaTeamCode)))
+                            room.EliminationWinnerSessionId = attacker.SessionId;
+                    }
                 }
             }
             QueueArenaBroadcast(victim, 0xD015, response, false, "arena player event");
@@ -96,4 +106,9 @@ public sealed partial class NetworkAdapterService
             .OrderBy(member => member.ArenaSlotIndex)
             .FirstOrDefault();
     }
+
+    private static bool IsTimedScoreArena(ArenaRoom room) => room.SelectedMode == 0;
+
+    private static ushort GetArenaMaximumHp(ConnectionSession session) =>
+        (ushort)Math.Clamp(session.Character?.MaxHp ?? 1, 1, ushort.MaxValue);
 }

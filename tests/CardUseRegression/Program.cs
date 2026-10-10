@@ -17,6 +17,8 @@ byte[] Page(uint page) { var b = new byte[4]; BinaryPrimitives.WriteUInt32Little
 string Id() => Guid.NewGuid().ToString("N");
 
 Check(LuckyCardPolicy.All.Count == 8, "all eight authored pools load, I/J disabled");
+Check(LuckyCardPolicy.IsUnopened(22000019) && LuckyCardPolicy.IsUnopened(22000020), "unopened lucky pools are disabled");
+Check(!LuckyCardPolicy.TryParse(Request(22000019, 40), out _), "unopened lucky card cannot be opened");
 foreach (var pool in LuckyCardPolicy.All.Values)
 {
     var counts = Enumerable.Range(0,10000).Select(t=>LuckyCardPolicy.Pick(pool,t)).GroupBy(x=>x).ToDictionary(x=>x.Key,x=>x.Count());

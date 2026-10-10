@@ -24,6 +24,7 @@ internal static class Program
             await using var fixture = await Fixture.CreateAsync();
             await CheckReciprocityAsync(fixture, reverseFirst, withExistingContact);
             await CheckGuardsAsync(fixture);
+            await CheckDeletionAsync(fixture);
         }
         Console.WriteLine($"FRIEND_RECIPROCITY_REGRESSION_PASS checks={_checks}");
     }
@@ -170,7 +171,7 @@ internal static class Program
         malformed.AsSpan(4).Fill(0x41);
         Check(await Dispatch(fixture, owner, 0xC5AE, malformed) is null,
             "unterminated peer name is rejected");
-        foreach (var operation in new ushort[] { 0, 2, 3, 4 })
+        foreach (var operation in new ushort[] { 0, 3, 4 })
         {
             var unsupported = AddRequest(Character(peer).Name);
             BinaryPrimitives.WriteUInt16LittleEndian(unsupported, operation);
@@ -183,6 +184,82 @@ internal static class Program
         Set(owner, "OnlineTracked", true);
         Check((await fixture.Database.GetFriendRelationsForAdminAsync()).Count == relationCount
             && Broadcasts(owner).Count == eventCount, "rejected additions have no relation or notification side effects");
+    }
+
+    private static async Task CheckDeletionAsync(Fixture fixture)
+    {
+        var owner = fixture.First;
+        var peer = fixture.Second;
+        var ownerId = Character(owner).Id;
+        var peerId = Character(peer).Id;
+        await InsertAcceptedRequestWithoutRelationAsync(fixture.Root, ownerId, peerId);
+        await fixture.Database.ChangeFriendMemoAsync(ownerId, peerId, "delete me");
+        await fixture.Database.ChangeFriendMemoAsync(peerId, ownerId, "delete me too");
+        await fixture.Database.SetFriendBlockedAsync(peerId, ownerId, true);
+        var before = (await fixture.Database.GetNativeFriendContactsAsync(ownerId, Token))
+            .Where(c => c.Id != peerId).Select(c => c.Id).ToHashSet();
+        var broadcasts = Broadcasts(owner).Count + Broadcasts(peer).Count;
+        var request = AddRequest(Character(peer).Name);
+        BinaryPrimitives.WriteUInt16LittleEndian(request, 2);
+        Check(!(await fixture.Database.ApplyNativeFriendCommandAsync(Character(owner).AccountId,
+            ownerId, "stale", 2, Character(peer).Name, Token)).Success,
+            "a stale session cannot delete contacts");
+        Check((await fixture.Database.GetNativeFriendContactsAsync(ownerId, Token)).Any(c => c.Id == peerId),
+            "a rejected deletion preserves the relation");
+        for (var retry = 0; retry < 2; retry++)
+        {
+            var response = await Dispatch(fixture, owner, 0xC5AE, request);
+            Check(response is { Length: 32 }
+                && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(4)) == 32
+                && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) == 0xC5AF
+                && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(10)) == 2,
+                "deletion always returns a complete operation-two acknowledgement");
+            if (retry == 0)
+            {
+                Check(BinaryPrimitives.ReadUInt16LittleEndian(response!.AsSpan(8)) == 1,
+                    "first deletion is acknowledged as successful");
+                Check(PrivateChatProtocol.TryReadText(response.AsSpan(12, 16), out var actual)
+                    && actual == Character(peer).Name, "deletion names exactly the requested peer");
+                Check(response.AsSpan(28, 4).SequenceEqual(new byte[] { 1, 0, 0, 1 }),
+                    "deletion initializes the entire presence tail");
+            }
+            else
+            {
+                Check(BinaryPrimitives.ReadUInt16LittleEndian(response!.AsSpan(8)) == 0
+                    && response.AsSpan(12, 20).IndexOfAnyExcept((byte)0) < 0,
+                    "repeated deletion is an explicit failure with a cleared identity");
+            }
+            Check((await fixture.Database.GetNativeFriendContactsAsync(ownerId, Token))
+                .Select(c => c.Id).ToHashSet().SetEquals(before), "deletion preserves unrelated contacts");
+            Check(!(await fixture.Database.GetNativeFriendContactsAsync(peerId, Token)).Any(c => c.Id == ownerId),
+                "deletion removes the reciprocal contact");
+        }
+        var reopened = new DatabaseService(fixture.Root);
+        await reopened.InitializeAsync();
+        foreach (var (id, deleted) in new[] { (ownerId, peerId), (peerId, ownerId) })
+        {
+            var snapshot = await reopened.GetFriendListSnapshotAsync(id, Token);
+            Check(!snapshot.Categories.SelectMany(c => c.Friends).Concat(snapshot.Unrelated)
+                .Any(c => c.CharacterId == deleted), "reopened category and contact lists do not resurrect deletion");
+        }
+        Check(!(await fixture.Database.IsPrivateChatBlockedAsync(ownerId, peerId, Token)),
+            "deletion clears pair blocks even when the peer blocked the owner");
+        Check(!(await fixture.Database.GetFriendRequestsForAdminAsync()).Any(r =>
+            r.RequesterCharacterId == ownerId && r.RequesteeCharacterId == peerId
+            || r.RequesterCharacterId == peerId && r.RequesteeCharacterId == ownerId),
+            "accepted request history cannot rematerialize a deleted relation");
+        Check(Broadcasts(owner).Count + Broadcasts(peer).Count == broadcasts,
+            "deletion never sends addition notices or unsolicited contact results");
+        var missing = AddRequest("Absent");
+        BinaryPrimitives.WriteUInt16LittleEndian(missing, 2);
+        var denied = await Dispatch(fixture, owner, 0xC5AE, missing);
+        Check(denied is { Length: 32 }
+            && BinaryPrimitives.ReadUInt16LittleEndian(denied.AsSpan(8)) == 0
+            && BinaryPrimitives.ReadUInt16LittleEndian(denied.AsSpan(10)) == 2
+            && denied.AsSpan(12, 20).IndexOfAnyExcept((byte)0) < 0,
+            "failed deletion returns operation two with cleared identity");
+        // Re-adding is covered by the existing reciprocal-addition matrix; keep deletion isolated.
+
     }
 
     private static void Check(bool condition, string message)

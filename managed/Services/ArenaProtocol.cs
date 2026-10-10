@@ -66,10 +66,11 @@ internal readonly record struct ArenaGameEventRequest(
 
     public ushort TargetDamage => EventCode switch
     {
-        // The retail ordinary-target collision path subtracts exactly 30
-        // before it emits event 20/30. Bytes +4..+11 in those requests are
-        // constructor padding and must never be interpreted as damage.
-        20 or 30 => 30,
+        // Sky Arena scene targets are non-terminal obstacles. Their local
+        // multi-stage presentation is owned by the client scene state; the
+        // authoritative arena response must not turn the final obstacle into
+        // a destructible target.
+        20 or 30 => 0,
         _ => 0
     };
 }

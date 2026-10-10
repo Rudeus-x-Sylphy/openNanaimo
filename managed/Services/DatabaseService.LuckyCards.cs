@@ -32,6 +32,20 @@ public sealed partial class DatabaseService
         await command.ExecuteNonQueryAsync(token);
     }
 
+    private static async Task InitializeEntertainmentLuckyCardsAsync(SqliteConnection connection, CancellationToken token)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS EntertainmentLuckyCardReceipts (
+                CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                SettlementKey TEXT NOT NULL, Sequence INTEGER NOT NULL,
+                CardCode INTEGER NOT NULL CHECK(CardCode BETWEEN 22000011 AND 22000018),
+                CreatedAt TEXT NOT NULL,
+                PRIMARY KEY(CharacterId, SettlementKey, Sequence));
+            """;
+        await command.ExecuteNonQueryAsync(token);
+    }
+
     internal async Task<LuckyCardOpenResult> OpenLuckyCardAsync(
         long accountId, long characterId, string sessionId, string requestId, uint card,
         CancellationToken token = default, Func<int, int>? nextTicket = null)

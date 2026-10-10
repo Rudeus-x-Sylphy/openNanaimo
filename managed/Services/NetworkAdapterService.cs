@@ -4115,7 +4115,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     ExperienceCardPolicy.WriteCardList(cardList, experienceCard, DateTime.Now);
                 }
                 if (payload[0] is 10 or 20 or 40 or 50)
-                    ApplyCardAcquisitionNotices(cardList, ownedCards, session);
+                    ApplyCardAcquisitionNotices(cardList, ownedCards.Where(card => !LuckyCardPolicy.IsUnopened(card.CardCode)).ToArray(), session);
                 if (BinaryPrimitives.ReadUInt16LittleEndian(payload) == 30)
                 {
                     var ownedLand = await _database.GetApartmentLandCardAsync(session.Character.Id, token);
@@ -4288,6 +4288,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
                 if (unionType == 40)
                 {
+                    if (payload.Length >= 12 && LuckyCardPolicy.IsUnopened(BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(8))))
+                        return BuildNativeFrame(frame, 0xC3EE, LuckyCardPolicy.Result(0), session);
                     if (LuckyCardPolicy.TryParse(payload, out var luckyCard))
                     {
                         var control = BinaryPrimitives.ReadUInt16LittleEndian(frame);
@@ -15412,10 +15414,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             }
 
             roomId = room.Id;
+            if (room.PvpResultPayload.Length != 0)
+                return false;
             if (!room.Started)
                 return room.EndingSessionIds.Contains(requester.SessionId);
-            room.EndingSessionIds.Add(requester.SessionId);
-            return true;
+            return room.EndingSessionIds.Add(requester.SessionId);
         }
     }
 
@@ -15474,6 +15477,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 hpAfter,
                 scoreAfter,
                 request);
+            if (hpAfter == 0 && room.SelectedMode == 0)
+                room.CurrentHpBySession[requester.SessionId] = maximumHp;
             return true;
         }
     }
@@ -15544,6 +15549,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 .Where(member => member.Character is not null)
                 .OrderBy(member => member.ArenaSlotIndex)
                 .ToArray();
+            // Freeze every active member from the authoritative room ledger
+            // before constructing the shared result. A delayed result request
+            // must not make the other side appear to have zero score.
+            foreach (var member in members)
+                room.EndValuesBySession.TryAdd(
+                    member.SessionId,
+                    checked((uint)Math.Max(0, room.ScoreBySession.GetValueOrDefault(member.SessionId))));
             var teamMode = members.Length > 1
                            && members.All(member => member.ArenaTeamCode is 1 or 2)
                            && members.Select(member => member.ArenaTeamCode).Distinct().Count() == 2;
@@ -16145,6 +16157,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var pageSize = category == 3 ? 10 : 20;
         foreach (var card in ownedCards)
         {
+            if (LuckyCardPolicy.IsUnopened(card.CardCode))
+                continue;
             if (mode == 50)
             {
                 // VIP requests send category0, not CardCatalog's category3. Other

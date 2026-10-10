@@ -187,6 +187,14 @@ internal static partial class Program
             && BinaryPrimitives.ReadUInt16LittleEndian(lucky.AsSpan(14)) == 112
             && BinaryPrimitives.ReadUInt32LittleEndian(lucky.AsSpan(16)) == 1000,
             "shared lucky points roll over and award the completing member");
+        var luckyCards = (IDictionary)Get(room, "LuckyCardsBySession")!;
+        var guestLuckyCards = (IList)luckyCards[Id(guest)]!;
+        Check(guestLuckyCards.Count == 1
+            && (uint)guestLuckyCards[0]! is >= 22000011u and <= 22000018u,
+            "opened lucky pool awards one card per completed thousand");
+        guestLuckyCards.Add(22000012u);
+        guestLuckyCards.Add(22000013u);
+        guestLuckyCards.Add(22000014u);
         Check(await Send(guest, 0xD007, [2, 2, 2, 10]) is null,
             "duplicate cell cannot duplicate a lucky award");
         Check(await Send(host, 0xCF7F, []) is null, "duplicate loading confirmation preserves the independent deadline");
@@ -216,6 +224,14 @@ internal static partial class Program
             "repeated result requests reuse the result payload");
         Check(await f.ScalarAsync("SELECT COUNT(*) FROM ActivityRewardReceipts") == 2,
             "entertainment grants one receipt per character and round");
+        Check(await f.ScalarAsync("SELECT COALESCE(SUM(Quantity), 0) FROM CharacterCards WHERE CharacterId = " + Character(guest).Id + " AND CardCode BETWEEN 22000011 AND 22000018") == 4,
+            "all entertainment lucky cards are persisted beyond the three display slots");
+        Check(BinaryPrimitives.ReadUInt32LittleEndian(result.AsSpan(56)) == (uint)guestLuckyCards[0]!
+            && BinaryPrimitives.ReadUInt32LittleEndian(result.AsSpan(60)) == (uint)guestLuckyCards[1]!
+            && BinaryPrimitives.ReadUInt32LittleEndian(result.AsSpan(64)) == (uint)guestLuckyCards[2]!,
+            "settlement displays only the first three lucky cards");
+        Check(await f.ScalarAsync("SELECT COUNT(*) FROM EntertainmentLuckyCardReceipts") == 4,
+            "entertainment lucky card receipts are idempotent");
         Check(await f.ScalarAsync("SELECT SUM(PetExperience) FROM ActivityRewardReceipts") == 30,
             "entertainment victory and participation use distinct pet awards");
         Check((await f.Database.GetCharacterByIdAsync(Character(host).Id))!.PetExperience > 0,
@@ -309,27 +325,35 @@ internal static partial class Program
         BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), 244);
         var leveled = await Send(victim, 0xD014, hit);
         var leveledHp = BinaryPrimitives.ReadUInt16LittleEndian(leveled!.AsSpan(16));
-        Check(secondHp - leveledHp == 5000 - firstHp + 10, "PvP earned attack adds exactly one per level");
+        Check(secondHp - leveledHp == 5000 - firstHp, "PvP keeps one bounded damage snapshot for the matchup");
         Character(victim).Level += 20;
         BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), 245);
         var defended = await Send(victim, 0xD014, hit);
         var defendedHp = BinaryPrimitives.ReadUInt16LittleEndian(defended!.AsSpan(16));
-        Check(leveledHp - defendedHp == secondHp - leveledHp - 10,
-            "PvP earned defense feeds the existing half-defense damage policy exactly once");
+        Check(leveledHp - defendedHp == secondHp - leveledHp,
+            "PvP keeps the matchup snapshot stable after defense changes");
         Character(attacker).AttackModifier = 100;
         BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), 246);
         var boosted = await Send(victim, 0xD014, hit);
-        Check(defendedHp - BinaryPrimitives.ReadUInt16LittleEndian(boosted!.AsSpan(16)) == leveledHp - defendedHp + 100,
-            "PvP applies the persistent attack modifier once, independently from earned attack");
+        Check(defendedHp - BinaryPrimitives.ReadUInt16LittleEndian(boosted!.AsSpan(16)) == leveledHp - defendedHp,
+            "PvP does not replace the matchup snapshot mid-round");
         Set(victim, "ArenaTeamCode", (byte)1);
         Check(await Send(victim, 0xD014, hit) is null, "PvP rejects friendly fire");
         Set(victim, "ArenaTeamCode", (byte)2);
-        for (ushort id = 249; id < 350 && Get(arena, "EliminationWinnerSessionId") is null; id++)
-        {
-            BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), id);
-            await Send(victim, 0xD014, hit);
-        }
-        Check((string?)Get(arena, "EliminationWinnerSessionId") == Id(attacker), "last opposing elimination records the winning side");
-        Check(await Send(victim, 0xD014, hit) is null, "eliminated rounds reject further combat mutations");
+        var matchupDamage = checked((ushort)(5000 - firstHp));
+        var hpLedger = (IDictionary)Get(arena, "CurrentHpBySession")!;
+        hpLedger[Id(victim)] = matchupDamage;
+        BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), 249);
+        var lethal = await Send(victim, 0xD014, hit);
+        Check(lethal is not null && BinaryPrimitives.ReadUInt16LittleEndian(lethal.AsSpan(16)) == 0,
+            "PvP publishes the terminal hit before the visible revive");
+        Check(Get(arena, "EliminationWinnerSessionId") is null
+            && (ushort)hpLedger[Id(victim)]! == 5000,
+            "timed score rounds revive the defeated slot in the authoritative ledger");
+        BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(2), 250);
+        var afterRevive = await Send(victim, 0xD014, hit);
+        Check(afterRevive is not null
+            && BinaryPrimitives.ReadUInt16LittleEndian(afterRevive.AsSpan(16)) == 5000 - matchupDamage,
+            "a revived opponent remains attackable");
     }
 }

@@ -38,6 +38,8 @@ $SocialClientLauncher=Join-Path $Root 'gui_launcher\start_social_client.ps1'
 $InventoryAdminGui=Join-Path $Root 'gui_launcher\inventory_admin_gui.ps1'
 if(-not(Test-Path -LiteralPath $InventoryAdminGui)){throw 'Inventory administration GUI module missing.'}
 . $InventoryAdminGui
+. (Join-Path $PSScriptRoot 'launcher_worker.ps1')
+$script:LauncherSessionCache=@{timings=(New-Object Collections.ArrayList)}
 $LaunchModeDir=Join-Path $Root 'gui_launcher\launch_modes'
 $NetworkOptionTemplate=Join-Path $LaunchModeDir 'gamestartoption.network.ini'
 $ActiveGameOption=Join-Path $Root 'StateOption\gamestartoption.ini'
@@ -576,6 +578,10 @@ function Get-ResourceSelection {
 }
 function Get-SelectedDungeonTitle {if($titleCombo.SelectedIndex-lt0-or-not$titleCombo.Tag-or$titleCombo.SelectedIndex-ge$titleCombo.Tag.Count){throw '请选择称号。'};return $titleCombo.Tag[$titleCombo.SelectedIndex]}
 function Update-LaunchPreview([switch]$ComputeHashes){
+    if(-not$ComputeHashes-and$script:PreviewTimer){$script:PreviewTimer.Stop();$script:PreviewTimer.Start();return}
+    Render-LaunchPreview -ComputeHashes:$ComputeHashes
+}
+function Render-LaunchPreview([switch]$ComputeHashes){
     if($pureNewPlayerBox.Checked){
         $processFilter={param($p)(@($Adapter,$AdapterBridge,$LegacyAdapter)-contains$p.Path)-or($p.ProcessName-eq'game'-and$p.Path-eq$Client)}
         $running=@(Get-Process -ErrorAction SilentlyContinue|Where-Object $processFilter|ForEach-Object{"$($_.ProcessName)(PID=$($_.Id))"});if(-not$running){$running=@('<none>')}
@@ -681,16 +687,22 @@ if($SelfTestAdapterManifest){Test-AdapterBinary;Write-Output 'ADAPTER_RUNTIME_MA
 function Test-ClientBinary {
     if(-not(Test-Path -LiteralPath $Client -PathType Leaf)){throw "Client missing: $Client"}
 }
-function Ensure-ClientCompatibility {
+function Ensure-ClientCompatibility($selectedPet=$null) {
     Assert-ManagedLauncherTools
     Test-ClientBinary
     if(-not(Test-Path -LiteralPath $ClientCompatibilityTool -PathType Leaf)){throw "Managed tools missing: $ClientCompatibilityTool"}
-    $selectedPet=Get-SelectedData $petCombo
     if($selectedPet-and([uint32]$selectedPet.id-eq15003361-or$selectedPet.optional_resource_port-eq'korean_pets')){
         $kind=if([uint32]$selectedPet.id-eq15003361){'hero'}else{'korean'}
         $check=& $ClientCompatibilityTool --tools verify-resources --kind $kind --root $Root --client-root $Root 2>&1
         if($LASTEXITCODE-ne0){throw "宠物资源校验失败，已停止启动。$($check -join ' ')"}
     }
+    if(Test-Path -LiteralPath (Join-Path $Root 'openNanaimo-l7-l8-resources.json')){
+        $check=& $ClientCompatibilityTool --tools verify-resources --kind lumineos --root $Root --client-root $Root 2>&1
+        if($LASTEXITCODE-ne0){throw ('Lumineos资源校验失败：'+($check -join ' '))}
+    }
+    $fingerprint=Get-CompatibilityFingerprint
+    if($LauncherSessionCache.compatibilityReport.session_inputs-and(Read-ProjectileSettings (Join-Path $Root 'nanaimo_projectile.ini')).enabled-ne1-and$LauncherSessionCache.compatibilityFingerprint-eq$fingerprint){return $LauncherSessionCache.compatibilityReport}
+    if($LauncherProgress){$LauncherProgress.Stage='准备并校验共享客户端兼容资源'}
     $arguments=@('--tools','compatibility','--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--character-creation','--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--apartment-recommendation','--dungeon7','--overwrite','--apply')
     $output=@(& $ClientCompatibilityTool @arguments 2>&1)
     if($LASTEXITCODE-ne0){throw ("Client compatibility preparation refused:`r`n"+($output-join"`r`n"))}
@@ -698,9 +710,10 @@ function Ensure-ClientCompatibility {
     $report=Get-Content -LiteralPath $ClientCompatibilityReport -Raw -Encoding UTF8|ConvertFrom-Json
     if(-not$report.verification.all_pass){throw 'Client compatibility post-apply verification failed.'}
     foreach($required in @('level200_town_title_mask','level200_town_level_shift','level200_town_level_mask','level200_entry_code','level200_entry_hook')){if(-not @($report.operations|Where-Object{$_.operation-eq$required}).Count){throw 'Level200 requires a matching newly built adapter compatibility recipe; old runtime refused.'}}
-    & (Join-Path $PSScriptRoot 'level200_client_check.ps1') -Client $Client | Out-Host
+    & (Join-Path $Root 'gui_launcher\level200_client_check.ps1') -Client $Client | Out-Host
     $projectileSettings=Read-ProjectileSettings (Join-Path $Root 'nanaimo_projectile.ini')
     if($projectileSettings.enabled-eq1){& (Join-Path $Root 'scripts\prepare_projectile_diy.ps1') -ClientRoot $Root -Apply | Out-Null}
+    if($LauncherSessionCache){$LauncherSessionCache.compatibilityReport=$report;$LauncherSessionCache.compatibilityFingerprint=Get-CompatibilityFingerprint}
     return $report
 }
 function Send-LocalLaunchRegistration([string]$ip,[byte[]]$bytes,[string]$description){
@@ -712,8 +725,8 @@ function Send-LocalLaunchRegistration([string]$ip,[byte[]]$bytes,[string]$descri
         if($got-ne3-or[Text.Encoding]::ASCII.GetString($ack)-ne"OK`n"){throw "$description registry rejected: ack=$([Text.Encoding]::ASCII.GetString($ack,0,$got))"}
     }catch{throw "适配器$description 注册失败，请检查适配器状态及端口11999。详细信息：$($_.Exception.Message)"}finally{if($tcp){$tcp.Close()}}
 }
-function Register-ClientProfile([string]$ip){
-    $selected=Sync-LauncherProfileIdentity
+function Register-ClientProfile([string]$ip,$selected=$null){
+    if(-not$selected){$selected=Sync-LauncherProfileIdentity}
     if(-not$selected){throw 'Select a local account first.'}
     # Existing characters resume by account; named local copies are imported once.
     $account=if($null-ne$selected.account_id){[string]$selected.username}else{[string]$selected.character_name}
@@ -827,12 +840,15 @@ function Get-AdapterStartupFailureDetail([Diagnostics.Process]$proc,[string]$run
 }
 function Start-LocalAdapter([string]$runtimeProfile=$ProfileIni,[string]$bindAddress='127.0.0.1') {
     $bindAddress=Normalize-NetworkIPv4 $bindAddress
+    if($LauncherProgress){$LauncherProgress.Stage='逐文件校验适配器运行包'}
     Test-AdapterBinary
+    if($LauncherProgress){$LauncherProgress.Stage='检查端口并启动服务'}
     Assert-AdapterPortsAvailable
     foreach($path in @($AdapterData,$AdapterLogs)){if(-not(Test-Path -LiteralPath $path)){New-Item -ItemType Directory -Path $path -Force|Out-Null}}
     Remove-Item -LiteralPath $AdapterStop,$AdapterLog,$AdapterErr -Force -ErrorAction SilentlyContinue
     $args=@('--data',$AdapterData,'--native',$AdapterBridge,'--profile',$runtimeProfile,'--bind-address',$bindAddress,'--login-port','11005','--world-port','12050','--profile-port','11999','--log-directory',$AdapterLogs)
     $proc=Start-Process -FilePath $Adapter -ArgumentList $args -WorkingDirectory $AdapterRuntimeRoot -WindowStyle Hidden -RedirectStandardOutput $AdapterLog -RedirectStandardError $AdapterErr -PassThru
+    if($LauncherProgress){$LauncherProgress.Stage='等待适配器就绪并复核端口归属'}
     for($i=0;$i-lt100;$i++){
         Start-Sleep -Milliseconds 100
         if($proc.HasExited){$detail=if(Test-Path -LiteralPath $AdapterErr){Get-Content -LiteralPath $AdapterErr -Raw}else{'无错误日志。'};throw "适配器退出，代码 $($proc.ExitCode)：$detail"}
@@ -847,35 +863,53 @@ function Register-SocialAccount([string]$ip,[string]$username){
     Send-LocalLaunchRegistration $ip ([Text.Encoding]::UTF8.GetBytes($json)) '社交账号'
     return $account
 }
-function Start-SocialParticipant([int]$slot,[string]$username){
-    $ip=Normalize-NetworkIPv4 $socialIpBox.Text;$info=Get-LaunchModeInfo 'network' $ip
-    Test-ClientBinary;$launchConfig=Get-LaunchModeConfigText $info
-    $compatibility=Ensure-ClientCompatibility
+function Start-SocialParticipant([int]$slot,[string]$username,[string]$ip,[string]$launchConfig,[string[]]$clientArguments,$selectedPet=$null){
+    if([string]::IsNullOrWhiteSpace($username)-or$username.Trim().Length-gt64-or@($username.ToCharArray()|Where-Object{[char]::IsControl($_)}).Count){throw '用户名必须为1到64个非控制字符。'}
+    Test-ClientBinary
+    [void](Ensure-ClientCompatibility $selectedPet)
     if(-not(Test-Path -LiteralPath $SocialClientLauncher -PathType Leaf)){throw "Social multi-client helper missing: $SocialClientLauncher"}
-    # Failed cache preparation must not enqueue an account for a nonexistent client.
-    $prepared=& $SocialClientLauncher -ClientPath $Client -SocialSlot $slot -WorkingDirectory $Root -LaunchModeConfigText $launchConfig -PrepareOnly
-    $account=Register-SocialAccount $ip $username
-    [IO.File]::WriteAllText($SocialAdapterIpState,$ip+"`r`n",(New-Object Text.ASCIIEncoding))
-    $launch=& $SocialClientLauncher -ClientPath $Client -SocialSlot $slot -ClientArguments ([string[]]$info.ClientArgs) -WorkingDirectory $Root -LaunchModeConfigText $launchConfig
-    $changed=@($compatibility.apply_results|Where-Object{$_.status-eq'applied'}).Count
-    $socialStatus.Text="P$slot 已以账号 $account 连接 $ip；客户端 PID=$($launch.ProcessId)，独立工作目录=$($launch.WorkDirectory)，独立缓存=$($launch.RuntimeDirectory)；兼容性已校验（应用 $changed 项）。"
+    $LauncherProgress.Stage="准备 P$slot 独立资源"
+    $beforeLaunch={
+        $LauncherProgress.Stage="注册 P$slot 账号并等待窗口"
+        [void](Register-SocialAccount $ip $username)
+        [IO.File]::WriteAllText($SocialAdapterIpState,$ip+"`r`n",(New-Object Text.ASCIIEncoding))
+    }.GetNewClosure()
+    $launch=& $SocialClientLauncher -ClientPath $Client -SocialSlot $slot -ClientArguments $clientArguments -WorkingDirectory $Root -LaunchModeConfigText $launchConfig -BeforeLaunch $beforeLaunch
+    return $launch
 }
 $socialUseDetectedBtn.add_Click({$socialIpBox.Text=$detectedLanIp})
 $socialAdapterBtn.add_Click({
     try{
         $bindAddress=Normalize-NetworkIPv4 $socialIpBox.Text
-        # Social accounts are registered separately; starting the shared service must not
-        # save/import the unrelated local character or depend on its inventory catalog.
-        if(-not(Test-Path -LiteralPath $ProfileIni -PathType Leaf)){throw "Adapter profile missing: $ProfileIni"}
-        Stop-LocalAdapter
-        $proc=Start-LocalAdapter $ProfileIni $bindAddress
-        [IO.File]::WriteAllText($SocialAdapterIpState,$bindAddress+"`r`n",(New-Object Text.ASCIIEncoding))
-        $socialStatus.Text="社交适配器已单例启动：$bindAddress，PID=$($proc.Id)。局域网参与者在上方填写该地址。"
-    }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'社交适配器启动失败')|Out-Null}
+        Start-LauncherWork '启动社交适配器' {
+            param($data)
+            if(-not(Test-Path -LiteralPath $ProfileIni -PathType Leaf)){throw "Adapter profile missing: $ProfileIni"}
+            $LauncherProgress.Stage='停止本项目已有适配器'
+            Stop-LocalAdapter
+            $proc=Start-LocalAdapter $ProfileIni $data.BindAddress
+            [IO.File]::WriteAllText($SocialAdapterIpState,$data.BindAddress+"`r`n",(New-Object Text.ASCIIEncoding))
+            return $proc.Id
+        } @{BindAddress=$bindAddress} {
+            param($result)
+            $socialStatus.Text="社交适配器已启动：PID=$($result[-1])。局域网参与者填写上方地址。"
+        }
+    }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'社交启动失败')|Out-Null}
 })
 for($i=0;$i-lt$socialPlayButtons.Count;$i++){
     $slot=$i+1;$box=$socialUserBoxes[$i]
-    $handler={try{Start-SocialParticipant $slot $box.Text}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,("P{0} 启动失败"-f$slot))|Out-Null}}.GetNewClosure()
+    $handler={
+        try{
+            $ip=Normalize-NetworkIPv4 $socialIpBox.Text;$info=Get-LaunchModeInfo 'network' $ip
+            $data=@{Slot=$slot;Username=$box.Text;Ip=$ip;Config=(Get-LaunchModeConfigText $info);Arguments=[string[]]$info.ClientArgs;Pet=(Get-SelectedData $petCombo)}
+            Start-LauncherWork "准备并启动 P$slot" {
+                param($data)
+                Start-SocialParticipant $data.Slot $data.Username $data.Ip $data.Config $data.Arguments $data.Pet
+            } $data {
+                param($result)
+                $launch=$result[-1];$socialStatus.Text="P$($launch.SocialSlot) 已启动：PID=$($launch.ProcessId)；独立工作目录=$($launch.WorkDirectory)。"
+            }
+        }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'社交启动失败')|Out-Null}
+    }.GetNewClosure()
     $socialPlayButtons[$i].add_Click($handler)
 }$inventoryAdmin=Initialize-InventoryAdmin $tabs $Root $(if($ini.name_hex){[string]$ini.name_hex}else{Encode-NameHex $defaultName})
 $inventoryAdmin.ProfileChanged={param($ctx)
@@ -905,7 +939,7 @@ $inventoryAdmin.ProfileChanged={param($ctx)
 if($null-ne$inventoryAdmin.CharacterId){&$inventoryAdmin.ProfileChanged $inventoryAdmin}
 [void](Add-InventoryAdminProfileSelector $tabResources $inventoryAdmin)
 $profileSaveBtn=New-Object Windows.Forms.Button;$profileSaveBtn.Text='保存所选档案';$profileSaveBtn.Location=New-Object Drawing.Point(900,50);$profileSaveBtn.Size=New-Object Drawing.Size(175,36);$profileSaveBtn.BackColor=[Drawing.Color]::LightGreen;$tabResources.Controls.Add($profileSaveBtn)
-$profileSaveBtn.add_Click({try{if((Get-LocalAdapters).Count){throw '请先停止适配器再修改用户档案。'};[void](Sync-LauncherProfileIdentity);Capture-LauncherProfileEditorState;$result=Save-InventoryAdminState $inventoryAdmin $inventoryAdmin.NameHex $inventoryAdmin.Shop $inventoryAdmin.Profile;$status.Text="已保存所选用户档案：$($inventoryAdmin.SelectedProfile.display)；目标：$($result.source)；备份：$($result.backup)"}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'档案保存失败')|Out-Null}})
+$profileSaveBtn.add_Click({try{Start-SaveLauncherProfile -ProfileOnly}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'档案保存失败')|Out-Null}})
 function Capture-LauncherProfileEditorState {
     if(-not$inventoryAdmin.Profile){$inventoryAdmin.Profile=[pscustomobject]@{}}
     $inventoryAdmin.Profile|Add-Member -NotePropertyName level -NotePropertyValue ([int]$levelBox.Value) -Force
@@ -930,10 +964,9 @@ function Sync-LauncherProfileIdentity {
 }
 $nameBox.add_Leave({try{if(-not$pureNewPlayerBox.Checked){[void](Sync-LauncherProfileIdentity)}}catch{$status.Text='档案选择失败：'+$_.Exception.Message}})
 $tabs.TabPages.Add($tabLaunchInfo);$tabs.TabPages.Add($tabPets);$tabs.TabPages.Add($tabEquip);$tabs.TabPages.Add($tabFurniture)
-function Save-Profile {
+function New-LauncherProfileRequest([switch]$IdentityResolved) {
     if($pureNewPlayerBox.Checked){throw '纯新手档不会保存或导入GUI角色配置；请取消勾选后再保存常规档。'}
-    if((Get-LocalAdapters).Count){throw '适配器运行期间不能离线改写角色数据库。请先停止适配器再保存；“进入 Nanaimo”不会再隐式保存或重启服务。'}
-    [void](Sync-LauncherProfileIdentity)
+    if(-not$IdentityResolved){[void](Sync-LauncherProfileIdentity)}
     Capture-LauncherProfileEditorState
     $name=$nameBox.Text.Trim();$hex=Encode-NameHex $name;$pet=Get-SelectedData $petCombo;if(-not$pet){throw '请选择宠物。'}
     $selected=@{};foreach($part in $comboMap.Keys){$d=Get-SelectedData $comboMap[$part];if(-not$d){throw "请选择 $($PartLabels[$part])。"};$selected[$part]=$d}
@@ -943,12 +976,19 @@ function Save-Profile {
     $lines+=@('skill_config=1',"skill_projectile_route=$($skills.projectile_route)","skill_meat_route=$($skills.meat_route)","skill_slot_z=$($skills.slot_z)","skill_slot_x=$($skills.slot_x)")
     for($i=0;$i-lt16;$i++){$lines+="skill_grade$i=$($skills.grades[$i])"}
     $adminShop=[ordered]@{coin=[uint64]$resources.coin;nana=[uint64]$resources.nana_point;equipped=@([uint32]$selected.hair.id,[uint32]$selected.body.id,[uint32]$selected.top.id,[uint32]$selected.bottom.id,[uint32]$selected.accessory.id);effect=[uint32]$selected.effect.id;selected_pet=[uint32]$pet.id}
-    $adminResult=Save-InventoryAdminState $inventoryAdmin $hex $adminShop
-    [IO.File]::WriteAllLines($ProfileIni,$lines,(New-Object Text.ASCIIEncoding))
-    $titleStatePath=$null;if([int]$titleSelection.Grade-ge0){$titleStatePath=Write-DungeonGradeState $ProfileStateRoot $hex ([int]$titleSelection.Grade)}
-    $view=[ordered]@{launch_mode=$launchMode;network_ip=$networkIp;start_local_adapter=$launchModeInfo.StartLocalAdapter;skip_tutorial=[bool]$skipTutorialBox.Checked;unlock_all_dungeons=[bool]$unlockAllDungeonsBox.Checked;name=$name;level=[int]$levelBox.Value;title=[ordered]@{mode=if([int]$titleSelection.Grade-ge0){'fixed'}else{'progress'};grade=[int]$titleSelection.Grade;rank=[string]$titleSelection.Rank;resource_id=$titleSelection.ResourceId;icon_resource=$titleSelection.IconResource;text_resource=$titleSelection.TextResource;name=[string]$titleSelection.Name;state_file=$titleStatePath};gender=if($genderCombo.SelectedIndex-eq1){'M'}else{'F'};pet=$pet;pet_selected_age=$age;initial_attack_mode=Selected-AttackMode;equipment=[ordered]@{hair=$selected.hair;body=$selected.body;top=$selected.top;bottom=$selected.bottom;accessory=$selected.accessory;effect=$selected.effect};resources=[ordered]@{hp_max=$resources.hp_max;mp_max=$resources.mp_max;attack=$resources.attack;defense=$resources.defense;attack_carrier='CFEC+0x2E0';defense_policy='local max(1, raw-defense) before D010/D015';coin=$resources.coin;nana_point=$resources.nana_point;apartment_recommendation_points=$resources.apartment_recommendation_points;card_key_normal=$resources.card_key_normal;card_key_gold=$resources.card_key_gold;card_key_mystery=$resources.card_key_mystery;card_key_special=$resources.card_key_special;free_magic_key_expiry=$resources.free_magic_key_expiry;quickbar_expiry=$resources.quickbar_expiry;skill_slot_expiry=$resources.skill_slot_expiry;skill_slot_expiry_configured=$resources.skill_slot_expiry_apply;currency_carriers='C37B+C379';item_carriers='C3E8+C430+C474'};inventory_admin=[ordered]@{account_suffix=$adminResult.account_suffix;backup=$adminResult.backup;clothing=$inventoryAdmin.Clothing.Count;pets=$inventoryAdmin.Pets.Count;game_item_kinds=$inventoryAdmin.GameItems.Count;furniture=$inventoryAdmin.Furniture.Count;cards=$inventoryAdmin.Cards.Count};skills=[ordered]@{projectile_route=$skills.projectile_route;meat_route=$skills.meat_route;slot_z=$skills.slot_z;slot_x=$skills.slot_x;grades=@($skills.grades)};saved_at=(Get-Date).ToString('s')}
-    [IO.File]::WriteAllText($ProfileJson,($view|ConvertTo-Json -Depth 6),(New-Object Text.UTF8Encoding($false)))
-    $status.Text="Saved profile + title selection + five inventory domains (backup: $($adminResult.backup)).`r`nMax HP $($resources.hp_max), Max MP $($resources.mp_max), attack +$($resources.attack), defense $($resources.defense); Title=$($titleSelection.Display); Z=$(Skill-CodeName $skills.slot_z), X=$(Skill-CodeName $skills.slot_x).";Update-LaunchPreview
+    $view=[ordered]@{launch_mode=$launchMode;network_ip=$networkIp;start_local_adapter=$launchModeInfo.StartLocalAdapter;skip_tutorial=[bool]$skipTutorialBox.Checked;unlock_all_dungeons=[bool]$unlockAllDungeonsBox.Checked;name=$name;level=[int]$levelBox.Value;title=[ordered]@{mode=if([int]$titleSelection.Grade-ge0){'fixed'}else{'progress'};grade=[int]$titleSelection.Grade;rank=[string]$titleSelection.Rank;resource_id=$titleSelection.ResourceId;icon_resource=$titleSelection.IconResource;text_resource=$titleSelection.TextResource;name=[string]$titleSelection.Name;state_file=$null};gender=if($genderCombo.SelectedIndex-eq1){'M'}else{'F'};pet=$pet;pet_selected_age=$age;initial_attack_mode=Selected-AttackMode;equipment=[ordered]@{hair=$selected.hair;body=$selected.body;top=$selected.top;bottom=$selected.bottom;accessory=$selected.accessory;effect=$selected.effect};resources=[ordered]@{hp_max=$resources.hp_max;mp_max=$resources.mp_max;attack=$resources.attack;defense=$resources.defense;attack_carrier='CFEC+0x2E0';defense_policy='local max(1, raw-defense) before D010/D015';coin=$resources.coin;nana_point=$resources.nana_point;apartment_recommendation_points=$resources.apartment_recommendation_points;card_key_normal=$resources.card_key_normal;card_key_gold=$resources.card_key_gold;card_key_mystery=$resources.card_key_mystery;card_key_special=$resources.card_key_special;free_magic_key_expiry=$resources.free_magic_key_expiry;quickbar_expiry=$resources.quickbar_expiry;skill_slot_expiry=$resources.skill_slot_expiry;skill_slot_expiry_configured=$resources.skill_slot_expiry_apply;currency_carriers='C37B+C379';item_carriers='C3E8+C430+C474'};inventory_admin=[ordered]@{account_suffix=$null;backup=$null;clothing=$inventoryAdmin.Clothing.Count;pets=$inventoryAdmin.Pets.Count;game_item_kinds=$inventoryAdmin.GameItems.Count;furniture=$inventoryAdmin.Furniture.Count;cards=$inventoryAdmin.Cards.Count};skills=[ordered]@{projectile_route=$skills.projectile_route;meat_route=$skills.meat_route;slot_z=$skills.slot_z;slot_x=$skills.slot_x;grades=@($skills.grades)};saved_at=(Get-Date).ToString('s')}
+    return @{Context=(New-LauncherInventorySnapshot);Hex=$hex;Shop=$adminShop;Lines=$lines;TitleGrade=[int]$titleSelection.Grade;View=$view}
+}
+function Save-Profile([switch]$Background,[switch]$IdentityResolved) {
+    $request=New-LauncherProfileRequest -IdentityResolved:$IdentityResolved
+    $completed={
+        param($result)
+        $status.Text="配置已保存；数据库备份：$($result[-1].backup)"
+        $script:SavedEditorFingerprint=Get-LauncherEditorFingerprint
+        Update-LaunchPreview
+    }
+    if($Background){Start-LauncherWork '保存配置' {param($data)Write-LauncherProfileRequest $data.Request} @{Request=$request} $completed}
+    else{if(-not$LauncherProgress){$LauncherProgress=@{}};$result=Write-LauncherProfileRequest $request;&$completed @($result)}
 }
 if($SelfTestProfileIO){
     Save-Profile;$skillExpect=Get-SkillSelection;$roundIni=Read-IniProfile;$roundJson=Get-Content -LiteralPath $ProfileJson -Raw -Encoding UTF8|ConvertFrom-Json
@@ -972,37 +1012,42 @@ $resetProgressBtn.add_Click({try{if((Get-LocalAdapters).Count){throw 'Stop the l
 $defaultBtn.add_Click({$pureNewPlayerBox.Checked=$false;$skipTutorialBox.Checked=$false;$unlockAllDungeonsBox.Checked=$true;$nameBox.Text='Greyrat';$titleCombo.SelectedIndex=0;$levelBox.Value=25;$hpMaxBox.Value=1500;$mpMaxBox.Value=500;$attackBox.Value=0;$defenseBox.Value=0;$coinBox.Value=0;$nanaPointBox.Value=0;$apartmentPointsBox.Value=1000;$cardKeyNormalBox.Value=99;$cardKeyGoldBox.Value=99;$cardKeyMysteryBox.Value=99;$cardKeySpecialBox.Value=99;$freeMagicKeyExpiryBox.Value=2099123123;$quickbarExpiryBox.Value=0;$skillSlotExpiryBox.Value=0;$skillSlotExpiryApplyBox.Checked=$true;$projectileRouteCombo.SelectedIndex=0;$meatRouteCombo.SelectedIndex=0;for($i=0;$i-lt16;$i++){$skillGradeBoxes[$i].Value=0};foreach($i in 0,1,8,9){$skillGradeBoxes[$i].Value=5};Set-SkillSlotChoices 0 0;Update-SkillWarning;$genderCombo.SelectedIndex=1;Select-ComboId $petCombo 15009205|Out-Null;Update-PetAgeOptions 3;Select-ComboId $comboMap.hair 10130337|Out-Null;Select-ComboId $comboMap.body 10100028|Out-Null;Select-ComboId $comboMap.top 10110337|Out-Null;Select-ComboId $comboMap.bottom 10120352|Out-Null;Select-ComboId $comboMap.accessory 10150103|Out-Null;Select-ComboId $comboMap.effect 10160017|Out-Null;Update-PetDetail;Update-LaunchModePresentation})
 $adapterBtn.add_Click({
     try{
-        if((Get-LocalAdapters).Count){Stop-LocalAdapter;$adapterBtn.Text='启动适配器';$status.Text='适配器已停止。';return}
-        Save-Profile
-        $proc=Start-LocalAdapter
-        $adapterBtn.Text='Stop adapter';$status.Text="Adapter started PID=$($proc.Id), $ReleaseIdentity.`r`nCanonical entry: $CanonicalLauncher; identity: $RuntimeIdentityPath"
+        if(-not(Get-LocalAdapters).Count-and-not(Test-Path -LiteralPath $ProfileIni -PathType Leaf)){throw '请先保存配置。'}
+        if(-not(Get-LocalAdapters).Count-and$script:SavedEditorFingerprint-ne(Get-LauncherEditorFingerprint)){throw '配置有修改，请先点击保存配置，再启动适配器。'}
+        Start-LauncherWork '启动／停止适配器' {
+            param($data)
+            if((Get-LocalAdapters).Count){$LauncherProgress.Stage='停止适配器';Stop-LocalAdapter;return 0}
+            return (Start-LocalAdapter).Id
+        } @{} {
+            param($result)
+            if($result[-1]-eq0){$adapterBtn.Text='启动适配器';$status.Text='适配器已停止。'}else{$adapterBtn.Text='停止适配器';$status.Text="适配器已启动：PID=$($result[-1])；复用已保存配置。"}
+        }
     }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'适配器启动失败')|Out-Null}
 })
 $clientBtn.add_Click({
     try{
-        $launchModeInfo=Get-SelectedLaunchModeInfo;$pure=[bool]$pureNewPlayerBox.Checked
+        $launchModeInfo=Get-SelectedLaunchModeInfo
         if($launchModeInfo.Key-ne'network'-or$launchModeInfo.AdapterIP-ne'127.0.0.1'){throw '本地模式必须使用绑定 127.0.0.1 的 Network 协议适配器。'}
-        Assert-LocalAdapterRunning
-        if($pure){$runtimeProfile=Write-PureNewPlayerRuntimeProfile}else{[void](Sync-LauncherProfileIdentity)}
-        Test-ClientBinary;Install-LaunchModeConfig $launchModeInfo
-        $compatibility=Ensure-ClientCompatibility
-        $account=$null
-        if($pure){$account=Register-PureNewPlayer $launchModeInfo.AdapterIP $pureNewPlayerUsernameBox.Text}else{$account=Register-ClientProfile $launchModeInfo.AdapterIP}
-        if($launchModeInfo.ClientArgs.Count){Start-Process -FilePath $Client -ArgumentList ([string[]]$launchModeInfo.ClientArgs) -WorkingDirectory $Root|Out-Null}else{Start-Process -FilePath $Client -WorkingDirectory $Root|Out-Null}
-        $changed=@($compatibility.apply_results|Where-Object{$_.status-eq'applied'}).Count
-        $status.Text=if($pure){"纯新手账号 $account 已注册到现有本地协议适配器；兼容性已验证（应用 $changed 个文件）；已启动另一个客户端。`r`n运行配置：$runtimeProfile"}else{"所选账号 $account 已注册到现有本地协议适配器；兼容性已验证（应用 $changed 个文件）；已启动另一个客户端。"}
+        if($pureNewPlayerBox.Checked){Start-LocalClientWork;return}
+        Start-LauncherWork '解析本地账号身份' {
+            param($data);Assert-LocalAdapterRunning
+            [void](Ensure-InventoryAdminProfile $data.Context $data.Identity)
+            return $data.Context
+        } @{Context=(New-LauncherInventorySnapshot);Identity=$nameBox.Text} {
+            param($result);Apply-LauncherInventoryContext $inventoryAdmin $result[-1];Start-LocalClientWork $result[-1].SelectedProfile
+        }
     }catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'启动 Nanaimo 失败')|Out-Null}
 })
 if($SelfTestLocalEntry){
     $source=Get-Content -LiteralPath $PSCommandPath -Raw -Encoding UTF8
     $entryStart=$source.IndexOf('$clientBtn.add_Click({');$entryEnd=$source.IndexOf('# Pet lookup tab',$entryStart)
     if($entryStart-lt0-or$entryEnd-le$entryStart){throw 'local entry source block missing'}
-    $entry=$source.Substring($entryStart,$entryEnd-$entryStart)
-    foreach($required in @('Get-SelectedLaunchModeInfo','Assert-LocalAdapterRunning','Write-PureNewPlayerRuntimeProfile','Test-ClientBinary;Install-LaunchModeConfig $launchModeInfo','Ensure-ClientCompatibility','Register-PureNewPlayer $launchModeInfo.AdapterIP','Register-ClientProfile $launchModeInfo.AdapterIP','Start-Process -FilePath $Client')){if(-not$entry.Contains($required)){throw "local entry missing: $required"}}
+    $entry=$source.Substring($entryStart,$entryEnd-$entryStart)+(Get-Command Start-LocalClientWork -CommandType Function).Definition
+    foreach($required in @('Get-SelectedLaunchModeInfo','Assert-LocalAdapterRunning','Write-PureNewPlayerRuntimeProfile','Test-ClientBinary;Install-LaunchModeConfig $data.Info','Ensure-ClientCompatibility','Register-PureNewPlayer $data.Info.AdapterIP','Register-ClientProfile $data.Info.AdapterIP','Start-Process -FilePath $Client')){if(-not$entry.Contains($required)){throw "local entry missing: $required"}}
     foreach($forbidden in @('Stop-LocalAdapter','Start-LocalAdapter','Save-Profile','Get-Process -Name game','Stop-Process')){if($entry.Contains($forbidden)){throw "local entry must not invoke: $forbidden"}}
     $info=Get-SelectedLaunchModeInfo
     if($info.Key-ne'network'-or$info.AdapterIP-ne'127.0.0.1'-or-not$info.StartLocalAdapter){throw 'local entry is not fixed to loopback Network mode'}
-    if($entry.IndexOf('Install-LaunchModeConfig $launchModeInfo')-gt$entry.IndexOf('Ensure-ClientCompatibility')-or$entry.IndexOf('Ensure-ClientCompatibility')-gt$entry.IndexOf('Register-ClientProfile $launchModeInfo.AdapterIP')-or$entry.IndexOf('Register-ClientProfile $launchModeInfo.AdapterIP')-gt$entry.IndexOf('Start-Process -FilePath $Client')){throw 'local entry operation order'}
+    if($entry.IndexOf('Install-LaunchModeConfig $data.Info')-gt$entry.IndexOf('Ensure-ClientCompatibility')-or$entry.IndexOf('Ensure-ClientCompatibility')-gt$entry.IndexOf('Register-ClientProfile $data.Info.AdapterIP')-or$entry.IndexOf('Register-ClientProfile $data.Info.AdapterIP')-gt$entry.IndexOf('Start-Process -FilePath $Client')){throw 'local entry operation order'}
     Write-Output 'GUI_LOCAL_ENTRY_SELFTEST_PASS mode=network endpoint=127.0.0.1 adapter=required_and_reused profile=selected_account existing_clients=preserved multiclient=true normal_and_pure_registration=true'
     $form.Close();$form.Dispose();exit 0
 }
@@ -1235,4 +1280,19 @@ if($SelfTestCatalogPreview){
 }
 
 
+$script:SavedEditorFingerprint=$null
+if(Test-Path -LiteralPath $ProfileIni -PathType Leaf){
+    try{
+        $request=New-LauncherProfileRequest -IdentityResolved
+        $current=([string[]]$request.Lines|Sort-Object)-join "`n"
+        $saved=(Get-Content -LiteralPath $ProfileIni|Where-Object{$_ -match '^[^#;]+='}|Sort-Object)-join "`n"
+        if($current-eq$saved){$script:SavedEditorFingerprint=Get-LauncherEditorFingerprint}
+    }catch{} # Live adapters prevent offline request capture; Stop remains available.
+}
+$script:PreviewTimer=New-Object Windows.Forms.Timer;$script:PreviewTimer.Interval=200
+$script:PreviewTimer.add_Tick({$script:PreviewTimer.Stop();try{Render-LaunchPreview}catch{$launchInfoBox.Text=$_.Exception.Message}})
+$script:LauncherWorkTimer=New-Object Windows.Forms.Timer;$script:LauncherWorkTimer.Interval=100
+$script:LauncherWorkTimer.add_Tick({Complete-LauncherWork})
+$form.add_FormClosing({param($sender,$eventArgs)if($script:LauncherWork){$eventArgs.Cancel=$true;$status.Text='后台操作尚未完成，请稍后关闭。'}})
+$form.add_FormClosed({$script:PreviewTimer.Dispose();$script:LauncherWorkTimer.Dispose()})
 [void]$form.ShowDialog()

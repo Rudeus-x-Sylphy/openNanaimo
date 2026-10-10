@@ -203,18 +203,18 @@
     },
     {
       "path": "managed-host/LauncherTools.Compatibility.cs",
-      "size": 13360,
-      "sha256": "2815D76B582E879F58920B3A4D22092BC863F07D78CC2CAACC92BD92E8182273"
+      "size": 13486,
+      "sha256": "EC880445486D725C7B751BF9377F15C26DC7C81FA703E822C5C10EE6391C9014"
     },
     {
       "path": "managed-host/LauncherTools.Inventory.cs",
-      "size": 15870,
-      "sha256": "EA9E52DD171EA17E6382689BC3D70362772A86A0EF69B2DB60EE58723CC0F20D"
+      "size": 18444,
+      "sha256": "E9D1C4BB40C926550371CFA6835EF4B2D4ED9229A703EB6AC372660B88D5F3E3"
     },
     {
       "path": "managed-host/LauncherTools.InventoryWrite.cs",
-      "size": 16001,
-      "sha256": "564486CFED5EDA1DC13775E551F1C9BB0DD7D092EA67F0F51F22EC53DFD5094B"
+      "size": 21227,
+      "sha256": "58D8ADE7A76E6A115E83268569AC025052A1B2F4D34758996ADE808A2BE21BB3"
     },
     {
       "path": "managed-host/LauncherTools.Resources.cs",
@@ -503,8 +503,8 @@
     },
     {
       "path": "managed/Services/ArenaProtocol.cs",
-      "size": 16777,
-      "sha256": "CD0D67DD4DB254895931CAE9518C3B0A99646C8A82FDCD52336C0052A6900F55"
+      "size": 16817,
+      "sha256": "C4AB04068E595BC3B787C5040D1A02A5B3FEE02DF6718DF7AC0A95CF990A9E99"
     },
     {
       "path": "managed/Services/AvatarEquipmentCatalog.cs",
@@ -668,8 +668,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.LuckyCards.cs",
-      "size": 21900,
-      "sha256": "3DCB2D570611D1D795107036BA71A7F3A33F88D0B68C81387E133B9F256E3A63"
+      "size": 22646,
+      "sha256": "294AF65A5694404A4E116C58E4D296C582917B5F35484CA1ED81BC9735904902"
     },
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",
@@ -688,8 +688,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.NativeFriends.cs",
-      "size": 5188,
-      "sha256": "BB4367B323A7FCDF2A2CB62E6AF490D194C75F1FDC40388A1E2B6A81B1DC7FA0"
+      "size": 7842,
+      "sha256": "C7F5D7A2755895E2F5A912ED56EEB1E1117AEB7CD2A18BC80F05C48910DCB49E"
     },
     {
       "path": "managed/Services/DatabaseService.PetMaterialMigration.cs",
@@ -728,8 +728,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 590295,
-      "sha256": "744B54C83B09129040DCB09FAFE95CF5370F45F7060E5C598D144F5697A2C205"
+      "size": 592812,
+      "sha256": "7B5D0935EA9E75241346F8014C596080ED31BF4A0A0C3E02382B0C68B2B16A2E"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -808,8 +808,8 @@
     },
     {
       "path": "managed/Services/LuckyCardPolicy.cs",
-      "size": 5487,
-      "sha256": "7D15DF6B50385BD4CE355111745888B66A77B5E1ACFCF4810BB8E67BCAE1161B"
+      "size": 5990,
+      "sha256": "F56F77517607E4769D64C043A7728220143B7248A72DDA62E9414573FE54D432"
     },
     {
       "path": "managed/Services/MentorProtocol.cs",
@@ -863,8 +863,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.ArenaCombat.cs",
-      "size": 5734,
-      "sha256": "E337ADCD49148F336E08BA40FAAE1DAB3056364617B262F5A84983F20A56349A"
+      "size": 6449,
+      "sha256": "CF10695653C7992952D2BA3D7D16379328B384A5EB03D363042BB0CB8C851531"
     },
     {
       "path": "managed/Services/NetworkAdapterService.AvatarInventoryIdentity.cs",
@@ -913,8 +913,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.Entertainment.cs",
-      "size": 49103,
-      "sha256": "59C126DACF8DD12F02B6BDE117FF23ABE16A066D14288FF020DCD2996B58A27D"
+      "size": 50113,
+      "sha256": "45F745391A0A4CC72866B6490B7C99969A7D7C11BA0915865A9675DAAE0A9BA2"
     },
     {
       "path": "managed/Services/NetworkAdapterService.Friends.cs",
@@ -1038,8 +1038,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.Social.cs",
-      "size": 9437,
-      "sha256": "796F74A0A05C51616946C757A890213A96B03914FA7E0BD69E81225F414E74B6"
+      "size": 9518,
+      "sha256": "68A0A0BD0C824FA8641032D6B1734D1908E81409DCD9A687B38CCF6979C423E6"
     },
     {
       "path": "managed/Services/NetworkAdapterService.TownPetLifecycle.cs",
@@ -1053,8 +1053,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 991699,
-      "sha256": "E40AF6EBB6EC78CA5C265DF230F84092CDB5310C3881A887DCEC3C02BFA8D3C2"
+      "size": 992758,
+      "sha256": "2BCB243867DAB9EEF33452DF4DD7FE0A714B272807AC566C625FB80912D4EEBD"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

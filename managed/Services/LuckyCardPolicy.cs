@@ -15,6 +15,15 @@ internal static class LuckyCardPolicy
     private static readonly Lazy<IReadOnlyDictionary<uint, Pool>> Pools = new(Load);
     internal static IReadOnlyDictionary<uint, Pool> All => Pools.Value;
     internal static bool TryGet(uint card, out Pool pool) => Pools.Value.TryGetValue(card, out pool!);
+    internal static bool IsUnopened(uint card) => card is >= 22000011u and <= 22000020u && !TryGet(card, out _);
+
+    internal static uint PickOpenCard(int ticket)
+    {
+        if (ticket is < 0 or >= 10000) throw new ArgumentOutOfRangeException(nameof(ticket));
+        var cards = All.Keys.OrderBy(card => card).ToArray();
+        if (cards.Length == 0) throw new InvalidDataException("No opened lucky-card pools are configured.");
+        return cards[ticket * cards.Length / 10000];
+    }
 
     // 85BA10 -> 851010 -> 8512C0 -> 7BEC40: WORD+8=40, WORD+10=40,
     // DWORD+12=0, DWORD+16=card. Frame+20/+24 are NOT initialized by 8512C0.

@@ -13,6 +13,11 @@ internal static class Program
         Check(ArenaProtocol.TryParseGameEvent(payload, out var request), "arena event 50 parses");
         Check(request.PrimaryUid == 1950 && request.ValueAt8 == 29820, "event metadata remains separate from damage");
         Check(request.TargetDamage == 0, "object collisions do not select an arbitrary opponent");
+        var obstaclePayload = new byte[20];
+        BinaryPrimitives.WriteUInt16LittleEndian(obstaclePayload.AsSpan(0, 2), 20);
+        Check(ArenaProtocol.TryParseGameEvent(obstaclePayload, out var obstacle)
+            && obstacle.TargetDamage == 0,
+            "sky arena obstacles remain non-terminal scene targets");
 
         var response = ArenaProtocol.BuildGameEventResult(0x00B2, 90, 10, request);
         Check(response.Length == ArenaProtocol.GameEventResponseLength
@@ -21,6 +26,9 @@ internal static class Program
             && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(8, 2)) == 90
             && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(26, 2)) == 0,
             "arena D010 carries actor HP independently of PvP damage");
+        var obstacleResponse = ArenaProtocol.BuildGameEventResult(0x00B2, 900, 50, obstacle);
+        Check(BinaryPrimitives.ReadUInt16LittleEndian(obstacleResponse.AsSpan(26, 2)) == 0,
+            "arena object result does not publish terminal obstacle damage");
         Check(response.AsSpan(28).ToArray().All(value => value == 0), "arena D010 optional tail is initialized");
 
         Check(ArenaProtocol.CalculatePvpDamage(100, 20) == 90

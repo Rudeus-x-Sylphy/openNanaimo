@@ -894,6 +894,7 @@ public sealed partial class DatabaseService
         await RepairApartmentInventoryPlacementsAsync(cancellationToken: cancellationToken);
         await MigrateSkillPointCardsAsync(connection, cancellationToken);
         await InitializeLuckyCardUsesAsync(connection, cancellationToken);
+        await InitializeEntertainmentLuckyCardsAsync(connection, cancellationToken);
         await InitializeEventCardUsesAsync(connection, cancellationToken);
         await InitializeCardPageUnionsAsync(connection, cancellationToken);
         await InitializeCardExchangeAsync(cancellationToken);
@@ -2696,6 +2697,9 @@ public sealed partial class DatabaseService
             || string.IsNullOrEmpty(sessionId)
             || !CardSynthesisCatalog.TryGet(recipeToken, out var recipe))
             return (false, "Card synthesis parameters are invalid.", 0, 0, "none", 0);
+
+        if (recipe.Inputs.Any(LuckyCardPolicy.IsUnopened) || LuckyCardPolicy.IsUnopened(recipe.Output))
+            return (false, "The lucky-card pool is not open.", recipe.Output, 0, "none", 0);
 
         var rewardDomain = recipe.Output / 1_000_000u;
         ShopCatalogItem? petReward = null;
@@ -9522,7 +9526,8 @@ public sealed partial class DatabaseService
         bool superBoss = false,
         byte clearRating = 0,
         int? stageRecordScore = null,
-        string? activitySettlementKey = null)
+        string? activitySettlementKey = null,
+        IReadOnlyList<uint>? entertainmentLuckyCards = null)
     {
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrWhiteSpace(sessionId)
             || hdIndex > 1
@@ -9838,6 +9843,44 @@ public sealed partial class DatabaseService
             await performance.ExecuteNonQueryAsync(cancellationToken);
         }
 
+        if (entertainmentLuckyCards is { Count: > 0 })
+        {
+            if (activitySettlementKey is null || entertainmentLuckyCards.Any(card => !LuckyCardPolicy.TryGet(card, out _)))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return null;
+            }
+            for (var sequence = 0; sequence < entertainmentLuckyCards.Count; sequence++)
+            {
+                var card = entertainmentLuckyCards[sequence];
+                await using var receipt = connection.CreateCommand();
+                receipt.Transaction = transaction;
+                receipt.CommandText = """
+                    INSERT OR IGNORE INTO EntertainmentLuckyCardReceipts
+                        (CharacterId, SettlementKey, Sequence, CardCode, CreatedAt)
+                    VALUES($characterId, $settlementKey, $sequence, $cardCode, $now)
+                    """;
+                receipt.Parameters.AddWithValue("$characterId", characterId);
+                receipt.Parameters.AddWithValue("$settlementKey", activitySettlementKey);
+                receipt.Parameters.AddWithValue("$sequence", sequence);
+                receipt.Parameters.AddWithValue("$cardCode", card);
+                receipt.Parameters.AddWithValue("$now", now);
+                if (await receipt.ExecuteNonQueryAsync(cancellationToken) != 1) continue;
+
+                await using var grant = connection.CreateCommand();
+                grant.Transaction = transaction;
+                grant.CommandText = """
+                    INSERT INTO CharacterCards(CharacterId, CardCode, Quantity, UpdatedAt)
+                    VALUES($characterId, $cardCode, 1, $now)
+                    ON CONFLICT(CharacterId, CardCode) DO UPDATE SET
+                        Quantity = MIN(255, CharacterCards.Quantity + 1), UpdatedAt = excluded.UpdatedAt
+                    """;
+                grant.Parameters.AddWithValue("$characterId", characterId);
+                grant.Parameters.AddWithValue("$cardCode", card);
+                grant.Parameters.AddWithValue("$now", now);
+                await grant.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
         await transaction.CommitAsync(cancellationToken);
         return await GetCharacterByIdAsync(characterId, cancellationToken);
     }

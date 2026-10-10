@@ -110,6 +110,8 @@ REPOSITORY_FILES = [
     'gui_launcher/start_social_client.ps1',
     'gui_launcher/client_connect.ps1',
     'gui_launcher/inventory_admin_gui.ps1',
+    'gui_launcher/launcher_worker.ps1',
+    'scripts/test_launcher_responsiveness.ps1',
     'gui_launcher/launch_modes/gamestartoption.network.ini',
     'gui_launcher/resource_patches/superboss_projectile_alias.json',
     'manifest/patch_runtime_requirements.json',

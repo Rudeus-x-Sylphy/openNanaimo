@@ -34,7 +34,7 @@ public sealed partial class DatabaseService
     internal async Task<(bool Success, long PeerId, bool Added)> ApplyNativeFriendCommandAsync(
         long accountId, long characterId, string sessionId, ushort operation, string peerName, CancellationToken token)
     {
-        if (operation != 1 || string.IsNullOrWhiteSpace(peerName)) return (false, 0, false);
+        if (operation is not (1 or 2) || string.IsNullOrWhiteSpace(peerName)) return (false, 0, false);
         await using var connection = await OpenConnectionAsync(token);
         await using var transaction = connection.BeginTransaction(deferred: false);
         long peerId;
@@ -49,12 +49,16 @@ public sealed partial class DatabaseService
                     WHERE owner.Id = $owner AND owner.AccountId = $account
                       AND owner.IsOnline = 1 AND account.IsOnline = 1
                       AND owner.ActiveSessionId = $session AND account.ActiveSessionId = $session)
-                  AND NOT EXISTS (SELECT 1 FROM FriendBlocks
+                  AND ($operation = 2 OR NOT EXISTS (SELECT 1 FROM FriendBlocks
                     WHERE (OwnerCharacterId = $owner AND FriendCharacterId = peer.Id)
-                       OR (OwnerCharacterId = peer.Id AND FriendCharacterId = $owner))
+                       OR (OwnerCharacterId = peer.Id AND FriendCharacterId = $owner)))
+                  AND ($operation = 1 OR EXISTS (SELECT 1 FROM FriendRelations
+                    WHERE (FirstCharacterId = $owner AND SecondCharacterId = peer.Id)
+                       OR (FirstCharacterId = peer.Id AND SecondCharacterId = $owner)))
                 ORDER BY peer.Id
                 LIMIT 1
                 """;
+            target.Parameters.AddWithValue("$operation", operation);
             target.Parameters.AddWithValue("$name", peerName);
             target.Parameters.AddWithValue("$owner", characterId);
             target.Parameters.AddWithValue("$account", accountId);
@@ -62,6 +66,50 @@ public sealed partial class DatabaseService
             peerId = Convert.ToInt64(await target.ExecuteScalarAsync(token) ?? 0L);
         }
         if (peerId == 0) return (false, 0, false);
+        if (operation == 2)
+        {
+            // Clear both projections and old accepted/pending requests in the same
+            // transaction: list reads materialize accepted requests into relations.
+            // A repeated deletion is rejected after the relation has been removed.
+            var removed = 0;
+            foreach (var table in new[] { "FriendCategoryMembers", "FriendBlocks", "FriendMemos" })
+            {
+                await using var cleanup = connection.CreateCommand();
+                cleanup.Transaction = transaction;
+                cleanup.CommandText = $"""
+                    DELETE FROM {table}
+                    WHERE (OwnerCharacterId = $owner AND FriendCharacterId = $peer)
+                       OR (OwnerCharacterId = $peer AND FriendCharacterId = $owner)
+                    """;
+                cleanup.Parameters.AddWithValue("$owner", characterId);
+                cleanup.Parameters.AddWithValue("$peer", peerId);
+                removed += await cleanup.ExecuteNonQueryAsync(token);
+            }
+            await using (var requests = connection.CreateCommand())
+            {
+                requests.Transaction = transaction;
+                requests.CommandText = """
+                    DELETE FROM FriendRequests
+                    WHERE (RequesterCharacterId = $owner AND RequesteeCharacterId = $peer)
+                       OR (RequesterCharacterId = $peer AND RequesteeCharacterId = $owner)
+                    """;
+                requests.Parameters.AddWithValue("$owner", characterId);
+                requests.Parameters.AddWithValue("$peer", peerId);
+                removed += await requests.ExecuteNonQueryAsync(token);
+            }
+            await using (var relation = connection.CreateCommand())
+            {
+                relation.Transaction = transaction;
+                relation.CommandText = """
+                    DELETE FROM FriendRelations WHERE FirstCharacterId = $first AND SecondCharacterId = $second
+                    """;
+                relation.Parameters.AddWithValue("$first", Math.Min(characterId, peerId));
+                relation.Parameters.AddWithValue("$second", Math.Max(characterId, peerId));
+                removed += await relation.ExecuteNonQueryAsync(token);
+            }
+            await transaction.CommitAsync(token);
+            return (true, peerId, removed > 0);
+        }
         var now = DateTime.UtcNow.ToString("O");
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;

@@ -8,7 +8,8 @@ param(
     [string]$LaunchModeConfigText,
     [ValidateRange(500,30000)][int]$StartupTimeoutMilliseconds=8000,
     [switch]$PrepareOnly,
-    [switch]$CleanupPreparedCopy
+    [switch]$CleanupPreparedCopy,
+    [scriptblock]$BeforeLaunch
 )
 
 $ErrorActionPreference='Stop'
@@ -802,6 +803,9 @@ $process=$null;$mainWindowHandle=[IntPtr]::Zero;$startupVerified=$false
 try{
     if(-not$PrepareOnly){
         Assert-NoRunningSocialProcess $target
+        # Register only after preparation and the final running-process guard.
+        # One invocation keeps the slot lock held across preparation and launch.
+        if($BeforeLaunch){& $BeforeLaunch | Out-Null}
         $process=Start-IsolatedSocialProcess $target $workDir $ClientArguments
         $deadline=[DateTime]::UtcNow.AddMilliseconds($StartupTimeoutMilliseconds)
         while([DateTime]::UtcNow-lt$deadline){

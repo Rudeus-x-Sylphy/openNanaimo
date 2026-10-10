@@ -28,6 +28,7 @@ $pureNewPlayerBox=[pscustomobject]@{Checked=$true}
 $script:calls=@()
 function Normalize-NetworkIPv4($ip){return $ip}
 function Save-Profile {throw 'UNRELATED_LOCAL_SAVE_CALLED'}
+function Start-LauncherWork($stage,$work,$data,$completed){$LauncherProgress=@{};$result=&$work $data;&$completed @($result)}
 function Stop-LocalAdapter {$script:calls+='stop'}
 function Start-LocalAdapter($profile,$ip){
  if($profile-ne$ProfileIni-or$ip-ne'192.0.2.10'){throw 'wrong startup arguments'}
@@ -85,18 +86,58 @@ $SocialClientLauncher=Join-Path $Root 'refuse.ps1'
 $socialIpBox=[pscustomobject]@{Text='192.0.2.10'}
 $script:registered=$false
 function Normalize-NetworkIPv4($value){return $value}
+function Get-SelectedData{}
 function Get-LaunchModeInfo{ return [pscustomobject]@{ClientArgs=@()} }
 function Test-ClientBinary{}
 function Get-LaunchModeConfigText{return 'config'}
 function Ensure-ClientCompatibility{}
 function Register-SocialAccount{$script:registered=$true;throw 'REGISTERED_TOO_EARLY'}
-try{Start-SocialParticipant 1 'P1';throw 'failure not propagated'}catch{
+$LauncherProgress=@{}
+try{Start-SocialParticipant 1 'P1' '192.0.2.10' 'config' @();throw 'failure not propagated'}catch{
  if($_.Exception.Message-notmatch'PREPARE_REFUSED'){throw}
 }
 if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'failed prepare modified registration state'}
 'SOCIAL_PREFLIGHT_BEFORE_REGISTRATION_PASS'
 """
         self.run_powershell_check(script, 'SOCIAL_PREFLIGHT_BEFORE_REGISTRATION_PASS')
+
+    @unittest.skipUnless(shutil.which('powershell.exe'), 'Windows PowerShell required')
+    def test_social_launch_prepares_once_and_registers_inside_helper(self):
+        script = r"""
+$ErrorActionPreference='Stop'
+$tokens=$null;$errors=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'gui_launcher/nanaimo_launcher.ps1'),[ref]$tokens,[ref]$errors)
+$node=$ast.Find({param($n)$n-is[Management.Automation.Language.FunctionDefinitionAst]-and$n.Name-eq'Start-SocialParticipant'},$true)
+. ([scriptblock]::Create($node.Extent.Text))
+$Root=$env:TEST_TMP;$Client=Join-Path $Root 'game.exe';$SocialAdapterIpState=Join-Path $Root 'adapter_ip.txt';$LauncherProgress=@{}
+$SocialClientLauncher=Join-Path $Root 'helper.ps1'
+[IO.File]::WriteAllText($SocialClientLauncher,'param($ClientPath,$SocialSlot,$ClientArguments,$WorkingDirectory,$LaunchModeConfigText,$BeforeLaunch) $global:events+="prepare"; &$BeforeLaunch; $global:events+="launch"; [pscustomobject]@{ProcessId=1234;SocialSlot=$SocialSlot}')
+$global:events=@()
+function Test-ClientBinary{}
+function Ensure-ClientCompatibility{$global:events+='compatibility'}
+function Register-SocialAccount($ip,$username){if($ip-ne'192.0.2.10'-or$username-ne'P1'){throw 'wrong registration'};$global:events+='register';return $username}
+$result=Start-SocialParticipant 1 'P1' '192.0.2.10' 'config' @('-q')
+if(($global:events-join',')-ne'compatibility,prepare,register,launch'-or$result.ProcessId-ne1234){throw 'duplicate preparation or wrong ordering'}
+'SOCIAL_SINGLE_PREPARE_PASS'
+"""
+        self.run_powershell_check(script, 'SOCIAL_SINGLE_PREPARE_PASS')
+
+    @unittest.skipUnless(shutil.which('powershell.exe'), 'Windows PowerShell required')
+    def test_resolved_save_does_not_repeat_profile_discovery(self):
+        script = r"""
+$ErrorActionPreference='Stop'
+. ./gui_launcher/inventory_admin_gui.ps1
+$profile=[pscustomobject]@{account_id=1;character_id=2;username='P1';character_name='P1';name_hex='5031';persisted=$true}
+$ctx=[pscustomobject]@{SelectedProfile=$profile;NameHex='5031';CharacterId=2;Profiles=@($profile);ProfileSelectors=@();ProfileSelectorSync=$false;Root=$env:TEST_TMP;Backend='stub';Clothing=@();Pets=@();GameItems=@();Furniture=@();Cards=@();Profile=[pscustomobject]@{};Shop=[pscustomobject]@{}}
+$script:queries=0
+function Get-InventoryAdminProfiles{$script:queries++;return $profile}
+function Invoke-InventoryAdminBackend{return '{"backup":"single-backup"}'}
+[void](Ensure-InventoryAdminProfile $ctx 'P1')
+[void](Save-InventoryAdminState $ctx '5031' $ctx.Shop -IdentityResolved)
+if($script:queries-ne1){throw "queries=$script:queries expected=1"}
+'RESOLVED_SAVE_SINGLE_QUERY_PASS'
+"""
+        self.run_powershell_check(script, 'RESOLVED_SAVE_SINGLE_QUERY_PASS')
 
     def run_powershell_check(self, script, marker):
         import os
@@ -187,19 +228,19 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
         self.assertIn('the dedicated Index redirect provides click-time furniture access while C393 provides the bounded scene snapshot.', text)
         self.assertNotIn("'--all','--overwrite','--apply'", text)
         self.assertIn('$report.verification.all_pass', text)
-        click = text.split('$clientBtn.add_Click({', 1)[1].split('# Pet lookup tab', 1)[0]
+        click = text.split('$clientBtn.add_Click({', 1)[1].split('if($SelfTestLocalEntry){', 1)[0] + (ROOT/'gui_launcher/launcher_worker.ps1').read_text('utf-8-sig').split('function Start-LocalClientWork',1)[1]
         self.assertNotIn('Stop-Process', click)
         self.assertNotIn('Stop-LocalAdapter', click)
         self.assertNotIn('Start-LocalAdapter', click)
-        self.assertLess(click.index('Install-LaunchModeConfig $launchModeInfo'),
+        self.assertLess(click.index('Install-LaunchModeConfig $data.Info'),
                         click.index('Ensure-ClientCompatibility'))
         self.assertLess(click.index('Ensure-ClientCompatibility'),
-                        click.index('Register-ClientProfile $launchModeInfo.AdapterIP'))
+                        click.index('Register-ClientProfile $data.Info.AdapterIP'))
         self.assertLess(click.index('Ensure-ClientCompatibility'),
                         click.index('Start-Process -FilePath $Client'))
     def test_launcher_and_recipe_manifest_select_identical_operations(self):
         text = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
-        block = text.split('function Ensure-ClientCompatibility {', 1)[1].split('function Register-ClientProfile', 1)[0]
+        block = text.split('function Ensure-ClientCompatibility(', 1)[1].split('function Register-ClientProfile', 1)[0]
         args = re.findall(r"'(--[a-z0-9-]+)'", block.split('$arguments=', 1)[1].split('$output=', 1)[0])
         recipe = json.loads((ROOT / 'manifest/patch_runtime_requirements.json').read_text('utf-8'))
         selected = [arg for arg in args if arg not in ('--source-root', '--output-root', '--tools')]
@@ -212,24 +253,24 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
         self.assertIn("$Client=Join-Path $Root 'game.exe'", launcher)
         self.assertNotIn("'nanaimo_client.exe'", launcher)
         self.assertIn('[switch]$SelfTestLocalEntry', launcher)
-        click = launcher.split('$clientBtn.add_Click({', 1)[1].split('# Pet lookup tab', 1)[0]
+        click = launcher.split('$clientBtn.add_Click({', 1)[1].split('if($SelfTestLocalEntry){', 1)[0] + (ROOT/'gui_launcher/launcher_worker.ps1').read_text('utf-8-sig').split('function Start-LocalClientWork',1)[1]
         for required in (
                 "$launchModeInfo.Key-ne'network'-or$launchModeInfo.AdapterIP-ne'127.0.0.1'",
                 'Assert-LocalAdapterRunning', 'Write-PureNewPlayerRuntimeProfile',
-                'Test-ClientBinary;Install-LaunchModeConfig $launchModeInfo',
+                'Test-ClientBinary;Install-LaunchModeConfig $data.Info',
                 'Ensure-ClientCompatibility',
-                'Register-PureNewPlayer $launchModeInfo.AdapterIP',
-                'Register-ClientProfile $launchModeInfo.AdapterIP',
+                'Register-PureNewPlayer $data.Info.AdapterIP',
+                'Register-ClientProfile $data.Info.AdapterIP',
                 'Start-Process -FilePath $Client'):
             self.assertIn(required, click)
         for forbidden in ('Stop-LocalAdapter', 'Start-LocalAdapter', 'Save-Profile',
                           'Get-Process -Name game', 'Stop-Process'):
             self.assertNotIn(forbidden, click)
-        self.assertLess(click.index('Install-LaunchModeConfig $launchModeInfo'),
+        self.assertLess(click.index('Install-LaunchModeConfig $data.Info'),
                         click.index('Ensure-ClientCompatibility'))
         self.assertLess(click.index('Ensure-ClientCompatibility'),
-                        click.index('Register-ClientProfile $launchModeInfo.AdapterIP'))
-        self.assertLess(click.index('Register-ClientProfile $launchModeInfo.AdapterIP'),
+                        click.index('Register-ClientProfile $data.Info.AdapterIP'))
+        self.assertLess(click.index('Register-ClientProfile $data.Info.AdapterIP'),
                         click.index('Start-Process -FilePath $Client'))
         self.assertLess(launcher.index("$tabSocial=New-Object Windows.Forms.TabPage"),
                         launcher.index("$tabStart=New-Object Windows.Forms.TabPage"))
@@ -318,13 +359,13 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
         self.assertIn("'skip_tutorial=0'", pure_profile)
         self.assertIn("'unlock_all_dungeons=0'", pure_profile)
         self.assertIn('Test-PureNewPlayerNativeStartup $written', launcher)
-        click = launcher.split('$clientBtn.add_Click({', 1)[1].split('# Pet lookup tab', 1)[0]
+        click = launcher.split('$clientBtn.add_Click({', 1)[1].split('if($SelfTestLocalEntry){', 1)[0] + (ROOT/'gui_launcher/launcher_worker.ps1').read_text('utf-8-sig').split('function Start-LocalClientWork',1)[1]
         self.assertIn('Write-PureNewPlayerRuntimeProfile', click)
-        self.assertIn('Register-PureNewPlayer $launchModeInfo.AdapterIP', click)
+        self.assertIn('Register-PureNewPlayer $data.Info.AdapterIP', click)
         self.assertNotIn('Start-LocalAdapter', click)
         self.assertNotIn('Stop-LocalAdapter', click)
         self.assertLess(click.index('Write-PureNewPlayerRuntimeProfile'),
-                        click.index('Register-PureNewPlayer $launchModeInfo.AdapterIP'))
+                        click.index('Register-PureNewPlayer $data.Info.AdapterIP'))
         native_probe = launcher.split('function Test-PureNewPlayerNativeStartup', 1)[1].split(
             'function Get-AdapterStartupFailureDetail', 1)[0]
         self.assertIn('Start-Process -FilePath $AdapterBridge', native_probe)
@@ -351,8 +392,8 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
             "$socialPlayButtons.Count",
             "tabSocial.Text='社交模式'",
             "tabStart.Text='本地模式'",
-            'Install-LaunchModeConfig $launchModeInfo',
-            'Register-ClientProfile $launchModeInfo.AdapterIP',
+            'Install-LaunchModeConfig $data.Info',
+            'Register-ClientProfile $data.Info.AdapterIP',
             "$SocialClientLauncher=Join-Path $Root 'gui_launcher\\start_social_client.ps1'",
             '$launch=& $SocialClientLauncher -ClientPath $Client -SocialSlot $slot',
             '-LaunchModeConfigText $launchConfig',
@@ -361,7 +402,7 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
             'Get-Content -LiteralPath $AdapterManifest -Raw -Encoding UTF8|ConvertFrom-Json',
             'Test-AdapterBinary',
         ):
-            self.assertIn(invariant, text)
+            self.assertIn(invariant, text + (ROOT/'gui_launcher/launcher_worker.ps1').read_text('utf-8-sig'))
         service = (ROOT / 'managed/Services/NetworkAdapterService.NativeDungeon.cs').read_text('utf-8-sig')
         host = (ROOT / 'managed-host/Program.cs').read_text('utf-8-sig')
         self.assertIn('ConcurrentDictionary<string, ConcurrentQueue', service)
@@ -400,11 +441,14 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
 
     def test_local_text_identity_is_resolved_before_save_and_registration(self):
         launcher=(ROOT/'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
-        save=launcher.split('function Save-Profile {',1)[1].split('if($SelfTestProfileIO){',1)[0]
+        save=launcher.split('function New-LauncherProfileRequest(',1)[1].split('if($SelfTestProfileIO){',1)[0]
         self.assertLess(save.index('Sync-LauncherProfileIdentity'),save.index('Capture-LauncherProfileEditorState'))
-        self.assertLess(save.index('Save-InventoryAdminState'),save.index('[IO.File]::WriteAllLines($ProfileIni'))
+        worker=(ROOT/'gui_launcher/launcher_worker.ps1').read_text('utf-8-sig')
+        write=worker.split('function Write-LauncherProfileRequest',1)[1].split('function Apply-LauncherInventoryContext',1)[0]
+        self.assertLess(write.index('Save-InventoryAdminState'),write.index('[IO.File]::WriteAllLines($ProfileIni'))
         entry=launcher.split('$clientBtn.add_Click({',1)[1].split('if($SelfTestLocalEntry){',1)[0]
-        self.assertLess(entry.index('Sync-LauncherProfileIdentity'),entry.index('Register-ClientProfile'))
+        self.assertLess(entry.index('Ensure-InventoryAdminProfile'),entry.index('Start-LocalClientWork $result'))
+        self.assertIn('Register-ClientProfile $data.Info.AdapterIP $data.Selected',worker)
         self.assertNotIn('Assert-LauncherSavedProfileIdentity',launcher)
         self.assertNotIn('Test-Path -LiteralPath $ProfileIni',entry)
         registration=launcher.split('function Register-ClientProfile(',1)[1].split('function New-PureNewPlayerAccountName',1)[0]
@@ -434,7 +478,7 @@ if($script:registered-or(Test-Path -LiteralPath $SocialAdapterIpState)){throw 'f
         state = (ROOT / 'managed/Services/NativeDungeonState.cs').read_text('utf-8-sig')
         village = (ROOT / 'managed/Services/NetworkAdapterService.cs').read_text('utf-8-sig')
         room = (ROOT / 'managed/Services/DungeonProtocol.cs').read_text('utf-8-sig')
-        save = launcher.split('function Save-Profile {', 1)[1].split('if($SelfTestProfileIO){', 1)[0]
+        save = launcher.split('function New-LauncherProfileRequest(', 1)[1].split('if($SelfTestProfileIO){', 1)[0]
 
         field_groups = {
             'connector': {'version', 'launch_mode', 'network_ip'},
