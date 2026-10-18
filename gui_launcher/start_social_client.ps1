@@ -514,7 +514,7 @@ function Quote-NativeArgument([string]$Argument){
 }
 
 function Sync-IsolatedCatalog([string]$SourceRoot,[string]$WorkRoot,[string]$CacheRoot,[string]$Name,[string]$BackupDirectory){
-    if($Name-notin@('pi._D7','MT._D18')-or$BackupDirectory-notin@('pet-catalog-backups','land-catalog-backups')){throw 'Unknown isolated catalog.'}
+    if($Name-notin@('pi._D7','MT._D18','ava._D1','inter._D3')-or$BackupDirectory-notin@('pet-catalog-backups','land-catalog-backups','wardrobe-catalog-backups')){throw 'Unknown isolated catalog.'}
     $source=Join-Path $SourceRoot $Name
     if(-not(Test-Path -LiteralPath $source -PathType Leaf)){return}
     $target=Join-Path $WorkRoot $Name
@@ -573,6 +573,11 @@ function New-IsolatedClientWorkTree([string]$SourceRoot,[string]$WorkRoot,[strin
     Sync-IsolatedCatalog $SourceRoot $WorkRoot $CacheRoot 'pi._D7' 'pet-catalog-backups'
     Sync-IsolatedCatalog $SourceRoot $WorkRoot $CacheRoot 'MT._D18' 'land-catalog-backups'
     Sync-KoreanPetResourceIdentity $SourceRoot $WorkRoot $CacheRoot
+    Sync-IsolatedCatalog $SourceRoot $WorkRoot $CacheRoot 'ava._D1' 'wardrobe-catalog-backups'
+    Sync-IsolatedCatalog $SourceRoot $WorkRoot $CacheRoot 'inter._D3' 'wardrobe-catalog-backups'
+    if(Test-Path -LiteralPath (Join-Path $SourceRoot 'manifest\korean_wardrobe_resources.json')){
+        & (Join-Path $PSScriptRoot 'korean_wardrobe_resource_identity.ps1') -ClientRoot $WorkRoot -RecipePath (Join-Path $SourceRoot 'manifest\korean_wardrobe_resources.json') | Out-Null
+    }
     $stateDirectory=Join-Path $WorkRoot 'StateOption'
     if(-not(Test-Path -LiteralPath $stateDirectory -PathType Container)){New-Item -ItemType Directory -Path $stateDirectory -Force|Out-Null}
     if(-not[string]::IsNullOrWhiteSpace($ConfigText)){
@@ -745,6 +750,11 @@ if($hasState){
     Sync-IsolatedCatalog $WorkingDirectory $workDir $CacheRoot 'pi._D7' 'pet-catalog-backups'
     Sync-IsolatedCatalog $WorkingDirectory $workDir $CacheRoot 'MT._D18' 'land-catalog-backups'
     Sync-KoreanPetResourceIdentity $WorkingDirectory $workDir $CacheRoot
+    Sync-IsolatedCatalog $WorkingDirectory $workDir $CacheRoot 'ava._D1' 'wardrobe-catalog-backups'
+    Sync-IsolatedCatalog $WorkingDirectory $workDir $CacheRoot 'inter._D3' 'wardrobe-catalog-backups'
+    if(Test-Path -LiteralPath (Join-Path $WorkingDirectory 'manifest\korean_wardrobe_resources.json')){
+        & (Join-Path $PSScriptRoot 'korean_wardrobe_resource_identity.ps1') -ClientRoot $workDir -RecipePath (Join-Path $WorkingDirectory 'manifest\korean_wardrobe_resources.json') | Out-Null
+    }
     $entertainmentState=Join-Path $WorkingDirectory 'animalstate.st'
     if(Test-Path -LiteralPath $entertainmentState -PathType Leaf){
         $isolatedState=Join-Path $workDir 'animalstate.st'

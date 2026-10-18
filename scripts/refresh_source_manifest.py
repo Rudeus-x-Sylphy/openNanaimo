@@ -58,6 +58,8 @@ def collect(root=ROOT):
                     'scripts/story_qt_patch.py', 'scripts/story_qs_patch.py',
                     'scripts/test_chapter_dialogue_patch.py',
                     'scripts/test_story_qt_patch.py', 'scripts/test_story_qs_patch.py',
+                    'scripts/test_default_chapter_startup.py',
+                    'scripts/story_runtime_evidence.py',
                     'scripts/generate_inventory_card_catalog.py'):
             path = root / rel
             if not path.is_file(): raise ValueError('missing chapter source input: ' + rel)
@@ -126,6 +128,17 @@ def collect(root=ROOT):
             if not path.is_file(): raise ValueError('missing reviewed card row policy: ' + rel)
             seen.add(path.resolve())
     complete_build = root / 'scripts/build_complete_adapter.ps1'
+    if (root / 'release/components/multiplayer/special_encounters.inc').resolve() in seen:
+        for rel in ('scripts/normalize_couple_monster_catalog.py', 'scripts/test_special_encounters.py'):
+            seen.add((root / rel).resolve())
+    if (root / 'manifest/korean_wardrobe_resources.json').is_file():
+        for rel in ('scripts/prepare_korean_wardrobe.py','scripts/wardrobe_localization.py',
+                    'scripts/shop_icon_origins.py','scripts/test_shop_icon_origins.py',
+                    'scripts/package_wardrobe_resources.py',
+                    'scripts/test_korean_wardrobe.py','scripts/audit_korean_wardrobe_interior.py',
+                    'manifest/korean_wardrobe_resources.json','manifest/korean_wardrobe_catalog.json',
+                    'scripts/generate_avatar_resource_effects.py'):
+            seen.add((root / rel).resolve())
     if complete_build.is_file():
         seen.add(complete_build.resolve())
     return sorted(seen, key=lambda p: p.relative_to(root).as_posix())

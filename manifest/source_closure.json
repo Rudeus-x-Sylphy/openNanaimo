@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 419,
+  "count": 437,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 25724928,
-      "sha256": "E0B89DCAEAB47ABBC2C2807864757CD68C7B14075D0DA10F75CA3D6252375DC9"
+      "size": 25775104,
+      "sha256": "83FE2A754AB61E2305FECC2412219ED7DF85745B6E405416457657BE118BBC86"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 25724928,
-      "sha256": "FA1EA0D1863F732D064893E81736BEF629C7619DC54A4D06375F831964169C32"
+      "size": 25775104,
+      "sha256": "E154113BF0B6503BDEFADA32F3E88CF4E857EC823FEBFE892264D7A6546E5E33"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 25806336,
-      "sha256": "C8E17767349D6E09A48676E0AADE0D0E71EA678B68498DB13372FF598CE6B164"
+      "size": 25869312,
+      "sha256": "481C898D3E3E19515BC71D8561BBEC917D61FD95DC12D764E65FCB515250DB66"
     }
   },
   "files": [
@@ -147,6 +147,11 @@
       "sha256": "58AAEDFC983605431BCC745453902E58B0E6B9772020CA80FCCDBA2BF3BD05D1"
     },
     {
+      "path": "managed-host/DungeonEncounterChecks.cs",
+      "size": 4102,
+      "sha256": "C755EC5418E32859590757FDDB1B4B8D0210DD811E1070AF012209F58FD16352"
+    },
+    {
       "path": "managed-host/DungeonQuickEntryChecks.cs",
       "size": 2106,
       "sha256": "C1D2A757605A08BC1E228F4A2A5FA9179FD531C8A706413424BD7F66DEE4EE57"
@@ -230,6 +235,11 @@
       "path": "managed-host/InventoryVitalsChecks.cs",
       "size": 18075,
       "sha256": "159CD00F2CE7BD310CD439DD971C187F924194F35D5486505AD95E3AFA2F07D9"
+    },
+    {
+      "path": "managed-host/KoreanWardrobeChecks.cs",
+      "size": 6556,
+      "sha256": "38BBE8E3372FC50499700A00DFDEFFC91C7C83A8013CCE216C88659CDCF289BB"
     },
     {
       "path": "managed-host/LauncherProfileChecks.cs",
@@ -333,8 +343,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 20380,
-      "sha256": "A1A9F9E4A20399B3388FAC0E91D1776EEAAF2F4489245E0377DE8FD0F7C8B3C4"
+      "size": 20477,
+      "sha256": "64A38AA9EA038B183399EFD5CDA8B7154643CBA0E3BBC69FEF70F90EB1270028"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -343,8 +353,8 @@
     },
     {
       "path": "managed-host/QuestSystemChecks.cs",
-      "size": 48389,
-      "sha256": "23DF573B12124F7500359E2CB5D0CABA9128B1679E86AFECB251DEE083E9B3FD"
+      "size": 52962,
+      "sha256": "78A6D6C7044BB67A0B94254B1AEEF5C3DFF0469A4CB6C58C5B8EC8CEDE8A362C"
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
@@ -358,8 +368,8 @@
     },
     {
       "path": "managed-host/ShopCurrencyResourceChecks.cs",
-      "size": 3625,
-      "sha256": "1A01C799C5AA780403C75C25AF8E6E2A25FA3F4036EA55BD50A6B49988492886"
+      "size": 3628,
+      "sha256": "86E9EAB4B1058B94F48DD03FE66461381FDB4C49AC6867C99D2144E3D5A53FB1"
     },
     {
       "path": "managed-host/ShopCurrencyRoutingChecks.cs",
@@ -848,13 +858,18 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 603851,
-      "sha256": "9083C90B7CCB304DB10F1BCF255B0C8DEB1725B339A4DCCCC28233C8D13EEBF6"
+      "size": 604090,
+      "sha256": "EDE19407252147BE631FBDB82D7DB81563868EDDBC1E286C72E807FAC96885F0"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
       "size": 17070,
       "sha256": "389B0CA781B14DB1543BF8CEB5A01844E7B96341358554BF4175129330B4956F"
+    },
+    {
+      "path": "managed/Services/DungeonEncounterPolicy.cs",
+      "size": 703,
+      "sha256": "A6C3836A6C236A73E1FB3A68F28161593391D6F78EDDCC61D4ACD91BDC3EEEBD"
     },
     {
       "path": "managed/Services/DungeonExperiencePolicy.cs",
@@ -1123,8 +1138,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.MonkTravel.cs",
-      "size": 935,
-      "sha256": "25204C17DE62D342E2948A03B2ECFEA7FE1F38367D169116C0038A3F175B8C0B"
+      "size": 883,
+      "sha256": "9034A6546B3BAF202959655258922AFC6C0DCD94D60A8AD81494D216F06BCAF7"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeCombatProgression.cs",
@@ -1193,8 +1208,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.QuestNotifications.cs",
-      "size": 15188,
-      "sha256": "45A2C4C8D717208BE19A81ED85C6DE0A39B319B877426A1D677E09951A81DF1A"
+      "size": 15185,
+      "sha256": "8F1F498E001DC4ED62E1C01679157E8F96E3BF0E934939A5D3661E0AFA9C9581"
     },
     {
       "path": "managed/Services/NetworkAdapterService.SettlementBonuses.cs",
@@ -1218,8 +1233,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 1020083,
-      "sha256": "F70F8D24AFD81EBF39E5FB9BC046E7A45A63451EB280672EDF6AC974D97EFD71"
+      "size": 1020811,
+      "sha256": "0AB720E1CB1BA3B84C49C02A3D5CCB04305F79D0D8DFC3D3A2CBDF39C9C38B34"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1238,8 +1253,8 @@
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
-      "size": 47605,
-      "sha256": "AE672DB6696E2247DE055C75C923E6D317F30B97AFBC5B1C8CD67E8E1D5CA37C"
+      "size": 47600,
+      "sha256": "9C6F923B24932B81BB77BC1D7EA71466689995F9435B60A800E97820D0C2513E"
     },
     {
       "path": "managed/Services/PrivateChatProtocol.cs",
@@ -1253,8 +1268,8 @@
     },
     {
       "path": "managed/Services/QuestCatalog.cs",
-      "size": 22191,
-      "sha256": "152D54D3D3A68E686817C557F423C0796D1BAB5A6ACF08D904F6E48D0D4C7451"
+      "size": 22192,
+      "sha256": "989B6E469214502E169140C5E643313964B44CA015903EF601411AC1FFC69732"
     },
     {
       "path": "managed/Services/QuestMonsterCatalog.cs",
@@ -1315,6 +1330,16 @@
       "path": "manifest/chapter_dialogue_triggers.json",
       "size": 24005,
       "sha256": "99BDF2D770CAF8F950BD7DF548C0E275692266E6FEC92D27EA2FFBA1DF4885A7"
+    },
+    {
+      "path": "manifest/korean_wardrobe_catalog.json",
+      "size": 2670069,
+      "sha256": "E3AB17226A5AB770431146094AA20508566F2660FE4EF62625B498E866984C76"
+    },
+    {
+      "path": "manifest/korean_wardrobe_resources.json",
+      "size": 263002,
+      "sha256": "12DBD63DFC581A0657071AF44C44D9044CC1D57DA9CAB5338F265C6919D62DCD"
     },
     {
       "path": "manifest/story_localization.json",
@@ -1453,8 +1478,8 @@
     },
     {
       "path": "release/components/catalogs/avatar_shop_catalog.inc",
-      "size": 92971,
-      "sha256": "8806F9A000BE95C9961153696D7AE0870F292DBCC493049961BAADF86E149F57"
+      "size": 130947,
+      "sha256": "115DD684E39B6F51FA0339515D07EF137260ADC07AD8680DF4842C99E5F6D5F2"
     },
     {
       "path": "release/components/catalogs/pet_shop_catalog.inc",
@@ -1529,7 +1554,7 @@
     {
       "path": "release/components/combat_economy/combat_score_resource_data.inc",
       "size": 2059464,
-      "sha256": "5EC6BFF424956930BCD1B2168EF2A0F68B41814AEB5C610A7BA4BC5342C4C530"
+      "sha256": "909AF3244532BCA7BC536F80921A100F4C67F409DD8D8ECF7621B38AB7957C4A"
     },
     {
       "path": "release/components/combat_economy/incoming_pon_attack_data.inc",
@@ -1638,13 +1663,13 @@
     },
     {
       "path": "release/components/interiors/interior_catalog.inc",
-      "size": 22604,
-      "sha256": "D71749EE7F6875ADD030538675D2EFE4E356E8BB1241D09EC3F92651C4D0A10A"
+      "size": 55261,
+      "sha256": "E364D393FE5D9BADA890E5A6B33A196DA6D87BC624E178C085D097D09BC23E5B"
     },
     {
       "path": "release/components/inventory_instances/avatar_resource_data.inc",
-      "size": 87191,
-      "sha256": "2E2116EC7DE809D5A29AC4BC4E3222E154C711A09D7230CA578A1CB938FB4B56"
+      "size": 104321,
+      "sha256": "E79F06270D7E2799A1AE543774C01FD130FBE60BA5A149F57F7E4E8BF4CBEFE3"
     },
     {
       "path": "release/components/inventory_instances/avatar_resource_runtime.inc",
@@ -1668,8 +1693,8 @@
     },
     {
       "path": "release/components/multiplayer/party_continuation_runtime.inc",
-      "size": 2137,
-      "sha256": "2E81C311105E5466186B0EC23F8ABD299606E6D6427921698150BDFD4C2E0A87"
+      "size": 2170,
+      "sha256": "AE33C405A47CA8C3EB895746FE51359228942C33763B63D3BE8439B1AAAC9D2C"
     },
     {
       "path": "release/components/multiplayer/peer_runtime.inc",
@@ -1683,8 +1708,13 @@
     },
     {
       "path": "release/components/multiplayer/room_policy.inc",
-      "size": 35830,
-      "sha256": "999098786526D2E0E127E5B3B51BC37A498D515E83E0878F257AAE5C0F625B2B"
+      "size": 36028,
+      "sha256": "025143A67FF64CAB7527C2ED8F6E371035FFD64CDD545614D787B3B87C3A2650"
+    },
+    {
+      "path": "release/components/multiplayer/special_encounters.inc",
+      "size": 1176,
+      "sha256": "EAEEA768821445CD3FE3F9FA5AF03C9DBD4D2CFCB89C9A3E2F1A01EE51D5BE41"
     },
     {
       "path": "release/components/multiplayer/start_runtime.inc",
@@ -1758,8 +1788,8 @@
     },
     {
       "path": "release/components/profile/shopping_inventory_state.inc",
-      "size": 15458,
-      "sha256": "A61E0403CBCB765DD48D6FC8642F2CB660B3551884E73EB875277F61944818FC"
+      "size": 15933,
+      "sha256": "8875D32ADA463F86714A244499715CDD531A193F13FCBDCA070080D7AFCBC400"
     },
     {
       "path": "release/components/protocol/experience_carriers.inc",
@@ -1768,8 +1798,8 @@
     },
     {
       "path": "release/components/protocol/protocol.inc",
-      "size": 91352,
-      "sha256": "A828115D962B159F5A3A38DBE96F4E7F610BA5BD985F105BBED21BC41523B637"
+      "size": 91454,
+      "sha256": "4CA137F7466D5676E0D7EB9BE3219505E3ADEDB5D353B29A53567907B877F41C"
     },
     {
       "path": "release/components/protocol/protocol_state_sync.inc",
@@ -1962,6 +1992,11 @@
       "sha256": "B347BD0FC6884533C98644AC4D37AE26CBBCEED5F73AE57FAEE72CEDD22C3117"
     },
     {
+      "path": "scripts/audit_korean_wardrobe_interior.py",
+      "size": 13029,
+      "sha256": "953E29D05110258403D2C40117DE2D0E4559281033FF0E7928A19DCBCCB64437"
+    },
+    {
       "path": "scripts/audit_l7_combat_resources.py",
       "size": 3525,
       "sha256": "AC90A5DB83D462003143FB41AEB7026FA02E32B49C35D849687D9DABFB98C9C4"
@@ -2000,6 +2035,11 @@
       "path": "scripts/generate_arena_targets.py",
       "size": 2986,
       "sha256": "0E0F4222995FDFAEB7F956FAA7A1DBF4F7BB0DCC0B216F3DFAA167AD48301BA6"
+    },
+    {
+      "path": "scripts/generate_avatar_resource_effects.py",
+      "size": 3220,
+      "sha256": "269016362962AABA1F518C33FA09A9C8926ABC244D971D3235B834C16A7CC310"
     },
     {
       "path": "scripts/generate_boss_contact_catalog.py",
@@ -2072,6 +2112,21 @@
       "sha256": "F68AA077ED1DD7F3A70B6CF742C6BE43C07C2E2F5DFCA68D97855D949FA38A01"
     },
     {
+      "path": "scripts/normalize_couple_monster_catalog.py",
+      "size": 3780,
+      "sha256": "0A22FD1ED89CD8F8037D1E45594CB26C4064C44AAF9C24411161E18A2A5847EE"
+    },
+    {
+      "path": "scripts/package_wardrobe_resources.py",
+      "size": 4717,
+      "sha256": "7571F4AAD5543D7DEFD449BEA13F722BB16A7702BB4AA62DD5DD05E814DEF537"
+    },
+    {
+      "path": "scripts/prepare_korean_wardrobe.py",
+      "size": 27510,
+      "sha256": "83D90610ED0EEF6F7D8D907764D59FAFBAF9A012D28D28581A73F7CD7D87FBC8"
+    },
+    {
       "path": "scripts/prepare_story_catalog.py",
       "size": 17870,
       "sha256": "0709E8534D0CB8838EFE32FA60F82531C07B949450C5D76431E148AE290B85C4"
@@ -2087,6 +2142,11 @@
       "sha256": "F087A574DEC8C0D16AF1EAFC5DA75BA2F4C0E29E09D2E173D32A35D47DB45242"
     },
     {
+      "path": "scripts/shop_icon_origins.py",
+      "size": 1617,
+      "sha256": "F50EB51FA559206943C17DA94F02366EBC1D3A8B8CD4DC84625718C029348625"
+    },
+    {
       "path": "scripts/story_qs_patch.py",
       "size": 16265,
       "sha256": "4A627D6DA9D68105D107ADAFD7BDA27DF973AA479DD5D1B654F7E10A45C63BB0"
@@ -2097,14 +2157,39 @@
       "sha256": "B861718EC7265458F19B122740B3C5ACDC16C5A54D3D9577E0E894CCC72FC11B"
     },
     {
+      "path": "scripts/story_runtime_evidence.py",
+      "size": 5376,
+      "sha256": "2312DCBA3CC850B2F51D19D9BF962DB88ABA1652B4F0B12519A0E203CEBA97B8"
+    },
+    {
       "path": "scripts/test_chapter_dialogue_patch.py",
       "size": 23481,
       "sha256": "C9CE821DFA307EFE1204203BCA182B06B7B2CE483C0B33ADF914B977098D2BE8"
     },
     {
+      "path": "scripts/test_default_chapter_startup.py",
+      "size": 4624,
+      "sha256": "DFD90D18E967F66B8247D3E50C5FCA910D702FC6719A756F3E2106AA64FC9EE5"
+    },
+    {
+      "path": "scripts/test_korean_wardrobe.py",
+      "size": 11028,
+      "sha256": "1E5B391F8E64EB574A9F4B3624A5F52CB7DB776451406F82C75085C8E5FB2DB6"
+    },
+    {
       "path": "scripts/test_l7_combat_resources.py",
       "size": 10727,
       "sha256": "E09B8253A2D4193B441AC58B87569F2AF413DF797EE9DE04902FDC0725F69585"
+    },
+    {
+      "path": "scripts/test_shop_icon_origins.py",
+      "size": 5053,
+      "sha256": "548177B677865D998D62E33F7124A6231125D24B0CA4C269DE143BC248E31273"
+    },
+    {
+      "path": "scripts/test_special_encounters.py",
+      "size": 6388,
+      "sha256": "17FDB84C8E383D19A8E01007B08909DE87C24FB08A7CB6BB125AE00B7ECE01B3"
     },
     {
       "path": "scripts/test_story_qs_patch.py",
@@ -2115,6 +2200,11 @@
       "path": "scripts/test_story_qt_patch.py",
       "size": 13194,
       "sha256": "B523C3853FA77DBAD317EFD0D0AC23BEB62FEAE73B3958823EC01262F67DFBF9"
+    },
+    {
+      "path": "scripts/wardrobe_localization.py",
+      "size": 18789,
+      "sha256": "D3F7CF6D02AD8A54203D919643DF930C9182347D0EC2B6B146A966CEF33C6D8E"
     }
   ]
 }

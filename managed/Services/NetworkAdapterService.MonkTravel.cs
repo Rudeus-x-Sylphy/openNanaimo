@@ -6,10 +6,9 @@ public sealed partial class NetworkAdapterService
     // Dungeon unlock flags do not bypass this independent travel policy.
     public bool RequireMonkChallengeForVillageTravel { get; set; }
 
-    // Candidate chapter policy: start episode 1 explicitly on the first session
-    // after the tutorial. Default off; the grant stays an explicit decision and
-    // is never an implicit side effect of login.
-    public bool StoryChaptersAutoStart { get; set; }
+    // Start episode 1 after the tutorial by default. Existing progress is
+    // restored without resetting it; reward authorization remains separate.
+    public bool StoryChaptersAutoStart { get; set; } = true;
 
     // Operator-supplied reward review, one row per chapter. Empty by default:
     // a chapter that reaches RewardPending simply waits until a reviewed row

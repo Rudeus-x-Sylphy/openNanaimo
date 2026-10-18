@@ -14,6 +14,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
+    'scripts/shop_icon_origins.py',
+    'scripts/test_shop_icon_origins.py',
+    'scripts/test_verify_package.py',
+    'scripts/package_wardrobe_resources.py',
+    'resource-packs/nanaimo-wardrobe-resource-kit.zip',
+    'resource-packs/nanaimo-wardrobe-resource-kit.zip.sha256',
+    'scripts/test_special_encounters.py',
+    'scripts/normalize_couple_monster_catalog.py',
+    'scripts/prepare_korean_wardrobe.py',
+    'scripts/wardrobe_localization.py',
+    'scripts/test_korean_wardrobe.py',
+    'manifest/korean_wardrobe_resources.json',
+    'manifest/korean_wardrobe_catalog.json',
+    'gui_launcher/korean_wardrobe_resource_identity.ps1',
     'scripts/test_adapter_chapter_preflight.py',
     'scripts/reset_chapter_checkpoint.py',
     'scripts/test_reset_chapter_checkpoint.py',
@@ -366,6 +380,17 @@ def main() -> None:
             'recipe_manifest': 'manifest/patch_runtime_requirements.json',
         },
         'optional_resource_ports': {
+            'korean_wardrobe': {
+                'recipe_manifest': 'manifest/korean_wardrobe_resources.json',
+                'catalog_manifest': 'manifest/korean_wardrobe_catalog.json',
+                'tool': 'scripts/prepare_korean_wardrobe.py',
+                'resource_kit': 'resource-packs/nanaimo-wardrobe-resource-kit.zip',
+                'installer': 'scripts/package_wardrobe_resources.py',
+                'client_marker': '.openNanaimo-korean-wardrobe.json',
+                'validation': 'additive-catalogs-localization-pack-records-and-transaction',
+                'default_installation': False,
+                'runtime_acceptance': False,
+            },
             'korean_pets': {
                 'recipe_manifest': 'manifest/korean_pet_resources.json',
                 'tool': 'scripts/prepare_korean_pets.py',

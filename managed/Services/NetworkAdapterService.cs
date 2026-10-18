@@ -685,6 +685,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte[]? RandomPercentPlanB { get; set; }
         public Dictionary<string, byte[]> GameDataPayloadsBySession { get; } = new(StringComparer.Ordinal);
         public ushort? SelectedMapIndex { get; set; }
+        public DungeonEncounterPolicy? SpecialEncounters { get; set; }
         public HashSet<string> EntityInitializedSessions { get; } = new(StringComparer.Ordinal);
         public HashSet<string> EntityAnnouncements { get; } = new(StringComparer.Ordinal);
         public ushort? LastBossResourceUid { get; set; }
@@ -4725,7 +4726,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var itemCount = payload[NanaPurchaseItemCountOffset];
                 var items = new List<(uint ItemCode, byte Option, uint UnitPrice)>(itemCount);
                 var seenItemCodes = new HashSet<uint>();
-                var valid = paymentMode == 4 && itemCount is > 0 and <= NanaPurchaseCapacity;
+                var valid = (paymentMode is 0 or 4) && itemCount is > 0 and <= NanaPurchaseCapacity;
                 if (valid)
                 {
                     for (var index = 0; index < itemCount; index++)
@@ -4736,12 +4737,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         if (!seenItemCodes.Add(itemCode)
                             || !ShopCatalog.TryGet(10, itemCode, out var catalogItem)
                             || catalogItem.Section != InventorySection.Clothing
-                            || catalogItem.CashPrice == 0)
+                            || (paymentMode == 0 ? catalogItem.HansPrice : catalogItem.CashPrice) == 0)
                         {
                             valid = false;
                             break;
                         }
-                        items.Add((itemCode, option, catalogItem.CashPrice));
+                        items.Add((itemCode, option, paymentMode == 0 ? catalogItem.HansPrice : catalogItem.CashPrice));
                     }
                 }
 
@@ -4764,7 +4765,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     items.Select(item => (item.ItemCode, item.UnitPrice)).ToArray(),
                     token);
                 await RefreshInventoryCharacterAsync(session, token);
-                var resultCode = purchase.Success ? (byte)10 : purchase.InsufficientBalance ? (byte)50 : (byte)40;
+                var resultCode = purchase.Success ? (byte)10 : purchase.InsufficientBalance && paymentMode == 4 ? (byte)50 : (byte)40;
                 _log($"{channel}:{remote} NaNa purchase: characterId={session.Character?.Id ?? 0} mode={paymentMode} items={string.Join(',', items.Select(item => $"{item.ItemCode}:{item.Option}"))} total={items.Sum(item => (long)item.UnitPrice)} result={resultCode} hans={purchase.Hans} cash={purchase.Cash} error={purchase.Error}");
                 return BuildNativeFrame(
                     frame,
@@ -6699,6 +6700,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         upgradeDropPlan,
                         inDungeonItemDropPlan);
                     DungeonProtocol.WriteGameSkillRecords(gameDataPayload, gameSkillRecords);
+                    WriteDungeonSpecialEncountersLocked(gameDataRoom, gameDataPayload);
                     gameDataRoom.GameDataPayloadsBySession[session.SessionId] = gameDataPayload.ToArray();
                     gameDataRoom.Battle.RequestedStageIndex = requestedStage;
                     gameDataRoom.Battle.ShowStageNumber = requestedMapIndex;
@@ -13484,6 +13486,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return (room.Battle.RandomPercentPlanA, room.Battle.RandomPercentPlanB);
     }
 
+    private static void WriteDungeonSpecialEncountersLocked(DungeonRoom room, byte[] payload)
+    {
+        room.Battle.SpecialEncounters ??= new DungeonEncounterPolicy(
+            room.Members.Values.Count(member => member.Session.OnlineTracked
+                && member.Session.Character is not null));
+        room.Battle.SpecialEncounters.Write(payload);
+    }
+
     private static ushort GetOrCreateDungeonMapIndexLocked(DungeonRoom room)
     {
         if (room.SelectedMapIndex is { } selected)
@@ -13622,6 +13632,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         inDungeonItemDropPlan);
                 }
                 DungeonProtocol.WriteGameSkillRecords(gameDataPayload, gameSkillRecords);
+                WriteDungeonSpecialEncountersLocked(room, gameDataPayload);
                 room.GameDataPayloadsBySession[targetSession.SessionId] = gameDataPayload.ToArray();
                 targets.Add((targetSession, target, gameDataPayload.ToArray()));
             }

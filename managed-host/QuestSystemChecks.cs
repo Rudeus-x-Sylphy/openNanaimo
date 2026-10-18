@@ -9,6 +9,7 @@ internal static class QuestSystemChecks
     public static async Task RunAsync()
     {
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+        await CheckDefaultChapterStartupAsync();
         var root = Path.Combine(Path.GetTempPath(), "nanaimo-quest-system-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try
@@ -18,7 +19,9 @@ internal static class QuestSystemChecks
             await db.InitializeAsync();
             var account = await db.OpenLocalAccountAsync("quest-system-check");
             var characterId = await db.CreateLocalCharacterAsync(account, "QuestCheck", 1);
-            await using var adapter = new NetworkAdapterService(db, Console.WriteLine, root);
+            // This fixture explicitly tests manual projection from absent progress.
+            await using var adapter = new NetworkAdapterService(db, Console.WriteLine, root)
+                { StoryChaptersAutoStart = false };
             var adapterType = typeof(NetworkAdapterService);
             var sessionType = adapterType.GetNestedType("ConnectionSession", BindingFlags.NonPublic)!;
             var session = Activator.CreateInstance(sessionType, true)!;
@@ -52,8 +55,10 @@ internal static class QuestSystemChecks
                 return output ?? throw new InvalidDataException($"No response to {opcode:X4}");
             }
 
-            Check(QuestCatalog.Quests.Count == 217 && QuestCatalog.Scrolls.Count == 204,
-                "official QT/QH task catalogs load completely");
+            Check(QuestCatalog.Quests.Count(q => !QuestCatalog.IsChapterQuest(q.QuestId)) == 217
+                && QuestCatalog.Quests.Count(q => QuestCatalog.IsChapterQuest(q.QuestId)) == 16
+                && QuestCatalog.Quests.Count == 233 && QuestCatalog.Scrolls.Count == 204,
+                "QT/QH retains 217 base quests, 16 chapters and 204 scrolls");
             Check(QuestCatalog.MainLineQuestIds.SequenceEqual(Enumerable.Range(0, 13).Select(i => 71_000_000u + (uint)i)),
                 "mainline chain is the thirteen unsold QT story quests");
             Check(QuestCatalog.MainLineQuestIds.Take(12).All(id =>
@@ -666,6 +671,71 @@ internal static class QuestSystemChecks
         finally
         {
             try { File.Delete(path); } catch { }
+        }
+    }
+
+    private static async Task CheckDefaultChapterStartupAsync()
+    {
+        Check(QuestCatalog.StoryChaptersEnabled, "chapters enabled before first catalog access");
+        var root = Path.Combine(Path.GetTempPath(), "nanaimo-chapter-start-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            File.WriteAllBytes(Path.Combine(root, "game.db"), []);
+            var db = new DatabaseService(root);
+            await db.InitializeAsync();
+            var account = await db.OpenLocalAccountAsync("chapter-default-check");
+            var character = await db.CreateLocalCharacterAsync(account, "ChapterStart", 1);
+            await using var adapter = new NetworkAdapterService(db, Console.WriteLine, root);
+            Check(adapter.StoryChaptersAutoStart, "new adapter defaults to chapter auto-start");
+            var sessionType = typeof(NetworkAdapterService).GetNestedType("ConnectionSession", BindingFlags.NonPublic)!;
+            var session = Activator.CreateInstance(sessionType, true)!;
+            var sessionId = (string)Get(session, "SessionId")!;
+            Check(await db.BeginWorldSessionAsync(account, character, sessionId, 1, "127.0.0.1"),
+                "default chapter fixture owns its session");
+            Set(session, "AccountId", account);
+            Set(session, "Character", (await db.GetCharacterAsync(account))!);
+            var ensure = typeof(NetworkAdapterService).GetMethod("EnsureSessionChapterTaskAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            async Task Ensure() => await (Task)ensure.Invoke(adapter, [session, CancellationToken.None])!;
+            await Ensure();
+            Check(await db.ReadChapterStoryAsync(account, character, sessionId) is null,
+                "tutorial-incomplete new account has no chapter progress");
+            await using (var sql = new SqliteConnection($"Data Source={db.DatabasePath}"))
+            {
+                await sql.OpenAsync();
+                using var command = sql.CreateCommand();
+                command.CommandText = "UPDATE Characters SET TutorialCompleted=1 WHERE Id=$id";
+                command.Parameters.AddWithValue("$id", character);
+                await command.ExecuteNonQueryAsync();
+            }
+            Set(session, "Character", (await db.GetCharacterAsync(account))!);
+            await Ensure();
+            var started = await db.ReadChapterStoryAsync(account, character, sessionId);
+            Check(started is { QuestId: 73_000_000, ObjectiveIndex: 0 },
+                "tutorial completion starts chapter one without an opt-in");
+            Check((await db.GetCharacterTasksAsync(account, character, sessionId))
+                .Single(task => task.SlotType == 2) is { QuestId: 73_000_000, State3: 0 },
+                "default start projects the chapter into fixed slot two");
+            var advanced = await db.ApplyChapterDialogueAsync(account, character, sessionId,
+                started!.QuestId, started.Revision, 1);
+            Check(advanced is { ObjectiveIndex: 1 }, "default chapter can advance from its entry");
+            var reopened = new DatabaseService(root);
+            await reopened.InitializeAsync();
+            session = Activator.CreateInstance(sessionType, true)!;
+            sessionId = (string)Get(session, "SessionId")!;
+            Check(await reopened.BeginWorldSessionAsync(account, character, sessionId, 1, "127.0.0.1"),
+                "reopened database establishes a fresh login session");
+            Set(session, "AccountId", account);
+            Set(session, "Character", (await reopened.GetCharacterAsync(account))!);
+            await using var restored = new NetworkAdapterService(reopened, Console.WriteLine, root);
+            await (Task)ensure.Invoke(restored, [session, CancellationToken.None])!;
+            Check(await reopened.ReadChapterStoryAsync(account, character, sessionId) == advanced,
+                "default auto-start preserves stored progress and revision on reopen");
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            Directory.Delete(root, true);
         }
     }
 

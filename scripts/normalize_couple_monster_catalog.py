@@ -27,7 +27,7 @@ def read_mmo200(data, count):
 
 
 
-def normalize(catalog, assets):
+def normalize(catalog, assets, flags=(2,)):
     profiles, targets, resources = _parse_data()
     special = set()
     import hashlib
@@ -37,12 +37,12 @@ def normalize(catalog, assets):
             continue
         data = path.read_bytes()
         records = read_mmo200(data, count)
-        if records is not None and any(row[2] == 2 for row in records):
+        if records is not None and any(row[2] in flags for row in records):
             if hashlib.sha256(data).hexdigest().upper() != digest:
                 raise ValueError("Monster resource identity mismatch: " + name)
             special.add(index)
     if not special:
-        raise ValueError("Couple monster resources are required")
+        raise ValueError("Selected special monster resources are required")
     health = {}
     for episode, hd, dungeon, stage, difficulty, segment, slot, percent, _, first, count in profiles:
         for row in targets[first:first + count]:
@@ -81,8 +81,11 @@ if __name__ == '__main__':
     parser.add_argument('--client-root', required=True, type=Path)
     parser.add_argument('--catalog', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--all-special', action='store_true',
+                        help='Normalize team, couple, rare and mystery runtime HP together')
     args = parser.parse_args()
-    data, changed = normalize(args.catalog.read_bytes(), args.client_root / 'flying/mmo')
+    data, changed = normalize(args.catalog.read_bytes(), args.client_root / 'flying/mmo',
+                              (1, 2, 3, 4) if args.all_special else (2,))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(data)
     print(f'COUPLE_CATALOG_NORMALIZED records={changed} size={len(data)}')

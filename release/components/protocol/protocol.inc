@@ -986,11 +986,13 @@ static void send_cf72_initial_owner_reset(SOCKET c){
 #if TEAMPLAY_FEATURE_PLAYER_COMBAT_STATS
 static unsigned multiplayer_combat_cfec_write_remote_attack_rows(char *p);
 #endif
+static void teamplay_write_special_encounters(char *frame);
 static void send_cfec_room_profile(SOCKET c,unsigned stage,unsigned show_stage,unsigned absolute_slot){
     char p[4096];unsigned remote_attack_rows=0u;mkpkt(p,0xCFEC,0x328,1);memcpy(p+8,original_1full_cfec_payload,sizeof(original_1full_cfec_payload));
 #if TEAMPLAY_FEATURE_PLAYER_COMBAT_STATS
     stable_put32(p,0x2E0,g_profile_attack_modifier);remote_attack_rows=multiplayer_combat_cfec_write_remote_attack_rows(p);
 #endif
+    teamplay_write_special_encounters(p);
     p[0x2DA]=(char)(stage&0xFFu);p[0x2DB]=(char)(show_stage&0xFFu);p[0x2DC]=(char)(absolute_slot&0xFFu);sendbuf(c,p,0x328);
 #if TEAMPLAY_FEATURE_PLAYER_COMBAT_STATS
     printf("  S0xCFEC MULTIPLAYER_COMBAT dungeon stage=%u show=%u slot=%u current_attack_modifier=%u remote_attack_rows=%u len=808 t=%lds\n",stage,show_stage,absolute_slot,g_profile_attack_modifier,remote_attack_rows,sec());fflush(0);

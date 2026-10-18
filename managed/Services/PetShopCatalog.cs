@@ -297,9 +297,9 @@ internal static class ShopCatalog
         for (var index = 0; index < count; index++)
         {
             var offset = headerFields + index * recordFields;
-            // The C3CD NaNa shop uses ava._D1 field 9 as its Cash price.
-            // Field 7 is the duration; this route has no Hans price column.
-            AddItem(result, fields, offset, 4, 1, null, 7, InventorySection.Clothing, "ava._D1", index, iconPathField: 5, cashPriceField: 9);
+            // AVATA record+4/+8 carry field8 Hans / field9 Nana prices.
+            // The requested wallet must also have a nonzero catalog price.
+            AddItem(result, fields, offset, 4, 1, 8, 7, InventorySection.Clothing, "ava._D1", index, iconPathField: 5, cashPriceField: 9);
         }
     }
 

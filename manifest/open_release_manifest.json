@@ -67,6 +67,17 @@
     "recipe_manifest": "manifest/patch_runtime_requirements.json"
   },
   "optional_resource_ports": {
+    "korean_wardrobe": {
+      "recipe_manifest": "manifest/korean_wardrobe_resources.json",
+      "catalog_manifest": "manifest/korean_wardrobe_catalog.json",
+      "tool": "scripts/prepare_korean_wardrobe.py",
+      "resource_kit": "resource-packs/nanaimo-wardrobe-resource-kit.zip",
+      "installer": "scripts/package_wardrobe_resources.py",
+      "client_marker": ".openNanaimo-korean-wardrobe.json",
+      "validation": "additive-catalogs-localization-pack-records-and-transaction",
+      "default_installation": false,
+      "runtime_acceptance": false
+    },
     "korean_pets": {
       "recipe_manifest": "manifest/korean_pet_resources.json",
       "tool": "scripts/prepare_korean_pets.py",
@@ -133,28 +144,28 @@
         "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
       },
       "adapter_runtime/Nanaimo.Adapter.dll": {
-        "size": 2837504,
-        "sha256": "32D5A4EE86878473AD474D4FEDFB9F7A31CEC9B9FA98CD409E772BF090343A78"
+        "size": 2860032,
+        "sha256": "B76851A8538AD6E908725A3D03E3B772BE293A6C0FAB09F8863CF5D311E7F0C4"
       },
       "adapter_runtime/Nanaimo.Adapter.exe": {
         "size": 151552,
-        "sha256": "70385526D56124C74CB8047E8199327C24F48CC704364FF0CC6ED66BBFA57DC3"
+        "sha256": "36A3EE221462D2A0B3A542D1D379D7762E7DFF8D7839076893045278453BE092"
       },
       "adapter_runtime/Nanaimo.Adapter.pdb": {
-        "size": 261504,
-        "sha256": "731D4F75EEB0E28025FEE8536AD3B85BFF9E8140080F6F840F894A7DAB27B0C0"
+        "size": 265024,
+        "sha256": "86D577D1312AFD4B50B5FCD126A72753B4525CEDD77533A2AEFC332A2AEEE9C6"
       },
       "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
         "size": 372,
         "sha256": "D7A0BECA53834E0A387B9E5083BD1DADF5BEE565B48595A9D4CB457D15726C78"
       },
       "adapter_runtime/Nanaimo.Gameplay.dll": {
-        "size": 6266368,
-        "sha256": "0492159AE20A2F32E0F8D47B50660EA55625ED6AF5A38D5D7CE46DD9CCAB3E43"
+        "size": 6268416,
+        "sha256": "290ECCD393AF2A8087A4764C50D2B02EC722D7B02720EE5D65C9B62979F2D130"
       },
       "adapter_runtime/Nanaimo.Gameplay.pdb": {
-        "size": 604156,
-        "sha256": "39168DEC9FFF712FC416AD7DCA8FD0A86F8A1312ADCFD65F12E93C4A95578757"
+        "size": 604564,
+        "sha256": "FD9D50694FAC21483C5205E39E725178C1143A97FCF15C982CBFB8BD4A5AFE50"
       },
       "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
         "size": 5120,
@@ -818,7 +829,7 @@
       },
       "adapter_runtime/adapter_manifest.json": {
         "size": 35484,
-        "sha256": "EE23EC7B69A701720E14B7B8191A56F465CA5DAB9B6F8B237CEFEA34EDEC9E42"
+        "sha256": "007CEB41B33332124EC7396720E6A6BF1EA9BC81CC74B4F902520004BF4798A2"
       },
       "adapter_runtime/clretwrc.dll": {
         "size": 310568,
@@ -877,8 +888,8 @@
         "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
       },
       "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-        "size": 25806336,
-        "sha256": "C8E17767349D6E09A48676E0AADE0D0E71EA678B68498DB13372FF598CE6B164"
+        "size": 25869312,
+        "sha256": "481C898D3E3E19515BC71D8561BBEC917D61FD95DC12D764E65FCB515250DB66"
       },
       "adapter_runtime/netstandard.dll": {
         "size": 100648,
@@ -945,8 +956,8 @@
         "sha256": "E08D122701372282BDB593AA776379BE338CC2EB4B26D3CD1DDBFCD176901C73"
       },
       "adapter_runtime/资源/数据/ava._D1": {
-        "size": 800880,
-        "sha256": "9ED34D2DCE90B4CCE596F1F5F79E11BE89B01F6CA0AB1EFEED3EE919B4301D09"
+        "size": 975248,
+        "sha256": "FFA1F2C7590A4F9EC67B0DD6310E5315628C89E8243BA997F742AF21AD1B4880"
       },
       "adapter_runtime/资源/数据/ddakg._D4": {
         "size": 123760,
@@ -954,7 +965,7 @@
       },
       "adapter_runtime/资源/数据/dungeon_combat_catalog.bin": {
         "size": 12253130,
-        "sha256": "32C8ECBFBCE4D42BA09BAD673D26A5CA9F1BBDBAFFF55AF9986CD12F16990710"
+        "sha256": "490B4DAF7BAF994524D3CAFFAAA549B58D9EF5430D264E65A42EAC00B650D6F4"
       },
       "adapter_runtime/资源/数据/gi._D6": {
         "size": 413760,
@@ -965,8 +976,8 @@
         "sha256": "64A88D62FC3DCA7796471ED89E00100F961BBF0E0341216CABFFCE51385D6F54"
       },
       "adapter_runtime/资源/数据/inter._D3": {
-        "size": 167552,
-        "sha256": "EA3B1B1726FA999973338716C0F3E78E65FEF77992D38FCD7C0724381DF0234B"
+        "size": 437952,
+        "sha256": "910FE9355F92EF3178CBD6CE1FD10D2C55BBE79622C9D65659E5B25D51E5F1A1"
       },
       "adapter_runtime/资源/数据/pi._D7": {
         "size": 550496,
@@ -990,8 +1001,8 @@
       "sha256": "AF29D160B8997782B713892D6B826965FE93F07E5A2687BAB118099235B9D52B"
     },
     "gui_launcher/data/inventory_catalog_summary.json": {
-      "size": 2625,
-      "sha256": "EED7D4B8675EFA6923B33F243169C18593AAF13A4CAB4FFB7F095B3338922096"
+      "size": 2781,
+      "sha256": "47731E212A4CA604953FD5EDB45EC267A1B50B7BF79A873B3D365B7C90AED7B6"
     },
     "gui_launcher/data/inventory_pets.json": {
       "size": 2553148,
@@ -1022,8 +1033,8 @@
       "sha256": "641AFAF9D48B6903563291E0BCA2E9AAA91F10C226F0823DC424FC2E443F5710"
     },
     "gui_launcher/data/previews/preview_summary.json": {
-      "size": 744,
-      "sha256": "D7AC0E071120553B9AA0110FB1BD701EBC7FA925F632F626B75D9EA149EFCC25"
+      "size": 726,
+      "sha256": "A68EA81D47C77B7A3F0AFF8CD4237EC52A39B47C3EF2038E34BC2C6A8124E4AB"
     },
     "gui_launcher/data/previews/projectile_frames.json": {
       "size": 953416,
@@ -3078,12 +3089,16 @@
       "sha256": "0165E2909D3EF04F22BA32350CED427EE7D43A90477F9B83E58EC1B202CDA154"
     },
     "gui_launcher/inventory_admin_gui.ps1": {
-      "size": 43065,
-      "sha256": "9682383FD561B22A5A377241D260601070D9413056272E79D6F59AEE8F3D27D4"
+      "size": 43066,
+      "sha256": "C62C004933E383A3CE28FFB485E5D14C8C44EAEA658A229896D7A98182CF261B"
     },
     "gui_launcher/korean_pet_resource_identity.ps1": {
       "size": 4055,
       "sha256": "D53DB8B5C5F24E209A82BD17B514C6EA7B7AA5F4B97495F112967ADF1F934F97"
+    },
+    "gui_launcher/korean_wardrobe_resource_identity.ps1": {
+      "size": 1439,
+      "sha256": "CDFE465EBE117941CA4DD86AFCE808BA9FE864D86A81AE53740927209AC3B757"
     },
     "gui_launcher/launch_modes/gamestartoption.network.ini": {
       "size": 193,
@@ -3106,8 +3121,8 @@
       "sha256": "DEEF0E91D7F7E6C8A5836F4C11B88CB89DBC1D0C7D6EF823C37C7D5FFAC37E3E"
     },
     "gui_launcher/nanaimo_launcher.ps1": {
-      "size": 157158,
-      "sha256": "E4A6E039960259BA658ABB70136AABB0600E81F4D2EBE7A6DCE203B4D7945367"
+      "size": 157267,
+      "sha256": "4782F79178172291B439893AD2C2893175A68B6A3461A8A59CA3DFBFD04BED5C"
     },
     "gui_launcher/projectile_browser.ps1": {
       "size": 11534,
@@ -3122,8 +3137,8 @@
       "sha256": "602500EB9E2809E2E707BE2ACD879DAA95EF8B33C7A36A335D1BCA93FB783398"
     },
     "gui_launcher/start_social_client.ps1": {
-      "size": 58894,
-      "sha256": "68CF7010D48F70DF4835F05FF5D3CF80B1E56E03C3AC3B7E5EE52FB34B0D929B"
+      "size": 59930,
+      "sha256": "12AD7ECE9810E12B0F4A8161FD6E1521B940F687CC6E272A77577C3B44C255B7"
     },
     "knowledge/业务/住宅/公寓引导.md": {
       "size": 2995,
@@ -3502,8 +3517,8 @@
       "sha256": "51FFE0E499D2431DE20E2E2ADFA1368A62FD8BAE9A1C3435C2BAAB577E9789BA"
     },
     "knowledge/索引.md": {
-      "size": 8936,
-      "sha256": "FA474FFAFF51D4CE5C0190C8B653BEBAB72141846E8CD019994994EC5D685662"
+      "size": 9504,
+      "sha256": "84CE193C8467FAA575D34DCD1C632431536992C6E6F64B14539D7EEEE8D231B0"
     },
     "managed/Services/ArenaTargetCatalog.cs": {
       "size": 1948,
@@ -3544,6 +3559,14 @@
     "manifest/korean_pet_resources.json": {
       "size": 882389,
       "sha256": "4A3F31E412C04AB2DACEA3415C27D35397223FC418F605DE5709E02A4609B444"
+    },
+    "manifest/korean_wardrobe_catalog.json": {
+      "size": 2670069,
+      "sha256": "E3AB17226A5AB770431146094AA20508566F2660FE4EF62625B498E866984C76"
+    },
+    "manifest/korean_wardrobe_resources.json": {
+      "size": 263002,
+      "sha256": "12DBD63DFC581A0657071AF44C44D9044CC1D57DA9CAB5338F265C6919D62DCD"
     },
     "manifest/l7_combat.json": {
       "size": 62107,
@@ -3661,6 +3684,14 @@
       "size": 97,
       "sha256": "06064A7FF6C18DE05D8DE968D3136B8AD6BAA52BAF2B41C98C5B3FBE90884415"
     },
+    "resource-packs/nanaimo-wardrobe-resource-kit.zip": {
+      "size": 49705882,
+      "sha256": "D7A072B881CEE72F1ABD1AF3A5A63E8E0BB43B9D75F79DD0A45554E271A1BDC1"
+    },
+    "resource-packs/nanaimo-wardrobe-resource-kit.zip.sha256": {
+      "size": 100,
+      "sha256": "2721456AC3A25963785B72CE7E604DA9B2CE9CADD1F43DD6A872C81BBC2E4068"
+    },
     "scripts/apartment_exterior_panel.py": {
       "size": 17446,
       "sha256": "1F2013880AE0079F1D529B27BFB41C0FFD153962C1BB48B424D19A0E533E6E77"
@@ -3742,8 +3773,8 @@
       "sha256": "032774731901A7C0F6B3793C3381DEE4369115E65AC254BCAD8F4694D5517570"
     },
     "scripts/export_patch.py": {
-      "size": 31833,
-      "sha256": "CC63C28ADB0E0CA1E1C7E51E942C3C11ECC800208F32F8FA2AAD99E4404D359F"
+      "size": 32682,
+      "sha256": "D652B3B701D0EA23B974D6FD85009FAACD8E2210FB2BA616A9E1FA2CF1A639CC"
     },
     "scripts/generate_arena_targets.py": {
       "size": 2986,
@@ -3825,6 +3856,10 @@
       "size": 1326,
       "sha256": "3DEF1A7A8B32BB6FBBA4492DD611E107CF47D2104AD3F250AC1F06B6283C4326"
     },
+    "scripts/normalize_couple_monster_catalog.py": {
+      "size": 3780,
+      "sha256": "0A22FD1ED89CD8F8037D1E45594CB26C4064C44AAF9C24411161E18A2A5847EE"
+    },
     "scripts/package_korean_resource_kit.py": {
       "size": 13682,
       "sha256": "9A711F7E303E27F76DF5BF9352D1B0CA7918C4C3561FE20E383FFBDF1B73073E"
@@ -3832,6 +3867,10 @@
     "scripts/package_story_resource_kit.py": {
       "size": 4512,
       "sha256": "8C7EF68BEB3CE6E968C013867D0F8AC18F4EEB79A55580D68307086BB380CAC7"
+    },
+    "scripts/package_wardrobe_resources.py": {
+      "size": 4717,
+      "sha256": "7571F4AAD5543D7DEFD449BEA13F722BB16A7702BB4AA62DD5DD05E814DEF537"
     },
     "scripts/player_trade_compat.py": {
       "size": 2938,
@@ -3860,6 +3899,10 @@
     "scripts/prepare_korean_pets.py": {
       "size": 12195,
       "sha256": "771B31B6F69975C4DF7D313563CD2F5071CE24CAF2ABBF18BA5F1183E9AA33CE"
+    },
+    "scripts/prepare_korean_wardrobe.py": {
+      "size": 27510,
+      "sha256": "83D90610ED0EEF6F7D8D907764D59FAFBAF9A012D28D28581A73F7CD7D87FBC8"
     },
     "scripts/prepare_monk_challenges.py": {
       "size": 502,
@@ -3902,16 +3945,16 @@
       "sha256": "F087A574DEC8C0D16AF1EAFC5DA75BA2F4C0E29E09D2E173D32A35D47DB45242"
     },
     "scripts/refresh_manifest.py": {
-      "size": 20036,
-      "sha256": "A05EC1E15D8A34C0D4B53B83718B1B50FF2776F68B43E737B4F708847880E91D"
+      "size": 21378,
+      "sha256": "776758B8BFCD8A5C4BB0FC4409506F80CC2D3753C57ABF8F58BC5B3B7264B0E5"
     },
     "scripts/refresh_patch_manifest.py": {
       "size": 12919,
       "sha256": "240ADA4892BA4624D7C4124882500FFC83A375D94DAF2A1FB379D2DAA1235658"
     },
     "scripts/refresh_source_manifest.py": {
-      "size": 10731,
-      "sha256": "D6733E21615D0642E69C99241BD28CD8C454E0A6D769A260452A0621A9F9454F"
+      "size": 11719,
+      "sha256": "2C5332CF2B7BF7E201B38EC41085BAAD295AA6603559CF16D9208DDDB9B976FE"
     },
     "scripts/reset_chapter_checkpoint.py": {
       "size": 3916,
@@ -3920,6 +3963,10 @@
     "scripts/review_l7_resource_port.py": {
       "size": 11259,
       "sha256": "F080ED88027363325BE3B61AFB2A7313C9FC2AC5CE95319CB87B3C092E3AA4F8"
+    },
+    "scripts/shop_icon_origins.py": {
+      "size": 1617,
+      "sha256": "F50EB51FA559206943C17DA94F02366EBC1D3A8B8CD4DC84625718C029348625"
     },
     "scripts/story_window_accept.py": {
       "size": 17639,
@@ -4033,13 +4080,17 @@
       "size": 14416,
       "sha256": "797D37A9ABD6AA41B40628C7A415C9AF6C90D4F0DD4BC69D996092F7B379F217"
     },
+    "scripts/test_korean_wardrobe.py": {
+      "size": 11028,
+      "sha256": "1E5B391F8E64EB574A9F4B3624A5F52CB7DB776451406F82C75085C8E5FB2DB6"
+    },
     "scripts/test_l7_combat_resources.py": {
       "size": 10727,
       "sha256": "E09B8253A2D4193B441AC58B87569F2AF413DF797EE9DE04902FDC0725F69585"
     },
     "scripts/test_launcher_contract.py": {
-      "size": 39373,
-      "sha256": "81BEE6766E23597C39C0B76AA42D199C0D52ABF5565F275847348DC51353EDD9"
+      "size": 39375,
+      "sha256": "4CDFD8DBD9181A3986A0CF371A6452CAB046C1AB92FC111DC5881BC503B3B3D6"
     },
     "scripts/test_launcher_incremental_save.py": {
       "size": 22123,
@@ -4145,9 +4196,17 @@
       "size": 3348,
       "sha256": "E4D6DD32E57790E43075CC58A845FCBEB9DAA921A7288BF536B2435D703F627A"
     },
+    "scripts/test_shop_icon_origins.py": {
+      "size": 5053,
+      "sha256": "548177B677865D998D62E33F7124A6231125D24B0CA4C269DE143BC248E31273"
+    },
     "scripts/test_social_apartment_resources.py": {
       "size": 9229,
       "sha256": "4F6B832F9C4365B1AFEE5DC93E2C7D7AC91F2236014DB26EA1633445C70B7A12"
+    },
+    "scripts/test_special_encounters.py": {
+      "size": 6388,
+      "sha256": "17FDB84C8E383D19A8E01007B08909DE87C24FB08A7CB6BB125AE00B7ECE01B3"
     },
     "scripts/test_story_catalog.py": {
       "size": 11673,
@@ -4181,6 +4240,10 @@
       "size": 10072,
       "sha256": "BCA62FE9FCF1A247E1065305288F9AFAE08819EB73AEB33478B07B2F8C171E30"
     },
+    "scripts/test_verify_package.py": {
+      "size": 12062,
+      "sha256": "095C961AD4BC2155598C21270BDB106005C0402B361E2B9367D44CC69FE26601"
+    },
     "scripts/verify_client_baseline.py": {
       "size": 3062,
       "sha256": "90200160D643CD22F30D6F9022883F90B64FB81D461D3848DAAC956BF9278F58"
@@ -4194,8 +4257,12 @@
       "sha256": "4FB9DDCAB1290430517E4B81B8A3917AB18073CEF19DBC2674A6B002A1DB3AC5"
     },
     "scripts/verify_package.py": {
-      "size": 14924,
-      "sha256": "BFA795CBAD99B269BAD1095B24144934A8D9CCC3CE38E25DCB855011020D2E24"
+      "size": 17822,
+      "sha256": "42CA710C277B9A8F8688A5EC02F5640F6C8F1215BC2F624F589B6AEED2163D6B"
+    },
+    "scripts/wardrobe_localization.py": {
+      "size": 18789,
+      "sha256": "D3F7CF6D02AD8A54203D919643DF930C9182347D0EC2B6B146A966CEF33C6D8E"
     },
     "start_nanaimo_launcher.bat": {
       "size": 164,
@@ -4350,12 +4417,12 @@
       "sha256": "99089A94221A600D7C0E957F205B9990CA4185A80D1760FAEC10C34FA2925A04"
     },
     "knowledge/业务/DIY/任务/接入策略.md": {
-      "size": 6138,
-      "sha256": "DA29C889C59CE0B9F5EFB6676CBAB3E7925DD081373CD44852F4F98EA5383D38"
+      "size": 6268,
+      "sha256": "F859BCD54120A2615CEDEA8DE0CE7BD77B2D680B4D1E74C0FB98F209CEAAE825"
     },
     "knowledge/业务/DIY/任务/目录与对白.md": {
-      "size": 7451,
-      "sha256": "811540D68FC4B58004B9CFC7D9A7C5D79CDA046E2F4FE917B4D337B10941ECF0"
+      "size": 7611,
+      "sha256": "6B1F423FAC07A54EAB7E5E53D92DDC260F4540E86845CCC2E76BD161BED19665"
     },
     "knowledge/业务/DIY/任务/目标与奖励.md": {
       "size": 8683,
@@ -4426,8 +4493,8 @@
       "sha256": "6F56126FE3D9ED25BFA4E2B5BB7758C9C7DEB7F906B619E35913B26F91E085C4"
     },
     "knowledge/业务/住宅/家具/库存布局与期限.md": {
-      "size": 7656,
-      "sha256": "105FE29892A494622CA53707BFCB74BAD1D378EE05884C450B07BA73C800AE35"
+      "size": 7902,
+      "sha256": "DC7F39E165C52019491E2F8DC211B72E46CCA15B5B904A96A8B62C42A1394318"
     },
     "knowledge/业务/住宅/家具/索引.md": {
       "size": 382,
@@ -4550,8 +4617,8 @@
       "sha256": "8E9C0C7D71336FE0A6CEDBAA3F46AD006F267D2714FBAC13D4CD48B7967BB322"
     },
     "knowledge/业务/地宫/伤害与目标/目标身份与生命账本.md": {
-      "size": 11352,
-      "sha256": "3ACBC8111834B27CCFADB0470BA41F8850E2501224AB98F43B653E39471DF006"
+      "size": 11922,
+      "sha256": "ED148845F9E90E1C00545C0701207A66C5105F6B48713E2028C3C263BE5A404A"
     },
     "knowledge/业务/地宫/伤害与目标/索引.md": {
       "size": 2818,
@@ -4613,9 +4680,13 @@
       "size": 4521,
       "sha256": "291C8CAE99358FD08D023D87F784C6A2B3DCA157734089EDC68BA600655B27F7"
     },
+    "knowledge/业务/地宫/关卡与房间/特殊遭遇与闲置资源.md": {
+      "size": 9170,
+      "sha256": "DFD2328B13B204965AA40B48F35C374267BF52698919D80BC90A7002512D75A2"
+    },
     "knowledge/业务/地宫/关卡与房间/索引.md": {
-      "size": 4053,
-      "sha256": "9270AE4D8C39A5A8757A9F7C27715293AC3B40D4C4271605F5678F434FB317C9"
+      "size": 4257,
+      "sha256": "A7DE735ED4C0FC5AEB3918C292D4A012F5446F474B06DE01D8D70A34D016C285"
     },
     "knowledge/业务/地宫/关卡与房间/续关与观战.md": {
       "size": 9310,
@@ -4930,8 +5001,8 @@
       "sha256": "BF51028AC4795F1D7B86C5C23BA2867E2D89C52AFA902431122C6E66E8B72F67"
     },
     "knowledge/业务/库存/装备/期限效果与资源范围.md": {
-      "size": 2256,
-      "sha256": "3FC324C6F97AD94BA065E2578CB7DC3A4CEFB4D7F25BAAAFEEA835C0AE3DBEEA"
+      "size": 2848,
+      "sha256": "5A635FD7FEDE454E159777202C2DD2CCDD16EC92781754B096AEC6CDD86CE1BC"
     },
     "knowledge/业务/库存/装备/登录初始化与验证.md": {
       "size": 1856,
@@ -4966,8 +5037,8 @@
       "sha256": "3B37A003173F212018754936CDADF1933BBCB4B0551663448979866E1173A2F3"
     },
     "knowledge/业务/社交/情侣/资料场景与客户端字段.md": {
-      "size": 8479,
-      "sha256": "A9D4302305D6C0D9E26CFB7A497C38494075652964D4D92FECA501E0AF51512F"
+      "size": 8418,
+      "sha256": "CBC2BCBA5AB3ECF0D42A0CEA1AFD6984A2492FBF6F9B45634750AA125C8AD967"
     },
     "knowledge/业务/社交/情侣/跨模块场景一致性.md": {
       "size": 1820,
@@ -5010,8 +5081,8 @@
       "sha256": "2A7BB2D494FDB445C368233DA33EAA2C7A48658CE5E04B3421C8C661E215F7A6"
     },
     "knowledge/业务/经济/商城/目录币种与购买.md": {
-      "size": 8701,
-      "sha256": "ECB7F901755FA9C6F7D26DDDA8A08ACA05A62A8C89CD1B6F3BFC27B12BF2180C"
+      "size": 10216,
+      "sha256": "4F0D59738492BEC0C322AA116B414B19418A45EAE4AE96EDC9ED5F80B6D01198"
     },
     "knowledge/业务/经济/商城/索引.md": {
       "size": 869,
@@ -5070,16 +5141,16 @@
       "sha256": "0DBAD6D1B80E5D766DB67507A6FD1A4B8B188BD86ABC1178E1CBA3E01AA84358"
     },
     "knowledge/业务/角色/任务/章节剧情移植进展.md": {
-      "size": 12604,
-      "sha256": "154E36F00B8161B261595E791CC3F8BEBD25BF0F63236B9623F0B3560EAF4C6E"
+      "size": 13456,
+      "sha256": "C10C1F5473845D52CD337F079FCC737EA900696A02544D85C4A63DE52591B01E"
     },
     "knowledge/业务/角色/任务/索引.md": {
-      "size": 1295,
-      "sha256": "E99E08DE871E5E8D1BA89037E98B9D2F51399132FE133962D89FDE55014097B2"
+      "size": 1328,
+      "sha256": "A4C0D42463075D172BA3C5179400D408C3D214C5B40E8A7DD29DFFFFDB2C3CC0"
     },
     "knowledge/业务/角色/任务/韩服章节剧情.md": {
-      "size": 11063,
-      "sha256": "1D21B3687E298E70320D55AEB08B42FDA1B82438BC4E7DE3071F68B3271206B2"
+      "size": 11169,
+      "sha256": "3B44335137C820E4682251998737B64C2F5EA205AFB155F72719C3CBDE79B8FF"
     },
     "knowledge/业务/角色/技能/学习装备与权限.md": {
       "size": 7187,
@@ -5406,8 +5477,8 @@
       "sha256": "DA886713573783AAC2C9604012D26953364A36B51EC5AD8FC841655FCD89411E"
     },
     "knowledge/工程/资源安装/索引.md": {
-      "size": 2298,
-      "sha256": "A498BB53884F5D8DB16B1A0ECEA49D43B993F853E9FCEB356B9F3D36BAED6896"
+      "size": 2333,
+      "sha256": "B1DEBC9583B3385C40EE7C9693BC5DAEF8F10C1B59F57AE73001A3D6E384BD2C"
     },
     "knowledge/工程/资源安装/资源清单与包组成.md": {
       "size": 7272,
@@ -5418,8 +5489,8 @@
       "sha256": "1D339597CA7E58E1A52DE44EE7D03EE123C8DDC8E5AEC33DCE748FDA8A618FEF"
     },
     "knowledge/工程/资源安装/追加装扮与家具.md": {
-      "size": 3127,
-      "sha256": "79CCD08E5879A5B06BCD5C20A8908141E10241F0DF3A2DCCC8D0968B12E4BD2F"
+      "size": 8199,
+      "sha256": "9218CD81A000EA60B763D5F4233635E51E09BB017DC6C80081C2EFA7AA071DED"
     },
     "knowledge/工程/资源安装/韩服资源集成范围.md": {
       "size": 8042,
@@ -5430,32 +5501,32 @@
       "sha256": "F42D69B40D0422C67679B841948320C7723BB0A1DA66CB02E8F0C01BB59D2DAF"
     },
     "knowledge/工程/韩服差异.md": {
-      "size": 9738,
-      "sha256": "FA7EEB5A8F55B59875929E82DD04EDE501CB74AFB2F52CDD6A2D3597D9C58F46"
+      "size": 9792,
+      "sha256": "973E63CFC3C64CBC762B579289E70F01488A4F250B613F107FF099A6A7D05837"
     },
     "knowledge/工程/验证状态/修道僧挑战验收.md": {
       "size": 4893,
       "sha256": "939723F23104A3C18F16CBEE33B79C89B1E002BE6747C22C069ACC7096434B8D"
     },
     "knowledge/工程/验证状态/地宫与成长验收.md": {
-      "size": 9388,
-      "sha256": "5F99A3546422CA0A0E08F4F5E445563B6A87226169766B16756D9DBD3AC834FB"
+      "size": 10861,
+      "sha256": "CF88894281B26AC65B4CD25DDFE2150034647A9D667942BD91C242356C2D31A2"
     },
     "knowledge/工程/验证状态/层级与版本归属.md": {
       "size": 13330,
       "sha256": "533DC10DF23576B1607F633B19AC1496C9117535E6AEFE686B099B171BA0DBB0"
     },
     "knowledge/工程/验证状态/文档与静态调查记录.md": {
-      "size": 2881,
-      "sha256": "3BAEA9A380D75906829F0A1B37AA74DEB60C6DD7C0067F8C7546C7FB442FB48D"
+      "size": 4659,
+      "sha256": "81D2EE4C676FB3570A25C5517ADB60AF00A840E2FEDDEBE59BBFA843411F6103"
     },
     "knowledge/工程/验证状态/社交竞技与娱乐验收.md": {
       "size": 12552,
       "sha256": "FD8A905E4DD7F6936A3179FEF2A7A778C9F3EC01BC12CAF00E81B352A7DE1259"
     },
     "knowledge/工程/验证状态/章节剧情与跨村门槛.md": {
-      "size": 6869,
-      "sha256": "E8412FFFCB5720E013A6165BCC50AC535409B83CEDF779FA677E968FB35C9470"
+      "size": 7470,
+      "sha256": "39B1C5FBCDAD2C29EE18EC43C51FE683165C6B4AF4B39FEF6B7A9A5F49EAE64B"
     },
     "knowledge/工程/验证状态/索引.md": {
       "size": 1094,
@@ -5497,6 +5568,10 @@
       "size": 4503,
       "sha256": "93D3A115EA03DF994DD17EFBC01DFCF49AF74E7FB190CA32D514495F972C3870"
     },
+    "knowledge/指南/客户端二进制补丁/地宫特殊遭遇资源.md": {
+      "size": 2594,
+      "sha256": "973C96C6ACE335EC81ADC64A2BE353F29BBCD3E969D05A9485731577C99B12FF"
+    },
     "knowledge/指南/客户端二进制补丁/娱乐室等级显示.md": {
       "size": 2231,
       "sha256": "20479C0E56F0878CE28C2943DA0EAFEE2B93D6BFFB9D2F92B0DBE5C352F894DB"
@@ -5506,20 +5581,24 @@
       "sha256": "A4A2481B108979FB3C1E92AC628F55A5B0076CBFE0F1A066F379A6EA6829233F"
     },
     "knowledge/指南/客户端二进制补丁/章节候选资源.md": {
-      "size": 8360,
-      "sha256": "97B7D3A4C1B2FC5FF4915097B35CD5520A130741F07F2B87AB2B72285A49F1A0"
+      "size": 8514,
+      "sha256": "D2DF8798AAC54ED1FA16C202545DB1179B1753C49B59F031BCA8F626C7AA6C41"
     },
     "knowledge/指南/客户端二进制补丁/章节表与对白安装.md": {
-      "size": 14163,
-      "sha256": "0C093EF749311B09CECD05729C36172B9C55E714E60E36630899D3FD8BE8645B"
+      "size": 14496,
+      "sha256": "96B526B4A46F1196F6FA38DF516649663B4F631A57A12BF67A8DF900B26AC30E"
     },
     "knowledge/指南/客户端二进制补丁/索引.md": {
-      "size": 1405,
-      "sha256": "24CC922ED74846445BA4F7C6F57132E9CF1A1DE69D45A7D2F265E86FC4588DAA"
+      "size": 1709,
+      "sha256": "E989031B19C59B1C1171A2457D87B54AE8DA179995097EAD336814A0CDD396A6"
     },
     "knowledge/指南/客户端二进制补丁/统一安装与恢复.md": {
       "size": 5718,
       "sha256": "AFA7321DB71D2CC3EDB24EC37387FD507E1F90E87D0DD51F4C6058E280D84423"
+    },
+    "knowledge/指南/客户端二进制补丁/装扮家具与商店图标.md": {
+      "size": 7252,
+      "sha256": "34E0B4576F4D7971A32ADB09976A872CA2E69D4D7B52ABEACBD67A42C9E305BA"
     },
     "knowledge/指南/客户端二进制补丁/首领退场效果.md": {
       "size": 775,
@@ -5578,8 +5657,8 @@
       "sha256": "51DE777E6380CA60C0E71A05AEC6EC5D602F33485CA8509CBA25FEF329335671"
     },
     "knowledge/指南/韩服剧情目录准备.md": {
-      "size": 2655,
-      "sha256": "0CBA673E0393F4D8469F5D0AE140C95839391C7F3E2B2E0DC31F8EF9CCB21544"
+      "size": 2739,
+      "sha256": "AEAB16A3BDD77BDA81835C034478B780789B873F8317A6875DCA9296A9249144"
     },
     "adapter_runtime/Microsoft.CSharp.dll": {
       "size": 1005392,
@@ -5614,28 +5693,28 @@
       "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
     },
     "adapter_runtime/Nanaimo.Adapter.dll": {
-      "size": 2837504,
-      "sha256": "32D5A4EE86878473AD474D4FEDFB9F7A31CEC9B9FA98CD409E772BF090343A78"
+      "size": 2860032,
+      "sha256": "B76851A8538AD6E908725A3D03E3B772BE293A6C0FAB09F8863CF5D311E7F0C4"
     },
     "adapter_runtime/Nanaimo.Adapter.exe": {
       "size": 151552,
-      "sha256": "70385526D56124C74CB8047E8199327C24F48CC704364FF0CC6ED66BBFA57DC3"
+      "sha256": "36A3EE221462D2A0B3A542D1D379D7762E7DFF8D7839076893045278453BE092"
     },
     "adapter_runtime/Nanaimo.Adapter.pdb": {
-      "size": 261504,
-      "sha256": "731D4F75EEB0E28025FEE8536AD3B85BFF9E8140080F6F840F894A7DAB27B0C0"
+      "size": 265024,
+      "sha256": "86D577D1312AFD4B50B5FCD126A72753B4525CEDD77533A2AEFC332A2AEEE9C6"
     },
     "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
       "size": 372,
       "sha256": "D7A0BECA53834E0A387B9E5083BD1DADF5BEE565B48595A9D4CB457D15726C78"
     },
     "adapter_runtime/Nanaimo.Gameplay.dll": {
-      "size": 6266368,
-      "sha256": "0492159AE20A2F32E0F8D47B50660EA55625ED6AF5A38D5D7CE46DD9CCAB3E43"
+      "size": 6268416,
+      "sha256": "290ECCD393AF2A8087A4764C50D2B02EC722D7B02720EE5D65C9B62979F2D130"
     },
     "adapter_runtime/Nanaimo.Gameplay.pdb": {
-      "size": 604156,
-      "sha256": "39168DEC9FFF712FC416AD7DCA8FD0A86F8A1312ADCFD65F12E93C4A95578757"
+      "size": 604564,
+      "sha256": "FD9D50694FAC21483C5205E39E725178C1143A97FCF15C982CBFB8BD4A5AFE50"
     },
     "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
       "size": 5120,
@@ -6299,7 +6378,7 @@
     },
     "adapter_runtime/adapter_manifest.json": {
       "size": 35484,
-      "sha256": "EE23EC7B69A701720E14B7B8191A56F465CA5DAB9B6F8B237CEFEA34EDEC9E42"
+      "sha256": "007CEB41B33332124EC7396720E6A6BF1EA9BC81CC74B4F902520004BF4798A2"
     },
     "adapter_runtime/clretwrc.dll": {
       "size": 310568,
@@ -6358,8 +6437,8 @@
       "sha256": "B7158D427B01C70483BB3D80C5211E387DD98E9471C8A70E4484D449DE9157E8"
     },
     "adapter_runtime/nanaimo_gameplay_bridge.exe": {
-      "size": 25806336,
-      "sha256": "C8E17767349D6E09A48676E0AADE0D0E71EA678B68498DB13372FF598CE6B164"
+      "size": 25869312,
+      "sha256": "481C898D3E3E19515BC71D8561BBEC917D61FD95DC12D764E65FCB515250DB66"
     },
     "adapter_runtime/netstandard.dll": {
       "size": 100648,
@@ -6426,8 +6505,8 @@
       "sha256": "E08D122701372282BDB593AA776379BE338CC2EB4B26D3CD1DDBFCD176901C73"
     },
     "adapter_runtime/资源/数据/ava._D1": {
-      "size": 800880,
-      "sha256": "9ED34D2DCE90B4CCE596F1F5F79E11BE89B01F6CA0AB1EFEED3EE919B4301D09"
+      "size": 975248,
+      "sha256": "FFA1F2C7590A4F9EC67B0DD6310E5315628C89E8243BA997F742AF21AD1B4880"
     },
     "adapter_runtime/资源/数据/ddakg._D4": {
       "size": 123760,
@@ -6435,7 +6514,7 @@
     },
     "adapter_runtime/资源/数据/dungeon_combat_catalog.bin": {
       "size": 12253130,
-      "sha256": "32C8ECBFBCE4D42BA09BAD673D26A5CA9F1BBDBAFFF55AF9986CD12F16990710"
+      "sha256": "490B4DAF7BAF994524D3CAFFAAA549B58D9EF5430D264E65A42EAC00B650D6F4"
     },
     "adapter_runtime/资源/数据/gi._D6": {
       "size": 413760,
@@ -6446,15 +6525,15 @@
       "sha256": "64A88D62FC3DCA7796471ED89E00100F961BBF0E0341216CABFFCE51385D6F54"
     },
     "adapter_runtime/资源/数据/inter._D3": {
-      "size": 167552,
-      "sha256": "EA3B1B1726FA999973338716C0F3E78E65FEF77992D38FCD7C0724381DF0234B"
+      "size": 437952,
+      "sha256": "910FE9355F92EF3178CBD6CE1FD10D2C55BBE79622C9D65659E5B25D51E5F1A1"
     },
     "adapter_runtime/资源/数据/pi._D7": {
       "size": 550496,
       "sha256": "0388592AD03CAE6025409410578D58F3276983E409A350033AE2B2613E6C906A"
     }
   },
-  "source_closure_count": 419,
+  "source_closure_count": 437,
   "public_export_policy": {
     "mode": "explicit-reviewed-allowlist-only",
     "exclude_private_profiles_states_logs_backups": true,

@@ -274,7 +274,7 @@ function Save-InventoryAdminState($Context,[string]$NameHex,$Shop,$Profile=$null
 
 function Test-InventoryAdminInstallation([string]$Root){
     $backend=Join-Path (Split-Path $PSScriptRoot -Parent) 'adapter_runtime\Nanaimo.Adapter.exe';$summary=Get-Content -LiteralPath (Join-Path $Root 'gui_launcher\data\inventory_catalog_summary.json') -Raw -Encoding UTF8|ConvertFrom-Json
-    if([int]$summary.counts.'inventory_clothing.json'-ne3885-or[int]$summary.counts.'inventory_pets.json'-ne990-or[int]$summary.counts.'inventory_pet_gems.json'-ne18931-or[int]$summary.counts.'inventory_furniture.json'-ne781-or[int]$summary.counts.'inventory_cards.json'-ne560){throw '物品目录计数校验失败。'}
+    if([int]$summary.counts.'inventory_clothing.json'-ne4785-or[int]$summary.counts.'inventory_pets.json'-ne990-or[int]$summary.counts.'inventory_pet_gems.json'-ne18931-or[int]$summary.counts.'inventory_furniture.json'-ne2008-or[int]$summary.counts.'inventory_cards.json'-ne560){throw '物品目录计数校验失败。'}
     # Validate the actual consumed JSON, not only a self-reported summary.
     $cardPath=Join-Path $Root 'gui_launcher\data\inventory_cards.json'
     $cards=Get-Content -LiteralPath $cardPath -Raw -Encoding UTF8|ConvertFrom-Json

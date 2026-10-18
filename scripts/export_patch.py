@@ -125,6 +125,8 @@ STORY_SOURCES = {
     'scripts/story_qt_patch.py', 'scripts/story_qs_patch.py',
     'scripts/test_chapter_dialogue_patch.py',
     'scripts/test_story_qt_patch.py', 'scripts/test_story_qs_patch.py',
+    'scripts/test_default_chapter_startup.py',
+    'scripts/story_runtime_evidence.py',
 }
 # This is only a rejection aid; NOT a privacy certification. Exact-byte human review
 # remains mandatory for every payload, especially knowledge and protocol fixtures.
@@ -200,7 +202,8 @@ def payload_policy(value: str, layer: str) -> None:
                 or value in {"manifest/source_closure.json", "manifest/lumineos_combat.json", "manifest/l7_combat.json", "manifest/lumineos_resource_port.json", "manifest/korean_pet_resources.json",
                              "manifest/knowledge_migration.json", "manifest/knowledge_baseline.json.gz",
                              "manifest/document_fusion.json", "manifest/document_fusion_baseline.json.gz",
-                             "manifest/monk_dialogue_resources.json"})
+                             "manifest/monk_dialogue_resources.json",
+                             "manifest/korean_wardrobe_resources.json", "manifest/korean_wardrobe_catalog.json"})
     elif layer == "docs":
         good = value == "README.md"
     elif layer == "knowledge":
@@ -410,6 +413,8 @@ def validated_closure(closure: dict) -> list[dict]:
             "scripts/generate_character_experience.py",
             "scripts/generate_lumineos_combat.py",
             "scripts/normalize_combat_score_resources.py",
+            "scripts/normalize_couple_monster_catalog.py",
+            "scripts/test_special_encounters.py",
             "release/components/cards/card_drop_cn_boss_bindings.json",
             "scripts/generate_cn_card_drops.py",
             "release/components/cards/card_reward_rows.json",
@@ -429,7 +434,15 @@ def validated_closure(closure: dict) -> list[dict]:
             "scripts/generate_l7_combat.py",
             "scripts/test_l7_combat_resources.py",
         }
-        if not (native or managed or build_script or embedded_recipe or card_distribution or rel in STORY_SOURCES):
+        wardrobe_derivation = rel in {
+            'scripts/shop_icon_origins.py', 'scripts/test_shop_icon_origins.py',
+            'scripts/package_wardrobe_resources.py',
+            'scripts/prepare_korean_wardrobe.py', 'scripts/wardrobe_localization.py',
+            'scripts/test_korean_wardrobe.py', 'scripts/audit_korean_wardrobe_interior.py',
+            'scripts/generate_avatar_resource_effects.py',
+            'manifest/korean_wardrobe_resources.json', 'manifest/korean_wardrobe_catalog.json',
+        }
+        if not (native or managed or build_script or embedded_recipe or card_distribution or wardrobe_derivation or rel in STORY_SOURCES):
             raise ExportError("source closure contains an ineligible project source")
         payload_policy(rel, "source")
         if rel.casefold() in seen:

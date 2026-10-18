@@ -1,5 +1,6 @@
 #ifndef NANAIMO_TEAMPLAY_AUTHORITY_SUITE_INC
 #define NANAIMO_TEAMPLAY_AUTHORITY_SUITE_INC
+#include "special_encounters.inc"
 #ifndef TEAMPLAY_FEATURE_START_BARRIER
 #define TEAMPLAY_FEATURE_START_BARRIER 0
 #endif
@@ -303,6 +304,7 @@ static int teamplay_start_request_is_duplicate(void){
         g_teamplay_cf7f_arrived[idx]==g_teamplay_start_epoch;
 }
 static void teamplay_start_reset_room(void){
+    special_encounters_reset();
     g_teamplay_start_epoch=0u;g_teamplay_start_tick=0u;
     g_teamplay_start_real_stage=g_teamplay_start_show_stage=g_teamplay_start_slot=0u;
     g_teamplay_start_hd=g_teamplay_start_episode=g_teamplay_start_dungeon=g_teamplay_start_difficulty=0u;
@@ -489,6 +491,7 @@ static void teamplay_room_leave_current(void){
 #endif
 }
 static int teamplay_room_member_count(void){int i,n=0;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active)n++;return n;}
+static void teamplay_write_special_encounters(char *frame){special_encounters_write(frame,(unsigned)teamplay_room_member_count());}
 static void teamplay_send_cf88_room(SOCKET c,unsigned total_score,int variant){
     int src=g_multi_current,i,count=0,alive=0;
     if(src>=0&&g_teamplay_failure_order[src]==g_multi_conn[src].join_order)return;

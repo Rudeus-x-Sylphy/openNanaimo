@@ -358,13 +358,13 @@ if($SelfTestTitleIO){
 if($SelfTestInventoryIO){Write-Output (Test-InventoryAdminInstallation $Root);exit 0}
 if($ValidateOnly){
     $inventoryValidation=Test-InventoryAdminInstallation $Root
-    if($pets.Count-ne990){throw 'pet catalog count'};if($equips.Count-ne3885){throw 'equipment catalog count'};if($furniture.Count-ne781){throw 'furniture catalog count'};if($attackModes.Count-ne990){throw 'attack mode catalog count'};if($petPreviewRows.Count-ne990-or$equipPreviewRows.Count-ne3885-or$furniturePreviewRows.Count-ne781-or-not(Test-Path -LiteralPath $PetPreviewPng)-or-not(Test-Path -LiteralPath $EquipPreviewPng)-or-not(Test-Path -LiteralPath $FurniturePreviewPng)){throw 'catalog preview assets'}
+    if($pets.Count-ne990){throw 'pet catalog count'};if($equips.Count-ne4785){throw 'equipment catalog count'};if($furniture.Count-ne2008){throw 'furniture catalog count'};if($attackModes.Count-ne990){throw 'attack mode catalog count'};if($petPreviewRows.Count-ne990-or$equipPreviewRows.Count-ne4785-or$furniturePreviewRows.Count-ne2008-or-not(Test-Path -LiteralPath $PetPreviewPng)-or-not(Test-Path -LiteralPath $EquipPreviewPng)-or-not(Test-Path -LiteralPath $FurniturePreviewPng)){throw 'catalog preview assets'}
     foreach($path in @($AdapterManifest,$Adapter,$AdapterBridge)){if(-not(Test-Path -LiteralPath $path)){throw "adapter artifact missing: $path"}};if((Get-Item -LiteralPath $Adapter).Length-ne$ExpectedAdapterSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $Adapter).Hash-ne$ExpectedAdapterHash){throw 'adapter validation'};if((Get-Item -LiteralPath $AdapterBridge).Length-ne$ExpectedBridgeSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $AdapterBridge).Hash-ne$ExpectedBridgeHash){throw 'bridge validation'}
     foreach($id in 15009205,10130337,10100028,10110337,10120352,10150103,10160017){if(-not($petById.ContainsKey([uint32]$id)-or$equipById.ContainsKey([uint32]$id))){throw "missing default id $id"}}
     $round=Decode-NameHex (Encode-NameHex '测试角色');if($round-ne'测试角色'){throw 'GBK name roundtrip'}
-    $pt=New-GridTable 'pet' $pets;$et=New-GridTable 'equip' $equips;$ft=New-GridTable 'furniture' $furniture;if($pt.Rows.Count-ne990-or$et.Rows.Count-ne3885-or$ft.Rows.Count-ne781){throw 'grid table count'}
+    $pt=New-GridTable 'pet' $pets;$et=New-GridTable 'equip' $equips;$ft=New-GridTable 'furniture' $furniture;if($pt.Rows.Count-ne990-or$et.Rows.Count-ne4785-or$ft.Rows.Count-ne2008){throw 'grid table count'}
     $pv=New-Object Data.DataView;$pv.Table=$pt;$pv.RowFilter="[ID] LIKE '%15009205%'";if($pv.Count-ne1){throw 'pet filter'}
-    $ev=New-Object Data.DataView;$ev.Table=$et;$ev.RowFilter="[部位] = '发型'";if($ev.Count-ne1049){throw 'equipment hair filter'};$ev.RowFilter="[部位] = '效果（特效道具）'";if($ev.Count-ne438){throw 'equipment effect filter'}
+    $ev=New-Object Data.DataView;$ev.Table=$et;$ev.RowFilter="[部位] = '发型'";if($ev.Count-ne1205){throw 'equipment hair filter'};$ev.RowFilter="[部位] = '效果（特效道具）'";if($ev.Count-ne714){throw 'equipment effect filter'}
     if(@($equips|Where-Object{$_.part-eq'other'}).Count-ne2){throw 'equipment other classification'}
     $networkInfo=Get-LaunchModeInfo 'network' '127.0.0.1'
     [void](Test-LaunchModeTemplate $networkInfo)
@@ -690,6 +690,7 @@ function Test-ClientBinary {
 function Ensure-ClientCompatibility($selectedPet=$null) {
     Assert-ManagedLauncherTools
     Test-ClientBinary
+    & (Join-Path $Root 'gui_launcher\korean_wardrobe_resource_identity.ps1') -ClientRoot $Root | Out-Null
     if(-not(Test-Path -LiteralPath $ClientCompatibilityTool -PathType Leaf)){throw "Managed tools missing: $ClientCompatibilityTool"}
     if($selectedPet-and([uint32]$selectedPet.id-eq15003361-or$selectedPet.optional_resource_port-eq'korean_pets')){
         $kind=if([uint32]$selectedPet.id-eq15003361){'hero'}else{'korean'}

@@ -42,7 +42,7 @@ def preflight(bundle: Path, client: Path, adapter: Path | None, runtime: Path | 
     report['checklist'] = [
         'close the game client before apply',
         'apply the tables and keep the receipt path',
-        'restart the adapter once with --story-chapters --story-chapters-start',
+        'restart the adapter normally; chapters and post-tutorial start are enabled by default',
         'if a review file exists, pass --story-chapters-reward <file>',
         'log in, walk into the chapter village, then clear three dungeons',
         'run this tool again with evidence --log <adapter log>',

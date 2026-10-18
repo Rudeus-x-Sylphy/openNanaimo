@@ -10,7 +10,7 @@ internal static class ShopCurrencyResourceChecks
     {
         CheckTable("pi._D7", "PET", 4, 35, 0, 13, 14, 990, 51, 165);
         CheckTable("PA._D9", "PETACCESSORY", 4, 24, 0, 19, 20, 18931, 65, 0);
-        CheckTable("inter._D3", "INTERIOR", 4, 20, 0, 6, 7, 781, 352, 247);
+        CheckTable("inter._D3", "INTERIOR", 4, 20, 0, 6, 7, 2008, 1304, 522);
         CheckPrice(15_001_011, 100, 0);
         CheckPrice(15_001_065, 7000, 0);
         CheckPrice(15_009_263, 0, 2500);
@@ -20,7 +20,7 @@ internal static class ShopCurrencyResourceChecks
         CheckPrice(18_000_002, 0, 200);
         CheckPrice(11_110_021, 4950, 0);
         CheckPrice(11_420_304, 0, 36);
-        Console.WriteLine("SHOP_CURRENCY_RESOURCE_CHECKS_PASS PET-51-Hans-runtime-or-original-Cash PA-65-Hans furniture-352-Hans-247-Cash SP-unchanged");
+        Console.WriteLine("SHOP_CURRENCY_RESOURCE_CHECKS_PASS PET-51-Hans-runtime-or-original-Cash PA-65-Hans furniture-1304-Hans-522-Cash SP-unchanged");
     }
 
     private static void CheckPrice(uint code, uint hans, uint cash)

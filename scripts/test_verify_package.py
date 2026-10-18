@@ -124,6 +124,38 @@ class VerifyPackageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'development-process narrative'):
             verifier.scan_public_text(self.root)
 
+    def test_wardrobe_proper_names_are_scoped_to_content_fields(self):
+        name = ''.join(map(chr, (0x98de,0x884c,0x5c9b))) + '\u68461'
+        rel = 'gui_launcher/data/inventory_furniture.json'
+        allowed = json.dumps([dict(name=name)],ensure_ascii=False)
+        self.assertNotRegex(verifier.public_brand_surface(rel,allowed),verifier.FORBIDDEN_BRAND_LABEL)
+        for field in ('note','source','path'):
+            text = json.dumps([{field:name}],ensure_ascii=False)
+            self.assertRegex(verifier.public_brand_surface(rel,text),verifier.FORBIDDEN_BRAND_LABEL)
+        text = json.dumps([dict(name='Q'+'Q')],ensure_ascii=False)
+        self.assertRegex(verifier.public_brand_surface(rel,text),verifier.FORBIDDEN_BRAND_LABEL)
+        self.assertRegex(verifier.public_brand_surface('README.md',allowed),verifier.FORBIDDEN_BRAND_LABEL)
+        frame = 'Q'*2 + ''.join(map(chr,(0x98de,0x884c,0x5c9b))) + '\u73a9\u5bb6\u76f8\u7247\u6846'
+        text = json.dumps([dict(effect=frame)],ensure_ascii=False)
+        self.assertNotRegex(verifier.public_brand_surface(rel,text),verifier.FORBIDDEN_BRAND_LABEL)
+        text = json.dumps([dict(note=frame)],ensure_ascii=False)
+        self.assertRegex(verifier.public_brand_surface(rel,text),verifier.FORBIDDEN_BRAND_LABEL)
+
+    def test_wardrobe_translation_comments_remain_public_text(self):
+        name = ''.join(map(chr, (0x98de,0x884c,0x5c9b))) + '\u68461'
+        rel = 'scripts/wardrobe_localization.py'
+        literal = 'value = ' + repr(name)
+        self.assertNotRegex(verifier.public_brand_surface(rel,literal),verifier.FORBIDDEN_BRAND_LABEL)
+        self.assertRegex(verifier.public_brand_surface(rel,'# '+name+'\n'+literal),verifier.FORBIDDEN_BRAND_LABEL)
+
+    def test_wardrobe_recipe_metadata_remains_public_text(self):
+        name = ''.join(map(chr, (0x98de,0x884c,0x5c9b))) + '\u68461'
+        rel = 'manifest/korean_wardrobe_catalog.json'
+        data = dict(clothing=[],furniture=[dict(name=name,localized_row=['0',name])])
+        self.assertNotRegex(verifier.public_brand_surface(rel,json.dumps(data,ensure_ascii=False)),verifier.FORBIDDEN_BRAND_LABEL)
+        data['furniture'][0]['source_name']=name
+        self.assertRegex(verifier.public_brand_surface(rel,json.dumps(data,ensure_ascii=False)),verifier.FORBIDDEN_BRAND_LABEL)
+
     def test_active_versioned_source_name(self):
         (self.root / 'release').mkdir()
         (self.root / 'release' / ('gui' + '123.c')).write_text('int fixture;', 'utf-8')

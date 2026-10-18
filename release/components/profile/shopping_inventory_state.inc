@@ -31,6 +31,7 @@ static void shopping_remove_at(unsigned*a,unsigned*n,unsigned idx){unsigned i;if
 static unsigned shopping_equip_selector(unsigned code){return (code%100000u)/10000u;}
 static int shopping_equip_slot_for_code(unsigned code){unsigned s;if(code<10000000u||code>10999999u)return -1;s=shopping_equip_selector(code);if(s==3u)return 0;if(s==0u)return 1;if(s==1u)return 2;if(s==2u)return 3;if(s==5u)return 4;if(s==6u)return 6;return -1;}
 static int shopping_avatar_lookup(unsigned code,unsigned*price,unsigned*slot_code){int lo=0,hi=(int)SHOPPING_AVATAR_CATALOG_COUNT-1;while(lo<=hi){int m=(lo+hi)/2;unsigned c=shopping_avatar_catalog[m].code;if(c==code){if(price)*price=shopping_avatar_catalog[m].price;if(slot_code)*slot_code=shopping_avatar_catalog[m].slot_code;return 1;}if(c<code)lo=m+1;else hi=m-1;}return 0;}
+static unsigned shopping_avatar_wallet_price(unsigned code,unsigned mode){int lo=0,hi=(int)SHOPPING_AVATAR_CATALOG_COUNT-1;if(mode!=0u&&mode!=4u)return 0u;while(lo<=hi){int m=(lo+hi)/2;unsigned c=shopping_avatar_catalog[m].code;if(c==code)return mode==0u?shopping_avatar_catalog[m].hans_price:shopping_avatar_catalog[m].price;if(c<code)lo=m+1;else hi=m-1;}return 0u;}
 static int shopping_pet_lookup(unsigned code,unsigned*price,unsigned*age_a,unsigned*age_b){int lo=0,hi=(int)SHOPPING_PET_CATALOG_COUNT-1;while(lo<=hi){int m=(lo+hi)/2;unsigned c=shopping_pet_catalog[m].code;if(c==code){if(price)*price=shopping_pet_catalog[m].price;if(age_a)*age_a=shopping_pet_catalog[m].age_a;if(age_b)*age_b=shopping_pet_catalog[m].age_b;return 1;}if(c<code)lo=m+1;else hi=m-1;}return 0;}
 static void shopping_fill_appearance(unsigned ids[9]){ids[0]=g_stable_equip[0];ids[1]=g_stable_equip[1];ids[2]=g_stable_equip[2];ids[3]=g_stable_equip[3];ids[4]=0;ids[5]=g_stable_equip[4];ids[6]=g_stable_effect;ids[7]=g_stable_pet;ids[8]=g_stable_gender;}
 static void shopping_sync_legacy_equipped(void){unsigned i,n=0;for(i=0;i<5u;i++)if(g_stable_equip[i]&&n<7u)g_equipped[n++]=g_stable_equip[i];while(n<7u)g_equipped[n++]=0;g_equipped_n=0;for(i=0;i<5u;i++)if(g_stable_equip[i])g_equipped_n++;g_effect_equipped=g_stable_effect;g_pet_equipped=g_stable_pet;g_stable_body=g_stable_equip[1];}
@@ -70,12 +71,15 @@ static int shopping_inventory_apply_c47d(const unsigned char*frame,int len){
     for(i=0;i<5u;i++)g_stable_equip[i]=oldeq[i];g_stable_effect=oldeffect;g_stable_pet=oldpet;shopping_sync_legacy_equipped();printf("  [INVDB163] C47D save failed; rolled back full snapshot\n");fflush(0);return 0;
 }
 static int shopping_purchase_avatar(const unsigned char*frame,int len,unsigned*added_out){
-    unsigned count,i,j,oldn=g_owned_equipment_n,added=0,code,price,slot,total_price=0u;stable_u64 oldcoin=g_profile_coin_hans;
-    unsigned pending[4];if(len!=0x44)return 0;count=(unsigned char)frame[0x0E];if(count==0u||count>4u)return 0;
-    for(i=0;i<count;i++){code=shopping_read32(frame,0x1Cu+i*4u);if(!shopping_avatar_lookup(code,&price,&slot)||shopping_equip_slot_for_code(code)<0)return 0;if(shopping_find(g_owned_equipment,g_owned_equipment_n,code)>=0)return 0;for(j=0;j<i;j++)if(pending[j]==code)return 0;if(total_price>0xFFFFFFFFu-price)return 0;total_price+=price;pending[i]=code;}
-    if(g_profile_coin_hans<(stable_u64)total_price)return 0;
-    for(i=0;i<count;i++)if(!shopping_add_unique(g_owned_equipment,&g_owned_equipment_n,SHOPPING_MAX_OWNED_EQUIP,pending[i])){g_owned_equipment_n=oldn;return 0;}added=count;g_profile_coin_hans-=(stable_u64)total_price;
-    if(!shopping_state_save()){g_owned_equipment_n=oldn;g_profile_coin_hans=oldcoin;return 0;}if(added_out)*added_out=added;return 1;
+    unsigned count,i,j,mode,oldn=g_owned_equipment_n,added=0,code,price,total_price=0u;
+    stable_u64 *wallet,oldbalance;unsigned pending[10];
+    if(len!=0x44)return 0;mode=frame[8];if(mode!=0u&&mode!=4u)return 0;
+    wallet=mode==0u?&g_profile_coin_hans:&g_profile_nana_cash;oldbalance=*wallet;
+    count=(unsigned char)frame[0x0E];if(count==0u||count>10u)return 0;
+    for(i=0;i<count;i++){code=shopping_read32(frame,0x1Cu+i*4u);price=shopping_avatar_wallet_price(code,mode);if(!price||shopping_equip_slot_for_code(code)<0)return 0;if(shopping_find(g_owned_equipment,g_owned_equipment_n,code)>=0)return 0;for(j=0;j<i;j++)if(pending[j]==code)return 0;if(total_price>0xFFFFFFFFu-price)return 0;total_price+=price;pending[i]=code;}
+    if(*wallet<(stable_u64)total_price)return 0;
+    for(i=0;i<count;i++)if(!shopping_add_unique(g_owned_equipment,&g_owned_equipment_n,SHOPPING_MAX_OWNED_EQUIP,pending[i])){g_owned_equipment_n=oldn;return 0;}added=count;*wallet-=(stable_u64)total_price;
+    if(!shopping_state_save()){g_owned_equipment_n=oldn;*wallet=oldbalance;return 0;}if(added_out)*added_out=added;return 1;
 }
 static int shopping_purchase_misc(unsigned code){unsigned k=code/1000000u,oldn=g_owned_misc_n;if(k<42u||k>48u)return 0;if(!shopping_add_unique(g_owned_misc,&g_owned_misc_n,SHOPPING_MAX_MISC_ITEMS,code))return 0;if(shopping_state_save())return 1;g_owned_misc_n=oldn;return 0;}
 static int shopping_purchase_pet(unsigned code,unsigned*price_out){unsigned price,a,b;stable_u64 oldcoin;if(!shopping_pet_lookup(code,&price,&a,&b)||price==0u)return -1;if(price_out)*price_out=price;if(shopping_find(g_owned_pets,g_owned_pets_n,code)>=0||shopping_find(g_gift_pets,g_gift_pets_n,code)>=0)return -2;if(g_gift_pets_n>=SHOPPING_MAX_GIFT_PETS)return -3;if(g_profile_coin_hans<(stable_u64)price)return -4;oldcoin=g_profile_coin_hans;g_profile_coin_hans-=(stable_u64)price;g_gift_pets[g_gift_pets_n++]=code;if(shopping_state_save())return 1;g_gift_pets_n--;g_profile_coin_hans=oldcoin;return -5;}

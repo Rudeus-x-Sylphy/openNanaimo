@@ -17,6 +17,23 @@ catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
 
 static async Task RunAsync(string[] args)
 {
+    string data = Path.GetFullPath(Option("--data", "adapter-data"));
+    string profile = Path.GetFullPath(Option("--profile", "profile.ini"));
+    // Resolve before any diagnostic or service can initialize the lazy catalog.
+    bool storyChaptersOn = !args.Contains("--no-story-chapters")
+        && (args.Contains("--story-chapters")
+            || ReadProfileBoolean(profile, "story_chapters", defaultValue: true)
+            || File.Exists(Path.Combine(data, "story_chapters.flag")));
+    QuestCatalog.StoryChaptersEnabled = storyChaptersOn;
+    bool storyChaptersStart = storyChaptersOn
+        && (args.Contains("--story-chapters-start")
+            || ReadProfileBoolean(profile, "story_chapters_start", defaultValue: true)
+            || File.Exists(Path.Combine(data, "story_chapters_start.flag")));
+    if (args.Contains("--dungeon-encounter-self-test"))
+    {
+        DungeonEncounterChecks.Run();
+        return;
+    }
     if (args.Contains("--chapter-reward-matrix-self-test"))
     {
         await ChapterRewardMatrixChecks.RunAsync();
@@ -36,7 +53,6 @@ static async Task RunAsync(string[] args)
     {
         // Diagnostic: load the catalog from this build's 资源/数据 and report what
         // the real parser accepted. Never starts a server or a worker.
-        QuestCatalog.StoryChaptersEnabled = !args.Contains("--no-story-chapters");
         var chapterIds = new[] { 73_000_000u, 73_000_001u, 73_000_002u, 73_000_003u };
         var chapters = chapterIds.Select(id => QuestCatalog.TryGetQuest(id, out var quest)
             ? new
@@ -58,6 +74,7 @@ static async Task RunAsync(string[] args)
         {
             schema = "openNanaimo.quest-catalog-probe.v1",
             story_chapters = QuestCatalog.StoryChaptersEnabled,
+            story_chapters_start = storyChaptersStart,
             quests = QuestCatalog.Quests.Count,
             scrolls = QuestCatalog.Scrolls.Count,
             mainline = QuestCatalog.MainLineQuestIds.Count,
@@ -247,6 +264,11 @@ static async Task RunAsync(string[] args)
         await ShopCurrencyPaginationChecks.RunAsync();
         return;
     }
+    if (args.Contains("--korean-wardrobe-self-test"))
+    {
+        await KoreanWardrobeChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--village-position-self-test"))
     {
         await VillagePositionChecks.RunAsync();
@@ -317,9 +339,7 @@ string Option(string name, string fallback)
     int index = Array.IndexOf(args, name);
     return index >= 0 && index + 1 < args.Length ? args[index + 1] : fallback;
 }
-string data = Path.GetFullPath(Option("--data", "adapter-data"));
 string native = Path.GetFullPath(Option("--native", "nanaimo_gameplay_bridge.exe"));
-string profile = Path.GetFullPath(Option("--profile", "profile.ini"));
 string bindAddressText = Option("--bind-address", "127.0.0.1");
 if (!System.Net.IPAddress.TryParse(bindAddressText, out var bindAddress)
     || bindAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork
@@ -330,19 +350,6 @@ bindAddressText = bindAddress.ToString();
 bool unlockAllDungeons = ReadProfileBoolean(profile, "unlock_all_dungeons", defaultValue: true);
 bool requireMonkTravel = args.Contains("--require-monk-travel")
     || ReadProfileBoolean(profile, "require_monk_village_travel", defaultValue: false);
-// Candidate chapter rows stay off unless the operator asks for them; the
-// shipped catalog is validated exactly while this is false. The launcher
-// rewrites the profile on every start, so the switch also lives in files it
-// does not touch: <data>/story_chapters.flag and story_chapters_start.flag.
-bool storyChaptersOn = !args.Contains("--no-story-chapters")
-    && (args.Contains("--story-chapters")
-        || ReadProfileBoolean(profile, "story_chapters", defaultValue: false)
-        || File.Exists(Path.Combine(data, "story_chapters.flag")));
-QuestCatalog.StoryChaptersEnabled = storyChaptersOn;
-bool storyChaptersStart = !args.Contains("--no-story-chapters")
-    && (args.Contains("--story-chapters-start")
-        || ReadProfileBoolean(profile, "story_chapters_start", defaultValue: false)
-        || File.Exists(Path.Combine(data, "story_chapters_start.flag")));
 var rewardReview = Option("--story-chapters-reward", ReadProfileValue(profile, "story_chapters_reward") ?? "");
 if (rewardReview.Length == 0)
 {
@@ -435,7 +442,7 @@ try
         new[] { new AdapterEndpoint { Id = 1, Host = bindAddressText, Port = worldPort } }, stop.Token);
     var profiles = host.RunLocalProfileListenerAsync(bindAddress, profilePort, stop.Token, Path.GetDirectoryName(profile)!);
     var gmControl = GmRuntimeControl.RunAsync(data, host, rooms, Console.WriteLine, stop.Token);
-    Console.WriteLine($"READY bind={bindAddressText} login={loginPort} world={worldPort} profiles={profilePort} native=52050 data={data}");
+    Console.WriteLine($"READY bind={bindAddressText} login={loginPort} world={worldPort} profiles={profilePort} native=52050 data={data} story_chapters={storyChaptersOn} story_chapters_start={storyChaptersStart}");
     if (args.Contains("--self-test"))
     {
         await MigrationChecks.RunAsync(database, profile, loginPort, worldPort, profilePort, rooms);

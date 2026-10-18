@@ -64,9 +64,9 @@ public sealed partial class NetworkAdapterService
 
     /// <summary>
     /// Keep the fixed type-2 slot in step with the stored chapter progress. The
-    /// row is never created from nothing: without a chapter row (or with the
-    /// feature switched off) this is a no-op, and the database method re-checks
-    /// that the quest and objective still match before it writes. Only a monk
+    /// first row starts after the tutorial when auto-start is enabled; existing
+    /// progress is restored without restarting it. The database re-checks that
+    /// the quest and objective still match before it writes. Only a monk
     /// receipt earned at this objective is reconciled; rewards require C599.
     /// </summary>
     private async Task EnsureSessionChapterTaskAsync(ConnectionSession session, CancellationToken token)

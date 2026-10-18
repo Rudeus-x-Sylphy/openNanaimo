@@ -457,8 +457,8 @@ foreach($installed in @($false,$true)){
         launcher = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         rows = json.loads((ROOT / 'gui_launcher/data/inventory_furniture.json').read_text('utf-8-sig'))
         preview = json.loads((ROOT / 'gui_launcher/data/previews/furniture_icons.json').read_text('utf-8-sig'))
-        self.assertEqual(len(rows), 781)
-        self.assertEqual(len(preview), 781)
+        self.assertEqual(len(rows), 2008)
+        self.assertEqual(len(preview), 2008)
         self.assertTrue((ROOT / 'gui_launcher/data/previews/furniture_icons.png').is_file())
         for invariant in ("tabFurniture.Text='装饰家具查表'", "New-GridTable 'furniture'",
                           "Update-CatalogGridPreview 'furniture'", '$furniturePreviewPane.Picture.Image'):

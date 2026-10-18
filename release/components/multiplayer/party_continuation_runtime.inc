@@ -12,6 +12,7 @@ static void teamplay_continuation_clear_current(void){
 static void teamplay_continuation_arm_room(unsigned real_stage,unsigned show_stage,unsigned difficulty,unsigned dungeon,unsigned mode){
     int i,src=g_multi_current;
     if(src<0||src>=MULTI_MAX_PLAYERS)return;
+    special_encounters_reset();
     g_teamplay_start_epoch=0u;g_teamplay_start_released=0;
     memset(g_teamplay_cf7f_arrived,0,sizeof(g_teamplay_cf7f_arrived));
     memset(g_multi_start_profile_pending,0,sizeof(g_multi_start_profile_pending));

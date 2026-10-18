@@ -3976,13 +3976,13 @@ public sealed partial class DatabaseService
         if (accountId <= 0
             || characterId <= 0
             || string.IsNullOrEmpty(sessionId)
-            || paymentMode != 4
+            || paymentMode is not (0 or 4)
             || items.Count is < 1 or > 10
             || items.Any(item => item.UnitPrice == 0)
             || items.Any(item => !ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
                 || catalogItem.Category != 10
                 || catalogItem.Section != InventorySection.Clothing
-                || catalogItem.CashPrice != item.UnitPrice)
+                || (paymentMode == 0 ? catalogItem.HansPrice : catalogItem.CashPrice) != item.UnitPrice)
             || items.Select(item => item.ItemCode).Distinct().Count() != items.Count)
             return (false, false, "Invalid NaNa avatar purchase parameters.", [], 0, 0);
 
@@ -4020,7 +4020,7 @@ public sealed partial class DatabaseService
             cash = reader.GetInt64(1);
         }
 
-        if (cash < totalPrice)
+        if ((paymentMode == 0 ? hans : cash) < totalPrice)
         {
             await transaction.RollbackAsync(cancellationToken);
             return (false, true, "Insufficient NaNa/Cash balance.", [], hans, cash);
@@ -4057,15 +4057,17 @@ public sealed partial class DatabaseService
         await using (var debit = connection.CreateCommand())
         {
             debit.Transaction = transaction;
-            debit.CommandText = """
+            // Wallet is selected from a closed enum, never client-provided SQL.
+            var wallet = paymentMode == 0 ? "Hans" : "Cash";
+            debit.CommandText = $"""
                 UPDATE Characters
-                SET Cash = Cash - $totalPrice,
+                SET {wallet} = {wallet} - $totalPrice,
                     LastSavedAt = $now
                 WHERE Id = $characterId
                   AND AccountId = $accountId
                   AND IsOnline = 1
                   AND ActiveSessionId = $sessionId
-                  AND Cash >= $totalPrice
+                  AND {wallet} >= $totalPrice
                   AND EXISTS (
                       SELECT 1 FROM Accounts
                       WHERE Id = $accountId

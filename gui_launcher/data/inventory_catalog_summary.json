@@ -1,18 +1,18 @@
 {
   "version": 1,
   "counts": {
-    "inventory_clothing.json": 3885,
+    "inventory_clothing.json": 4785,
     "inventory_pets.json": 990,
     "inventory_pet_gems.json": 18931,
     "inventory_game_items.json": 21892,
-    "inventory_furniture.json": 781,
+    "inventory_furniture.json": 2008,
     "inventory_cards.json": 560
   },
   "sources": {
     "inter._D3": {
       "file": "inter._D3",
-      "bytes": 167552,
-      "sha256": "EA3B1B1726FA999973338716C0F3E78E65FEF77992D38FCD7C0724381DF0234B"
+      "bytes": 437952,
+      "sha256": "910FE9355F92EF3178CBD6CE1FD10D2C55BBE79622C9D65659E5B25D51E5F1A1"
     },
     "ddakg._D4": {
       "file": "ddakg._D4",
@@ -83,6 +83,11 @@
       "file": "Sddakg._D35",
       "bytes": 6080,
       "sha256": "E08D122701372282BDB593AA776379BE338CC2EB4B26D3CD1DDBFCD176901C73"
+    },
+    "ava._D1": {
+      "file": "ava._D1",
+      "bytes": 975248,
+      "sha256": "BEB7903A2BA9ABDBA545183DC39E659DF9AB0AB40CC2C57859094B90210781F1"
     }
   }
 }

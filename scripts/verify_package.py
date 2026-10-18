@@ -193,6 +193,66 @@ def verify_client_presence(root: Path, manifest: dict) -> str:
     return 'presence-only-no-hash-local-derived-verification'
 
 
+def wardrobe_brand_surface(rel: str, text: str) -> str:
+    """Keep exact in-world catalog text separate from project descriptions."""
+    import ast
+    import io
+    import tokenize
+    name = '\u98de\u884c\u5c9b'
+    accepted = {
+        name + '\u4e8c\u5468\u5e74\u7eaa\u5ff5\u8d60\u793c',
+        '\u611f\u8c22\u4f60\u4e00\u76f4\u559c\u7231' + name + '!',
+        '\u6211\u4eec\u662f' + name + '\u7684\u6700\u4f73\u60c5\u4fa3!',
+        '\u6211\u4eec\u662f' + name + '\u7684\u68a6\u5e7b\u60c5\u4fa3!',
+        *(name + '\u6846' + str(i) for i in range(1, 6)),
+    }
+    prefix = name + '\u5e86\u5178\u5956\u54c1:'
+    def content(value):
+        if value == 'Q' * 2 + name + '\u73a9\u5bb6\u76f8\u7247\u6846':
+            return '[in-world-frame-description]'
+        if value in accepted or value.startswith(prefix):
+            return value.replace(name, '[in-world-name]', 1)
+        return value
+    if rel == 'scripts/wardrobe_localization.py':
+        tokens = []
+        for token in tokenize.generate_tokens(io.StringIO(text).readline):
+            if token.type == tokenize.STRING:
+                try:
+                    value = ast.literal_eval(token.string)
+                except (ValueError, SyntaxError):
+                    value = None
+                if isinstance(value, str) and content(value) != value:
+                    token = token._replace(string=repr(content(value)))
+            tokens.append(token)
+        return tokenize.untokenize(tokens)
+    gui = rel in {'gui_launcher/data/equipment.json',
+                  'gui_launcher/data/inventory_clothing.json',
+                  'gui_launcher/data/inventory_furniture.json'}
+    recipe = rel == 'manifest/korean_wardrobe_catalog.json'
+    if not (gui or recipe):
+        return text
+    document = json.loads(text)
+    if (gui and not isinstance(document, list)
+            or recipe and (not isinstance(document, dict)
+                           or set(document) != {'clothing', 'furniture'})):
+        return text
+    def walk(value, path=()):
+        if isinstance(value, dict):
+            return {key: walk(item, path+(key,)) for key,item in value.items()}
+        if isinstance(value, list):
+            return [walk(item,path+(i,)) for i,item in enumerate(value)]
+        if isinstance(value, str):
+            gui_field = gui and len(path)==2 and path[1] in {
+                'name','description','effect','effect_description','condition_description'}
+            recipe_name = recipe and len(path)==3 and path[2]=='name'
+            recipe_field = (recipe and len(path)==4 and path[2]=='localized_row'
+                            and path[3] in ((1,22,23,24) if path[0]=='clothing' else (1,10,11,12)))
+            if gui_field or recipe_name or recipe_field:
+                return content(value)
+        return value
+    return json.dumps(walk(document),ensure_ascii=False)
+
+
 def public_brand_surface(rel: str, text: str) -> str:
     """Separate canonical in-world names from publication terminology."""
     schemas = {
@@ -201,7 +261,7 @@ def public_brand_surface(rel: str, text: str) -> str:
         'release/components/story_chapters/chapters.json': 'openNanaimo.chapter-story.v1',
     }
     if rel not in schemas:
-        return text
+        return wardrobe_brand_surface(rel, text)
     document = json.loads(text)
     if document.get('schema') != schemas[rel]:
         return text

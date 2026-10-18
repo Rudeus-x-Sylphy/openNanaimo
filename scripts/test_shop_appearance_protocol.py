@@ -204,13 +204,13 @@ reset();shopping_fill_appearance(r);r[1]=10100005u;fail_shop_save=1;assert(!shop
         database = text(MANAGED_DB)
         catalog = text(MANAGED_CATALOG)
         avatar_loader = catalog[catalog.index("private static void LoadAvatars"):catalog.index("private static void LoadInteriors")]
-        self.assertIn("null, 7, InventorySection.Clothing", avatar_loader)
+        self.assertIn("8, 7, InventorySection.Clothing", avatar_loader)
         self.assertIn("cashPriceField: 9", avatar_loader)
         self.assertNotIn("AddItem(result, fields, offset, 4, 1, 9, 7", avatar_loader)
         route = network[network.index("case 0xC3CD"):network.index("case 0xC40B")]
-        self.assertIn("catalogItem.CashPrice == 0", route)
+        self.assertIn("catalogItem.HansPrice : catalogItem.CashPrice) == 0", route)
         self.assertIn("catalogItem.CashPrice", route)
-        self.assertNotIn("catalogItem.HansPrice", route)
+        self.assertIn("catalogItem.HansPrice", route)
         builder = network[network.index("private static byte[] BuildNanaPurchaseResultPayload"):network.index("private static byte[] BuildShopGiftResultPayload")]
         self.assertIn("long cash,", builder)
         self.assertIn("long hans)", builder)
@@ -218,11 +218,12 @@ reset();shopping_fill_appearance(r);r[1]=10100005u;fail_shop_save=1;assert(!shop
         self.assertIn("Hans at frame+24", builder)
         self.assertLess(builder.index("Math.Max(0, cash)"), builder.index("Math.Max(0, hans)"))
         transaction = database[database.index("PurchaseNanaAvatarItemsAsync"):database.index("PurchaseShopItemAsync", database.index("PurchaseNanaAvatarItemsAsync"))]
-        self.assertIn("catalogItem.CashPrice != item.UnitPrice", transaction)
-        self.assertIn("if (cash < totalPrice)", transaction)
-        self.assertIn("SET Cash = Cash - $totalPrice", transaction)
-        self.assertIn("AND Cash >= $totalPrice", transaction)
-        self.assertNotIn("SET Hans = Hans - $totalPrice", transaction)
+        self.assertIn("catalogItem.HansPrice : catalogItem.CashPrice) != item.UnitPrice", transaction)
+        self.assertIn("if ((paymentMode == 0 ? hans : cash) < totalPrice)", transaction)
+        self.assertIn('paymentMode == 0 ? "Hans" : "Cash"', transaction)
+        self.assertIn("SET {wallet} = {wallet} - $totalPrice", transaction)
+        self.assertIn("AND {wallet} >= $totalPrice", transaction)
+        self.assertIn("paymentMode is not (0 or 4)", transaction)
 
     def test_managed_c3d1_offsets_and_face_scope_match_client(self):
         network = text(MANAGED_NET)

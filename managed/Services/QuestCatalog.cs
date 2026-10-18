@@ -53,7 +53,7 @@ public static class QuestCatalog
     internal const int ChapterMaximum = 16;
     private const uint FirstChapterQuest = 73_000_000;
     private const uint FirstChapterObjective = 75_100_000;
-    internal static bool StoryChaptersEnabled { get; set; }
+    internal static bool StoryChaptersEnabled { get; set; } = true;
 
     internal static int ChapterExtraObjectives(int chapters) => 3 * chapters + chapters / 4;
 
@@ -363,7 +363,7 @@ public static class QuestCatalog
     }
 
     /// <summary>
-    /// The opt-in chapter rows must match the reviewed topology: one quest per
+    /// The chapter rows must match the reviewed topology: one quest per
     /// chapter, three objectives plus a monk reference every fourth chapter, and
     /// contiguous ids starting at 73000000 / 75100000. Any prefix of the sixteen
     /// chapters is accepted, so a single-chapter probe needs only three extra
