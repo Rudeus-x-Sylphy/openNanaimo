@@ -1,4 +1,5 @@
-"""Core execution policy, every resource mode, and production packet ordering."""
+"""Core execution sets, stage transitions, accounting and member delivery."""
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -6,6 +7,82 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 TCC=ROOT/'tools/tcc/tcc.exe'
+CONFIRMED_SETS={
+ (0,1,0,0,0):'ep02_01_e_gate',
+ (0,1,1,0,0):'ep02_02_e_gate',
+ (0,2,1,0,0):'ep03_st02_e_gate',
+ (0,2,2,0,0):'ep03_st03_e_gate_00',
+ (0,3,0,0,0):'ep03_dg00_bbm_00',
+ (0,3,2,0,0):'ep03_dg02_bbm00',
+ (0,3,2,1,0):'ep03_bbm_00',
+ (0,3,2,1,1):'ep03_bbm_01',
+ (0,4,0,0,0):'end_ep04_dg00_main',
+ (0,4,1,0,0):'end_ep04_dg01_main',
+ (0,4,2,0,0):'end_ep04_dg02_main',
+ (0,4,2,1,0):'end_ep04_bbm_00',
+ (0,4,2,1,1):'end_ep04_bbm_01',
+ (0,5,0,0,0):'ep05_ending00',
+ (0,5,1,0,0):'ep05_ending01',
+ (0,6,0,0,0):'ep06_ending00_00',
+ (0,6,1,0,0):'ep06_ending01_00',
+ (0,7,0,0,0):'ep07_ending00_00',
+ (0,7,1,0,0):'ep07_ending01_00',
+ (0,7,2,0,0):'ep07_ending02_00',
+ (0,8,1,0,0):'ep08_ending01_00',
+ (0,10,0,0,0):'ep10_ending00_00',
+ (0,10,2,0,0):'ep10_ending02_00',
+ (0,12,0,0,0):'ep12_ending00_00',
+ (0,12,2,0,0):'ep12_ending02_00',
+ (0,14,2,1,0):'ep14_bbm_00_01',
+}
+PRESERVED_SETS=(
+ ((0,5,2,0,0),511,((1,0),)),
+ ((0,6,2,0,0),511,((0,2),)),
+ ((0,9,2,0,0),63,((1,0),)),
+ ((0,9,2,0,0),384,((0,0),)),
+ ((0,10,2,1,0),511,((0,20),)),
+ ((0,16,0,1,0),511,((0,8),)),
+ ((0,20,0,1,0),511,((2,12),)),
+)
+
+def expected_execution_sets():
+    import generate_lumineos_combat as tables
+    source=(ROOT/'release/components/boss/component_data.inc').read_text('utf8')
+    profiles=tables.numeric_rows(source,'boss_component_boss_profiles')
+    modes=tables.numeric_rows(source,'boss_component_boss_modes')
+    components=tables.numeric_rows(source,'boss_component_boss_components')
+    registry=json.loads((ROOT/'release/components/stage_damage/boss_contact_registry.json').read_text('utf8'))
+    bindings={tuple(s['key']):s['parts'] for s in registry['scopes']}
+    def family(name):
+        stem=Path(name).stem.lower()
+        return stem[:-2] if stem.endswith(('_l','_m','_h')) else stem
+    result=[]
+    for pi,p in enumerate(profiles):
+        for mode in range(p[5]):
+            key=(*p[:4],mode)
+            if key in CONFIRMED_SETS:
+                children={child for m,child,name in bindings[p[:5]]
+                          if m==mode and family(name)==CONFIRMED_SETS[key]}
+                definition=modes[p[8]+mode]
+                cores=tuple((c[2],c[3]) for c in components[definition[0]:definition[0]+definition[2]]
+                            if c[2] in children and c[0]>0)
+                if not children or not cores or p[6]:
+                    raise AssertionError(('Invalid execution set',key,p[4],children,cores))
+                result.append((pi,mode,1,cores))
+            else:
+                matches=[cores for k,slots,cores in PRESERVED_SETS if k==key and slots&(1<<p[4])]
+                if len(matches)>1:raise AssertionError('Overlapping preserved sets')
+                if matches:result.append((pi,mode,0,matches[0]))
+    assert len(CONFIRMED_SETS)==26 and sum(row[2] for row in result)==234
+    assert len(result)==287 and max(len(row[3]) for row in result)==3
+    return result
+
+def render_expected_sets(rows):
+    def array(values):return '{'+','.join(map(str,values))+'}'
+    return '\n'.join(' {'+','.join((str(pi),str(mode),str(confirmed),str(len(cores)),
+                                   array(c for c,o in cores),array(o for c,o in cores)))+'},'
+                     for pi,mode,confirmed,cores in rows)
+
 CORE=r'''
 #include <assert.h>
 #include <stdio.h>
@@ -98,6 +175,113 @@ static void cases(void){
 int main(void){cases();audit(0);audit(1);return 0;}
 '''
 
+SETS=r'''
+struct expected_execution_set {unsigned profile,mode,confirmed,count,child[3],ordinal[3];};
+static const struct expected_execution_set expected_sets[]={
+@EXPECTED_SETS@
+};
+static const struct expected_execution_set*expected_set(unsigned pi,unsigned mode){
+ unsigned i;for(i=0;i<sizeof(expected_sets)/sizeof(expected_sets[0]);i++)if(expected_sets[i].profile==pi&&expected_sets[i].mode==mode)return &expected_sets[i];return 0;
+}
+static int expected_core(const struct expected_execution_set*e,unsigned child,unsigned ordinal){
+ unsigned i;for(i=0;i<e->count;i++)if(e->child[i]==child&&e->ordinal[i]==ordinal)return 1;return 0;
+}
+static unsigned slot_for(const struct boss_hp_sync_context*c,unsigned child,unsigned ordinal){
+ const struct boss_component_boss_component*x;unsigned slot;assert(boss_component_boss_find_loaded_component(c,child,ordinal,&x,&slot));return slot;
+}
+static void declarations(void){
+ unsigned pi,mode,i,explicit_count=0,confirmed=0,defaults=0;
+ struct boss_hp_sync_context c;
+ for(pi=0;pi<BOSS_COMPONENT_BOSS_PROFILE_COUNT;pi++){
+  const struct boss_component_boss_profile*p=&boss_component_boss_profiles[pi];
+  for(mode=0;mode<p->mode_count;mode++){
+   const struct expected_execution_set*e=expected_set(pi,mode);
+   const struct boss_execution_policy*q=boss_execution_policy_find(p,mode);
+   begin(&c,p,mode);assert((e!=0)==(q!=0));
+   if(e){explicit_count++;confirmed+=e->confirmed;assert(q->core_count==e->count&&c.execution_core_count==e->count);}
+   else defaults++;
+   for(i=0;i<c.component_count;i++){
+    const struct boss_component_boss_component*x=&boss_component_boss_components[c.component_def_index[i]];
+    unsigned required=x->scaled_hp&&(e?expected_core(e,x->child,x->ordinal):1);
+    assert((c.execution_core[i]!=0)==required);
+   }
+  }
+ }
+ assert(explicit_count==287&&confirmed==234&&defaults+explicit_count==BOSS_COMPONENT_BOSS_MODE_COUNT);
+ printf("BOSS_EXECUTION_SETS_PASS confirmed=%u explicit=%u default_modes=%u\n",confirmed,explicit_count,defaults);
+}
+static void required_set_orders(void){
+ static const unsigned orders[6][3]={{0,1,2},{0,2,1},{1,0,2},{1,2,0},{2,0,1},{2,1,0}};
+ unsigned ei,order,contact,aux_first,i,j,trials=0;
+ struct boss_hp_sync_context c;struct boss_hp_sync_result r;
+ for(ei=0;ei<sizeof(expected_sets)/sizeof(expected_sets[0]);ei++){
+  const struct expected_execution_set*e=&expected_sets[ei];
+  const struct boss_component_boss_profile*p=&boss_component_boss_profiles[e->profile];
+  if(!e->confirmed)continue;
+  for(order=0;order<6;order++){
+   if(e->count==1&&order)continue;
+   if(e->count==2&&(orders[order][0]>1||orders[order][1]>1))continue;
+   for(contact=0;contact<2;contact++)for(aux_first=0;aux_first<2;aux_first++){
+    unsigned actual=0,initial_hp,residual=0,epoch;
+    begin(&c,p,e->mode);initial_hp=c.hp;trials++;
+    if(aux_first)for(i=0;i<c.component_count;i++)if(c.component_hp[i]&&!c.execution_core[i]){
+     unsigned loss=c.component_hp[i];assert(hit(&c,i,100000000,contact,&r)==1);actual+=loss;
+     assert(!r.executed&&!r.intermediate_terminal&&!r.final_terminal);
+    }
+    for(i=0;i<e->count;i++){
+     unsigned target=orders[order][i],slot=slot_for(&c,e->child[target],e->ordinal[target]),loss=c.component_hp[slot];
+     assert(loss&&c.execution_core[slot]);
+     if(loss>1){
+      assert(hit(&c,slot,loss-1,contact,&r)==1);actual+=loss-1;
+      assert(c.component_hp[slot]==1&&!r.component_first_terminal&&!r.executed&&!r.intermediate_terminal&&!r.final_terminal);
+     }
+     if(i+1==e->count)residual=c.hp-1;
+     assert(hit(&c,slot,1,contact,&r)==1);actual++;
+     assert(r.component_first_terminal&&r.applied_damage==1&&c.cumulative_damage==actual);
+     if(i+1<e->count)assert(c.hp&&!r.executed&&!r.intermediate_terminal&&!r.final_terminal);
+    }
+    assert(!c.hp&&actual+residual==initial_hp&&r.execution_residual_hp==residual&&r.executed==(residual>0));
+    for(j=0;j<c.component_count;j++)assert(!c.component_hp[j]);
+    for(j=0;j<BOSS_HP_SYNC_MAX_CHILDREN;j++)assert(!c.child_hp[j]);
+    if(e->mode+1<p->mode_count)assert(r.intermediate_terminal&&!r.first_terminal&&!r.final_terminal&&c.awaiting_next_mode);
+    else assert(r.first_terminal&&r.final_terminal&&c.final_terminal_seen);
+    epoch=c.battle_epoch;
+    boss_hp_sync_begin_game_domain(&c,p->episode,p->hd,p->dungeon,p->stage_index,p->slot/3,p->slot);
+    assert(c.battle_epoch==epoch+1&&!c.mode_execution_residual_hp&&!c.prior_execution_residual_hp&&!c.final_terminal_seen);
+    assert(boss_component_boss_load_mode(&c,e->mode)&&c.hp==initial_hp);
+   }
+  }
+ }
+ assert(trials==1404);printf("BOSS_EXECUTION_REQUIRED_ORDERS_PASS trials=%u\n",trials);
+}
+static void phase_chain(void){
+ unsigned slot,contact,i,chains=0;
+ for(slot=0;slot<9;slot++)for(contact=0;contact<2;contact++){
+  const struct boss_component_boss_profile*p=boss_component_boss_find_profile(0,3,2,1,slot);
+  const struct boss_component_boss_component*next;struct boss_hp_sync_context c;struct boss_hp_sync_result r;
+  unsigned char req[32]={0},body[60];unsigned initial,residual,actual,next_max;
+  begin(&c,p,0);initial=c.hp;assert(c.execution_core_count==2);
+  req[0x12]=1;boss_hp_sync_put32(req,0x14,2);
+  assert(boss_hp_sync_apply_d011_attack(&c,req,32,100000000,1,&r)==BOSS_HP_SYNC_BAD_MODE&&c.hp==initial&&c.mode_index==0);
+  i=slot_for(&c,1,1);actual=c.component_hp[i];assert(hit(&c,i,100000000,contact,&r)==1&&!r.executed&&!r.intermediate_terminal);
+  i=slot_for(&c,1,2);actual+=c.component_hp[i];assert(hit(&c,i,100000000,contact,&r)==1&&r.executed&&r.intermediate_terminal&&!r.final_terminal);
+  residual=r.execution_residual_hp;assert(residual&&c.awaiting_next_mode&&!c.hp&&c.cumulative_damage==actual);
+  assert(boss_hp_sync_encode_d012_payload(body,60,&r)==1&&!boss_hp_sync_get32(body,0x28));
+  memset(req,0,32);req[0x13]=1;boss_hp_sync_put32(req,0x14,2);
+  assert(boss_hp_sync_apply_d011_attack(&c,req,32,100000000,1,&r)==BOSS_HP_SYNC_TERMINAL_QUARANTINED);
+  assert(boss_component_boss_find_profile_component(p,1,0,2,&next,0));next_max=next->scaled_hp;
+  memset(req,0,32);req[0x12]=1;boss_hp_sync_put32(req,0x14,2);
+  assert(boss_hp_sync_apply_d011_attack(&c,req,32,next->basis+1,1,&r)==1);
+  assert(c.mode_index==1&&c.execution_core_count==1&&c.hp==next_max-1&&c.cumulative_damage==1);
+  assert(c.prior_execution_residual_hp==residual&&!c.mode_execution_residual_hp&&!r.final_terminal);
+  assert(boss_hp_sync_apply_d011_attack(&c,req,32,100000000,1,&r)==1&&r.final_terminal&&r.first_terminal&&!c.hp);
+  assert(r.cumulative_damage==actual+next_max);chains++;
+ }
+ assert(chains==18);printf("BOSS_EXECUTION_PHASE_CHAINS_PASS chains=%u\n",chains);
+}
+int main(void){declarations();required_set_orders();phase_chain();return 0;}
+'''
+
 SENDER=r'''
 #define main execution_unused_main
 #include "adapter/nanaimo_gameplay_bridge.c"
@@ -154,6 +338,11 @@ class BossExecutionTests(unittest.TestCase):
 
     def test_production_request_driven_two_member_cleanup_and_final_packet(self):
         self.run_harness('sender',SENDER)
+
+    def test_exact_sets_all_slots_member_orders_and_phase_isolation(self):
+        code='#define main existing_execution_main\n'+CORE+'\n#undef main\n'
+        code+=SETS.replace('@EXPECTED_SETS@',render_expected_sets(expected_execution_sets()))
+        self.run_harness('sets',code)
 
 if __name__=='__main__':
     unittest.main()

@@ -829,7 +829,7 @@
       },
       "adapter_runtime/adapter_manifest.json": {
         "size": 52662,
-        "sha256": "B13326E58DE67A46AA47F0E5AC26589BDB965A4963A33443A652DDC8CD511597"
+        "sha256": "06AF1B4B6A8C850BDB47D1955929C02E3A8F6FA3862D588859D77F04AB93CCF8"
       },
       "adapter_runtime/clretwrc.dll": {
         "size": 310568,
@@ -889,7 +889,7 @@
       },
       "adapter_runtime/nanaimo_gameplay_bridge.exe": {
         "size": 25872896,
-        "sha256": "FA827A09C7A4F99E707AF8563F9AE24CD1BA507250F77FDE71C36B612B4D9BF0"
+        "sha256": "AA14CA30742753FF5771B39AD3D9D2B45E14F89AC620A26FC496D3D8F17B936A"
       },
       "adapter_runtime/netstandard.dll": {
         "size": 100648,
@@ -3517,8 +3517,8 @@
       "sha256": "51FFE0E499D2431DE20E2E2ADFA1368A62FD8BAE9A1C3435C2BAAB577E9789BA"
     },
     "knowledge/索引.md": {
-      "size": 10347,
-      "sha256": "57B45F19C4DBB2A733C01F0FF8AB774203FA0BBF5DE75F173AEEF16E9C786C7C"
+      "size": 10595,
+      "sha256": "F2901985262BADC21F1E79ECA7E6F354907A9DC78C2BCCAC6A61830001F749B2"
     },
     "managed/Services/ArenaTargetCatalog.cs": {
       "size": 1948,
@@ -3997,8 +3997,8 @@
       "sha256": "13A3E7BFAA904CD19567B6A31E6A24F2B28F2E560C09A106EF884F5233BE94B1"
     },
     "scripts/test_boss_execution.py": {
-      "size": 10402,
-      "sha256": "C783AC73C872E544EFB8A06B21C9FC71206A3650026A4166A0E2998D9D3B5750"
+      "size": 20614,
+      "sha256": "4C76405EBDBBBDFA49B82A441B3D63323278F196921D7BF11A8122F2786BC3A8"
     },
     "scripts/test_boss_finish_audit.py": {
       "size": 3688,
@@ -4605,12 +4605,12 @@
       "sha256": "5725C63BAAA544B352051156F8796C38B182D4481BC027D9C17FDF88FA403A43"
     },
     "knowledge/业务/地宫/BOSS/索引.md": {
-      "size": 2167,
-      "sha256": "994F4FECA734EE44E2EC97D2C99537B1CE3675EB2A01031BFD8C545CA109089D"
+      "size": 2191,
+      "sha256": "8071FF062A8024206DA69A93C5A00E9C1397E574CC10109DE879B6082C513478"
     },
     "knowledge/业务/地宫/BOSS/组件与零生命附件.md": {
-      "size": 14294,
-      "sha256": "3B0BC9F48F417B643C927CFAE5BBC687344D10C4F7F5B2BC06399E964F0728B7"
+      "size": 15888,
+      "sha256": "0D0089E7FC53984624CFEF232B75A53793CC31AF4DC69D13E0E4686BB093310D"
     },
     "knowledge/业务/地宫/BOSS/阶段推进与开场.md": {
       "size": 3075,
@@ -5537,8 +5537,8 @@
       "sha256": "939723F23104A3C18F16CBEE33B79C89B1E002BE6747C22C069ACC7096434B8D"
     },
     "knowledge/工程/验证状态/地宫与成长验收.md": {
-      "size": 14068,
-      "sha256": "8000C1DB4674E3F06E9DB1AD19FBE0F9D533C07D3329E00115FB6D63F423AFE6"
+      "size": 14550,
+      "sha256": "6F286C3D9A2E073BA769DA9DB9EAF3DEE1F01B5BCD759B5059B3DD973CB92BD8"
     },
     "knowledge/工程/验证状态/层级与版本归属.md": {
       "size": 13330,
@@ -6406,7 +6406,7 @@
     },
     "adapter_runtime/adapter_manifest.json": {
       "size": 52662,
-      "sha256": "B13326E58DE67A46AA47F0E5AC26589BDB965A4963A33443A652DDC8CD511597"
+      "sha256": "06AF1B4B6A8C850BDB47D1955929C02E3A8F6FA3862D588859D77F04AB93CCF8"
     },
     "adapter_runtime/clretwrc.dll": {
       "size": 310568,
@@ -6466,7 +6466,7 @@
     },
     "adapter_runtime/nanaimo_gameplay_bridge.exe": {
       "size": 25872896,
-      "sha256": "FA827A09C7A4F99E707AF8563F9AE24CD1BA507250F77FDE71C36B612B4D9BF0"
+      "sha256": "AA14CA30742753FF5771B39AD3D9D2B45E14F89AC620A26FC496D3D8F17B936A"
     },
     "adapter_runtime/netstandard.dll": {
       "size": 100648,

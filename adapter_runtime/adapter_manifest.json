@@ -3,7 +3,7 @@
     "role":  "full Nanaimo adapter",
     "launcher_tools":  2,
     "state_storage":  "sqlite",
-    "built_at":  "2026-10-19T20:19:24Z",
+    "built_at":  "2026-10-19T21:19:08Z",
     "framework":  "net8.0/win-x64/self-contained",
     "sdk":  "8.0.425",
     "files":  [
@@ -150,7 +150,7 @@
                   {
                       "name":  "nanaimo_gameplay_bridge.exe",
                       "size":  25872896,
-                      "sha256":  "FA827A09C7A4F99E707AF8563F9AE24CD1BA507250F77FDE71C36B612B4D9BF0"
+                      "sha256":  "AA14CA30742753FF5771B39AD3D9D2B45E14F89AC620A26FC496D3D8F17B936A"
                   },
                   {
                       "name":  "netstandard.dll",

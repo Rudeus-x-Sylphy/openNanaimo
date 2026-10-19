@@ -1,17 +1,29 @@
 #ifndef NANAIMO_BOSS_EXECUTION_POLICY_INC
 #define NANAIMO_BOSS_EXECUTION_POLICY_INC
-/* Explicit private-server core selectors.
-   Unlisted modes require every positive component, including parallel bodies. */
+/* Phase-local positive-HP core selectors.
+   Default completion retains the full positive-component set. */
+#define BOSS_EXECUTION_POLICY_MAX_CORES 3u
 struct boss_execution_policy {
     unsigned char hd,episode,dungeon,stage_index,mode,core_count;
     unsigned short slots;
-    unsigned char core_child[2],core_ordinal[2];
+    unsigned char core_child[BOSS_EXECUTION_POLICY_MAX_CORES],core_ordinal[BOSS_EXECUTION_POLICY_MAX_CORES];
 };
 static const struct boss_execution_policy boss_execution_policies[]={
+    {0,1,0,0,0,1,511,{1},{3}},
+    {0,1,1,0,0,1,511,{0},{3}},
+    {0,2,1,0,0,1,511,{0},{0}},
     {0,2,2,0,0,2,511,{1,1},{0,1}},
     {0,3,0,0,0,1,511,{1,0},{6,0}},
-    {0,3,2,1,0,1,511,{1,0},{2,0}},
+    {0,3,2,0,0,3,63, {1,1,1},{0,2,4}},
+    {0,3,2,0,0,3,448,{0,0,0},{0,2,4}},
+    {0,3,2,1,0,2,511,{1,1},{1,2}},
+    {0,3,2,1,1,1,511,{0},{2}},
+    {0,4,0,0,0,1,511,{0},{2}},
+    {0,4,1,0,0,1,511,{0},{1}},
     {0,4,2,0,0,1,511,{0,0},{0,0}},
+    {0,4,2,1,0,1,511,{0},{1}},
+    {0,4,2,1,1,1,511,{0},{4}},
+    {0,5,0,0,0,3,511,{1,1,1},{3,14,15}},
     {0,5,1,0,0,1,511,{0,0},{2,0}},
     {0,5,2,0,0,1,511,{1,0},{0,0}},
     {0,6,0,0,0,1,511,{0,0},{5,0}},

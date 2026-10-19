@@ -227,6 +227,7 @@ static int boss_hp_sync_result_execution_retired(const struct boss_hp_sync_resul
 static int boss_hp_sync_load_execution_cores(struct boss_hp_sync_context*c,unsigned mode){
     const struct boss_execution_policy*p=boss_execution_policy_find(c->profile,mode);
     unsigned i,j,found=0u;c->execution_core_count=0u;memset(c->execution_core,0,sizeof(c->execution_core));
+    if(p&&(!p->core_count||p->core_count>BOSS_EXECUTION_POLICY_MAX_CORES))return 0;
     for(i=0u;i<c->component_count;i++){
         const struct boss_component_boss_component*x=&boss_component_boss_components[c->component_def_index[i]];
         if(!x->scaled_hp)continue;
