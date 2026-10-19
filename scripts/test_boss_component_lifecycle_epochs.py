@@ -51,8 +51,8 @@ static void kill_order(const struct boss_component_boss_profile*p,unsigned mode,
         assert(hit_component(&c,mode,x->child,x->ordinal,100000000u,&hit)==BOSS_HP_SYNC_OK);
         assert(hit.component_first_terminal && hit.applied_damage==damage);
         assert(!hit.component_route_collapsed && !c.component_hp[slot]);
-        for(j=0;j<c.component_count;j++)if(j!=slot)assert(c.component_hp[j]==before[j]);
-        if(!c.scripted_component_active || x->child==c.scripted_shell_child)assert(c.hp==hp-damage);
+        for(j=0;j<c.component_count;j++)if(j!=slot)assert(c.component_hp[j]==(hit.executed?0u:before[j]));
+        if(!c.scripted_component_active || x->child==c.scripted_shell_child)assert(c.hp==hp-damage-hit.execution_residual_hp);
         else assert(c.hp==hp);
         for(j=0;j<BOSS_HP_SYNC_MAX_CHILDREN;j++){
             unsigned sum=0;for(k=0;k<c.component_count;k++)if(boss_component_boss_components[c.component_def_index[k]].child==j)sum+=c.component_hp[k];
@@ -62,7 +62,7 @@ static void kill_order(const struct boss_component_boss_profile*p,unsigned mode,
         if(frame[0x19]!=x->child || boss_hp_sync_get16(frame,0x1A)!=x->ordinal){
             fprintf(stderr,"missing terminal hd=%u ep=%u dg=%u st=%u slot=%u mode=%u child=%u ordinal=%u intermediate=%u\n",p->hd,p->episode,p->dungeon,p->stage_index,p->slot,mode,x->child,x->ordinal,hit.intermediate_terminal);abort();
         }
-        if(i+1<n){
+        if(i+1<n&&!hit.executed){
             assert(!hit.intermediate_terminal && !hit.final_terminal && !c.awaiting_next_mode);
             /* Parallel-body first-tuple aliasing is a separate compatibility policy. */
             if(external_hits || !(slot==0u && boss_hp_sync_parallel_component_mode(&c,0,0))){
@@ -76,6 +76,7 @@ static void kill_order(const struct boss_component_boss_profile*p,unsigned mode,
             for(j=0x1C;j<60;j++)assert(frame[j]==0u);
             assert(boss_hp_sync_apply_d011_attack(&c,req,32,100000000u,1u,&repeat)==BOSS_HP_SYNC_TERMINAL_QUARANTINED);
         }else assert(hit.first_terminal && hit.final_terminal && boss_hp_sync_final_terminal_seen(&c));
+        if(hit.executed)break;
     }
 }
 static void audit_modes(void){
@@ -91,7 +92,7 @@ static void audit_modes(void){
             }
         }
     }
-    assert(modes==1278u && split==348u);printf("external=%u modes=%u split=%u kill_orders=%u\n",external_hits,modes,split,runs);
+    assert(modes==BOSS_COMPONENT_BOSS_MODE_COUNT && split==348u);printf("external=%u modes=%u split=%u kill_orders=%u\n",external_hits,modes,split,runs);
 }
 static unsigned permutations(const struct boss_component_boss_profile*p,unsigned*slots,unsigned n,unsigned at){
     unsigned i,t,runs=0;if(at==n){kill_order(p,0,slots,n);return 1;}

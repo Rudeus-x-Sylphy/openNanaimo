@@ -17373,7 +17373,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         var petState = PetProgression.GetState(character, GetEquippedPetItemCode(character));
         payload[0x66 - 8] = petState.CurrentStage;
         payload[0x67 - 8] = petState.MaximumStage;
-        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x6C - 8, 4), 100);
+        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(0x6C - 8, 4), GetPetBattleDurability(character));
         payload[0x72 - 8] = 1;
         payload[0x73 - 8] = character.RevivalUseCount;
         return payload;

@@ -227,7 +227,8 @@ static void verify_fire_orb_body_and_ice(void){
             memset(frame,0,sizeof(frame));assert(boss_hp_sync_encode_d012_payload(frame,60,&hit)==BOSS_HP_SYNC_OK);
             assert(frame[0x19]==255 && boss_hp_sync_get32(frame,0x28)==before-1);
             assert(boss_hp_sync_apply_d011_attack(&c,req,32,x->basis+x->scaled_hp,1,&hit)==BOSS_HP_SYNC_OK);
-            assert(hit.component_first_terminal && c.hp==before-x->scaled_hp);
+            assert(hit.component_first_terminal && c.hp==before-x->scaled_hp-hit.execution_residual_hp);
+            if(hit.executed){assert(hit.final_terminal&&c.hp==0u);break;}
             if(c.hp){
                 assert(!hit.final_terminal);
                 assert(boss_hp_sync_apply_d011_attack(&c,req,32,1000000,1,&repeat)==BOSS_HP_SYNC_OK);
@@ -265,12 +266,15 @@ static void audit_all_split_topologies(void){
                 for(i=0u;i<ctx.component_count;i++)before[i]=ctx.component_hp[i];
                 before_hp=ctx.hp;request(req,mode,target->child,target->ordinal);
                 assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),target->basis+target->scaled_hp+1000u,1u,&first)==BOSS_HP_SYNC_OK);
-                assert(first.applied_damage==target->scaled_hp&&first.component_first_terminal&&!first.final_terminal);
+                assert(first.applied_damage==target->scaled_hp&&first.component_first_terminal&&(!first.final_terminal||first.executed));
                 assert(ctx.component_hp[chosen]==0u);
-                for(i=0u;i<ctx.component_count;i++)if(i!=chosen)assert(ctx.component_hp[i]==before[i]);
-                if(!ctx.scripted_component_active)assert(ctx.hp==before_hp-target->scaled_hp);
-                assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),target->basis+target->scaled_hp+1000u,1u,&repeat)==BOSS_HP_SYNC_OK);
-                assert(repeat.component_repeated_terminal&&repeat.scripted_report_suppressed&&!repeat.applied_damage);
+                for(i=0u;i<ctx.component_count;i++)if(i!=chosen)assert(ctx.component_hp[i]==(first.executed?0u:before[i]));
+                if(!ctx.scripted_component_active)assert(ctx.hp==before_hp-target->scaled_hp-first.execution_residual_hp);
+                if(first.executed)assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),target->basis+target->scaled_hp+1000u,1u,&repeat)==BOSS_HP_SYNC_TERMINAL_QUARANTINED);
+                else{
+                    assert(boss_hp_sync_apply_d011_attack(&ctx,req,sizeof(req),target->basis+target->scaled_hp+1000u,1u,&repeat)==BOSS_HP_SYNC_OK);
+                    assert(repeat.component_repeated_terminal&&repeat.scripted_report_suppressed&&!repeat.applied_damage);
+                }
                 assert(ctx.component_hp[chosen]==0u);
                 checked++;
             }

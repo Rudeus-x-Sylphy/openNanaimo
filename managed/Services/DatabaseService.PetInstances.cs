@@ -34,6 +34,11 @@ public sealed partial class DatabaseService
                 PetAccessory2 INTEGER NOT NULL DEFAULT 0,
                 UpdatedAt TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS IX_CharacterPetCopies_Owner ON CharacterPetCopies(CharacterId, ItemCode);
+            CREATE TABLE IF NOT EXISTS PetLifetimeEvents(
+                CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                SessionId TEXT NOT NULL, EventId TEXT NOT NULL, ItemCode INTEGER NOT NULL,
+                PetInstanceId INTEGER NOT NULL, Durability INTEGER NOT NULL, Unequipped INTEGER NOT NULL,
+                PRIMARY KEY(CharacterId,SessionId,EventId));
             CREATE VIEW IF NOT EXISTS CharacterInventoryInstances AS
                 SELECT CharacterId, ItemCode, Quantity, ItemExpiration, PetDurability,
                        PetCurrentStage, PetMaximumStage, PetLevel, PetExperience,

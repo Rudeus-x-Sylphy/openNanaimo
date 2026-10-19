@@ -452,6 +452,10 @@ internal static class NativeDungeonRevivalChecks
                             var ack=new byte[8]; Put(ack,0,1); Put(ack,4,U16(frame,10)); Put(ack,6,U16(frame,12));
                             await stream.WriteAsync(NativeDungeonClient.Frame(0xF105,ack));
                             break;
+                        case 0xF10C:
+                            if (frame.Length != 20 || BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(8)) != state.Get(4))
+                                throw new InvalidOperationException("Invalid pet-lifetime metadata.");
+                            break;
                         case 0xCF95:
                             lock(gate)
                                 if(state.Get(60)>0)

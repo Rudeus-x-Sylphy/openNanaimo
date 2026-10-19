@@ -3,6 +3,7 @@
 #ifndef NANAIMO_BOSS_HP_SYNC_RUNTIME_WINTER_P01_INC
 #define NANAIMO_BOSS_HP_SYNC_RUNTIME_WINTER_P01_INC
 #include "../boss/component_data.inc"
+#include "../boss/execution_policy.inc"
 #include "../cards/card_manual_boss_pool.inc"
 #define BOSS_HP_SYNC_MAX_HP 4000u
 #define BOSS_HP_SYNC_MAX_CHILDREN 256u
@@ -52,6 +53,8 @@ struct boss_hp_sync_context {
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
     unsigned component_max_hp[BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS],component_hp[BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS];
     unsigned char component_terminal_sent[BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS];
+    unsigned char execution_core[BOSS_COMPONENT_BOSS_MAX_MODE_COMPONENTS];
+    unsigned execution_core_count,mode_execution_residual_hp,prior_execution_residual_hp;
 #endif
 #if TEAMPLAY_FEATURE_BOSS_CHILD_HP_RETIRE
     unsigned positive_child_count;
@@ -91,6 +94,7 @@ struct boss_hp_sync_result {
     unsigned completion_shell_retired,completion_shell_child,completion_shell_residual,completion_shell_retire_mask[8];
     unsigned gate_frame_retired;
     unsigned recording_damage,completion_shell_projection_started,completion_shell_projected_damage;
+    unsigned executed,execution_cleanup,execution_residual_hp,execution_retire_mask[8];
     /* D012 DWORD+0x28 feeds both the visible boss bar and the native
        mode-completion gate. The current mode ledger sums every live component
        and reaches zero when that mode completes. Future modes remain separate
@@ -217,10 +221,49 @@ static void boss_hp_sync_completion_shell_finish_if_complete(struct boss_hp_sync
     word=c->completion_shell_child>>5;bit=c->completion_shell_child&31u;if(word<8u)r->completion_shell_retire_mask[word]|=1u<<bit;r->completion_shell_retired=1u;r->completion_shell_child=c->completion_shell_child;r->completion_shell_residual=remaining;c->hp=0u;c->cumulative_damage=c->mode_max_hp;r->hp=0u;r->cumulative_damage=c->cumulative_damage;
     if(c->mode_index+1u<c->mode_count){c->awaiting_next_mode=1u;r->intermediate_terminal=1u;}else{c->phase=BOSS_HP_SYNC_PHASE_TERMINAL;c->terminal_response_count=1u;c->final_terminal_seen=1u;r->first_terminal=1u;r->final_terminal=1u;}
 }
+static int boss_hp_sync_result_execution_retired(const struct boss_hp_sync_result*r,unsigned child){
+    return child<BOSS_HP_SYNC_MAX_CHILDREN&&((r->execution_retire_mask[child>>5]>>(child&31u))&1u);
+}
+static int boss_hp_sync_load_execution_cores(struct boss_hp_sync_context*c,unsigned mode){
+    const struct boss_execution_policy*p=boss_execution_policy_find(c->profile,mode);
+    unsigned i,j,found=0u;c->execution_core_count=0u;memset(c->execution_core,0,sizeof(c->execution_core));
+    for(i=0u;i<c->component_count;i++){
+        const struct boss_component_boss_component*x=&boss_component_boss_components[c->component_def_index[i]];
+        if(!x->scaled_hp)continue;
+        if(!p)c->execution_core[i]=1u;
+        else for(j=0u;j<p->core_count;j++)if(x->child==p->core_child[j]&&x->ordinal==p->core_ordinal[j]){c->execution_core[i]=1u;found++;break;}
+        if(c->execution_core[i])c->execution_core_count++;
+    }
+    return c->execution_core_count&&(!p||found==p->core_count);
+}
+/* Finishing the required core set clears residual durability, not damage.
+   The same request publishes zero recording and retires every remaining child. */
+static void boss_hp_sync_execute_if_complete(struct boss_hp_sync_context*c,struct boss_hp_sync_result*r){
+    unsigned i,child,remaining,live=0u;if(!c||!r||!c->execution_core_count)return;
+    for(i=0u;i<c->component_count;i++)if(c->component_hp[i])live++;
+    if(c->hp){for(i=0u;i<c->component_count;i++)if(c->execution_core[i]&&c->component_hp[i])return;}
+    else if(!live)return;
+    remaining=c->hp;c->hp=0u;c->mode_execution_residual_hp=remaining;r->execution_cleanup=1u;
+    r->executed=remaining?1u:0u;r->execution_residual_hp=remaining;r->recording_damage+=remaining;r->hp=0u;
+    for(i=0u;i<c->component_count;i++){
+        const struct boss_component_boss_component*x=&boss_component_boss_components[c->component_def_index[i]];child=x->child;
+        if(!c->component_terminal_sent[i]&&!c->child_terminal_sent[child])r->execution_retire_mask[child>>5]|=1u<<(child&31u);
+        c->component_hp[i]=0u;c->component_terminal_sent[i]=1u;
+    }
+    for(i=0u;i<c->component_count;i++){
+        child=boss_component_boss_components[c->component_def_index[i]].child;
+        c->child_hp[child]=0u;c->child_terminal_sent[child]=1u;
+    }
+    r->component_hp=0u;r->child_hp=0u;
+}
 #endif
 static int boss_component_boss_load_mode(struct boss_hp_sync_context*c,unsigned mode){
     const struct boss_component_boss_mode*m=boss_component_boss_mode_def(c->profile,mode);unsigned i,count=0u,resource_total=0u,first_basis=0u,first_ordinal=0u,have_positive=0u;
     if(!m||m->first_component+m->component_count>BOSS_COMPONENT_BOSS_COMPONENT_COUNT)return 0;
+#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+    if(mode!=c->mode_index)c->prior_execution_residual_hp+=c->mode_execution_residual_hp;
+    c->mode_execution_residual_hp=0u;
+#endif
     memset(c->component_def_index,0,sizeof(c->component_def_index));
     memset(c->runtime_selector,0,sizeof(c->runtime_selector));memset(c->runtime_selector_bound,0,sizeof(c->runtime_selector_bound));
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
@@ -257,6 +300,8 @@ static int boss_component_boss_load_mode(struct boss_hp_sync_context*c,unsigned 
     c->mode_index=mode;c->component_count=count;c->resource_mode_hp=resource_total;
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
     boss_hp_sync_classify_scripted_components(c);
+    if(!boss_hp_sync_load_execution_cores(c,mode))return 0;
+    if(boss_execution_policy_find(c->profile,mode))c->scripted_component_active=0u;
 #endif
 #if TEAMPLAY_FEATURE_BOSS_RESOURCE_DAMAGE_SYNC
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
@@ -283,12 +328,18 @@ static unsigned boss_hp_sync_visual_recording_hp(const struct boss_hp_sync_conte
 }
 /* D012 +0x28 publishes the current mode. Multi-mode scoring keeps the full
    remaining total without advancing the client's zero-HP mode boundary. */
-static void boss_hp_sync_project_multimode_recording(const struct boss_hp_sync_context*c,struct boss_hp_sync_result*r){unsigned total,remaining;if(!c||!r)return;r->mode_recording_hp=boss_hp_sync_visual_recording_hp(c,r);r->mode_recording_published=1u;if(!c->authored_multimode)return;total=boss_hp_sync_profile_total_hp(c);remaining=c->hp+boss_hp_sync_profile_future_hp(c);if(remaining>total)remaining=total;r->hp=remaining;r->cumulative_damage=total-remaining;}
+static void boss_hp_sync_project_multimode_recording(const struct boss_hp_sync_context*c,struct boss_hp_sync_result*r){unsigned total,remaining,executed;if(!c||!r)return;r->mode_recording_hp=boss_hp_sync_visual_recording_hp(c,r);r->mode_recording_published=1u;if(!c->authored_multimode)return;total=boss_hp_sync_profile_total_hp(c);remaining=c->hp+boss_hp_sync_profile_future_hp(c);if(remaining>total)remaining=total;r->hp=remaining;executed=c->prior_execution_residual_hp+c->mode_execution_residual_hp;r->cumulative_damage=total-remaining>executed?total-remaining-executed:0u;}
 static void boss_hp_sync_init(struct boss_hp_sync_context*c){memset(c,0,sizeof(*c));c->phase=BOSS_HP_SYNC_PHASE_IDLE;c->hp=BOSS_HP_SYNC_MAX_HP;c->mode_max_hp=BOSS_HP_SYNC_MAX_HP;c->mode_count=1u;c->profile_kind=BOSS_HP_SYNC_PROFILE_GENERIC;}
 static void boss_hp_sync_select_stage(struct boss_hp_sync_context*c,unsigned stage){
+#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+    c->execution_core_count=0u;c->mode_execution_residual_hp=0u;c->prior_execution_residual_hp=0u;
+#endif
     c->stage=stage;c->map_epoch++;c->phase=BOSS_HP_SYNC_PHASE_PREPARED;c->hp=0u;c->cumulative_damage=0u;c->request_count=0u;c->applied_hit_count=0u;c->terminal_response_count=0u;c->awaiting_next_mode=0u;c->final_terminal_seen=0u;c->profile=0;c->profile_kind=BOSS_HP_SYNC_PROFILE_LOOKUP_MISS;c->lookup_miss=1u;c->invalid_slot=0u;c->component_count=0u;c->resource_mode_hp=0u;
 }
 static void boss_hp_sync_begin_game_domain(struct boss_hp_sync_context*c,unsigned stage,unsigned hd,unsigned dungeon,unsigned stage_index,unsigned difficulty,unsigned absolute_slot){
+#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+    c->execution_core_count=0u;c->mode_execution_residual_hp=0u;c->prior_execution_residual_hp=0u;
+#endif
     c->stage=stage;c->hd=hd;c->dungeon=dungeon;c->stage_index=stage_index;c->difficulty=difficulty;c->absolute_slot=absolute_slot;c->battle_epoch++;c->phase=BOSS_HP_SYNC_PHASE_RUNNING;c->request_count=0u;c->applied_hit_count=0u;c->terminal_response_count=0u;c->awaiting_next_mode=0u;c->final_terminal_seen=0u;c->lookup_miss=0u;c->invalid_slot=0u;c->component_count=0u;c->hp=0u;c->cumulative_damage=0u;c->mode_index=0u;c->mode_count=0u;c->mode_max_hp=0u;c->resource_mode_hp=0u;c->mode_basis=0u;c->expected_ordinal=0u;
     if(absolute_slot>8u){c->invalid_slot=1u;c->lookup_miss=1u;c->profile=0;c->profile_kind=BOSS_HP_SYNC_PROFILE_LOOKUP_MISS;c->authored_multimode=0u;return;}
     c->profile=boss_component_boss_find_profile(hd,stage,dungeon,stage_index,absolute_slot);
@@ -398,7 +449,7 @@ static int boss_hp_sync_apply_d011_attack(struct boss_hp_sync_context*c,const un
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
         /* Queued reports beyond the primary body's real terminal crossing must
            not repeat D012 reward/SUCCESS_CLEAR presentation. */
-        if(c->scripted_component_active)return BOSS_HP_SYNC_TERMINAL_QUARANTINED;
+        if(c->scripted_component_active||c->mode_execution_residual_hp)return BOSS_HP_SYNC_TERMINAL_QUARANTINED;
 #endif
         if(c->terminal_response_count>=2u)return BOSS_HP_SYNC_TERMINAL_QUARANTINED;
         c->terminal_response_count++;r->hp=0u;r->cumulative_damage=c->mode_max_hp;r->repeated_terminal=1u;r->final_terminal=1u;return BOSS_HP_SYNC_OK;
@@ -529,6 +580,9 @@ aggregate_before=c->hp;
     boss_hp_sync_retire_gate_frame(c,r);
     boss_hp_sync_completion_shell_finish_if_complete(c,r);if(r->intermediate_terminal&&boss_hp_sync_mode_transition_needs_component_retire(c,r))r->phase_transition_retire=1u;
 #endif
+#endif
+#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+    boss_hp_sync_execute_if_complete(c,r);
 #endif
     if(c->hp==0u&&!r->first_terminal&&!r->intermediate_terminal){
         if(c->mode_index+1u<c->mode_count){c->awaiting_next_mode=1u;r->intermediate_terminal=1u;if(boss_hp_sync_mode_transition_needs_component_retire(c,r))r->phase_transition_retire=1u;}

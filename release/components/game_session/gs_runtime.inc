@@ -167,7 +167,7 @@ static void inventory_instances_send_skill_epoch_refresh(SOCKET c,const char*pha
         g_skill_progress_slots[0],skill_progress_grade(g_skill_progress_slots[0]),g_skill_progress_slots[1],skill_progress_grade(g_skill_progress_slots[1]));fflush(0);
 }
 static int shop_catalogs_next_dungeon_exists(unsigned hd,unsigned ep,unsigned dg,unsigned diff){return hp_sync_find_profile(ep,hd,dg,0u,diff,0u)!=0;}
-static void shop_catalogs_send_boss_result(SOCKET c,const struct boss_hp_sync_result*r,unsigned total_score,int*final_retire_sent){if(r->first_terminal&&!boss_hp_sync_has_split_children(&boss_ctx)&&!*final_retire_sent){teamplay_send_d013_boss_child_retire(c,0u,0u,0u);*final_retire_sent=1;printf("  [BOSS_COMPAT] final scalar retirement D013 child=0 before D012 final\n");fflush(0);}send_d012_boss_hp_sync_score(c,r,total_score);}
+static void shop_catalogs_send_boss_result(SOCKET c,const struct boss_hp_sync_result*r,unsigned total_score,int*final_retire_sent){if(r->first_terminal&&!boss_hp_sync_has_split_children(&boss_ctx)&&!*final_retire_sent&&!r->execution_cleanup){teamplay_send_d013_boss_child_retire(c,0u,0u,0u);*final_retire_sent=1;printf("  [BOSS_COMPAT] final scalar retirement D013 child=0 before D012 final\n");fflush(0);}send_d012_boss_hp_sync_score(c,r,total_score);}
 /* ITEM_EFFECTS injury policy (local adapter construction).
  * D00F kind10 has no numeric damage field: +0x0A comes from collision-source
  * object+0x140, +0x0C is the collision-list index, and +0x0E comes from
@@ -1180,20 +1180,14 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                         int failed_result=injury_dead || combat_hp==0u;
                         int death_retry=failed_result && settlement_sent && reset_mode==1u
                             && (reset_real==current_stage_index || (current_stage_index==1u && reset_real==0u));
-                        /* The client orders application selectors 0 -> 1 -> 2.
-                           Super-Boss resource/persistence indexes are rotated
-                           1 -> 2 -> 0, so index 2 is not the final difficulty. */
-                        if(!failed_result&&next_difficulty_request&&reset_real==0u&&current_difficulty>0u&&current_difficulty<=2u
-                            &&shop_catalogs_next_dungeon_exists(current_hd,current_stage,0u,current_difficulty)){
-                            next_dungeon=0u;effective_real=0u;reset_show=0u;advance_dungeon=advance_difficulty=1;
+                        /* Resource and client selectors share 0 -> 1 -> 2.
+                           Rotated persistence indexes never select resources. */
+                        if(!failed_result&&next_difficulty_request&&reset_real==0u&&current_difficulty<2u
+                            &&shop_catalogs_next_dungeon_exists(current_hd,current_stage,0u,current_difficulty+1u)){
+                            next_dungeon=0u;next_difficulty=current_difficulty+1u;effective_real=0u;reset_show=0u;advance_dungeon=advance_difficulty=1;
                         }
                         if(!failed_result&&!next_difficulty_request&&reset_mode==2u&&current_dungeon<255u&&shop_catalogs_next_dungeon_exists(current_hd,current_stage,current_dungeon+1u,current_difficulty)){next_dungeon=current_dungeon+1u;effective_real=0u;reset_show=0u;advance_dungeon=1;}
                         if(!failed_result && reset_mode==1u && hp_sync_find_profile(current_stage,current_hd,current_dungeon,1u,current_difficulty,0u)!=0){authored_super=1;if(reset_real==0u)effective_real=1u;}
-                        /* Normal selectors 2/0/1 become Super-Boss 0/1/2.
-                           Same-stage retries and Lumineos retain their domain. */
-                        if(!failed_result&&reset_mode==1u&&current_dungeon==2u&&current_stage_index==0u&&effective_real==1u
-                            &&!(current_hd==0u&&current_stage==100u)&&current_difficulty<=2u)
-                            next_difficulty=(current_difficulty+1u)%3u;
                         if((!failed_result && (reset_mode==1u || (reset_mode==2u&&(!next_difficulty_request||advance_difficulty)))) || death_retry){
                             if(death_retry){
                                 /* Rechallenge the failed tuple, never promote it to
@@ -1233,14 +1227,7 @@ shop_catalogs_send_boss_result(c,&boss_result,score_ctx.total,&boss_final_retire
                             }
 #endif
                             teamplay_continuation_arm_room(effective_real,reset_show,current_difficulty,current_dungeon,reset_mode);
-                            /* CF8C writes the client application difficulty and
-                               its change-dialog flag, not the SMMO selector.
-                               Preserve the source client value on a challenge. */
-                            {unsigned client_difficulty=current_difficulty;
-                             if(current_dungeon==2u&&effective_real==1u&&current_difficulty<=2u
-                                 &&!(current_hd==0u&&current_stage==100u))
-                                 client_difficulty=(current_difficulty+2u)%3u;
-                             sleep(0); multiplayer_broadcast_reset(effective_real,reset_show,current_difficulty,current_dungeon,client_difficulty);}
+                            sleep(0); multiplayer_broadcast_reset(effective_real,reset_show,current_difficulty,current_dungeon,current_difficulty);
                         } else {
                             printf("  [GS %d] GOT CF8B reset unsupported mode=%u -> no response\n",port,reset_mode); fflush(0);
                         }

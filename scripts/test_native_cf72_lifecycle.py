@@ -151,6 +151,35 @@ int main(int argc,char**argv){
         {void*f=fopen("nanaimo_revival_state_v1_remote_bound.dat","w");CHECK(f);fprintf(f,"uses=4\n");fclose(f);}
         CHECK(native_actor_revival_count(22)==4);CHECK(game_session_revival_count()==9);
         g_multi_conn[1].join_order++;CHECK(native_actor_revival_count(22)==0);
+    }else if(test>=9&&test<=11){
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+        unsigned char metadata[20];memset(metadata,0,sizeof(metadata));
+        managed_put(metadata,8,21u);managed_put(metadata,12,g_stable_pet);managed_put(metadata,16,49u);
+        CHECK(managed_bridge_handle(100,0xF10C,20,metadata));
+        CHECK(count==0);
+        if(test==9){
+            count=0;send_cf71_member(100,21,21,0);CHECK(count==2);
+            CHECK(dword(frames[0],0x58)==49u&&dword(frames[1],0x6C)==49u);
+            CHECK(dword(frames[0],0x38)==g_stable_pet);
+        }else if(test==10){
+            managed_put(metadata,16,1u);managed_put(metadata,8,22u);
+            CHECK(managed_bridge_handle(100,0xF10C,20,metadata));CHECK(native_pet_durability_current()==49u);
+            managed_put(metadata,8,21u);managed_put(metadata,12,g_stable_pet+1u);
+            CHECK(managed_bridge_handle(100,0xF10C,20,metadata));CHECK(native_pet_durability_current()==49u);
+            managed_put(metadata,12,g_stable_pet);
+            CHECK(managed_bridge_handle(100,0xF10C,19,metadata));CHECK(native_pet_durability_current()==49u);
+        }else{
+            managed_put(metadata,16,0u);managed_bridge_handle(100,0xF10C,20,metadata);
+            CHECK(native_pet_durability_current()==0u);
+            managed_put(metadata,16,0xFFFFFFFFu);managed_bridge_handle(100,0xF10C,20,metadata);
+            CHECK(native_pet_durability_current()==0xFFFFFFFFu);
+            managed_put(metadata,16,7u);managed_bridge_handle(100,0xF10C,20,metadata);
+            g_multi_conn[0].join_order++;CHECK(native_pet_durability_current()==0xFFFFFFFFu);
+            g_stable_pet=0u;CHECK(native_pet_durability_current()==0u);
+        }
+#else
+        CHECK(native_pet_durability_current()==0xFFFFFFFFu);
+#endif
     }
     printf("PASS case=%d\n",test);return 0;
 }

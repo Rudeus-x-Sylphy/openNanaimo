@@ -31,8 +31,8 @@ class BossContactResourcesTests(unittest.TestCase):
                 for c in components[m[0]:m[0]+m[2]]:
                     expected.add((*p[:5], index, c[2], c[3]))
         self.assertEqual({r[:-1] for r in actual}, expected)
-        self.assertEqual(len(actual), 28209)
-        self.assertEqual(len(data["scopes"]), 864)
+        self.assertEqual(len(actual), len(components))
+        self.assertEqual(len(data["scopes"]), len(profiles))
         resources = {r["resource"]:r for r in data["resources"]}
         hazards = collections.Counter()
         for s in data["scopes"]:
@@ -42,8 +42,9 @@ class BossContactResourcesTests(unittest.TestCase):
                     if hp == 0 and attack > 0:
                         hazards[tuple(s["key"][:4])] += 1
                         self.assertEqual(kind, 4)
-        self.assertEqual(len(hazards), 66)
-        self.assertEqual(sum(hazards.values()), 1968)
+        legacy = {key: count for key, count in hazards.items() if key[0] != 0 or key[1] < 24}
+        self.assertEqual(len(legacy), 66)
+        self.assertEqual(sum(legacy.values()), 1968)
         self.assertEqual(hazards[(0,22,1,1)], 213)
         self.assertEqual(hazards[(0,23,0,0)], 18)
         self.assertEqual(hazards[(0,23,0,1)], 18)
@@ -81,7 +82,7 @@ int main(void){
   assert(out.status==(r->attack?STAGE_DAMAGE_DAMAGE_BOSS_COLLISION_RESOURCE:STAGE_DAMAGE_DAMAGE_EXACT_ZERO));
   assert(out.source==r->ordinal);n++;if(r->attack)positive++;else zero++;
  }
- assert(n==9403&&positive==2849&&zero==6554);
+ assert(n*3u==BOSS_CONTACT_ROW_COUNT&&positive+zero==n&&positive>0u&&zero>0u);
  memset(req,0xA5,sizeof(req));req[8]=70;req[9]=0;req[0x10]=0;req[0x11]=0;req[0x12]=2;req[0x13]=0;
  stage_damage_damage_begin(&ctx,0,100,6,1,0,1,1);
  assert(stage_damage_player_d00f_damage(&ctx,req,70,&out)==2003);

@@ -101,7 +101,7 @@ public sealed partial class NetworkAdapterService
     private async Task<bool> RouteNativeDungeonAsync(byte[] frame, ushort opcode, string channel,
         ConnectionSession session, CancellationToken token)
     {
-        if (opcode is >= 0xF100 and <= 0xF10B) return true;
+        if (opcode is >= 0xF100 and <= 0xF10C) return true;
         if (!NativeDungeonEnabled || channel != "WorldAdapter") return false;
         if (opcode == 0xCF09 && frame.Length is 64 or 132 && session.OnlineTracked && session.Character is not null)
         {
@@ -153,6 +153,7 @@ public sealed partial class NetworkAdapterService
             var identity = new byte[16]; Encoding.GetEncoding(936).GetBytes(character.Name).CopyTo(identity, 0);
             await bridge.ExchangeAsync(NativeDungeonClient.Frame(0xC351, identity), null, token);
             session.NativeCheckpoint = await bridge.ExchangeAsync(null, state, token);
+            await SyncNativePetLifetimeAsync(session, token);
             LeaveTradeRoomScene(session, "native dungeon"); LeaveApartmentScene(session, "native dungeon");
             LeaveVillageShopScene(session, "native dungeon"); LeaveTownScene(session, "native dungeon");
             session.NativeForwarding = true;
@@ -185,7 +186,18 @@ public sealed partial class NetworkAdapterService
         if (opcode is 0xCF77 or 0xCF6C or 0xCF70)
             await PublishNativePartyIdentityAsync(session, token);
         if (opcode == 0xCF70 && frame.Length == 12)
+        {
+            // The exhausted pet can remain in the old battle controller until
+            // result teardown. Import the released slot before constructing the
+            // next roster, so native gems/attacks cannot retain that pet either.
+            if (session.Character is { } selected && session.NativeCheckpoint is { } previous
+                && previous.Get(68) != selected.EquippedPetItemCode)
+            {
+                await CommitNativeCheckpointAsync(session, null, token);
+                await SynchronizeNativeInventoryCoreAsync(session, token, refreshReadyRoom: false);
+            }
             await RefreshNativeCombatProgressionAsync(session, token);
+        }
         if (opcode == 0xCFEB && DeferNativePartyMap(session, frame)) return true;
         if (opcode == 0xCF70 && frame.Length == 12
             && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4, 2)) == 12)
@@ -888,10 +900,15 @@ public sealed partial class NetworkAdapterService
         }
 
         var usesBefore = checkpoint.Get(60);
-        var exchange = await CommitNativeCheckpointCapturedAsync(
-            session,
-            NativeDungeonClient.Frame(0xCF95, []),
-            token);
+        var lifetime = GetNativePetLifetime(session);
+        lifetime.PendingRevivalBefore = GetPetBattleDurability(character);
+        NativeDungeonExchangeResult exchange;
+        try
+        {
+            exchange = await CommitNativeCheckpointCapturedAsync(
+                session, NativeDungeonClient.Frame(0xCF95, []), token);
+        }
+        finally { lifetime.PendingRevivalBefore = null; }
         checkpoint = exchange.State;
         character = session.Character;
         if (character is null
@@ -905,6 +922,8 @@ public sealed partial class NetworkAdapterService
         }
 
         session.NativeDungeonDeathLatched = false;
+        GetNativePetLifetime(session).Revivals++;
+        await SyncNativePetLifetimeAsync(session, token);
         var revivePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 60, checked((ushort)checkpoint.Get(4)));
         var revive = BuildNativeFrame(frame, 0xCF84, revivePayload, session);
         session.DungeonRunRevived = true;
@@ -956,7 +975,7 @@ public sealed partial class NetworkAdapterService
             clientCostField,
             restoredHp,
             restoredMp,
-            token);
+            token, NativePetRevivalDebit(session));
         if (!consumed.Success)
         {
             _log($"{channel}: native dungeon paid continue payment rejected: character={character.Id} clientCostField={clientCostField} error={consumed.Error}");
@@ -970,6 +989,10 @@ public sealed partial class NetworkAdapterService
         var committed = new NativePaidContinueCommit(
             consumed.Hans, consumed.RevivalUseCount, consumed.CurrentHp, consumed.CurrentMp, clientCostField);
         RememberNativeDungeonPaidContinue(session, committed);
+        await RefreshNativeDungeonContinueBillingStateAsync(session, token);
+        character = session.Character!;
+        character.CurrentHp = consumed.CurrentHp;
+        character.CurrentMp = consumed.CurrentMp;
         if (!await TryCompleteNativeDungeonPaidContinueAsync(frame, channel, session, committed, token))
             _log($"{channel}: native dungeon paid continue remains committed and pending worker synchronization: character={character.Id} clientCostField={clientCostField} hans={consumed.Hans} hp={consumed.CurrentHp} mp={consumed.CurrentMp}; duplicate CF83 will retry without another debit");
     }
@@ -1031,6 +1054,8 @@ public sealed partial class NetworkAdapterService
             session.NativeBattleResources, exchange.State);
         session.NativeDungeonDeathLatched = false;
         CompleteNativeDungeonPaidContinue(session, committed);
+        GetNativePetLifetime(session).Revivals++;
+        await SyncNativePetLifetimeAsync(session, token);
         var continuePayload = BuildNativeDungeonContinueApplyPayload(character, variant: 20, checked((ushort)exchange.State.Get(4)));
         var response = BuildNativeFrame(frame, 0xCF84, continuePayload, session);
         session.DungeonRunRevived = true;
@@ -1086,6 +1111,8 @@ public sealed partial class NetworkAdapterService
         var requestOpcode = frame is { Length: >= 8 }
             ? BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2))
             : (ushort)0;
+        if (requestOpcode == 0xCF87 && session.NativeDungeonDeathLatched)
+            await SettleNativePetExhaustionAsync(session, token);
         var continuationPeers = requestOpcode == 0xCF8B ? ArmNativePartyContinuation(session, frame) : [];
         NativeDungeonExchangeResult exchange;
         try
@@ -1229,14 +1256,18 @@ public sealed partial class NetworkAdapterService
         Directory.CreateDirectory(NativeJournalDirectory);
         string journal = Path.Combine(NativeJournalDirectory, session.SessionId + ".json");
         string commitId = Guid.NewGuid().ToString("N");
+        var petLifetime = requestOpcode == 0xCF95 && session.NativeDungeonDeathLatched
+            && session.NativeCheckpoint.Get(60) > 0
+            && next.Get(60) + 1 == session.NativeCheckpoint.Get(60) && next.Get(20) > 0
+                ? NativePetRevivalDebit(session) : null;
         var record = new { CommitId = commitId, session.AccountId, CharacterId = session.Character.Id, session.SessionId,
             Before = Convert.ToBase64String(session.NativeCheckpoint.Bytes), After = Convert.ToBase64String(next.Bytes),
-            Settlement = settlement };
+            Settlement = settlement, PetLifetime = petLifetime };
         await File.WriteAllTextAsync(journal + ".tmp", System.Text.Json.JsonSerializer.Serialize(record), token);
         File.Move(journal + ".tmp", journal, true);
         var applied = await _database.ApplyNativeDungeonDeltaAsync(
             session.AccountId, session.Character.Id, session.SessionId,
-            session.NativeCheckpoint, next, token, commitId, settlement: settlement);
+            session.NativeCheckpoint, next, token, commitId, settlement: settlement, petLifetime: petLifetime);
         if (applied.Applied)
             MarkNativeDungeonRankingCommitted(session, settlement);
         CompleteNativeDungeonRevivalTransition(session, frame, exchange.Frames);
@@ -1373,6 +1404,8 @@ public sealed partial class NetworkAdapterService
             _log($"NativeDungeon unsolicited settlement transition suppressed: response=0x{responseOpcode:X4}");
             return;
         }
+        if (responseOpcode == 0xCFEC && !await ObserveNativePetMapAsync(session, response, battleEpoch, token))
+            return;
         // CF15 is answered directly from managed persistence. The retained
         // worker's CF16 is a fixed sample, never a second leaderboard response.
         if (responseOpcode == 0xCF16)
@@ -1422,6 +1455,7 @@ public sealed partial class NetworkAdapterService
             }
         }
         var resourceOwner = ResolveNativeResourceOwner(session, response);
+        PatchNativePetLifetimeActor(session, resourceOwner, response);
         var projectedResources = resourceOwner?.NativeBattleResources;
         if (resourceOwner is not null && !ReferenceEquals(resourceOwner, session) && projectedResources is not null)
         {
@@ -1504,6 +1538,9 @@ public sealed partial class NetworkAdapterService
             RememberNativeDungeonPersonalSettlement(session, response);
             await CommitNativeDungeonDeferredSettlementAsync(session, response, token);
             NormalizeNativeDungeonPublishedSettlement(session, response);
+            if (session.NativeDungeonDeathLatched)
+                await SettleNativePetExhaustionAsync(session, token);
+            PatchNativePetExhaustionResult(session, response);
         }
         var revivalOwner = ResolveNativeRevivalOwner(session, response);
         PatchNativeRevivalCountFrame(response, revivalOwner);

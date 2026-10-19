@@ -18,6 +18,18 @@ static unsigned managed_get(const unsigned char*p,unsigned o){return (unsigned)p
 static void managed_put(unsigned char*p,unsigned o,unsigned v){p[o]=(unsigned char)v;p[o+1]=(unsigned char)(v>>8);p[o+2]=(unsigned char)(v>>16);p[o+3]=(unsigned char)(v>>24);}
 static unsigned long long managed_get64(const unsigned char*p,unsigned o){return (unsigned long long)managed_get(p,o)|((unsigned long long)managed_get(p,o+4u)<<32);}
 static void managed_put64(unsigned char*p,unsigned o,unsigned long long v){managed_put(p,o,(unsigned)v);managed_put(p,o+4u,(unsigned)(v>>32));}
+static unsigned g_managed_pet_lifetime_uid[MULTI_MAX_PLAYERS];
+static unsigned g_managed_pet_lifetime_code[MULTI_MAX_PLAYERS];
+static unsigned g_managed_pet_lifetime_value[MULTI_MAX_PLAYERS];
+static unsigned g_managed_pet_lifetime_order[MULTI_MAX_PLAYERS];
+static unsigned native_pet_durability_current(void){
+    int src=g_multi_current;
+    if(!g_stable_pet)return 0u;
+    if(src>=0&&src<MULTI_MAX_PLAYERS&&g_managed_pet_lifetime_uid[src]==g_multi_conn[src].uid
+        &&g_managed_pet_lifetime_order[src]==g_multi_conn[src].join_order
+        &&g_managed_pet_lifetime_code[src]==g_stable_pet)return g_managed_pet_lifetime_value[src];
+    return 0xFFFFFFFFu;
+}
 /* Maxima in the bridge remain BASE values. Validate absolute current against
    only this import's selected PET and gems, before touching globals or disk. */
 static int managed_bridge_resources_valid(const unsigned char*p){
@@ -168,6 +180,17 @@ static void managed_bridge_broadcast_actor_level(SOCKET c,unsigned level){
     }
 }
 static int managed_bridge_handle(SOCKET c,int type,int len,const unsigned char*f){
+    if(type==0xF10C){
+        int src=g_multi_current;
+        if(len==20&&src>=0&&src<MULTI_MAX_PLAYERS&&g_multi_conn[src].active
+            &&managed_get(f,8)==g_multi_conn[src].uid&&managed_get(f,12)==g_stable_pet){
+            g_managed_pet_lifetime_uid[src]=managed_get(f,8);
+            g_managed_pet_lifetime_code[src]=managed_get(f,12);
+            g_managed_pet_lifetime_value[src]=managed_get(f,16);
+            g_managed_pet_lifetime_order[src]=g_multi_conn[src].join_order;
+        }
+        return 1;
+    }
     if(type==0xF100){managed_bridge_snapshot(c,len==MANAGED_STATE_SIZE+8?managed_bridge_import(f+8):0u);return 1;}
     /* Managed DB has already committed this absolute progression. Never import
        an old inventory/HP snapshot and never rebuild an existing combat actor. */

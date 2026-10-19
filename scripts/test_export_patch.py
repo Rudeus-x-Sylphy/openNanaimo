@@ -18,6 +18,14 @@ import refresh_patch_manifest as refresh
 
 
 class ExportPatchTests(unittest.TestCase):
+    def test_pet_lifetime_regression_payloads_are_exactly_scoped(self):
+        for name in ("PetLifetimeRegression.csproj", "Program.cs", "RouteChecks.cs"):
+            patch.payload_policy("tests/PetLifetimeRegression/" + name, "source")
+        for name in ("tests/PetLifetimeRegression/private.cs", "tests/Other/Program.cs",
+                     "tests/PetLifetimeRegression/game.db", "tests/PetLifetimeRegression/fixture.json"):
+            with self.subTest(path=name), self.assertRaises(patch.ExportError):
+                patch.payload_policy(name, "source")
+
     def test_story_sources_are_exactly_scoped(self):
         rows=[dict(path=name,size=0,sha256='0'*64) for name in sorted(patch.STORY_SOURCES)]
         self.assertEqual(patch.validated_closure(dict(count=len(rows),files=rows)),rows)

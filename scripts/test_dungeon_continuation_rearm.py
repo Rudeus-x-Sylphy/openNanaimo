@@ -69,11 +69,11 @@ combat_hp=0;injury_dead=1;settlement_sent=0;
 reset(1,1,1);assert(count==0&&combat_hp==0&&pending);
 /* Super-Boss mode2 starts the next normal difficulty at dungeon0/stage0.
    CF8C carries the new client difficulty, never the source resource slot. */
-combat_hp=2000;injury_dead=0;current_dungeon=2;current_stage_index=1;current_difficulty=1;next_exists=1;
+combat_hp=2000;injury_dead=0;current_dungeon=2;current_stage_index=1;current_difficulty=0;next_exists=1;
 reset(2,0,0);assert(count==1&&response_dungeon==0&&response_stage==0&&response_difficulty==1);
-current_dungeon=2;current_stage_index=1;current_difficulty=2;
+current_dungeon=2;current_stage_index=1;current_difficulty=1;
 reset(2,0,0);assert(count==1&&response_dungeon==0&&response_stage==0&&response_difficulty==2);
-current_dungeon=2;current_stage_index=1;current_difficulty=0;
+current_dungeon=2;current_stage_index=1;current_difficulty=2;
 reset(2,1,0);assert(count==0&&pending); /* highest difficulty never wraps */
 current_difficulty=1;next_exists=0;
 reset(2,1,0);assert(count==0&&pending&&current_dungeon==2); /* missing target */

@@ -304,9 +304,10 @@ internal static class RevivalBillingChecks
             && (bool)Get(f.Session, "NativeDungeonNextTransitionAuthorized")!,
             "accepted retry closes the death result and arms one continuation boundary");
         var resources = (BattleResourceSnapshot)Get(f.Session, "NativeBattleResources")!;
-        Check(resources.CurrentHp == resources.MaximumHp && resources.CurrentMp == resources.MaximumMp
+        Check(resources.CurrentHp == Math.Min(resources.MaximumHp, f.Character.MaxHp / 6)
+            && resources.CurrentMp == 800
             && resources.AttackMode == 0 && resources.SettlementFrozen,
-            "accepted retry restores resources and retains the old-damage barrier until reload");
+            "accepted retry uses death-return HP and retained MP with the old-damage barrier until reload");
 
         await f.Send(0xCF73, []);
         await f.Send(0xCF1D, []);
@@ -548,6 +549,10 @@ internal static class RevivalBillingChecks
                             }
                             else RejectNextPaidSync = false;
                             await stream.WriteAsync(NativeDungeonClient.Frame(0xF105,ack));
+                            break;
+                        case 0xF10C:
+                            if (frame.Length != 20 || BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(8)) != state.Get(4))
+                                throw new InvalidOperationException("Invalid pet-lifetime metadata.");
                             break;
                         case 0xCF95:
                             lock(gate)

@@ -70,15 +70,15 @@ static int gate_lifecycle(void){
         CHECK(!gate_hit(0,0,0,&r));CHECK(count==0&&r.scripted_report_suppressed);
         CHECK(!gate_hit(1,1u-reverse,contact_hit,&r));
         CHECK(r.gate_frame_retired&&c->child_terminal_sent[0]&&c->component_terminal_sent[0]);
-        CHECK(c->hp==(adds_first?0u:adds_hp)&&r.final_terminal==adds_first);
-        CHECK(count==3&&sizes[0]==96u&&sizes[1]==96u);
+        CHECK(c->hp==0u&&r.final_terminal&&r.execution_residual_hp==(adds_first?0u:adds_hp));
+        CHECK(count==(adds_first?3u:4u)&&sizes[0]==96u&&sizes[1]==96u);
         CHECK(boss_hp_sync_get16(frames[0],6)==0xD013&&boss_hp_sync_get16(frames[0],12)==0u);
         CHECK(boss_hp_sync_get16(frames[1],6)==0xD013&&boss_hp_sync_get16(frames[1],12)==1u);
-        CHECK(boss_hp_sync_get16(frames[2],6)==0xD012&&boss_hp_sync_get32(frames[2],0x28)==c->hp);
+        CHECK(boss_hp_sync_get16(frames[count-1],6)==0xD012&&boss_hp_sync_get32(frames[count-1],0x28)==0u);
         if(!adds_first){
-            CHECK(!gate_hit(0,0,0,&r));CHECK(count==0&&!r.gate_frame_retired);
-            for(k=0;k<3;k++){CHECK(!gate_hit(2,k,contact_hit,&r));CHECK(!r.gate_frame_retired);}
-            CHECK(c->final_terminal_seen&&c->hp==0u);
+            unsigned char late[32]={0};count=0;
+            CHECK(boss_hp_sync_apply_d011_attack(c,late,32,1000000u,1u,&r)==BOSS_HP_SYNC_TERMINAL_QUARANTINED);
+            CHECK(count==0&&c->final_terminal_seen&&c->hp==0u);
         }
     }
     /* Other zero-HP targets retain their existing retirement policy. */
@@ -96,17 +96,16 @@ int main(void){
     teamplay_score_begin(1u);
     boss_hp_sync_init(c);boss_hp_sync_begin_game_domain(c,3,0,0,0,2,6);scalar_retired=0;teamplay_boss_final_hans_reset_current();
     CHECK(!contact(0,1,6,1,0,0,0,0));
-    CHECK(!contact(0,1,6,1000000,1,1,0,0));
-    CHECK(!contact(0,1,6,1000000,0,0,0,0));
     CHECK(!contact(0,0,27,1000000,1,0,0,0));
-    CHECK(!contact(0,0,13,1000000,1,1,1,0));
+    CHECK(!contact(0,0,13,1000000,1,1,0,0));
+    CHECK(!contact(0,1,6,1000000,1,1,1,0));
     CHECK(c->final_terminal_seen);count=0;
     CHECK(boss_hp_sync_apply_external_component_damage(c,0,0,13,1,&r)==BOSS_HP_SYNC_BAD_PHASE && count==0);
     boss_hp_sync_begin_game_domain(c,3,0,2,1,2,7);scalar_retired=0;teamplay_boss_final_hans_reset_current();
-    /* The positive body can retire before the other component of the same child. */
-    CHECK(!contact(0,1,2,1000000,1,0,0,0));
+    /* Auxiliary-first preserves independent child retirements; the new core-first path is covered separately. */
     for(i=5;i<=9;i++)CHECK(!contact(0,0,i,1000000,1,i==9,0,0));
-    CHECK(!contact(0,1,1,1000000,1,1,0,1));
+    CHECK(!contact(0,1,1,1000000,1,0,0,0));
+    CHECK(!contact(0,1,2,1000000,1,1,0,1));
     CHECK(c->awaiting_next_mode && !c->final_terminal_seen);count=0;
     CHECK(boss_hp_sync_apply_external_component_damage(c,1,0,2,1,&r)==BOSS_HP_SYNC_BAD_MODE && count==0);
     {

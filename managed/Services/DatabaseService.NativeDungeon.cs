@@ -780,7 +780,8 @@ public sealed partial class DatabaseService
 
     public async Task<NativeDungeonApplyResult> ApplyNativeDungeonDeltaAsync(long accountId, long characterId, string sessionId,
         NativeDungeonState before, NativeDungeonState after, CancellationToken token, string? commitId = null,
-        bool recovering = false, NativeDungeonSettlementRecord? settlement = null)
+        bool recovering = false, NativeDungeonSettlementRecord? settlement = null,
+        PetLifetimeDebit? petLifetime = null)
     {
         if (IsReadOnly)
             throw new InvalidOperationException("Native dungeon settlement requires a read-write database.");
@@ -867,6 +868,13 @@ public sealed partial class DatabaseService
         var progressionState = ResolveNativeDungeonCharacterProgression(
             before, after, experienceSettlement, storedLevel, storedExperience,
             vitality, intelligence, storedMaxHp, storedMaxMp);
+        if (petLifetime is not null)
+        {
+            var lifetime = await ConsumePetLifetimeCoreAsync(connection, transaction,
+                accountId, characterId, sessionId, petLifetime, token, recovering);
+            if (!lifetime.Success || !lifetime.Applied)
+                throw new InvalidOperationException("Pet lifetime does not authorize this revival.");
+        }
         var experience = progressionState.Experience;
         var level = progressionState.Level;
         var gainedLevels = progressionState.GainedLevels;
@@ -1347,7 +1355,10 @@ public sealed partial class DatabaseService
                 new NativeDungeonState(Convert.FromBase64String(root.GetProperty("Before").GetString()!)),
                 new NativeDungeonState(Convert.FromBase64String(root.GetProperty("After").GetString()!)), token,
                 root.GetProperty("CommitId").GetString()!, recovering: true,
-                settlement: TryReadNativeDungeonSettlementJournal(root));
+                settlement: TryReadNativeDungeonSettlementJournal(root),
+                petLifetime: root.TryGetProperty("PetLifetime", out var lifetime)
+                    && lifetime.ValueKind == System.Text.Json.JsonValueKind.Object
+                    ? System.Text.Json.JsonSerializer.Deserialize<PetLifetimeDebit>(lifetime.GetRawText()) : null);
             File.Delete(path);
         }
     }

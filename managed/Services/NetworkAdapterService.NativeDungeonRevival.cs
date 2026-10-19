@@ -195,6 +195,27 @@ public sealed partial class NetworkAdapterService
                 return;
             }
 
+            var petLifetime = GetNativePetLifetime(session);
+            if (petLifetime.MapDelivered && petLifetime.Code != 0
+                && session.Character.EquippedPetItemCode != 0
+                && (session.Character.EquippedPetItemCode != petLifetime.Code
+                    || session.Character.EquippedPetInstanceId != petLifetime.Instance)) return;
+            if (clientMode is not (0 or 1)) return;
+            if (IsPetLifetimeRevivalBlocked(session.Character)
+                || petLifetime.MapDelivered && petLifetime.Code != 0 && petLifetime.EntryBefore >= 0
+                    && PetProgression.GetState(session.Character, petLifetime.Code, petLifetime.Instance).Durability == 0)
+            {
+                await SettleNativePetExhaustionAsync(session, token);
+                lock (cycle.BoundaryGate)
+                {
+                    cycle.BattleSurrendered = true;
+                    cycle.BattleStarted = cycle.BattleStartArmed = false;
+                }
+                session.NativeDungeonSettlementAwaitingAction = true;
+                await CommitNativeCheckpointAsync(session, NativeDungeonClient.Frame(0xCF87, new byte[4]), token);
+                return;
+            }
+
             var billing = ResolveNativeDungeonRevivalBilling(
                 session.NativeDungeonDeathLatched, clientMode);
             if (billing == NativeDungeonRevivalBillingMode.Hans)

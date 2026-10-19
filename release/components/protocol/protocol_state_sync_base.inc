@@ -5,6 +5,13 @@ static unsigned g_managed_pet_level=0u;
 static unsigned g_managed_pet_experience=0u;
 static unsigned g_managed_pet_combat_level=1u;
 #endif
+/* Managed egress and F10C metadata share the instance lifespan. Standalone
+   native sessions have no instance database and must not fabricate 100 uses. */
+#ifdef NANAIMO_GAMEPLAY_BRIDGE
+static unsigned native_pet_durability_current(void);
+#else
+static unsigned native_pet_durability_current(void){return g_stable_pet?0xFFFFFFFFu:0u;}
+#endif
 /* ROOM_START_BASE derives from the REALTIME_CORE protocol baseline but replaces only the
    room-slot carriers whose original-wire/static meaning is now closed. */
 #define send_cfd2_p2p_my_info send_cfd2_p2p_my_info_roster_base_legacy
@@ -60,7 +67,7 @@ static void send_cf72_dynamic_actor_refresh_phase(SOCKET c,unsigned actor_uid,un
 #else
     stable_resource_put16(p,0x56,0u);
 #endif
-    stable_put32(p,0x58,0u);stable_put32(p,0x5C,0u);stable_put32(p,0x60,0u);stable_resource_put16(p,0x64,apply);p[0x66]=(char)pet_stage;p[0x67]=(char)pet_stage_cap;stable_put32(p,0x68,0u);stable_put32(p,0x6C,100u);p[0x72]=1;p[0x73]=(char)native_actor_revival_count(actor_uid);
+    stable_put32(p,0x58,0u);stable_put32(p,0x5C,0u);stable_put32(p,0x60,0u);stable_resource_put16(p,0x64,apply);p[0x66]=(char)pet_stage;p[0x67]=(char)pet_stage_cap;stable_put32(p,0x68,0u);stable_put32(p,0x6C,native_pet_durability_current());p[0x72]=1;p[0x73]=(char)native_actor_revival_count(actor_uid);
     sendbuf(c,p,0x74);
 #if TEAMPLAY_FEATURE_QUICKBAR_BATTLE_UNLOCK
     printf("  [QUICKBAR_BATTLE_GATE] CF72 actor=%u local=%u gate=%u\n",actor_uid,multiplayer_current_uid(),(unsigned)((unsigned char)p[0x56]|((unsigned char)p[0x57]<<8)));fflush(0);
@@ -107,9 +114,9 @@ stable_put32(p,0x34,0u);p[0x57]=0;stable_put32(p,0x58,0u);
 /* CF71 case53105 passes DWORD+0x3C as appearance D8 into sub_4EF380 and
    BYTE+0x57 as the PET/gender argument into sub_40AC5E.  D8 low WORD must be
    0/1 or the room actor's base model is never initialized. */
-stable_put32(p,0x3C,g_stable_gender&1u);p[0x57]=(char)(g_stable_gender&1u);stable_put32(p,0x58,g_stable_pet);
+stable_put32(p,0x3C,g_stable_gender&1u);p[0x57]=(char)(g_stable_gender&1u);stable_put32(p,0x58,native_pet_durability_current());
 #endif
-p[0xA8]=(char)native_actor_revival_count(member_uid);p[0xA9]=1;p[0xAA]=(char)g0;p[0xAB]=(char)g1;stable_put32(p,0xAC,c0);stable_put32(p,0xB0,c1);sendbuf(c,p,0xB8);
+stable_put32(p,0x58,native_pet_durability_current());p[0xA8]=(char)native_actor_revival_count(member_uid);p[0xA9]=1;p[0xAA]=(char)g0;p[0xAB]=(char)g1;stable_put32(p,0xAC,c0);stable_put32(p,0xB0,c1);sendbuf(c,p,0xB8);
 #if TEAMPLAY_FEATURE_QUICKBAR_BATTLE_UNLOCK
     printf("  [QUICKBAR_BATTLE_GATE] CF71 member=%u local=%u gate=%u\n",member_uid,multiplayer_current_uid(),(unsigned)((unsigned char)p[0x7A]|((unsigned char)p[0x7B]<<8)));fflush(0);
 #endif

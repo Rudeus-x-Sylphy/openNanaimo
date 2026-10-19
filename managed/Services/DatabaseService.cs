@@ -3226,7 +3226,7 @@ public sealed partial class DatabaseService
             return (false, false, "Pet charge parameters are invalid.", expectedDurability, 0, 0);
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction();
+        await using var transaction = connection.BeginTransaction(deferred: false);
         long hans;
         short currentDurability;
         await using (var current = connection.CreateCommand())
@@ -5225,6 +5225,23 @@ public sealed partial class DatabaseService
                     return false;
                 }
             }
+        }
+
+        if (equippedPetItemCode != 0 && ShopCatalog.TryGet(15, equippedPetItemCode, out var lifetimeCatalog)
+            && !lifetimeCatalog.HasExpiry && lifetimeCatalog.PetMaxDurability >= 0)
+        {
+            await using var lifetime = connection.CreateCommand();
+            lifetime.Transaction = transaction;
+            lifetime.CommandText = """
+                SELECT COALESCE(PetDurability,$initial) FROM CharacterInventoryInstances
+                WHERE CharacterId=$id AND ItemCode=$code AND PetInstanceId=$instance AND Quantity>0
+                """;
+            lifetime.Parameters.AddWithValue("$initial", lifetimeCatalog.PetMaxDurability);
+            lifetime.Parameters.AddWithValue("$id", characterId);
+            lifetime.Parameters.AddWithValue("$code", equippedPetItemCode);
+            lifetime.Parameters.AddWithValue("$instance", equippedPetInstanceId);
+            if (await lifetime.ExecuteScalarAsync(cancellationToken) is { } balance && Convert.ToInt32(balance) == 0)
+                return false;
         }
 
         var storedAppearance = NormalizeAppearanceForGender(appearance, gender, 0);
@@ -7423,7 +7440,8 @@ public sealed partial class DatabaseService
             ushort hansCost,
             int restoredHp,
             int restoredMp,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            PetLifetimeDebit? petLifetime = null)
     {
         if (accountId <= 0
             || characterId <= 0
@@ -7437,7 +7455,16 @@ public sealed partial class DatabaseService
             return (false, "Invalid dungeon-continue request.", 0, 0, 0, 0);
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction(deferred: false);
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        if (petLifetime is not null)
+        {
+            var lifetime = await ConsumePetLifetimeCoreAsync(connection, transaction, accountId,
+                characterId, sessionId, petLifetime, cancellationToken);
+            if (!lifetime.Success || !lifetime.Applied)
+                return (false, "Pet lifetime does not authorize this revival.", 0, 0, 0, 0);
+        }
         // CurrentHp/CurrentMp may legitimately exceed the persisted base MaxHp/MaxMp
         // while dungeon equipment/PET/gem bonuses are active. Callers pass verified
         // effective maxima, so do not clamp the revival result back to launcher base.
@@ -7497,13 +7524,16 @@ public sealed partial class DatabaseService
                 : (false, "The online character has no activated revival uses.", 0L, (byte)0, 0, 0);
         }
 
-        return (
+        var result = (
             true,
             string.Empty,
             reader.GetInt64(0),
             checked((byte)reader.GetInt32(1)),
             reader.GetInt32(2),
             reader.GetInt32(3));
+        await reader.DisposeAsync();
+        await transaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public async Task<(bool Success, string Error, ushort Quantity, byte[] Appearance)>

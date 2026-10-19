@@ -37,7 +37,7 @@ int main(void){unsigned pi,mode,i,j,modes=0,finals=0,transitions=0,components=0,
     for(j=0;j<count;j++){
      unsigned op=boss_hp_sync_get16(frames[j],6);
      CHECK(op==0xD012||op==0xD013);
-     if(op==0xD013){CHECK(sizes[j]==96&&boss_hp_sync_get16(frames[j],8)==1);}
+     if(op==0xD013){CHECK(sizes[j]==96&&boss_hp_sync_get16(frames[j],8)==1);if(r.intermediate_terminal||r.final_terminal)CHECK(boss_hp_sync_get32(frames[j],0x5C)==0u);}
      else {CHECK(sizes[j]>=60);}
     }
     if(r.final_terminal||r.intermediate_terminal){
@@ -49,7 +49,7 @@ int main(void){unsigned pi,mode,i,j,modes=0,finals=0,transitions=0,components=0,
    CHECK(completed);
   }
  }
- CHECK(modes==1278);printf("BOSS_FINISH_AUDIT_PASS modes=%u final=%u transition=%u components=%u empty=%u\n",modes,finals,transitions,components,empty);return 0;
+ CHECK(modes==BOSS_COMPONENT_BOSS_MODE_COUNT);printf("BOSS_FINISH_AUDIT_PASS modes=%u final=%u transition=%u components=%u empty=%u\n",modes,finals,transitions,components,empty);return 0;
 }
 '''
 class BossFinishAuditTests(unittest.TestCase):

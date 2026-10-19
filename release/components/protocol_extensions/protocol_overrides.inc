@@ -49,6 +49,7 @@ static unsigned teamplay_boss_final_hans_commit(unsigned monster_hp){(void)monst
 
 #if TEAMPLAY_FEATURE_SCORE_OUTBOX
 static void send_d012_boss_hp_sync_score(SOCKET c,const struct boss_hp_sync_result*r,unsigned total_score){
+    if(r->executed){printf("  [BOSS_EXECUTION] mode=%u residual_hp=%u actual_damage=%u cumulative_damage=%u\n",r->mode_index,r->execution_residual_hp,r->applied_damage,r->cumulative_damage);fflush(0);}
     char p[4096];unsigned boss_hans=0u,boss_hp=combat_economy_boss_total_hp(multiplayer_shared_boss_context()),scores[3],out_len=(r->intermediate_terminal||r->first_terminal||r->repeated_terminal)?64u:(unsigned)BOSS_HP_SYNC_D012_LEN;(void)total_score;teamplay_score_snapshot(scores);mkpkt(p,0xD012,(int)out_len,1);boss_hp_sync_encode_d012_payload((unsigned char*)p,BOSS_HP_SYNC_D012_LEN,r);/* Zero-recording intermediate packets can read rank+3C..3F in ep>=16 (6EE121/6EE1A6), without being final. */if(r->intermediate_terminal)memset(p+0x3C,0,4u);stable_put32(p,0x08,scores[0]);stable_put32(p,0x0C,scores[1]);stable_put32(p,0x10,scores[2]);if(r->first_terminal)boss_hans=teamplay_boss_final_hans_commit(boss_hp);stable_put32(p,0x1C,boss_hans);if(r->first_terminal||r->repeated_terminal){
 #if TEAMPLAY_FEATURE_D012_SLOT_RANKS
         int ri;unsigned rs;if(r->first_terminal)teamplay_rating_freeze_all();for(ri=0;ri<MULTI_MAX_PLAYERS;ri++)if(g_multi_conn[ri].active&&g_multi_transport_alive[ri]&&g_multi_conn[ri].room_active){rs=multiplayer_room_slot_idx(ri);if(rs<4u){p[0x3C+rs]=(char)combat_economy_rating_for_member(rs<3u?scores[rs]:0u,g_multi_conn[ri].profile.hp_current>0u,multiplayer_shared_boss_context(),ri);
@@ -69,19 +70,22 @@ static void teamplay_send_d013_boss_child_retire(SOCKET c,unsigned child,unsigne
     char p[4096];mkpkt(p,0xD013,0x60,1);stable_resource_put16(p,0x08,1u);stable_resource_put16(p,0x0A,owner_selector);stable_resource_put16(p,0x0C,child);stable_resource_put16(p,0x0E,0u);stable_put32(p,0x5C,energy);sendbuf(c,p,0x60);multiplayer_broadcast_raw(0xD013,(const unsigned char*)p,0x60);printf("  S0xD013 TEAMPLAY child-retire child=%u owner=%u aggregate_hp=%u room_broadcast=1 len=96 t=%lds\n",child,owner_selector,energy,sec());fflush(0);
 }
 #if TEAMPLAY_FEATURE_BOSS_MONOTONIC_CHILD_PHASE || TEAMPLAY_FEATURE_BOSS_SMOOTH_CHILD_PHASE || TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
-static void teamplay_send_d013_boss_result_retirements(SOCKET c,const struct boss_hp_sync_result*r){unsigned child;
+static void teamplay_send_d013_boss_result_retirements(SOCKET c,const struct boss_hp_sync_result*r){unsigned child,recording=r->mode_recording_published?r->mode_recording_hp:r->hp;
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
-if(r->gate_frame_retired)teamplay_send_d013_boss_child_retire(c,0u,0u,r->hp);
+if(r->gate_frame_retired)teamplay_send_d013_boss_child_retire(c,0u,0u,recording);
 #endif
 #if TEAMPLAY_FEATURE_BOSS_MONOTONIC_CHILD_PHASE
-for(child=0u;child<BOSS_HP_SYNC_MAX_CHILDREN;child++)if(boss_hp_sync_result_auto_retired(r,child))teamplay_send_d013_boss_child_retire(c,child,0u,r->hp);if(r->child_first_terminal&&!boss_hp_sync_result_auto_retired(r,r->retire_child))teamplay_send_d013_boss_child_retire(c,r->retire_child,0u,r->hp);
+for(child=0u;child<BOSS_HP_SYNC_MAX_CHILDREN;child++)if(boss_hp_sync_result_auto_retired(r,child))teamplay_send_d013_boss_child_retire(c,child,0u,recording);if(r->child_first_terminal&&!boss_hp_sync_result_auto_retired(r,r->retire_child))teamplay_send_d013_boss_child_retire(c,r->retire_child,0u,recording);
 #elif TEAMPLAY_FEATURE_BOSS_SMOOTH_CHILD_PHASE
-for(child=0u;child<BOSS_HP_SYNC_MAX_CHILDREN;child++)if(boss_hp_sync_result_phase_fold_retired(r,child))teamplay_send_d013_boss_child_retire(c,child,0u,r->hp);if(r->child_first_terminal&&!boss_hp_sync_result_phase_fold_retired(r,r->retire_child))teamplay_send_d013_boss_child_retire(c,r->retire_child,0u,r->hp);
+for(child=0u;child<BOSS_HP_SYNC_MAX_CHILDREN;child++)if(boss_hp_sync_result_phase_fold_retired(r,child))teamplay_send_d013_boss_child_retire(c,child,0u,recording);if(r->child_first_terminal&&!boss_hp_sync_result_phase_fold_retired(r,r->retire_child))teamplay_send_d013_boss_child_retire(c,r->retire_child,0u,recording);
 #else
-(void)child;if(r->child_first_terminal)teamplay_send_d013_boss_child_retire(c,r->retire_child,0u,r->hp);
+(void)child;if(r->child_first_terminal)teamplay_send_d013_boss_child_retire(c,r->retire_child,0u,recording);
 #if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
-for(child=0u;child<BOSS_HP_SYNC_MAX_CHILDREN;child++)if(boss_hp_sync_result_completion_shell_retired(r,child)&&(!r->child_first_terminal||child!=r->retire_child))teamplay_send_d013_boss_child_retire(c,child,0u,r->hp);
+for(child=0u;child<BOSS_HP_SYNC_MAX_CHILDREN;child++)if(boss_hp_sync_result_completion_shell_retired(r,child)&&(!r->child_first_terminal||child!=r->retire_child))teamplay_send_d013_boss_child_retire(c,child,0u,recording);
 #endif
+#endif
+#if TEAMPLAY_FEATURE_BOSS_COMPONENT_TERMINAL_D012
+    for(child=0u;child<BOSS_HP_SYNC_MAX_CHILDREN;child++)if(boss_hp_sync_result_execution_retired(r,child)&&(!r->child_first_terminal||child!=r->retire_child)&&(!r->gate_frame_retired||child!=0u)&&!boss_hp_sync_result_completion_shell_retired(r,child))teamplay_send_d013_boss_child_retire(c,child,0u,recording);
 #endif
 }
 #endif
@@ -118,13 +122,19 @@ static void managed_record_clear(unsigned allow){
     unsigned difficulty,slot;
     if(!allow||!b||g_multi_current<0||g_multi_current>=MULTI_MAX_PLAYERS||b->hd!=0u||b->stage>=20u||b->dungeon>=3u||b->difficulty>=3u)return;
     slot=(b->dungeon==2u&&b->stage_index==1u)?3u:b->dungeon;
-    difficulty=slot==3u?b->difficulty:(b->difficulty+1u)%3u;
+    difficulty=(b->difficulty+1u)%3u;
     g_managed_clear_masks[g_multi_current][b->stage*3u+difficulty]|=(unsigned char)(1u<<slot);
 }
 #endif
 static unsigned g_progression_settlement_epoch[MULTI_MAX_PLAYERS];static unsigned char g_progression_settlement_epoch_valid[MULTI_MAX_PLAYERS];
 static unsigned progression_current_battle_epoch(void){struct boss_hp_sync_context*b=multiplayer_shared_boss_context();return b?b->battle_epoch:0u;}
-static void progression_current_dungeon_tuple(struct progression_dungeon_tuple*out){struct boss_hp_sync_context*b=multiplayer_shared_boss_context();memset(out,0,sizeof(*out));if(!b)return;out->hd=b->hd;out->episode=b->stage;out->dungeon=b->dungeon;out->difficulty=b->difficulty;out->stage_index=b->stage_index;}
+static void progression_current_dungeon_tuple(struct progression_dungeon_tuple*out){
+    struct boss_hp_sync_context*b=multiplayer_shared_boss_context();memset(out,0,sizeof(*out));if(!b)return;
+    out->hd=b->hd;out->episode=b->stage;out->dungeon=b->dungeon;out->difficulty=b->difficulty;out->stage_index=b->stage_index;
+    /* Preserve the legacy saved Super-Boss frontier, not its resource selector. */
+    if(out->dungeon==2u&&out->stage_index==1u&&out->difficulty<3u&&!(out->hd==0u&&out->episode==100u))
+        out->difficulty=(out->difficulty+1u)%3u;
+}
 static void progression_progression_fill_record(char*p,unsigned off,const struct multiplayer_profile*pr,unsigned added,unsigned level_up){struct progression_progression_state st;struct progression_client_experience display;struct progression_dungeon_grade_state dg;progression_progression_snapshot_name(pr->name,pr->name_len,pr->level,&st);progression_dungeon_grade_snapshot_name(pr->name,pr->name_len,&dg);if(!progression_project_client_experience(st.level,st.exp_total,&display)){printf("[EXPERIENCE_REJECT] CF88 invalid state\n");exit(1);}p[off+0x04]=(char)(level_up?1u:0u);p[off+0x07]=(char)dg.grade;p[off+0x0A]=(char)st.level;stable_put32(p,(int)off+0x0C,added);stable_put32(p,(int)off+0x10,display.current);stable_put32(p,(int)off+0x14,display.lower);stable_put32(p,(int)off+0x18,display.next);}
 static void progression_progression_snapshot_current(struct progression_progression_result*pr,struct progression_dungeon_grade_result*dr){struct progression_progression_state ps;struct progression_dungeon_grade_state ds;int idx=g_multi_current;const unsigned char*name=g_stable_name;unsigned name_len=g_stable_name_len,seed=STABLE_LEVEL;memset(pr,0,sizeof(*pr));memset(dr,0,sizeof(*dr));if(idx>=0&&idx<MULTI_MAX_PLAYERS){name=g_multi_conn[idx].profile.name;name_len=g_multi_conn[idx].profile.name_len;seed=g_multi_conn[idx].profile.level;}progression_progression_snapshot_name(name,name_len,seed,&ps);progression_dungeon_grade_snapshot_name(name,name_len,&ds);pr->old_level=pr->new_level=ps.level;pr->old_exp=pr->new_exp=ps.exp_total;pr->lower=ps.lower;pr->next=ps.next;dr->old_grade=dr->new_grade=ds.grade;dr->old_frontier=dr->new_frontier=ds.frontier;}
 static void progression_progression_commit_for_current(unsigned allow,struct progression_progression_result*pr,struct progression_dungeon_grade_result*dr){unsigned epoch=progression_current_battle_epoch();int idx=g_multi_current;struct progression_dungeon_tuple tuple;progression_current_dungeon_tuple(&tuple);if(idx>=0&&idx<MULTI_MAX_PLAYERS&&g_progression_settlement_epoch_valid[idx]&&g_progression_settlement_epoch[idx]==epoch){progression_progression_snapshot_current(pr,dr);return;}if(idx>=0&&idx<MULTI_MAX_PLAYERS){g_progression_settlement_epoch_valid[idx]=1u;g_progression_settlement_epoch[idx]=epoch;}progression_progression_award_current(allow,allow?(teamplay_current_score()/4u):0u,pr);progression_dungeon_grade_award_current(allow,&tuple,dr);if(idx>=0&&idx<MULTI_MAX_PLAYERS)g_multi_conn[idx].profile.level=pr->new_level;}

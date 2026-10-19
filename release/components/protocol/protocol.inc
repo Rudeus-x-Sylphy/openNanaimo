@@ -979,7 +979,7 @@ static void send_cf72_initial_owner_reset(SOCKET c){
     /* +0x38..+0x4C object/resource IDs and +0x58..+0x60 modifier keys stay zero. */
     stable_resource_put16(p,0x56,0);
     initial_selector=g_initial_attack_mode+1u;if(initial_selector>3u)initial_selector=3u;stable_resource_put16(p,0x64,1);p[0x66]=(char)initial_selector;p[0x67]=(char)initial_selector;
-    stable_put32(p,0x68,0);stable_put32(p,0x6C,100u);p[0x72]=1;p[0x73]=0;
+    stable_put32(p,0x68,0);stable_put32(p,0x6C,native_pet_durability_current());p[0x72]=1;p[0x73]=0;
     sendbuf(c,p,0x74);
     printf("  S0xCF72 PROTOCOL_PET_CARRIERS post-create reset X-slot entitlement=1 uid=1 pet=%u apply=1 PetLevel=%u hp=%u/%u mp=%u/%u +72=1 len=116 t=%lds\n",STABLE_PET,initial_selector,g_profile_hp_current,g_profile_hp_max,g_profile_mp_current,g_profile_mp_max,sec());fflush(0);
 }

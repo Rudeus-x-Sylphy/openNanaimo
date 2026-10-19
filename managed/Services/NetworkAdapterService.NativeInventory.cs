@@ -46,7 +46,11 @@ public sealed partial class NetworkAdapterService
         return response;
     }
 
-    private async Task<byte[]> SynchronizeNativeInventoryAsync(ConnectionSession session, CancellationToken token)
+    private Task<byte[]> SynchronizeNativeInventoryAsync(ConnectionSession session, CancellationToken token)
+        => SynchronizeNativeInventoryCoreAsync(session, token, refreshReadyRoom: true);
+
+    private async Task<byte[]> SynchronizeNativeInventoryCoreAsync(ConnectionSession session, CancellationToken token,
+        bool refreshReadyRoom)
     {
         if (session.NativeDungeon is not { } worker || session.Character is not { } character
             || session.NativeCheckpoint is not { } previous) return [];
@@ -63,9 +67,10 @@ public sealed partial class NetworkAdapterService
         if (!ReferenceEquals(session.NativeDungeon, worker) || session.NativeBattleEpoch != epoch) return [];
         session.NativeCheckpoint = exchange.State;
         session.NativeBattleResources = resources;
+        await SyncNativePetLifetimeAsync(session, token);
         foreach (var response in exchange.Frames)
             await HandleNativeWorkerFrameAsync(session, response, epoch, token);
-        if (!IsNativeReadyRoomInventory(session)) return [];
+        if (!refreshReadyRoom || !IsNativeReadyRoomInventory(session)) return [];
         // Refresh from the imported worker state through its PET lifecycle.
         // The caller publishes inventory completion before this room snapshot.
         var refresh = await worker.ExchangeCapturedAsync(NativeDungeonClient.Frame(0xF108, []), null, token);
@@ -74,7 +79,10 @@ public sealed partial class NetworkAdapterService
         foreach (var response in refresh.Frames)
         {
             if (response.Length == 0x74 && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) == 0xCF72)
+            {
+                PatchNativePetDurabilityFrame(response, character);
                 frames.Add(BuildNativeFrame(response, 0xCF72, response[8..], session));
+            }
             else
                 await HandleNativeWorkerFrameAsync(session, response, epoch, token);
         }

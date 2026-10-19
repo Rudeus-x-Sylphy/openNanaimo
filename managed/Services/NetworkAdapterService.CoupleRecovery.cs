@@ -184,7 +184,7 @@ public sealed partial class NetworkAdapterService
         var pet = PetProgression.GetState(character, GetEquippedPetItemCode(character));
         payload[0x66 - 8] = pet.CurrentStage;
         payload[0x67 - 8] = pet.MaximumStage;
-        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(0x6C - 8), 100);
+        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(0x6C - 8), GetPetBattleDurability(character));
         payload[0x72 - 8] = 1;
         payload[0x73 - 8] = character.RevivalUseCount;
         return payload; // apply=0; ready-room-only because even apply0 rebuilds the six slots.
