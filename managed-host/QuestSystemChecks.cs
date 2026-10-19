@@ -138,6 +138,11 @@ internal static class QuestSystemChecks
                 { BattlePetCode = 15_000_010u, BossDefeated = true });
             Check(firstProgress.Changed && firstProgress.NewlyCompleted,
                 "authoritative Epi1 dungeon1 clear completes the first mainline objective");
+            var rewardAppearance = ((CharacterRecord)Get(session, "Character")!).Appearance.ToArray();
+            BinaryPrimitives.WriteUInt32LittleEndian(rewardAppearance.AsSpan(8), 10110337);
+            await Execute("UPDATE Characters SET Appearance=$appearance WHERE Id=$id",
+                ("$appearance", rewardAppearance), ("$id", characterId));
+            Set(session, "Character", (await db.GetCharacterAsync(account))!);
             var completion = new byte[80];
             BinaryPrimitives.WriteUInt16LittleEndian(completion.AsSpan(0, 2), 3);
             BinaryPrimitives.WriteUInt16LittleEndian(completion.AsSpan(2, 2), 1);
@@ -155,6 +160,13 @@ internal static class QuestSystemChecks
                 "successful hand-in refreshes inventory and quick slots before the advanced task list");
             Check(BinaryPrimitives.ReadUInt16LittleEndian(completionFrames.AsSpan(16, 2)) == 1,
                 "medal-granting mainline hand-in publishes C59A completion kind one even without a level gain");
+            var completedCharacter = (CharacterRecord)Get(session, "Character")!;
+            var completedVitals = NetworkAdapterService.ResolveInventoryVitals(completedCharacter);
+            Check(BinaryPrimitives.ReadUInt16LittleEndian(completionFrames.AsSpan(20)) == completedVitals.MaximumHp
+                && BinaryPrimitives.ReadUInt16LittleEndian(completionFrames.AsSpan(22)) == completedVitals.MaximumMp
+                && completedVitals.MaximumHp > completedCharacter.MaxHp
+                && completedVitals.MaximumMp > completedCharacter.MaxMp,
+                "production C599 reward dispatch publishes effective HP/MP maxima in the established response sequence");
             var storyState = await db.GetStoryGuideStateAsync(account, characterId, sessionId);
             Check(storyState.Authorized && storyState.Medals == 1,
                 "the committed story-claim ledger persists one earned medal");

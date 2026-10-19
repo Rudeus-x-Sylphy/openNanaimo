@@ -18129,12 +18129,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(8, 2), completionKindOverride ?? ResolveTaskCompletionKind(questId, taskType));
         payload[11] = (byte)Math.Clamp(character.Level, 1, byte.MaxValue);
+        // C59A and D8FF share effective maxima from the committed level and equipment.
+        var resources = ResolveInventoryVitals(character);
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(12, 2),
-            (ushort)Math.Clamp(character.MaxHp, 0, ushort.MaxValue));
+            resources.MaximumHp);
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(14, 2),
-            (ushort)Math.Clamp(character.MaxMp, 0, ushort.MaxValue));
+            resources.MaximumMp);
         var display = CharacterProgression.ProjectClientExperience(character.Level, character.Experience);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(16, 4), display.Current);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(20, 4), display.Lower);

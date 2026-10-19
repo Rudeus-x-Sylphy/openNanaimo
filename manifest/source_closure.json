@@ -233,8 +233,8 @@
     },
     {
       "path": "managed-host/InventoryVitalsChecks.cs",
-      "size": 18075,
-      "sha256": "159CD00F2CE7BD310CD439DD971C187F924194F35D5486505AD95E3AFA2F07D9"
+      "size": 21743,
+      "sha256": "0A39CC3A6E536A4DCC59A7BD25C274D9C5696C1A0288B015BC2F1D2D7EA2B979"
     },
     {
       "path": "managed-host/KoreanWardrobeChecks.cs",
@@ -353,8 +353,8 @@
     },
     {
       "path": "managed-host/QuestSystemChecks.cs",
-      "size": 52962,
-      "sha256": "78A6D6C7044BB67A0B94254B1AEEF5C3DFF0469A4CB6C58C5B8EC8CEDE8A362C"
+      "size": 54079,
+      "sha256": "0BE023DB0E15ED9A857E46E046DBF92CDAF2B490F29926CE08CE9CC2C6CE37F5"
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
@@ -1243,8 +1243,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 1020840,
-      "sha256": "DD0674F6774DFF29974590B1B35CBC0C34ABA0433B1AAC9C79FC40115145F22C"
+      "size": 1020917,
+      "sha256": "9C9ED80449408EDF66F6FDB7E4A113E2D7A43BE126E4009E2CD058084C74D5DC"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

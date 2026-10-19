@@ -196,7 +196,63 @@ internal static class InventoryVitalsChecks
             && unequippedState.Get(20) == 22222 && unequippedState.Get(28) == 5000,
             "Native Create honors explicit unequip despite PetVariant and ApplyTo drops only over-cap resources");
         CheckAvatarEquipment(hpGem);
+        CheckTaskCompletionVitals(hpGem, mpGem.ItemCode);
         Console.WriteLine("INVENTORY_VITALS_CHECKS_PASS base-effective selected-gems gift-refresh no-refill town next-epoch frame-gates");
+    }
+
+    private static void CheckTaskCompletionVitals(uint hpGem, uint mpGem)
+    {
+        var build = typeof(NetworkAdapterService).GetMethod("BuildTaskCompletionResultPayload",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        var character = MakeCharacter(hpGem);
+        character.Level = 25;
+        character.Experience = CharacterProgression.ExperienceRequiredForLevel(25);
+        character.EquippedPetItemCode = 15009205;
+        character.Items[0].ItemCode = 15009205;
+        character.Items[0].PetAccessory1 = mpGem;
+        BinaryPrimitives.WriteUInt32LittleEndian(character.Appearance.AsSpan(8), 10110337);
+        byte[] Complete(bool success, uint questId = 70_000_007u, byte failure = 3)
+            => (byte[])build.Invoke(null, [success, questId, character, true, (byte)6, null, failure])!;
+        var effective = NetworkAdapterService.ResolveInventoryVitals(character);
+        var payload = Complete(true);
+        Check(payload.Length == 28 && payload[0] == 0 && payload[1] == 1
+            && BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(4)) == 70_000_007u
+            && U16(payload, 8) == 6 && payload[11] == 25,
+            "task completion retains status, reward flag, identity, kind and level");
+        Check(U16(payload, 12) == effective.MaximumHp && U16(payload, 14) == effective.MaximumMp
+            && effective.MaximumHp > character.MaxHp && effective.MaximumMp > character.MaxMp,
+            "task completion uses the same avatar/gem-effective maxima as town recovery");
+        var expected = payload.ToArray();
+        BinaryPrimitives.WriteUInt16LittleEndian(expected.AsSpan(12), (ushort)character.MaxHp);
+        BinaryPrimitives.WriteUInt16LittleEndian(expected.AsSpan(14), (ushort)character.MaxMp);
+        var baseOnly = MakeCharacter(0);
+        baseOnly.Level = character.Level;
+        baseOnly.Experience = character.Experience;
+        var basePayload = (byte[])build.Invoke(null, [true, 70_000_007u, baseOnly, true, (byte)6, null, (byte)3])!;
+        Check(expected.SequenceEqual(basePayload), "only the two maxima differ from the base-only completion");
+        Check(Complete(true).SequenceEqual(payload) && character.MaxHp == 22222
+            && character.MaxMp == 5000 && character.CurrentHp == 19000 && character.CurrentMp == 1200,
+            "completion is idempotent and preserves base and absolute current resources");
+        character.Level = 26;
+        character.Experience = CharacterProgression.ExperienceRequiredForLevel(26);
+        character.MaxHp += 100;
+        character.MaxMp += 10;
+        var leveled = NetworkAdapterService.ResolveInventoryVitals(character);
+        payload = Complete(true, 73_000_000u);
+        Check(U16(payload, 12) == leveled.MaximumHp && U16(payload, 14) == leveled.MaximumMp
+            && leveled.MaximumHp > effective.MaximumHp && leveled.MaximumMp > effective.MaximumMp,
+            "chapter or ordinary reward recomputes effective maxima from the committed new level");
+        foreach (var failure in new byte[] { 1, 3 })
+        {
+            payload = Complete(false, failure: failure);
+            Check(payload[0] == failure && payload.Skip(1).All(value => value == 0),
+                "failed completion keeps its result and all remaining fields zero");
+        }
+        character.MaxHp = 65000;
+        character.MaxMp = 65000;
+        payload = Complete(true);
+        Check(U16(payload, 12) == ushort.MaxValue && U16(payload, 14) == ushort.MaxValue,
+            "task completion saturates effective maxima at UInt16.MaxValue");
     }
 
     private static void CheckAvatarEquipment(uint hpGem)
