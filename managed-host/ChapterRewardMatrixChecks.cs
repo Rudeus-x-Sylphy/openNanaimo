@@ -72,6 +72,10 @@ internal static class ChapterRewardMatrixChecks
                 var plan = ChapterRewardPolicy.Resolve(chapter.Id, review);
                 Check(plan is not null, $"episode={chapter.Episode} all identities resolve");
                 var grants = ChapterRewardPolicy.ForGender(plan!.Grants, male);
+                if (chapter.Episode == 5)
+                    Check(grants.Where(r => r.Kind == 4).Select(r => r.Code).SequenceEqual(male
+                        ? new uint[] { 10110073, 10120073, 10130081 }
+                        : new uint[] { 10010078, 10020078, 10030066 }), "independent naval set identities");
                 foreach (var grant in grants.Where(r => r.Kind == 4))
                     Check(grant.Code / 100000 == (male ? 101u : 100u), "every clothing/effect reward matches character gender");
                 foreach (var (female, masculine) in new[] { (10050065u, 10150065u), (10060004u, 10160004u), (10069201u, 10169201u) })
@@ -120,8 +124,8 @@ internal static class ChapterRewardMatrixChecks
                         ShopCatalog.TryGet(grant.Code, out var item);
                         duration = ChapterRewardPolicy.DurationDays(chapter.Id, grant);
                         if (grant.Kind == 4)
-                            Check(duration == (chapter.Episode == 5 ? 1 : chapter.Episode == 4 ? 1
-                                : chapter.Episode == 6 ? 15 : 0), "trial and permanent chapters have independent expected terms");
+                            Check(duration == (chapter.Episode == 4 ? 1
+                                : chapter.Episode == 6 ? 15 : 0), "timed and permanent chapters have independent expected terms");
                         expiration = await Sql($"SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode={grant.Code}");
                         Check(!item.HasExpiry ? expiration == 0
                             : duration == 0 ? expiration == ClothingExpirationTime.PermanentExpiration

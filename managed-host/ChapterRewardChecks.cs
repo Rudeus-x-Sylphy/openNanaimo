@@ -34,6 +34,25 @@ internal static class ChapterRewardChecks
         foreach (var q in StoryChapterCatalog.Chapters)
             Check(ChapterRewardPolicy.Resolve(q.Id, null) is null, "all shipped chapters remain review-gated");
 
+        var avatars = CardCatalog.DecryptFields("OpenNanaimo.Adapter.ClientData.ava._D1");
+        foreach (var (female, male) in new[] { (10010078u, 10110073u), (10020078u, 10120073u), (10030066u, 10130081u) })
+        {
+            foreach (var code in new[] { female, male })
+            {
+                int row = Enumerable.Range(0, int.Parse(avatars[2]))
+                    .Single(i => avatars[3 + i * 25 + 4] == code.ToString());
+                Check(avatars[3 + row * 25 + 2] == "24" && avatars[3 + row * 25 + 7] == "0",
+                    "naval catalog row is level 24 and permanent");
+                ChapterSourceReward[] source = [new(4, code, 1)];
+                var forMale = ChapterRewardPolicy.ForGender(source, true);
+                var forFemale = ChapterRewardPolicy.ForGender(source, false);
+                Check(forMale.Single() == new ChapterSourceReward(4, male, 1)
+                    && forFemale.Single() == new ChapterSourceReward(4, female, 1), "naval gender mapping from either identity");
+                Check(ChapterRewardPolicy.ForGender(forMale, true).SequenceEqual(forMale)
+                    && ChapterRewardPolicy.ForGender(forFemale, false).SequenceEqual(forFemale), "naval gender mapping is idempotent");
+            }
+        }
+
         string root = Path.Combine(Path.GetTempPath(), "nanaimo-chapter-rewards-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         var previousChapters = QuestCatalog.StoryChaptersEnabled;
@@ -236,13 +255,20 @@ internal static class ChapterRewardChecks
                 == ChapterClaimStatus.AlreadyClaimed, "terminal retry idempotent");
             Check(await Sql("SELECT COUNT(*) FROM CharacterStoryClaims WHERE CharacterId=$id") == 0, "medal claim ledger untouched");
 
-            uint trialQuest = first + 4;
-            Check(ChapterRewardPolicy.Resolve(trialQuest, Review(trialQuest) with { DurationDays = [0, 0, 0, 0, 0] }) is null,
-                "episode5 permanent trial approval is rejected");
+            uint navalQuest = first + 4;
+            Check(ChapterRewardPolicy.Resolve(navalQuest, Review(navalQuest) with { DurationDays = [0, 0, 1, 1, 1] }) is null,
+                "obsolete one-day approval is rejected");
+            Check(ChapterRewardPolicy.Resolve(navalQuest, Review(navalQuest) with
+                { SourceRewards = [new(6, 12000002, 10), new(6, 12000012, 10), new(4, 10010116, 1),
+                    new(4, 10020116, 1), new(4, 10030079, 1)] }) is null,
+                "obsolete admiral set approval is rejected");
             foreach (bool male in new[] { false, true })
-            foreach (uint? ownedExpiry in new uint?[] { null, ClothingExpirationTime.PermanentExpiration, 0 })
+            foreach (uint? ownedExpiry in new uint?[] { null, ClothingExpirationTime.Extend(0, 1, DateTime.Now),
+                ClothingExpirationTime.PermanentExpiration, 0 })
             {
-                var codes = male ? new uint[] { 10110107, 10120107, 10130113 }
+                var codes = male ? new uint[] { 10110073, 10120073, 10130081 }
+                    : new uint[] { 10010078, 10020078, 10030066 };
+                var laterCodes = male ? new uint[] { 10110107, 10120107, 10130113 }
                     : new uint[] { 10010116, 10020116, 10030079 };
                 await Sql($"UPDATE Characters SET Gender={(male ? 1 : 0)} WHERE Id=$id");
                 await Sql("DELETE FROM CharacterChapterClaims WHERE CharacterId=$id AND QuestId IN(73000004,73000012,73000013,73000014)");
@@ -252,32 +278,33 @@ internal static class ChapterRewardChecks
                     if (ownedExpiry.HasValue)
                         await Sql($"INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,ItemExpiration,UpdatedAt) VALUES($id,{code},1,{ownedExpiry.Value},'fixture')");
                 }
-                await Pending(trialQuest, 1000);
-                var started = DateTime.Now;
-                Check((await Claim(trialQuest, 1000, Review(trialQuest))).Status == ChapterClaimStatus.Claimed,
-                    "episode5 grants one-day trial set");
+                await Pending(navalQuest, 1000);
+                Check((await Claim(navalQuest, 1000, Review(navalQuest))).Status == ChapterClaimStatus.Claimed,
+                    "episode5 grants permanent naval set");
                 foreach (var code in codes)
                 {
                     var expiry = await Sql($"SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode={code}");
                     Check(await Sql($"SELECT Quantity FROM CharacterItems WHERE CharacterId=$id AND ItemCode={code}") == 1,
-                        "trial never duplicates an existing garment");
-                    Check(ownedExpiry.HasValue ? expiry == ClothingExpirationTime.PermanentExpiration
-                        : expiry >= ClothingExpirationTime.Extend(0, 1, started)
-                          && expiry <= ClothingExpirationTime.Extend(0, 1, DateTime.Now),
-                        "trial lasts one day and never downgrades owned permanent or legacy clothing");
+                        "permanent reward never duplicates an existing garment");
+                    Check(expiry == ClothingExpirationTime.PermanentExpiration,
+                        "new, timed, permanent and legacy clothing all resolve to permanent");
                 }
-                Check((await Claim(trialQuest, 1000, Review(trialQuest))).Status == ChapterClaimStatus.AlreadyClaimed,
-                    "trial claim replay cannot extend expiration");
+                Check((await Claim(navalQuest, 1000, Review(navalQuest))).Status == ChapterClaimStatus.AlreadyClaimed,
+                    "permanent claim replay remains idempotent");
                 for (int piece = 0; piece < codes.Length; piece++)
                 {
+                    uint laterCode = laterCodes[piece];
+                    await Sql($"DELETE FROM CharacterItems WHERE CharacterId=$id AND ItemCode={laterCode}");
+                    if (ownedExpiry.HasValue)
+                        await Sql($"INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,ItemExpiration,UpdatedAt) VALUES($id,{laterCode},1,{ownedExpiry.Value},'fixture')");
                     uint quest = first + 12 + (uint)piece;
                     await Pending(quest, 1100 + piece);
                     Check((await Claim(quest, 1100 + piece, Review(quest))).Status == ChapterClaimStatus.Claimed,
                         "later chapter grants permanent garment");
-                    Check(await Sql($"SELECT Quantity FROM CharacterItems WHERE CharacterId=$id AND ItemCode={codes[piece]}") == 1
-                        && await Sql($"SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode={codes[piece]}")
+                    Check(await Sql($"SELECT Quantity FROM CharacterItems WHERE CharacterId=$id AND ItemCode={laterCode}") == 1
+                        && await Sql($"SELECT ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND ItemCode={laterCode}")
                             == ClothingExpirationTime.PermanentExpiration,
-                        "later reward upgrades same inventory row to permanent without a duplicate");
+                        "later admiral reward remains independently permanent without a duplicate");
                 }
             }
         }

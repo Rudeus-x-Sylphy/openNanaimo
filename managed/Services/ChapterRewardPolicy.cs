@@ -19,6 +19,9 @@ internal static class ChapterRewardPolicy
     // hat, so the female head piece is the military cap).
     private static readonly (uint Female, uint Male)[] GenderedGrants =
     [
+        (10010078u, 10110073u),   // Naval top (24, permanent)
+        (10020078u, 10120073u),   // Naval bottom (24, permanent)
+        (10030066u, 10130081u),   // Naval hat (24, permanent)
         (10010116u, 10110107u),   // 女提督上衣 / 提督上衣
         (10020116u, 10120107u),   // 女提督下衣 / 提督下衣
         (10030079u, 10130113u),   // 女军人帽子 / 贝雷帽
@@ -51,11 +54,8 @@ internal static class ChapterRewardPolicy
 
     internal static string PackageSha256 { get; } = HashPackage();
 
-    // Episode 5's source reward is a one-day trial set. CN has only permanent
-    // rows for these appearances; the chapter grants a timed instance of them.
     internal static ushort DurationDays(uint quest, ChapterSourceReward reward)
-        => quest == StoryChapterCatalog.FirstQuestId + 4 && reward.Kind == 4 ? (ushort)1
-            : reward.Kind is 2 or 4 && ShopCatalog.TryGet(reward.Code, out var item)
+        => reward.Kind is 2 or 4 && ShopCatalog.TryGet(reward.Code, out var item)
                 ? item.DurationDays : (ushort)0;
 
     private static string HashPackage()

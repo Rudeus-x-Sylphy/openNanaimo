@@ -39,10 +39,16 @@ class StoryTerminologyChecks(unittest.TestCase):
         reward = next(r['translation_zh'] for r in self.local['texts'] if r['qs_id'] == 3036)
         self.assertIn('男女对应', reward)
         self.assertNotIn('女性专用', reward)
-        trial = next(r['translation_zh'] for r in self.local['texts'] if r['qs_id'] == 3032)
-        self.assertIn('体验1天', trial)
-        self.assertNotIn('永久', trial)
-        self.assertNotIn('永久', self.terms['task_panel_texts']['3032'])
+        naval = next(r['translation_zh'] for r in self.local['texts'] if r['qs_id'] == 3032)
+        for name in ('海兵服装', '海兵下衣', '水兵帽子', '海军女孩上衣', '女海军下衣', '水手帽子'):
+            self.assertIn(name, naval)
+        self.assertIn('24级', naval)
+        self.assertIn('永久', naval)
+        self.assertNotIn('1天', naval)
+        panel = self.terms['task_panel_texts']['3032'].split('^&')
+        self.assertEqual(len(panel), 5)
+        self.assertTrue(all(len(line.encode('gbk')) <= 30 for line in panel))
+        self.assertTrue(all('24级永久' in line for line in panel[2:]))
         for uid in (3113, 3119, 3127):
             self.assertIn('永久', next(r['translation_zh'] for r in self.local['texts'] if r['qs_id'] == uid))
 

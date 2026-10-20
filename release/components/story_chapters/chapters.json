@@ -1390,17 +1390,17 @@
         ],
         [
           4,
-          10010116,
+          10010078,
           1
         ],
         [
           4,
-          10020116,
+          10020078,
           1
         ],
         [
           4,
-          10030079,
+          10030066,
           1
         ]
       ],
@@ -5297,7 +5297,7 @@
   },
   "first_quest_id": 73000000,
   "last_quest_id": 73000015,
-  "localization_sha256": "5ae18ee4a7af8ab6fe83227184781628a2c965a83c53c60c4b02de57db1bdae8",
+  "localization_sha256": "ec9bd8b44c40cdfcecf5efb89435be0ddee8a6e27aafd1a1c88da170aa52ea31",
   "policies": {
     "clear": "super-boss-bit-3-after-entry-any-difficulty",
     "entry": "explicit-new-story-start-at-episode-1-no-backfill",
@@ -5506,7 +5506,7 @@
       "approved": false,
       "qs_id": 3032,
       "source_ko": "스킬딱지 2번(폭탄형SP+2) 10장^&스킬딱지 12번(육탄형SP+2) 10장^&무료 체험 의상세트(1일)",
-      "translation_zh": "炮弹型 SP +2卡片10张^&肉弹型 SP +2卡片10张^&提督上衣／女提督上衣、提督下衣／女提督下衣、贝雷帽／女军人帽子各1件（体验1天，按角色性别发放）"
+      "translation_zh": "炮弹型 SP +2卡片10张^&肉弹型 SP +2卡片10张^&24级海军装：男为海兵服装、海兵下衣、水兵帽子；女为海军女孩上衣、女海军下衣、水手帽子，各1件（永久，按角色性别发放）"
     },
     {
       "approved": false,
