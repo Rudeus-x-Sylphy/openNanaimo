@@ -123,13 +123,13 @@
     },
     {
       "path": "managed-host/ChapterRewardChecks.cs",
-      "size": 23137,
-      "sha256": "AC197F75580FCD49F725485C4DB67CAAECF0CCD359EA60F47B51F8AEC3FF6438"
+      "size": 25091,
+      "sha256": "63C6CA0942D0227B5BDC8B5E686247E021D93BFA51FD3DF3396D4FAD56658B48"
     },
     {
       "path": "managed-host/ChapterRewardMatrixChecks.cs",
-      "size": 11374,
-      "sha256": "C7675F74FA11C6403C340ED3E95D07C3C417DB72E05AA8AC1D4E62105E173A25"
+      "size": 11664,
+      "sha256": "E71F8A2D9E387D478754B1240D337BD76E087378754B23AF17E92ED6EE1EDC96"
     },
     {
       "path": "managed-host/ChapterStoryChecks.cs",
@@ -358,8 +358,8 @@
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
-      "size": 1048631,
-      "sha256": "6C045C44C1F6D89EA9B17D4807CA3B02DA3A58E0C850F539AE8F44B781B7B18B"
+      "size": 1048936,
+      "sha256": "496248808554E1ACA6EA62EF1F696A109A1D0025DC51FED0039C586CE11698E3"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -613,8 +613,8 @@
     },
     {
       "path": "managed/Services/ChapterRewardPolicy.cs",
-      "size": 5838,
-      "sha256": "85CF22060787746C0C36919CCD40A454A243D5F8EC327D110A214CCD45EC6F66"
+      "size": 5779,
+      "sha256": "540DC391C8D8D885DB2937E5838D512A1CC96F511470C126418E514AF45A1F71"
     },
     {
       "path": "managed/Services/ChapterStoryPolicy.cs",
@@ -1353,8 +1353,8 @@
     },
     {
       "path": "manifest/story_localization.json",
-      "size": 92878,
-      "sha256": "5A6F1CE34E69594806C667EE6D4C20A4C7D2D15E0ABB2924FB470F3B68CFEAAE"
+      "size": 92909,
+      "sha256": "5C6D9871B3230225457B53A3B111F0CE4B2F712899ABE96636CB4113DFE2DFA6"
     },
     {
       "path": "manifest/story_portrait_resources.json",
@@ -1363,8 +1363,8 @@
     },
     {
       "path": "manifest/story_terms.json",
-      "size": 28531,
-      "sha256": "599211A7471316A197BB3C8F333A9EDB56C1596E6A7F4BF99E566F58E9DD5D6E"
+      "size": 28565,
+      "sha256": "940B7DD3D431F5AF3077A4C5909F2C731C3914963E480C836AE1644B661AB125"
     },
     {
       "path": "release/components/adapter_core/foundation.inc",
@@ -1923,13 +1923,13 @@
     },
     {
       "path": "release/components/story_chapters/chapters.json",
-      "size": 225976,
-      "sha256": "31093C2E770E7F4A249EF2D973D31F48EF6276710683F658AF1926334F4D9475"
+      "size": 226007,
+      "sha256": "C396FF8847803454174E284A5ADF4FA5558FBF58C2956B737C3FCB9A9C8719F3"
     },
     {
       "path": "release/components/story_chapters/manifest.json",
       "size": 281,
-      "sha256": "B809125FF792579D4F5101030FBA2968F57BF7C75E5E2B14C4CF7C419D08FD6D"
+      "sha256": "9E8264D26A85FAC5A9BE9879E4AC850121924DCE4156CDE6456615A635988790"
     },
     {
       "path": "release/components/target_resources/arena_target_catalog.json",
@@ -2028,8 +2028,8 @@
     },
     {
       "path": "scripts/chapter_dialogue_patch.py",
-      "size": 33416,
-      "sha256": "020D41808739B2A0C072F273F78443CAD009FD3BB24BB1B7BFAB0C41ABE394D0"
+      "size": 35116,
+      "sha256": "86F58063DC4721AC8A38D70B6D671FC0F67824E562A6B3791769ADA316B0CC6B"
     },
     {
       "path": "scripts/chapter_window_probe.py",
@@ -2178,8 +2178,8 @@
     },
     {
       "path": "scripts/test_chapter_dialogue_patch.py",
-      "size": 23481,
-      "sha256": "C9CE821DFA307EFE1204203BCA182B06B7B2CE483C0B33ADF914B977098D2BE8"
+      "size": 31245,
+      "sha256": "A0E9B21DD339D588BC08DD3100ED3053734C6C56A391B2B3997B5A1D918C38EE"
     },
     {
       "path": "scripts/test_default_chapter_startup.py",

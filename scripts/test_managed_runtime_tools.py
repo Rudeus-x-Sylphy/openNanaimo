@@ -366,4 +366,49 @@ int main(int argc,char**argv){char b[100];FILE*f=fopen("accounts.dat","r");if(ar
             # Unknown exact-site input must fail before creating a fresh overlay.
             bad=bytearray((client/'game.exe').read_bytes());row=recipe['sites'][0];bad[row['va']-0x401000+0x400]^=0xff;(client/'game.exe').write_bytes(bad)
             call('compatibility','--source-root',client,'--output-root',root/'bad-output',*flags,'--apply',ok=False);self.assertFalse((root/'bad-output').exists())
+    def test_chapter_claim_compatibility_upgrades_old_payload(self):
+        import chapter_dialogue_patch as chapter
+        import package_story_resource_kit as kit
+        recipe=json.loads((ROOT/'managed-host/Resources/client-compatibility.json').read_text())
+        rows=[r for r in recipe['sites'] if r['group']=='monk-dialogue']
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);client=root/'client';client.mkdir();overlay=root/'overlay'
+            size=0x900000;exe=bytearray(size+0x400);exe[:2]=b'MZ'
+            struct.pack_into('<I',exe,0x3c,0x80);exe[0x80:0x84]=b'PE\0\0'
+            struct.pack_into('<H',exe,0x86,1);struct.pack_into('<H',exe,0x94,0xe0)
+            struct.pack_into('<H',exe,0x98,0x10b);struct.pack_into('<I',exe,0xb4,0x400000)
+            struct.pack_into('<IIII',exe,0x178+8,size,0x1000,size,0x400)
+            def put(va,blob):
+                at=va-0x401000+0x400;exe[at:at+len(blob)]=blob
+            for row in rows:put(row['va'],bytes.fromhex(row['known'][0]))
+            data=kit.read()
+            for contract,marker,schema in (
+                ('monk_dialogue_resources','.openNanaimo-monk-dialogue.json','openNanaimo.monk-dialogue.v1'),
+                ('monk_challenge_resources','.openNanaimo-monk-challenges.json','openNanaimo.monk-challenges.v1')):
+                c=recipe[contract];pins=c['recipe']['files'] if 'recipe' in c else c['files'];files=[]
+                for pin in pins:
+                    path=client/pin['path'];path.parent.mkdir(parents=True,exist_ok=True)
+                    path.write_bytes(data[pin['path']])
+                    files.append(dict(path=pin['path'],size=len(data[pin['path']]),
+                                      sha256=hashlib.sha256(data[pin['path']]).hexdigest().upper()))
+                (client/marker).write_text(json.dumps(dict(schema=schema,recipe_sha256=c['sha256'],files=files)),'utf-8')
+            (client/'game.exe').write_bytes(exe)
+            expected=compat.patch_chapter_dialogue(compat.patch_monk_dialogue(bytes(exe))[0])[0]
+            args=('compatibility','--source-root',client,'--output-root',overlay,'--monk-dialogue','--overwrite','--apply')
+            call(*args)
+            self.assertEqual((client/'game.exe').read_bytes(),expected)
+            self.assertTrue(all(r['status']=='unchanged' for r in call(*args)['apply_results']))
+            cave=next(r for r in rows if r['operation']=='chapter_dialogue_cave')
+            legacy=bytearray.fromhex(cave['target']);start=chapter.CLAIM_STUB-chapter.CAVE
+            legacy[start:start+chapter.PAGE-chapter.CLAIM_STUB]=b'\xCC'*(chapter.PAGE-chapter.CLAIM_STUB)
+            self.assertEqual(hashlib.sha256(legacy).hexdigest().upper(),chapter.PREVIOUS_PAYLOAD_SHA256)
+            exe[:]=expected;put(chapter.CAVE,legacy);put(chapter.TASK_CLAIM_SITE,chapter.TASK_CLAIM_ORIGINAL)
+            (client/'game.exe').write_bytes(exe);call(*args)
+            self.assertEqual((client/'game.exe').read_bytes(),expected)
+            put(chapter.TASK_CLAIM_SITE,b'\x90'*5);(client/'game.exe').write_bytes(exe)
+            call('compatibility','--source-root',client,'--output-root',root/'unknown',
+                 '--monk-dialogue','--apply',ok=False)
+            self.assertFalse((root/'unknown').exists())
+            self.assertEqual((client/'game.exe').read_bytes(),bytes(exe))
+
 if __name__=='__main__':unittest.main(verbosity=2)

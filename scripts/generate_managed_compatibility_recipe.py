@@ -5,11 +5,14 @@ from pathlib import Path
 import json
 import prepare_client_compatibility as p
 import dungeon7_visuals as v
+import chapter_dialogue_patch as chapter
 ROOT=Path(__file__).resolve().parents[1]
 def generate():
     rows=[];group=''
     def site(data,va,old,new,operation,mismatch):
         rows.append(dict(group=group,va=va,target=new.hex(),known=[old.hex()],operation=operation,known_hashes=[]))
+        if operation == 'chapter_dialogue_cave':
+            rows[-1]['known_hashes'] = [chapter.PREVIOUS_PAYLOAD_SHA256]
         return data,dict(changed=False,operation=operation)
     def migration(data,va,target,known,operation,mismatch):
         rows.append(dict(group=group,va=va,target=target.hex(),known=[x.hex() for x in known],operation=operation,known_hashes=[]))

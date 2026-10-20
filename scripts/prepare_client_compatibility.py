@@ -732,10 +732,15 @@ def patch_chapter_dialogue(data: bytes) -> tuple[bytes, dict]:
                                    window_patch,
                                    'chapter_dialogue_suppress_task_window',
                                    'the task-window create path differs; this unpacking needs a reviewed jump')
+    data, claim_row = _patch_site(data, chapter.TASK_CLAIM_SITE, chapter.TASK_CLAIM_ORIGINAL,
+                                  bytes.fromhex(bundle['report']['task_claim_patch']),
+                                  'chapter_task_claim_lookup_guard',
+                                  'the task claim click path differs; this unpacking needs a reviewed jump')
     return data, _migration_report('patch_chapter_dialogue',
                                   chapter_dialogue_cave=cave_row, chapter_dialogue_hook=hook_row,
                                   chapter_dialogue_page_capture=page_row,
-                                  chapter_dialogue_suppress_task_window=window_row)
+                                  chapter_dialogue_suppress_task_window=window_row,
+                                  chapter_task_claim_lookup_guard=claim_row)
 
 def patch_monk_dialogue(data: bytes) -> tuple[bytes, dict]:
     rows = {}

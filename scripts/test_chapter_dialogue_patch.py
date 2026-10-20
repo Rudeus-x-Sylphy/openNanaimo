@@ -167,6 +167,39 @@ class BuildTests(unittest.TestCase):
         again = chapter.build(TEXTS, TRIGGERS)
         self.assertEqual(again['payload'], self.result['payload'])
 
+    def test_claim_jump_and_managed_upgrade_contract(self):
+        import generate_managed_compatibility_recipe as managed
+        rows = managed.generate()['sites']
+        claim = next(row for row in rows if row['operation'] == 'chapter_task_claim_lookup_guard')
+        self.assertEqual(claim['va'], chapter.TASK_CLAIM_SITE)
+        self.assertEqual(claim['known'], [chapter.TASK_CLAIM_ORIGINAL.hex()])
+        patch = bytes.fromhex(claim['target'])
+        self.assertEqual(chapter.TASK_CLAIM_SITE + 5 + struct.unpack('<i', patch[1:])[0],
+                         chapter.CLAIM_STUB)
+        cave = next(row for row in rows if row['operation'] == 'chapter_dialogue_cave')
+        self.assertIn(chapter.PREVIOUS_PAYLOAD_SHA256, cave['known_hashes'])
+        self.assertEqual(bytes.fromhex(cave['target']),
+                         chapter.build(chapter.default_texts(), chapter.default_triggers())['payload'])
+
+    def test_python_compatibility_repeats_and_rejects_unknown_click_site(self):
+        from unittest import mock
+        import prepare_client_compatibility as compat
+        bundle = chapter.build(chapter.default_texts(), chapter.default_triggers())
+        image = bytearray(b'\xCC' * 0xA00000)
+        for site, original in ((chapter.HOOK_SITE, chapter.HOOK_ORIGINAL),
+                               (chapter.PAGE_HOOK_SITE, chapter.PAGE_HOOK_ORIGINAL),
+                               (chapter.TASK_WINDOW_SITE, chapter.TASK_WINDOW_ORIGINAL),
+                               (chapter.TASK_CLAIM_SITE, chapter.TASK_CLAIM_ORIGINAL)):
+            image[site - 0x400000:site - 0x400000 + len(original)] = original
+        with mock.patch.object(compat, '_va_offset', side_effect=lambda data, va, size: va - 0x400000):
+            target, _ = compat.patch_chapter_dialogue(bytes(image))
+            self.assertEqual(compat.patch_chapter_dialogue(target)[0], target)
+            offset = chapter.TASK_CLAIM_SITE - 0x400000
+            self.assertEqual(target[offset:offset + 5], bytes.fromhex(bundle['report']['task_claim_patch']))
+            image[offset:offset + 5] = b'\x90' * 5
+            with self.assertRaises(compat.CompatibilityError):
+                compat.patch_chapter_dialogue(bytes(image))
+
 
 class TriggerTests(unittest.TestCase):
     """A fresh session's first record usually arrives already at objective 1."""
@@ -259,6 +292,129 @@ class WindowTests(unittest.TestCase):
     def test_no_draw_hook_patch_is_emitted(self):
         # The class's own draw path paints the window once it is registered.
         self.assertNotIn('draw_patch', self.report)
+
+
+class ClaimExecutionTests(unittest.TestCase):
+    # Real click-branch bytes with mocked lookup/send, not full-client acceptance.
+    SITE, EXIT, SEND = 0xA5FD76, 0xA5FE1B, 0x402E00
+    ORIGINAL = bytes.fromhex(
+        '6a008b55c88b02508b0d0c33d700e857bd9bff8b4818518b55c88b0250'
+        '8b4dc88b11528b0d0c33d700e83cbd9bff8b401c508b0d1024d700'
+        'e84d309aff8b4dc8c7414c01000000b803000000eb57')
+
+    def setUp(self):
+        self.m = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_32)
+        self.m.mem_map(0x400000, 0xA00000)
+        self.m.mem_map(0x2000000, 0x10000)
+        self.widget, self.record = 0x2000000, 0x2001000
+        self.stack, self.frame = 0x200F000, 0x200E000
+        self.quest, self.present, self.sent, self.lookups = chapter.FIRST_QUEST, True, [], 0
+        self.put(self.widget, self.quest)
+        self.put(self.record + 0x18, 0)
+        self.put(self.record + 0x1C, 2)
+        self.put(self.frame - 0x38, self.widget)
+        self.put(chapter.TASK_MANAGER, 0x2002000)
+        self.put(0xD72410, 0x2003000)
+        self.m.mem_write(self.SITE, self.ORIGINAL)
+        self.m.mem_write(chapter.TASK_LOOKUP, b'\xC2\x04\x00')
+        self.m.mem_write(self.SEND, b'\xC2\x10\x00')
+        self.m.hook_add(uc.UC_HOOK_CODE, self.stub)
+
+    def put(self, address, value):
+        self.m.mem_write(address, struct.pack('<I', value))
+
+    def get(self, address):
+        return struct.unpack('<I', self.m.mem_read(address, 4))[0]
+
+    def stub(self, m, address, size, user):
+        sp = m.reg_read(x.UC_X86_REG_ESP)
+        if address == chapter.TASK_LOOKUP:
+            self.lookups += 1
+            self.assertEqual(self.get(sp + 4), self.quest)
+            m.reg_write(x.UC_X86_REG_EAX, self.record if self.present else 0)
+        elif address == self.SEND:
+            self.sent.append(tuple(self.get(sp + 4 + i * 4) for i in range(4)))
+            m.reg_write(x.UC_X86_REG_EAX, 1)
+
+    def click(self):
+        self.m.reg_write(x.UC_X86_REG_EBP, self.frame)
+        self.m.reg_write(x.UC_X86_REG_ESP, self.stack)
+        for reg in (x.UC_X86_REG_EBX, x.UC_X86_REG_ESI, x.UC_X86_REG_EDI):
+            self.m.reg_write(reg, 0x12345678)
+        self.m.emu_start(self.SITE, self.EXIT, count=1000)
+        self.assertEqual(self.m.reg_read(x.UC_X86_REG_EIP), self.EXIT)
+        self.assertEqual(self.m.reg_read(x.UC_X86_REG_ESP), self.stack)
+        for reg in (x.UC_X86_REG_EBX, x.UC_X86_REG_ESI, x.UC_X86_REG_EDI):
+            self.assertEqual(self.m.reg_read(reg), 0x12345678)
+        return self.m.reg_read(x.UC_X86_REG_EAX)
+
+    def install_guard(self):
+        bundle = chapter.build(TEXTS, TRIGGERS)
+        self.m.mem_write(chapter.CAVE, bundle['payload'])
+        self.m.mem_write(self.SITE, bytes.fromhex(bundle['report']['task_claim_patch']))
+
+    def test_original_double_click_sends_twice_while_waiting(self):
+        self.assertEqual(self.click(), 3)
+        self.assertEqual(self.click(), 3)
+        self.assertEqual(self.sent, [(2, self.quest, 0, 0)] * 2)
+
+    def test_original_stale_click_reads_null_after_task_refresh(self):
+        self.click()
+        self.present = False
+        with self.assertRaises(uc.UcError) as caught:
+            self.click()
+        self.assertEqual(caught.exception.errno, uc.UC_ERR_READ_UNMAPPED)
+        self.assertEqual(self.m.reg_read(x.UC_X86_REG_EIP), 0xA5FD89)
+
+    def test_guarded_live_task_preserves_retry_semantics(self):
+        self.install_guard()
+        self.assertEqual(self.click(), 3)
+        self.assertEqual(self.click(), 3)
+        self.assertEqual(self.sent, [(2, self.quest, 0, 0)] * 2)
+        self.assertEqual(self.lookups, 2)
+        self.assertEqual(self.get(self.widget + 0x4C), 1)
+
+    def test_guarded_stale_click_does_not_dereference_removed_task(self):
+        self.install_guard()
+        self.click()
+        self.present = False
+        self.assertEqual(self.click(), 0)
+        self.assertEqual(len(self.sent), 1)
+        self.assertEqual(self.lookups, 2)
+
+    def test_guarded_missing_task_without_pending_request_is_ignored(self):
+        self.install_guard()
+        self.present = False
+        self.assertEqual(self.click(), 0)
+        self.assertEqual(self.sent, [])
+        self.assertEqual(self.get(self.widget + 0x4C), 0)
+
+    def test_existing_ui_reset_allows_retry_and_next_chapter(self):
+        self.install_guard()
+        self.click()
+        self.put(self.widget + 0x4C, 0)
+        self.assertEqual(self.click(), 3)
+        self.quest += 1
+        self.put(self.widget, self.quest)
+        self.put(self.widget + 0x4C, 0)
+        self.assertEqual(self.click(), 3)
+        self.assertEqual(self.sent, [(2, self.quest - 1, 0, 0)] * 2 + [(2, self.quest, 0, 0)])
+
+    def test_guarded_arguments_match_original_for_all_task_categories(self):
+        for task_type, runtime, quest in ((0, 7, 70000155), (1, 1, 71000000),
+                                         (2, 0, 73000000), (2, 0, 73000015)):
+            with self.subTest(task_type=task_type, runtime=runtime, quest=quest):
+                self.quest = quest
+                self.put(self.widget, quest)
+                self.put(self.record + 0x18, runtime)
+                self.put(self.record + 0x1C, task_type)
+                self.m.mem_write(self.SITE, self.ORIGINAL)
+                self.assertEqual(self.click(), 3)
+                original = self.sent[-1]
+                self.install_guard()
+                self.assertEqual(self.click(), 3)
+                self.assertEqual(self.sent[-1], original)
+                self.assertEqual(original, (task_type, quest, runtime, 0))
 
 
 class NativeExecutionTests(unittest.TestCase):

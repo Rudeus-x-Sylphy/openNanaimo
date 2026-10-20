@@ -46,6 +46,11 @@ TASK_WINDOW_EPILOGUE = 0x4D60C1        # skip the create block entirely
 # without any timing window.
 TASK_MARKER_OFFSET = 228
 CREATE_STUB = CAVE + 0x400        # free gap between the update block and PAGE
+CLAIM_STUB = CAVE + 0x4B0        # free gap after phase slots, before PAGE
+TASK_CLAIM_SITE, TASK_CLAIM_EXIT = 0xA5FD76, 0xA5FE1B
+TASK_CLAIM_ORIGINAL = bytes.fromhex('6a008b55c8')
+TASK_CLAIM_SEND = 0x402E00
+PREVIOUS_PAYLOAD_SHA256 = 'C770739DE544400ECAE24BD05B77AAE931AF84B594DC50371E48C6C80CFB9DEA'
 SUPPRESS = CAVE + 0x3C5
 SUPPRESS_FRAMES = 8                    # ~0.13 s at 60 fps; the pushed list rides the
                                        # same TCP segment as the room entry, so it lands
@@ -279,6 +284,7 @@ REGIONS = (
     ('selector', SELECT, TEXT - SELECT),
     ('entry_slots', ENTRY_COUNT, 24),   # counts, matched quest, record, push flag, speech
     ('phase_slots', LAST_QUEST, 12),
+    ('claim_stub', CLAIM_STUB, PAGE - CLAIM_STUB),
     ('create_stub', CREATE_STUB, 0x40),
     ('page_stub', STUB, PAGE_SLOT - STUB),
     ('page_state', PAGE_SLOT, GATE_FLAG + 4 - PAGE_SLOT),
@@ -302,6 +308,25 @@ def require_regions() -> None:
         if start_a + limit_a > start_b:
             raise ValueError('cave regions overlap: %s [%#x..%#x) and %s at %#x'
                              % (name_a, start_a, start_a + limit_a, name_b, start_b))
+
+
+def claim_stub(code) -> None:
+    # C59C can remove the clicked quest before a queued second click. Resolve
+    # once, reject null, and preserve the original C599 arguments/UI result.
+    code.emit('8B4DC8FF31')                         # ecx=[ebp-0x38]; push [ecx]
+    code.emit('8B0D'); code.u32(TASK_MANAGER)
+    code.call(TASK_LOOKUP)
+    code.emit('85C0'); code.branch('0F84', 'missing')
+    code.emit('6A00FF7018')                         # fourth argument=0; runtime=[record+24]
+    code.emit('8B4DC8FF31FF701C')                  # quest=[widget]; type=[record+28]
+    code.emit('8B0D'); code.u32(0xD72410)
+    code.call(TASK_CLAIM_SEND)
+    code.emit('8B4DC8C7414C01000000B803000000')     # original pending=1, result=3
+    code.branch('E9', 'done')
+    code.label('missing')
+    code.emit('31C0')                               # no request, no UI state mutation
+    code.label('done')
+    code.emit(b'\xE9' + struct.pack('<i', TASK_CLAIM_EXIT - (code.base + len(code.data) + 5)))
 
 
 def create_gate_stub(code) -> None:
@@ -608,16 +633,23 @@ def build(texts: dict[int, str], triggers: list[dict]) -> dict:
     create_gate_stub(gate)
     put(CREATE_STUB, gate.finish(), 0x40)
 
+    claim = monk.Code(CLAIM_STUB)
+    claim_stub(claim)
+    put(CLAIM_STUB, claim.finish(), PAGE - CLAIM_STUB)
+
     put(CAVE + SPAN - len(TAG), TAG, len(TAG))
     payload = bytes(data)
     patch = b'\xE8' + struct.pack('<i', UPDATE - HOOK_SITE - 5)
     page_patch = b'\xE8' + struct.pack('<i', STUB - PAGE_HOOK_SITE - 5)
     window_patch = b'\xE9' + struct.pack('<i', CREATE_STUB - TASK_WINDOW_SITE - 5)
+    claim_patch = b'\xE9' + struct.pack('<i', CLAIM_STUB - TASK_CLAIM_SITE - 5)
     report = dict(schema=SCHEMA, cave=CAVE, span=SPAN, hook_site=HOOK_SITE,
                   chain_target=HOOK_CHAIN, tag=TAG.decode(),
                   page_hook_site=PAGE_HOOK_SITE, page_slot=PAGE_SLOT, stub=STUB,
                   page_patch=page_patch.hex(), page_hook_original=PAGE_HOOK_ORIGINAL.hex(),
                   task_window_site=TASK_WINDOW_SITE, task_window_patch=window_patch.hex(),
+                  task_claim_site=TASK_CLAIM_SITE, task_claim_patch=claim_patch.hex(),
+                  task_claim_stub=CLAIM_STUB, task_claim_bytes=len(claim.data),
                   task_manager=TASK_MANAGER, task_lookup=TASK_LOOKUP, guard=GUARD,
                   guide_vtable=GUIDE_VTABLE, window_size=WINDOW_SIZE,
                   window_ctor=WINDOW_CTOR, window_init=WINDOW_INIT, window_kind=WINDOW_KIND,
