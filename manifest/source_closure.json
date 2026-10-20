@@ -343,8 +343,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 20477,
-      "sha256": "64A38AA9EA038B183399EFD5CDA8B7154643CBA0E3BBC69FEF70F90EB1270028"
+      "size": 20625,
+      "sha256": "0FFE8F94EA37CB212DC735752394CABDCB2A5ECF4B49D6CE06808B9DC807993C"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -373,8 +373,8 @@
     },
     {
       "path": "managed-host/ShopCurrencyRoutingChecks.cs",
-      "size": 22668,
-      "sha256": "8591E4CB950EA8D225A037AFFE3B063A57E6650FE7E1DC29533C717D690799D7"
+      "size": 27966,
+      "sha256": "530737EC6A2FD3CA245A32B7E8B66C525C6A380E6DFBC91E1D7CC60C4A5A3E78"
     },
     {
       "path": "managed-host/ShopDungeonChecks.cs",
@@ -1243,8 +1243,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 1020917,
-      "sha256": "9C9ED80449408EDF66F6FDB7E4A113E2D7A43BE126E4009E2CD058084C74D5DC"
+      "size": 1020964,
+      "sha256": "609B6C819486B9D9E226D98C33D398F4D53E8539688A56381C272DB5B5385564"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

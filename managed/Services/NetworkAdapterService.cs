@@ -3968,6 +3968,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var itemCodes = session.Character?.Items
                     .Where(entry => entry.Quantity > 0
                         && ShopCatalog.TryGet(entry.ItemCode, out var item)
+                        && item.IsPurchasable
                         && IsSupportedShopWishlistCategory(item.Category))
                     .Select(entry => entry.ItemCode)
                     .Distinct()

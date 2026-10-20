@@ -187,6 +187,11 @@ static async Task RunAsync(string[] args)
         await ShopCurrencyRoutingChecks.RunAsync();
         return;
     }
+    if (args.Contains("--shop-owned-state-self-test"))
+    {
+        await ShopCurrencyRoutingChecks.RunAsync("owned-state");
+        return;
+    }
     if (args.Contains("--apartment-gameplay-self-test"))
     {
         await ApartmentGameplayChecks.RunAsync();

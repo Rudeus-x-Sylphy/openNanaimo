@@ -25,8 +25,9 @@ internal static class ShopCurrencyRoutingChecks
             if (suite is null or "purchase") await Purchases(f);
             if (suite is null or "db") { await DatabaseGuards(f); await Atomicity(f); }
             if (suite is null or "gift") await Gifts(f);
+            if (suite is null or "owned-state") await OwnedState(f);
         }
-        Check(suite is null or "catalog" or "purchase" or "db" or "gift", "known test suite");
+        Check(suite is null or "catalog" or "purchase" or "db" or "gift" or "owned-state", "known test suite");
         Console.WriteLine($"SHOP_CURRENCY_ROUTING_PASS suite={suite ?? "all"} assertions={assertions}");
     }
 
@@ -84,6 +85,81 @@ internal static class ShopCurrencyRoutingChecks
         foreach (var item in ShopCatalog.All.Where(i => i.Source == "GoldDust._D17" || i.IsShoppingCoupon))
             Check(!item.IsPurchasable, $"non-retail catalog {item.ItemCode}");
         Console.WriteLine($"CATALOG_PASS rows={ShopCatalog.Count}");
+    }
+
+    private static async Task OwnedState(Fixture f)
+    {
+        var supported = ShopCatalog.All.Where(item =>
+            NetworkAdapterService.IsSupportedShopWishlistCategory(item.Category)).ToArray();
+        var nonRetail = supported.Where(item => !item.IsPurchasable).Take(120).ToArray();
+        var synthesisCodes = CardCatalog.All.Select(card => card.SynthesisItemCode).ToHashSet();
+        var synthesisOnly = supported.First(item => !item.IsPurchasable
+            && synthesisCodes.Contains(item.ItemCode));
+        var retail = supported.Where(item => item.IsPurchasable).Take(111).ToArray();
+        Check(nonRetail.Length > 100 && retail.Length > 100, "list fixture exceeds response capacity");
+        Check(retail.Any(item => item.PaysWithCash) && retail.Any(item => !item.PaysWithCash),
+            "list fixture has both retail currencies");
+        var excluded = nonRetail.Append(synthesisOnly).DistinctBy(item => item.ItemCode).ToArray();
+        var unsupported = ShopCatalog.All.First(item => item.IsPurchasable
+            && !NetworkAdapterService.IsSupportedShopWishlistCategory(item.Category));
+        var rows = excluded.Select(item => (item.ItemCode, Quantity: 1))
+            .Concat(retail.Take(110).Select(item => (item.ItemCode, Quantity: 3)))
+            .Append((retail[110].ItemCode, Quantity: 0)).Append((unsupported.ItemCode, Quantity: 1))
+            .Append((ItemCode: uint.MaxValue, Quantity: 1)).ToArray();
+        await f.Reset(10000000, 20000000);
+        await f.Execute($"DELETE FROM CharacterItems WHERE CharacterId={f.CharacterId};"
+            + string.Join("", rows.Select(row =>
+                $"INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES({f.CharacterId},{row.ItemCode},{row.Quantity},'fixture');")));
+
+        async Task<string> Inventory() => System.Text.Json.JsonSerializer.Serialize(
+            (await f.Db.GetCharacterAsync(f.Account))!.Items);
+        var beforeInventory = await Inventory();
+        var beforeWallet = await f.State();
+        foreach (ushort limit in new ushort[] { 0, 1, 4, 100, 101, ushort.MaxValue })
+        {
+            var payload = new byte[4];
+            BinaryPrimitives.WriteUInt16LittleEndian(payload, limit);
+            var reply = await f.Request(0xC42D, payload);
+            int count = Math.Min((int)limit, 100);
+            Check(reply.Length == 12 + count * 4
+                && BinaryPrimitives.ReadUInt16LittleEndian(reply.AsSpan(4)) == reply.Length
+                && BinaryPrimitives.ReadUInt16LittleEndian(reply.AsSpan(6)) == 0xC42E,
+                $"owned-state exact frame length/opcode limit={limit}");
+            Check(BinaryPrimitives.ReadUInt16LittleEndian(reply.AsSpan(8)) == 0
+                && BinaryPrimitives.ReadUInt16LittleEndian(reply.AsSpan(10)) == count,
+                "owned-state reserved word and bounded count");
+            var codes = Enumerable.Range(0, count).Select(index =>
+                BinaryPrimitives.ReadUInt32LittleEndian(reply.AsSpan(12 + index * 4))).ToArray();
+            Check(codes.All(code => retail.Take(110).Any(item => item.ItemCode == code)),
+                "owned-state excludes zero-price, synthesis-only, unknown, unsupported and zero-quantity rows");
+            Check(codes.Distinct().Count() == count, "owned-state emits one code per product, not per unit");
+        }
+        foreach (int size in new[] { 0, 3, 5 })
+            Check((await f.Request(0xC42D, new byte[size])).Length == 0,
+                "owned-state malformed request produces no response");
+        Check(await Inventory() == beforeInventory && await f.State() == beforeWallet,
+            "owned-state reads never change inventory or either wallet");
+        foreach (var item in excluded.Take(1).Append(synthesisOnly))
+        {
+            ushort opcode = item.Category >= 42 ? (ushort)0xC46F : (ushort)0xC431;
+            Check((await f.Buy(opcode, item.ItemCode, 4, 1, item.Category))[8] == 40,
+                "filtered non-retail product still cannot be purchased");
+        }
+        Check(await Inventory() == beforeInventory && await f.State() == beforeWallet,
+            "non-retail purchase rejection preserves inventory and wallets");
+        await f.Execute($"DELETE FROM CharacterItems WHERE CharacterId={f.CharacterId};"
+            + string.Join("", excluded.Select(item =>
+                $"INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES({f.CharacterId},{item.ItemCode},1,'fixture');")));
+        var request = new byte[4];
+        BinaryPrimitives.WriteUInt16LittleEndian(request, 100);
+        foreach (bool empty in new[] { false, true })
+        {
+            if (empty) await f.Execute($"DELETE FROM CharacterItems WHERE CharacterId={f.CharacterId};");
+            var reply = await f.Request(0xC42D, request);
+            Check(reply.Length == 12 && BinaryPrimitives.ReadUInt16LittleEndian(reply.AsSpan(10)) == 0,
+                "non-retail-only and empty inventories return a bounded empty list");
+        }
+        Console.WriteLine($"SHOP_OWNED_STATE_PASS nonRetail={excluded.Length} retail=110 limits=6");
     }
 
     private static async Task Purchases(Fixture f)

@@ -1926,16 +1926,16 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u7ecf\u6d4e/\u5546\u57ce/\u76ee\u5f55\u5e01\u79cd\u4e0e\u8d2d\u4e70.md",
       "layer": "knowledge",
-      "size": 10524,
-      "sha256": "ee608798022d80d4c7ad4ba07256babf597694b0b3df8e866026bb7bc5443298",
+      "size": 11565,
+      "sha256": "6b3d4d9106127330e3dbf6a796fb7e2f32463e316fac191a45f877156db1fb8c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/\u4e1a\u52a1/\u7ecf\u6d4e/\u5546\u57ce/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 869,
-      "sha256": "2d4661f0ee84788bc905d47af401d153902ea1eb2a4482426e898902a176c88f",
+      "size": 908,
+      "sha256": "23b2c9c88541c7ca93d4daf30c7f0571132341da3a8bcf28593438ef01cf385e",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3038,8 +3038,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u5c42\u7ea7\u4e0e\u7248\u672c\u5f52\u5c5e.md",
       "layer": "knowledge",
-      "size": 14175,
-      "sha256": "22cabbdfdd78dd2e74dc9373eca0eb7f42a2d6c96d2ada7c5d99f3520871da9f",
+      "size": 14873,
+      "sha256": "e967851d9e612805c420b756bd774d7aff57c432cbc173f857ab4e25faa25554",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3254,8 +3254,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u7ae0\u8282\u8868\u4e0e\u5bf9\u767d\u5b89\u88c5.md",
       "layer": "knowledge",
-      "size": 15263,
-      "sha256": "59a20c15ee6b77b0796773d6a2873742ab1932b86df242d0bc6a88a41495f11b",
+      "size": 15852,
+      "sha256": "9656ba4660832b58fadf013a4ede89ac6eb6b7935fda3ecf89512a39c392c331",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3470,8 +3470,8 @@
     {
       "path": "knowledge/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 10897,
-      "sha256": "dd9418a2a438d7e1d25bb7c4543efb3e9a268c5e37a526a3b37f50455bf36a5a",
+      "size": 11160,
+      "sha256": "4a282a7c171e247dc3d4ace3ff8576dbad31dd0299e6e4f621bbba0eee180604",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3966,8 +3966,8 @@
     {
       "path": "managed-host/Program.cs",
       "layer": "source",
-      "size": 20477,
-      "sha256": "64a38aa9ea038b183399efd5cda8b7154643cba0e3bbc69fef70f90eb1270028",
+      "size": 20625,
+      "sha256": "0ffe8f94ea37cb212dc735752394cabdcb2a5ecf4b49d6ce06808b9dc807993c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -4014,8 +4014,8 @@
     {
       "path": "managed-host/ShopCurrencyRoutingChecks.cs",
       "layer": "source",
-      "size": 22668,
-      "sha256": "8591e4cb950ea8d225a037affe3b063a57e6650fe7e1dc29533c717d690799d7",
+      "size": 27966,
+      "sha256": "530737ec6a2fd3ca245a32b7e8b66c525c6a380e6dfbc91e1d7cc60c4a5a3e78",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5406,8 +5406,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.cs",
       "layer": "source",
-      "size": 1020917,
-      "sha256": "9c9ed80449408edf66f6fdb7e4a113e2d7a43be126e4009e2cd058084c74d5dc",
+      "size": 1020964,
+      "sha256": "609b6c819486b9d9e226d98c33d398f4d53e8539688a56381c272db5b5385564",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5663,7 +5663,7 @@
       "path": "manifest/source_closure.json",
       "layer": "source",
       "size": 79780,
-      "sha256": "a022574445e680d54752e3ddc9eeac9b2bd1cca660e30ef3272d8e1e9f8d764d",
+      "sha256": "e4d83eb427148a97a544a324a4ccbbe246deedb6409d179be06946c9ca21748c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
