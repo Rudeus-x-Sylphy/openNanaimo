@@ -654,8 +654,8 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5730\u5bab/BOSS/\u9636\u6bb5\u63a8\u8fdb\u4e0e\u5f00\u573a.md",
       "layer": "knowledge",
-      "size": 8780,
-      "sha256": "aefbd183b8fabf4a6f1a935d53c366e6a5be08d38126232a8c06e8a4d7282ab6",
+      "size": 8925,
+      "sha256": "b0cefac58cfd63ed8cb26faea89786a089366efa6540e62ed690cc93eb5a13b5",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3030,8 +3030,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u5730\u5bab\u4e0e\u6210\u957f\u9a8c\u6536.md",
       "layer": "knowledge",
-      "size": 22093,
-      "sha256": "1d32c7e68d618f31cf99462f9df1747058bf3f11ca3f83f342302463e590b39c",
+      "size": 22176,
+      "sha256": "62424da7b19bb079c89512223830e2572561dffef858bc1a7d8761231e49798e",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3238,8 +3238,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u5730\u5bab\u8fc7\u573a\u4e2d\u6587\u8d44\u6e90\u5b89\u88c5.md",
       "layer": "knowledge",
-      "size": 8901,
-      "sha256": "52149d358e6339d713cf2190800192639c870d64c3ea93ab458d930b216734c4",
+      "size": 9072,
+      "sha256": "ad757792a5fd9a6b24275259531a357815d6b20ef3de05baf09ff5c8ccc851f5",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3838,8 +3838,8 @@
     {
       "path": "managed-host/LauncherTools.Compatibility.cs",
       "layer": "source",
-      "size": 19259,
-      "sha256": "5b3225fc6f9aefc1ca5f9ad54ae84d60c7708f5c4d665d55abbc3241ad9cc267",
+      "size": 19243,
+      "sha256": "e415e200d25d8b7c9a12ae0b692097c63d7cca2b8d24365ce8e2071a86b70673",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5719,7 +5719,7 @@
       "path": "manifest/source_closure.json",
       "layer": "source",
       "size": 81658,
-      "sha256": "2cf7e62a35f5357356fd7ef501c4ef82b572a74f158662598c171f98af73262c",
+      "sha256": "b8ca499a77cc15a2bef4e7474638056fb11c600de932b96039313f4ced022dd3",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7334,8 +7334,8 @@
     {
       "path": "scripts/port_lumineos_resources.py",
       "layer": "source",
-      "size": 23630,
-      "sha256": "7792ab994644a20b4f58bc28df7c6756f459fcf5b71dc89a5f8891fa2092dfe2",
+      "size": 23798,
+      "sha256": "eb51ab347415cf089df2c263c82979927c60f3dcaead984ab55f56f3a1565d03",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7886,8 +7886,8 @@
     {
       "path": "scripts/test_dungeon_cinematics_host.py",
       "layer": "source",
-      "size": 2961,
-      "sha256": "e3181af0b15d2f518940f18f4881a8650cdd442330a3c35fa47b81481581f366",
+      "size": 5623,
+      "sha256": "e30c4e313e55337c8f2ada7814341147f928813b8b960957970f6a25804c3d74",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

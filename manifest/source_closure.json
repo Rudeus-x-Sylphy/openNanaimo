@@ -253,8 +253,8 @@
     },
     {
       "path": "managed-host/LauncherTools.Compatibility.cs",
-      "size": 19259,
-      "sha256": "5B3225FC6F9AEFC1CA5F9AD54AE84D60C7708F5C4D665D55ABBC3241AD9CC267"
+      "size": 19243,
+      "sha256": "E415E200D25D8B7C9A12AE0B692097C63D7CCA2B8D24365CE8E2071A86B70673"
     },
     {
       "path": "managed-host/LauncherTools.Inventory.cs",
@@ -2178,8 +2178,8 @@
     },
     {
       "path": "scripts/port_lumineos_resources.py",
-      "size": 23630,
-      "sha256": "7792AB994644A20B4F58BC28DF7C6756F459FCF5B71DC89A5F8891FA2092DFE2"
+      "size": 23798,
+      "sha256": "EB51AB347415CF089DF2C263C82979927C60F3DCAEAD984AB55F56F3A1565D03"
     },
     {
       "path": "scripts/prepare_korean_wardrobe.py",
@@ -2238,8 +2238,8 @@
     },
     {
       "path": "scripts/test_dungeon_cinematics_host.py",
-      "size": 2961,
-      "sha256": "E3181AF0B15D2F518940F18F4881A8650CDD442330A3C35FA47B81481581F366"
+      "size": 5623,
+      "sha256": "E30C4E313E55337C8F2ADA7814341147F928813B8B960957970F6A25804C3D74"
     },
     {
       "path": "scripts/test_korean_wardrobe.py",

@@ -98,7 +98,7 @@ internal static partial class LauncherTools
                 &&Objects(dialogue,"files").Any(r=>S(r,"path")==S(row,"path"))
                 &&S(row,"sha256").Equals(parentHash,StringComparison.OrdinalIgnoreCase)
                 &&File.Exists(SafePath(root,".openNanaimo-monk-dialogue.json"));
-            if(group=="files"&&cinematic is not null&&cinematic.TryGetValue(S(row,"path"),out var cinematicRow)
+            if(cinematic is not null&&cinematic.TryGetValue(S(row,"path"),out var cinematicRow)
                 &&CinematicParentMatches(cinematicRow,row))
                 CheckFile(root,S(cinematicRow,"path"),N(cinematicRow,"size"),S(cinematicRow,"sha256"));
             else if(dialogueLayer){VerifyMonkDialogue(root);VerifyChallenges(root);}

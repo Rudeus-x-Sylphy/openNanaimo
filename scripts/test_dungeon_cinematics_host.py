@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import dungeon_cinematics as cinema
 import port_lumineos_resources as io
@@ -42,6 +43,54 @@ class HostCinematicTests(unittest.TestCase):
         self.marker['id'] = '0' * 64
         io.atomic(self.root / cinema.MARKER, io.encoded(self.marker))
         self.assertNotEqual(self.run_tool('cinematics').returncode, 0)
+
+    def test_l7_preserved_dialogue_and_combat_identity(self):
+        row = next(r for r in self.recipe['files'] if 'ep22_' in r['path'] and r['action'] == 'translate-image')
+        before = row['accepted_before'][0]
+        combat_path = 'flying/l7-combat.mmo'
+        io.atomic(io.safe(self.root, combat_path), b'preserved-combat')
+        parents = [dict(path=row['path'], sha256=before['sha256']),
+                   dict(path=combat_path, sha256=io.digest(b'preserved-combat'))]
+        recipe = dict(files=[], preserve_l7_combat=parents)
+        recipe_path = self.root / 'parent-recipe.json'
+        io.atomic(recipe_path, io.encoded(recipe))
+        parent = dict(schema=io.SCHEMA, files=[], preserve_l7_combat=parents,
+                      recipe_sha256=io.file_hash(recipe_path))
+        # The managed verifier requires a nonempty overlay alongside preserved L7 rows.
+        overlay = next(r for r in self.recipe['files'] if 'ep23_' in r['path'] and r['action'] == 'translate-image')
+        old = overlay['accepted_before'][0]
+        parent['files'] = [dict(path=overlay['path'], before_sha256=old['sha256'],
+                                **old, transform='copy')]
+        recipe['files'] = [dict(path=overlay['path'], baseline_sha256=old['sha256'],
+                                output_sha256=old['sha256'], output_size=old['size'], transform='copy')]
+        io.atomic(recipe_path, io.encoded(recipe))
+        parent['recipe_sha256'] = io.file_hash(recipe_path)
+
+        def freeze_parent():
+            body = {k:v for k,v in parent.items() if k != 'id'}
+            parent['id'] = io.digest(io.encoded(body))
+            io.atomic(self.root / io.MARKER, io.encoded(parent))
+
+        def check_rejected():
+            self.assertNotEqual(self.run_tool('lumineos').returncode, 0)
+            with patch.object(io, 'RECIPE', recipe_path), self.assertRaises(ValueError):
+                io.verify(self.root)
+
+        freeze_parent()
+        result = self.run_tool('lumineos')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        with patch.object(io, 'RECIPE', recipe_path):
+            self.assertEqual(io.verify(self.root)['preserved_l7_combat'], 2)
+        parents[0]['sha256'] = '0' * 64
+        freeze_parent()
+        check_rejected()
+        parents[0]['sha256'] = before['sha256']
+        freeze_parent()
+        io.atomic(io.safe(self.root, combat_path), b'changed-combat')
+        check_rejected()
+        io.atomic(io.safe(self.root, combat_path), b'preserved-combat')
+        io.atomic(io.safe(self.root, row['path']), b'changed-dialogue')
+        check_rejected()
 
     def test_l8_parent_and_exact_cinematic_layer(self):
         row = next(r for r in self.recipe['files'] if 'ep23_' in r['path'] and r['action'] == 'translate-image')
