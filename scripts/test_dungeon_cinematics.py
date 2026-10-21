@@ -96,11 +96,14 @@ class ReleaseTests(unittest.TestCase):
         texts = cinema.translations()
         self.assertEqual(len(texts), 720)
         self.assertEqual(recipe['summary']['fixed_font_dialogues'], 720)
+        self.assertEqual(recipe['font']['filename'], 'simhei.ttf')
+        self.assertEqual(recipe['font']['face_index'], 0)
         dialogues = {row['path']: row for row in recipe['dialogues']}
         for row in dialogues.values():
             self.assertFalse(row['retained_cn_image'])
             layout = row['layout']
-            self.assertEqual(layout['font_size'], 20)
+            self.assertEqual(layout['font_size'], cinema.FONT_SIZE)
+            self.assertEqual(layout['alignment'], 'center')
             self.assertEqual(''.join(layout['text_lines']), texts[row['id']]['chinese_translation'])
             sprite = codec.decode_im3(payload[row['path']])
             self.assertEqual(list(sprite.rgba().getbbox()), layout['bbox'])
@@ -303,10 +306,11 @@ class TransactionTests(unittest.TestCase):
 class DialogueLayoutTests(unittest.TestCase):
     def font_face(self):
         from PIL import ImageFont
-        font = Path(os.environ.get('WINDIR', '')) / 'Fonts' / 'simsun.ttc'
+        filename = io.load(cinema.RECIPE)['font']['filename']
+        font = Path(os.environ.get('WINDIR', '')) / 'Fonts' / filename
         if not font.is_file():
             self.skipTest('The separately supplied cinematic font is required')
-        return ImageFont.truetype(str(font), 20)
+        return ImageFont.truetype(str(font), cinema.FONT_SIZE)
 
     def effect(self):
         import copy

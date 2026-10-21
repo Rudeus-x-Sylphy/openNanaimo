@@ -47,7 +47,10 @@ def build_data(kit):
         effect['cues'] = sorted(cues, key=lambda row: row['start'])
         effects[name] = effect
         encounter['phases'][record['phase']] = name
-    return dict(recipe_id=recipe['id'], images=images, effects=effects,
+    font = recipe['font']
+    font_label = {'msyh.ttc': '微软雅黑', 'simhei.ttf': '黑体'}.get(font['filename'].lower(), font['filename'])
+    return dict(recipe_id=recipe['id'], font=dict(label=font_label, font_size=font['font_size']),
+                images=images, effects=effects,
                 encounters=[encounters[key] for key in sorted(encounters)])
 
 
@@ -104,7 +107,7 @@ function updateEncounters(){const ep=data.encounters[state.selected].episode;$('
 async function select(index,phase=state.phase,frame=state.frame){playing(false);state.selected=index;state.phase=phase;state.frame=Math.min(frame,effect().duration-1);const epoch=++state.epoch;window.PREVIEW_STATE={ready:false};updateEncounters();$('before').setAttribute('aria-pressed',phase==='before');$('after').setAttribute('aria-pressed',phase==='after');$('previous').disabled=index===0;$('next').disabled=index===data.encounters.length-1;$('title').textContent=episodeName(data.encounters[index].episode)+' · '+encounterName(data.encounters[index])+' · '+(phase==='before'?'战前':'战后');$('cues').replaceChildren();const heading=document.createElement('h2');heading.textContent='对白';$('cues').append(heading);
 for(const [number,cue]of effect().cues.entries()){const button=document.createElement('button');button.className='cue';button.dataset.start=cue.start;button.dataset.end=cue.end;const small=document.createElement('small');small.textContent=String(number+1).padStart(2,'0')+' · '+(cue.side==='player'?'玩家':'对手');const line=document.createElement('span');line.textContent=cue.text;button.append(small,line);button.onclick=()=>{playing(false);setFrame(Math.min(cue.end,cue.start+35))};$('cues').append(button)}
 try{await Promise.all([...new Set(effect().layers.map(row=>row.image))].map(load));if(epoch===state.epoch){$('error').textContent='';render()}}catch(error){$('error').textContent=error.message}}
-for(let ep=0;ep<24;ep++)$('episode').add(new Option(episodeName(ep),ep));$('identity').textContent='80 场 / 720 句 · '+data.recipe_id.slice(0,12);
+for(let ep=0;ep<24;ep++)$('episode').add(new Option(episodeName(ep),ep));$('identity').textContent=data.font.label+' · '+data.font.font_size+'px · 80 场 / 720 句';document.title='地宫对白 · '+data.font.label;
 $('episode').onchange=()=>select(data.encounters.findIndex(row=>row.episode===Number($('episode').value)));$('encounter').onchange=()=>select(Number($('encounter').value));$('before').onclick=()=>select(state.selected,'before',200);$('after').onclick=()=>select(state.selected,'after',200);$('previous').onclick=()=>select(Math.max(0,state.selected-1));$('next').onclick=()=>select(Math.min(data.encounters.length-1,state.selected+1));$('play').onclick=()=>{if(state.frame===effect().duration-1)setFrame(0);playing(!state.playing)};$('timeline').oninput=()=>{playing(false);setFrame(Number($('timeline').value))};$('bounds').onchange=render;$('portraits').onchange=render;
 $('download').onclick=()=>{const a=document.createElement('a');a.download=episodeName(data.encounters[state.selected].episode)+'-'+state.phase+'-'+state.frame+'.png';a.href=$('canvas').toDataURL('image/png');a.click()};$('fullscreen').onclick=()=>{const action=document.fullscreenElement?document.exitFullscreen():$('stage').requestFullscreen();if(action)action.catch(error=>$('error').textContent=error.message)};
 function tick(time){if(state.playing){if(state.last){state.fraction+=(time-state.last)*60/1000;const step=Math.floor(state.fraction);state.fraction-=step;if(step){setFrame(Math.min(effect().duration-1,state.frame+step));if(state.frame===effect().duration-1)playing(false)}}state.last=time}requestAnimationFrame(tick)}

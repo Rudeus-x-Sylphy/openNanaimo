@@ -662,8 +662,8 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5730\u5bab/BOSS/\u9636\u6bb5\u63a8\u8fdb\u4e0e\u5f00\u573a.md",
       "layer": "knowledge",
-      "size": 9581,
-      "sha256": "583b55b39049f3c88e56ba5219d1ca661e87f1e883801d674557822cc0889465",
+      "size": 9680,
+      "sha256": "aaf2ac4bdbf60e998cdaa9ce33f48f2d8fbd55cc9d94d8dc38e89281a403753e",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3038,8 +3038,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u5730\u5bab\u4e0e\u6210\u957f\u9a8c\u6536.md",
       "layer": "knowledge",
-      "size": 22677,
-      "sha256": "844124f9df988534e64d83c0da72f516c097228115db649f1dce4442f65f45d5",
+      "size": 22669,
+      "sha256": "197bf2710c8f2b0664fb41911130e0933f0e0c03c1ccb668fb04aeb46e3fdcff",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3142,8 +3142,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5730\u5bab\u8fc7\u573a\u79fb\u690d\u4e0e\u6c49\u5316.md",
       "layer": "knowledge",
-      "size": 4524,
-      "sha256": "3c7fd0f7d4b05c9a095fd8f1e395e7f1cdfc2cfad28b7df0725687d9045b36a0",
+      "size": 4669,
+      "sha256": "10585882910f2d313e095bd2e34af3bb9510dd634b177bf1b6236ebec2ee1eff",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3246,8 +3246,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u5730\u5bab\u8fc7\u573a\u4e2d\u6587\u8d44\u6e90\u5b89\u88c5.md",
       "layer": "knowledge",
-      "size": 11237,
-      "sha256": "e0e41aa44c6701fb80ee022a22af1ccd95ab4bc21db8727ddec13630d1fd6fe4",
+      "size": 11434,
+      "sha256": "f785a0b7d55da6c248888426e93719f314659c379eb530529d7faabfa11353b3",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5622,8 +5622,8 @@
     {
       "path": "manifest/dungeon_cinematics.json",
       "layer": "source",
-      "size": 2890239,
-      "sha256": "04f466f584a05885d77c67af6b5b6f14af9cc98c469a970391bd9d2894b66b42",
+      "size": 3086008,
+      "sha256": "d1d8fef5e30e5bd87db384f8182eddedf48db06456d8f09f51804f348a111904",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5631,7 +5631,7 @@
       "path": "manifest/dungeon_cinematics_coverage.json",
       "layer": "source",
       "size": 566251,
-      "sha256": "2dd018642efba2a6898b78f397babc1f5474004bc7162fa166cf27c117d125ac",
+      "sha256": "c28f8feb9d644e54baf5f7018877638fbc6c47a2c82f2a241b359c5667e9dfb2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5751,7 +5751,7 @@
       "path": "manifest/source_closure.json",
       "layer": "source",
       "size": 82663,
-      "sha256": "55ec07c2011ec802457bfe943e5b4c84ca636723202f1aab82d930bf35126460",
+      "sha256": "0d5b0d8224157cad7d1bf83f1df88340ca192d99698c9c113809b52b53c818ab",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7078,8 +7078,8 @@
     {
       "path": "scripts/dungeon_cinematics.py",
       "layer": "source",
-      "size": 31568,
-      "sha256": "1fb02ec628858c023f358cc91a7f647c262d16334f79d84c499b32c633b07cde",
+      "size": 33345,
+      "sha256": "e444ff3e165341d454402b826d422996cfb797478d8ff0789323df00949e8b70",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7470,8 +7470,8 @@
     {
       "path": "scripts/preview_dungeon_cinematics.py",
       "layer": "source",
-      "size": 16608,
-      "sha256": "8e17dd36de745bf3165266588b9747044088e21adb88179504c4c5a78f2d97bb",
+      "size": 16894,
+      "sha256": "585d776882d9565222eee85261768ccc06cf11eca4bf98701823fd2362ece93e",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7926,8 +7926,8 @@
     {
       "path": "scripts/test_dungeon_cinematics.py",
       "layer": "source",
-      "size": 19231,
-      "sha256": "71638a52ba2d10e34705f04e7cb20269628e5e062a6c66d4b2588c1c5b6a95f2",
+      "size": 19502,
+      "sha256": "9bc94c3572f7bb415598ba7c926f9105b7f51a2f2ebfd2d1ab5816e0b3cc8358",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

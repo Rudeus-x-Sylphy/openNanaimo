@@ -1353,13 +1353,13 @@
     },
     {
       "path": "manifest/dungeon_cinematics.json",
-      "size": 2890239,
-      "sha256": "04F466F584A05885D77C67AF6B5B6F14AF9CC98C469A970391BD9D2894B66B42"
+      "size": 3086008,
+      "sha256": "D1D8FEF5E30E5BD87DB384F8182EDDEDF48DB06456D8F09F51804F348A111904"
     },
     {
       "path": "manifest/dungeon_cinematics_coverage.json",
       "size": 566251,
-      "sha256": "2DD018642EFBA2A6898B78F397BABC1F5474004BC7162FA166CF27C117D125AC"
+      "sha256": "C28F8FEB9D644E54BAF5F7018877638FBC6C47A2C82F2A241B359C5667E9DFB2"
     },
     {
       "path": "manifest/dungeon_cinematics_revisions.tsv",
@@ -2098,8 +2098,8 @@
     },
     {
       "path": "scripts/dungeon_cinematics.py",
-      "size": 31568,
-      "sha256": "1FB02EC628858C023F358CC91A7F647C262D16334F79D84C499B32C633B07CDE"
+      "size": 33345,
+      "sha256": "E444FF3E165341D454402B826D422996CFB797478D8FF0789323DF00949E8B70"
     },
     {
       "path": "scripts/generate_arena_targets.py",
@@ -2223,8 +2223,8 @@
     },
     {
       "path": "scripts/preview_dungeon_cinematics.py",
-      "size": 16608,
-      "sha256": "8E17DD36DE745BF3165266588B9747044088E21ADB88179504C4C5A78F2D97BB"
+      "size": 16894,
+      "sha256": "585D776882D9565222EEE85261768CCC06CF11ECA4BF98701823FD2362ECE93E"
     },
     {
       "path": "scripts/shop_icon_origins.py",
@@ -2258,8 +2258,8 @@
     },
     {
       "path": "scripts/test_dungeon_cinematics.py",
-      "size": 19231,
-      "sha256": "71638A52BA2D10E34705F04E7CB20269628E5E062A6C66D4B2588C1C5B6A95F2"
+      "size": 19502,
+      "sha256": "9BC94C3572F7BB415598BA7C926F9105B7F51A2F2EBFD2D1AB5816E0B3CC8358"
     },
     {
       "path": "scripts/test_dungeon_cinematics_host.py",

@@ -22,11 +22,11 @@ RECIPE = ROOT / 'manifest/dungeon_cinematics.json'
 SCHEMA = 'openNanaimo.dungeon-cinematics.v1'
 MARKER = '.openNanaimo-dungeon-cinematics.json'
 TERMS = ROOT / 'manifest/dungeon_cinematics_terms.json'
-FONT_SIZE = 20
+FONT_SIZE = 21
 TEXT_WIDTH = 352
-LINE_HEIGHT = 22
+LINE_HEIGHT = 24
 VIEWPORT = (800, 600)
-SAFE_MARGIN = 16
+SAFE_MARGIN = 32
 BACKUPS = '.openNanaimo-resource-backups'
 EFFECT = re.compile(r'ep(\d{2})_dg(\d{2})_st(\d{2})_intro_0([01])\.eff')
 TEXT = re.compile(r'ep(\d{2})_dg(\d{2})(?:_st(\d{2}))?_intro_([BF])_T_(\d{2})\.im3')
@@ -94,13 +94,14 @@ def wrap_dialogue(text, face):
     return min(candidates)[2]
 
 
-def render(raw, text, font_path):
+def render(raw, text, font_path, *, alignment='center'):
     from PIL import Image, ImageDraw, ImageFont
     source = codec.decode_im3(raw)
     require(not source.sequences and source.width == source.frame_width
             and source.height == source.frame_height, 'Dialogue sprite must have one frame')
     require(source.format == 10, 'Dialogue alpha format differs')
     original_canvas = [source.width, source.height]
+    require(alignment in ('left', 'center'), 'Invalid dialogue alignment')
     face = ImageFont.truetype(str(font_path), FONT_SIZE, index=0)
     lines = wrap_dialogue(text, face)
     height = LINE_HEIGHT * len(lines) + 2
@@ -111,7 +112,7 @@ def render(raw, text, font_path):
     draw = ImageDraw.Draw(image)
     for index, line in enumerate(lines):
         box = draw.textbbox((0, 0), line, font=face, stroke_width=0)
-        x = (source.width - (box[2] - box[0])) // 2 - box[0]
+        x = (8 if alignment == 'left' else (source.width - (box[2] - box[0])) // 2) - box[0]
         y = index * LINE_HEIGHT + (LINE_HEIGHT - (box[3] - box[1])) // 2 - box[1] + 1
         draw.text((x, y), line, font=face, fill=(255, 255, 255, 255), stroke_width=0)
     encoded = codec.encode_im3(source, image)
@@ -124,7 +125,7 @@ def render(raw, text, font_path):
                          original_canvas=original_canvas,
                          pivot=list(struct.unpack('<2f', source.pivot)), stroke=0,
                          fill=[255, 255, 255, 255], spacing=0, lines=len(lines), text_lines=lines,
-                         line_height=LINE_HEIGHT, roundtrip='quantized-pixel-exact',
+                         line_height=LINE_HEIGHT, alignment=alignment, roundtrip='quantized-pixel-exact',
                          metadata='centered-dialogue-lane')
 
 
@@ -138,6 +139,27 @@ def normalize_dialogue_layers(raw):
             for track in (5, 6):
                 layer['tracks'][track] = [(1.0, 0.0, 0, duration)]
     return codec.encode_eff(effect)
+
+
+def align_to_character(effect, layer, layout):
+    match = TEXT.fullmatch(layer['name'])
+    player = match[4] == 'F'
+    portraits = [row for row in effect['layers'] if
+                 (row['name'] in ('Intro_image_F_00.im3', 'ep16_dg01_intro_F.im3') if player
+                  else row['name'].endswith('_intro_B.im3'))]
+    visible = [frame for frame in range(effect['duration'])
+               if codec.evaluate(layer['tracks'][7], frame) > 0]
+    require(portraits and visible, 'Missing character anchor for dialogue')
+    frame = visible[len(visible) // 2]
+    portrait = max(portraits, key=lambda row: codec.evaluate(row['tracks'][7], frame))
+    character_center = 400 + codec.evaluate(portrait['tracks'][0], frame)
+    left, _, right, _ = layout['bbox']
+    half_width = layout['canvas'][0] / 2
+    center = max(SAFE_MARGIN - left + half_width,
+                 min(character_center, VIEWPORT[0] - SAFE_MARGIN - right + half_width))
+    layer['tracks'][0] = [(center - 400, 0.0, 0, effect['duration'])]
+    return dict(alignment='character-center-clamped', character_center_x=character_center,
+                text_center_x=center)
 
 
 def screen_bounds(layer, layout, duration):
@@ -230,20 +252,23 @@ def validate(recipe):
     require(sum(int(p[len(REL) + 2:len(REL) + 4]) >= 16 for p in texts) == 144,
             'L1-L8 dialogue count differs')
     if recipe['summary'].get('fixed_font_dialogues') == 720:
-        require(recipe['font']['font_size'] == FONT_SIZE and recipe['font']['max_lines'] == 2,
+        font_size = recipe['font']['font_size']
+        line_height = recipe['font']['line_height']
+        margin = recipe['font']['safe_margin']
+        require(font_size in (20, 21, 22) and line_height >= font_size and recipe['font']['max_lines'] == 2,
                 'Dialogue typography contract differs')
         for row in recipe['dialogues']:
             layout = row['layout']
             require(row['chinese_translation'] and not row['retained_cn_image']
-                    and layout['font_size'] == FONT_SIZE and layout['lines'] in (1, 2)
+                    and layout['font_size'] == font_size and layout['lines'] in (1, 2)
                     and ''.join(layout['text_lines']) == row['chinese_translation']
-                    and layout['canvas'] == [TEXT_WIDTH, LINE_HEIGHT * layout['lines'] + 2],
+                    and layout['canvas'] == [TEXT_WIDTH, line_height * layout['lines'] + 2],
                     'Dialogue typography differs: ' + row['id'])
         for effect in recipe['effects']:
             for row in effect['dialogue_layers']:
                 left, top, right, bottom = row['screen_bounds']
-                require(left >= SAFE_MARGIN and top >= SAFE_MARGIN
-                        and right <= VIEWPORT[0] - SAFE_MARGIN and bottom <= VIEWPORT[1] - SAFE_MARGIN,
+                require(left >= margin and top >= margin
+                        and right <= VIEWPORT[0] - margin and bottom <= VIEWPORT[1] - margin,
                         'Dialogue exceeds safe viewport')
 
 
@@ -315,9 +340,14 @@ def build(source, baseline, output, font, *, write_recipe=False, previous_recipe
                         layout=layout, render_status='verified', runtime_acceptance=False)
             if TEXT.fullmatch(name):
                 visible = [k for k in layer['tracks'][7] if k[0] > 0 or k[1] > 0]
+                anchoring = align_to_character(effect, layer, dialogues[relative]['layout'])
                 positioning = screen_bounds(layer, dialogues[relative]['layout'], effect['duration'])
-                text_layers.append(dict(path=relative, layer=layer['index'], visibility=visible, **positioning))
+                text_layers.append(dict(path=relative, layer=layer['index'], visibility=visible,
+                                        **anchoring, **positioning))
         require(len(text_layers) == (5 if phase == 0 else 4), 'Dialogue layer coverage differs')
+        raw = codec.encode_eff(effect)
+        payload[REL + path.name] = raw
+        files[REL + path.name].update(identity(raw))
         effects.append(dict(path=REL + path.name, resource_episode=ep, dungeon=dg, stage=st,
                             phase='before' if phase == 0 else 'after', duration=effect['duration'],
                             layers=len(effect['layers']), dialogue_layers=text_layers,
@@ -335,6 +365,7 @@ def build(source, baseline, output, font, *, write_recipe=False, previous_recipe
                          pillow=PIL.__version__, freetype=features.version('freetype2'),
                          font_redistribution='separately-supplied', layout='fixed-size-centered-two-line',
                          font_size=FONT_SIZE, text_width=TEXT_WIDTH, line_height=LINE_HEIGHT,
+                         alignment='character-center-clamped',
                          max_lines=2, viewport=list(VIEWPORT), safe_margin=SAFE_MARGIN)
     pinned = io.load(RECIPE) if RECIPE.exists() else None
     previous = io.load(previous_recipe) if previous_recipe else None
