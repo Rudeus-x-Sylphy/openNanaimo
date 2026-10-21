@@ -1,0 +1,260 @@
+{
+  "schema": "openNanaimo.kobe-wardrobe.v1",
+  "runtime_acceptance": false,
+  "gender": "M",
+  "distribution": "manual GUI assignment for male characters",
+  "hair": 0,
+  "text": "Mamba Out",
+  "ids": {
+    "body": 10100901,
+    "top": 10110901,
+    "bottom": 10120901,
+    "accessory": 10150901,
+    "effect": 10160901
+  },
+  "stats_source": {
+    "top": 10110450,
+    "bottom": 10120449,
+    "effect": 10130451,
+    "accessory": 10150131,
+    "body": 10100001
+  },
+  "inputs": {
+    "ava._D1": {
+      "size": 976160,
+      "sha256": "2b25bb595c8948fe2fb632314ef12f72c6694788ae93d318992e58bcd6a60805"
+    },
+    "font": {
+      "size": 980756,
+      "sha256": "766f06ac8761f82f25d032a220e89438f6064591af9915061f20b949efdedf69"
+    },
+    "im3:23": {
+      "size": 96252,
+      "sha256": "c8d13d287757b3a6a6c85d9940689140ba65e0d14e2603de6faeb091a184852b"
+    },
+    "fav:23": {
+      "size": 132,
+      "sha256": "9b5e8578d52093c7cc337cd59a97b6966eeac88ccb840eb1c2f798067c0fbfca"
+    },
+    "im3:100221": {
+      "size": 29146,
+      "sha256": "7b76e264637b6b02888ba409749b2e7b797267040938cd3e9674d71e9b5966fc"
+    },
+    "fav:100221": {
+      "size": 132,
+      "sha256": "6172792f3a411c8b82745f133105f62caf65cbd1ab9aad06b350e6c32fbe326b"
+    },
+    "im3:300220": {
+      "size": 29684,
+      "sha256": "5c7b83764e89a84ccc45f7f42782a86c8920b066a1231d618e2718885cbb82bf"
+    },
+    "fav:300220": {
+      "size": 132,
+      "sha256": "61e972f4d980a24380f21b5b3c6d75f9b0643b637a5c5347d860a541f352157d"
+    },
+    "im3:910043": {
+      "size": 17578,
+      "sha256": "06e54db68c419870f76059c86a6741231911c789d4ff144f8ca0a88c2f1c3326"
+    },
+    "fav:910043": {
+      "size": 132,
+      "sha256": "886af5cb46ee19a75de5fc1fc0d2be7af77dd7f02f476fdcf6d353841f21e013"
+    },
+    "effs/a_ef/010027_a_ef_28.eff": {
+      "size": 576,
+      "sha256": "1a7129f2124e235b3e722da725fa101e9156a61d07d067b084cf2f17bcd16746"
+    }
+  },
+  "files": {
+    "ava._D1": {
+      "before": {
+        "size": 976160,
+        "sha256": "2b25bb595c8948fe2fb632314ef12f72c6694788ae93d318992e58bcd6a60805"
+      },
+      "after": {
+        "size": 976160,
+        "sha256": "2b25bb595c8948fe2fb632314ef12f72c6694788ae93d318992e58bcd6a60805"
+      }
+    },
+    "effs/a_ef/950905_kobe_mamba_out.eff": {
+      "before": {
+        "size": 576,
+        "sha256": "94646c657f9c1d8a85268fe5e7ddff66412b82979de2d2da9f67bffea1ba5330"
+      },
+      "after": {
+        "size": 576,
+        "sha256": "94646c657f9c1d8a85268fe5e7ddff66412b82979de2d2da9f67bffea1ba5330"
+      }
+    },
+    "effs/a_ef/950905_kobe_mamba_out.im3": {
+      "before": {
+        "size": 11540,
+        "sha256": "a4eb2b9e583df80232740b37e4b4091e54b0559b3a19f1723ce6e56df4ee0df2"
+      },
+      "after": {
+        "size": 11540,
+        "sha256": "a4eb2b9e583df80232740b37e4b4091e54b0559b3a19f1723ce6e56df4ee0df2"
+      }
+    },
+    "images/AvatarIcon.pack": {
+      "before": {
+        "size": 9520473,
+        "sha256": "c2e6ecfd815468bbaf24a3f989c5573b5d24a6c57a4f9b2e8ce9ccfef55cbd9a"
+      },
+      "after": {
+        "size": 9520473,
+        "sha256": "c2e6ecfd815468bbaf24a3f989c5573b5d24a6c57a4f9b2e8ce9ccfef55cbd9a"
+      }
+    },
+    "images/Avatar_images_im3.pack": {
+      "before": {
+        "size": 107035133,
+        "sha256": "99133767bdbb41ebd0f345fd57f75e0e811c813c9b43d6cf177794238254b061"
+      },
+      "after": {
+        "size": 107035133,
+        "sha256": "99133767bdbb41ebd0f345fd57f75e0e811c813c9b43d6cf177794238254b061"
+      }
+    },
+    "images/Avatar_images_fav.pack": {
+      "before": {
+        "size": 250016,
+        "sha256": "3eb7a8820e865ceeafb69cad306ab5fcd475e7b4ac9948eb2896acf9aca0170a"
+      },
+      "after": {
+        "size": 250016,
+        "sha256": "3eb7a8820e865ceeafb69cad306ab5fcd475e7b4ac9948eb2896acf9aca0170a"
+      }
+    },
+    "images/950901_kobe_icon.im3": {
+      "before": {
+        "size": 2034,
+        "sha256": "2e85aa99e9bd11b5e472c41909a489e610012769e1749c6d9d30ce287727ee7b"
+      },
+      "after": {
+        "size": 2034,
+        "sha256": "2e85aa99e9bd11b5e472c41909a489e610012769e1749c6d9d30ce287727ee7b"
+      }
+    },
+    "images/950901_kobe_body.im3": {
+      "before": {
+        "size": 96252,
+        "sha256": "967ec572b139878326a0dafa130e3170ddcc0d755bbc59dc1e039f1d5e04bad8"
+      },
+      "after": {
+        "size": 96252,
+        "sha256": "967ec572b139878326a0dafa130e3170ddcc0d755bbc59dc1e039f1d5e04bad8"
+      }
+    },
+    "images/950901_kobe_body.fav": {
+      "before": {
+        "size": 132,
+        "sha256": "9b5e8578d52093c7cc337cd59a97b6966eeac88ccb840eb1c2f798067c0fbfca"
+      },
+      "after": {
+        "size": 132,
+        "sha256": "9b5e8578d52093c7cc337cd59a97b6966eeac88ccb840eb1c2f798067c0fbfca"
+      }
+    },
+    "images/950902_kobe_icon.im3": {
+      "before": {
+        "size": 1060,
+        "sha256": "839cd57bc46324e39fbfc0bb80164e23172605984c9f8da0f9f7f56ce749837c"
+      },
+      "after": {
+        "size": 1060,
+        "sha256": "839cd57bc46324e39fbfc0bb80164e23172605984c9f8da0f9f7f56ce749837c"
+      }
+    },
+    "images/950902_kobe_top.im3": {
+      "before": {
+        "size": 29146,
+        "sha256": "5212c8bd2d1d57ffc54039df09db2b4201c6760935895bae4d1a6b4ec5baf178"
+      },
+      "after": {
+        "size": 29146,
+        "sha256": "5212c8bd2d1d57ffc54039df09db2b4201c6760935895bae4d1a6b4ec5baf178"
+      }
+    },
+    "images/950902_kobe_top.fav": {
+      "before": {
+        "size": 132,
+        "sha256": "6172792f3a411c8b82745f133105f62caf65cbd1ab9aad06b350e6c32fbe326b"
+      },
+      "after": {
+        "size": 132,
+        "sha256": "6172792f3a411c8b82745f133105f62caf65cbd1ab9aad06b350e6c32fbe326b"
+      }
+    },
+    "images/950903_kobe_icon.im3": {
+      "before": {
+        "size": 1016,
+        "sha256": "4c7e5ebb45910da347405282123a0e8e9eb769a2149279eba0f4c742bb5d9e96"
+      },
+      "after": {
+        "size": 1016,
+        "sha256": "4c7e5ebb45910da347405282123a0e8e9eb769a2149279eba0f4c742bb5d9e96"
+      }
+    },
+    "images/950903_kobe_bottom.im3": {
+      "before": {
+        "size": 29684,
+        "sha256": "62dad1928c8b3a324f5fc97be949c9edef2362c267641764d6eb42dc796367b4"
+      },
+      "after": {
+        "size": 29684,
+        "sha256": "62dad1928c8b3a324f5fc97be949c9edef2362c267641764d6eb42dc796367b4"
+      }
+    },
+    "images/950903_kobe_bottom.fav": {
+      "before": {
+        "size": 132,
+        "sha256": "61e972f4d980a24380f21b5b3c6d75f9b0643b637a5c5347d860a541f352157d"
+      },
+      "after": {
+        "size": 132,
+        "sha256": "61e972f4d980a24380f21b5b3c6d75f9b0643b637a5c5347d860a541f352157d"
+      }
+    },
+    "images/950904_kobe_icon.im3": {
+      "before": {
+        "size": 858,
+        "sha256": "e7c5dea36d893bc1045d7e6e085763e3230c1b4706e636c68519a6759eab5bab"
+      },
+      "after": {
+        "size": 858,
+        "sha256": "e7c5dea36d893bc1045d7e6e085763e3230c1b4706e636c68519a6759eab5bab"
+      }
+    },
+    "images/950904_kobe_accessory.im3": {
+      "before": {
+        "size": 27162,
+        "sha256": "526904db7c3b5dfc2c652cf588166f233845fa71f9e5c05ea00036aacd0c6b91"
+      },
+      "after": {
+        "size": 27162,
+        "sha256": "526904db7c3b5dfc2c652cf588166f233845fa71f9e5c05ea00036aacd0c6b91"
+      }
+    },
+    "images/950904_kobe_accessory.fav": {
+      "before": {
+        "size": 132,
+        "sha256": "886af5cb46ee19a75de5fc1fc0d2be7af77dd7f02f476fdcf6d353841f21e013"
+      },
+      "after": {
+        "size": 132,
+        "sha256": "886af5cb46ee19a75de5fc1fc0d2be7af77dd7f02f476fdcf6d353841f21e013"
+      }
+    },
+    "images/950905_kobe_icon.im3": {
+      "before": {
+        "size": 976,
+        "sha256": "98c0c673abfdea4f7b0d6b2433f5881ad25525d90bb3116608bbfbcef34c5f11"
+      },
+      "after": {
+        "size": 976,
+        "sha256": "98c0c673abfdea4f7b0d6b2433f5881ad25525d90bb3116608bbfbcef34c5f11"
+      }
+    }
+  }
+}

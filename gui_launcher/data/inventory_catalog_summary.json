@@ -1,7 +1,7 @@
 {
   "version": 1,
   "counts": {
-    "inventory_clothing.json": 4785,
+    "inventory_clothing.json": 4790,
     "inventory_pets.json": 990,
     "inventory_pet_gems.json": 18931,
     "inventory_game_items.json": 21892,
@@ -86,8 +86,8 @@
     },
     "ava._D1": {
       "file": "ava._D1",
-      "bytes": 975248,
-      "sha256": "BEB7903A2BA9ABDBA545183DC39E659DF9AB0AB40CC2C57859094B90210781F1"
+      "bytes": 976160,
+      "sha256": "2B25BB595C8948FE2FB632314EF12F72C6694788AE93D318992E58BCD6A60805"
     }
   }
 }

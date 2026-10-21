@@ -1,6 +1,7 @@
 """Sprite boundaries, release coverage and cinematic installation transactions."""
 from dataclasses import replace
 import json
+import os
 from pathlib import Path
 import struct
 import tempfile
@@ -66,7 +67,8 @@ class ReleaseTests(unittest.TestCase):
     def test_export_scope(self):
         import export_patch
         for name in ('manifest/dungeon_cinematics.json', 'manifest/dungeon_cinematics_coverage.json',
-                     'manifest/dungeon_cinematics_translations.tsv', 'manifest/dungeon_cinematics_revisions.tsv'):
+                     'manifest/dungeon_cinematics_translations.tsv', 'manifest/dungeon_cinematics_revisions.tsv',
+                     'manifest/dungeon_cinematics_terms.json'):
             export_patch.payload_policy(name, 'source')
         with self.assertRaises(export_patch.ExportError):
             export_patch.payload_policy('manifest/dungeon_cinematics_private.tsv', 'source')
@@ -86,8 +88,41 @@ class ReleaseTests(unittest.TestCase):
                 self.assertTrue(row['korean_transcript'])
                 self.assertTrue(row['chinese_translation'])
                 self.assertFalse(row['retained_cn_image'])
-                self.assertIn(row['layout']['font_size'], range(14, 21))
+                self.assertEqual(row['layout']['font_size'], cinema.FONT_SIZE)
                 self.assertFalse(row['runtime_acceptance'])
+
+    def test_all_dialogues_use_one_face_size_and_screen_safe_bounds(self):
+        recipe, payload = cinema.bundle(cinema.ROOT / 'resource-packs/nanaimo-dungeon-cinematics-kit.zip')
+        texts = cinema.translations()
+        self.assertEqual(len(texts), 720)
+        self.assertEqual(recipe['summary']['fixed_font_dialogues'], 720)
+        dialogues = {row['path']: row for row in recipe['dialogues']}
+        for row in dialogues.values():
+            self.assertFalse(row['retained_cn_image'])
+            layout = row['layout']
+            self.assertEqual(layout['font_size'], 20)
+            self.assertEqual(''.join(layout['text_lines']), texts[row['id']]['chinese_translation'])
+            sprite = codec.decode_im3(payload[row['path']])
+            self.assertEqual(list(sprite.rgba().getbbox()), layout['bbox'])
+        for row in recipe['effects']:
+            effect = codec.decode_eff(payload[row['path']])
+            for detail in row['dialogue_layers']:
+                layer = effect['layers'][detail['layer']]
+                actual = cinema.screen_bounds(layer, dialogues[detail['path']]['layout'], effect['duration'])
+                self.assertEqual(actual, {key: detail[key] for key in actual})
+
+    def test_canonical_monster_names_and_episode16_destination(self):
+        names = {row['text_id']: row['chinese'] for row in cinema.terms()}
+        self.assertEqual(names[2314], '枪弹新兵')
+        self.assertEqual(names[2315], '旋转弹药发射机')
+        self.assertEqual(names[2302], '火焰的石柱')
+        self.assertEqual(names[2102], '不死神坛')
+        texts = cinema.translations()
+        self.assertIn(names[2314], texts['ep15_dg01_st00_intro_B_T_02']['chinese_translation'])
+        self.assertIn(names[2315], texts['ep15_dg02_st00_intro_B_T_02']['chinese_translation'])
+        self.assertIn(names[2302], texts['ep11_dg02_st00_intro_B_T_00']['chinese_translation'])
+        self.assertEqual(texts['ep15_dg02_st01_intro_F_T_11']['chinese_translation'],
+                         '唉……看来还得去拉米诺斯村。')
 
     def test_all_effects_retain_authored_timing_and_layer_counts(self):
         recipe = io.load(cinema.RECIPE)
@@ -181,6 +216,34 @@ class TransactionTests(unittest.TestCase):
         self.assertFalse(io.safe(self.root, cinema.MARKER).exists())
         self.assertEqual(cinema.restore(self.root, result['receipt'])['status'], 'already-rolled-back')
 
+    def previous_marker(self):
+        self.recipe['upgrade_from'] = '2' * 64
+        io.atomic(self.recipe_path, io.encoded(self.recipe))
+        receipt = cinema.BACKUPS + '/cinematics-' + '0' * 32 + '/receipt.json'
+        io.atomic(io.safe(self.root, receipt), io.encoded(dict(schema=cinema.SCHEMA,
+            id=self.recipe['upgrade_from'], client=str(self.root), receipt=receipt,
+            status='installed', files=[])))
+        raw = io.encoded(dict(schema=cinema.SCHEMA, id=self.recipe['upgrade_from'], receipt=receipt))
+        io.atomic(self.root / cinema.MARKER, raw)
+        return raw
+
+    def test_upgrade_and_rollback_restore_previous_installation_identity(self):
+        marker = self.previous_marker()
+        result = cinema.apply('fixture', self.root)
+        self.assertEqual(result['status'], 'installed')
+        self.assertEqual(cinema.apply('fixture', self.root)['status'], 'already-installed')
+        cinema.restore(self.root, result['receipt'])
+        self.check_original()
+        self.assertEqual((self.root / cinema.MARKER).read_bytes(), marker)
+
+    def test_upgrade_rejects_partially_replaced_previous_release(self):
+        self.previous_marker()
+        name = next(iter(self.payload))
+        io.atomic(io.safe(self.root, name), self.payload[name])
+        with self.assertRaisesRegex(ValueError, 'Previous cinematic release differs'):
+            cinema.apply('fixture', self.root)
+
+
     def test_unknown_target_refused_before_any_write(self):
         name = list(self.before)[1]
         io.safe(self.root, name).write_bytes(b'custom')
@@ -235,6 +298,76 @@ class TransactionTests(unittest.TestCase):
         io.atomic(io.safe(self.root, result['receipt']), io.encoded(journal))
         with self.assertRaises(ValueError):
             cinema.restore(self.root, result['receipt'])
+
+
+class DialogueLayoutTests(unittest.TestCase):
+    def font_face(self):
+        from PIL import ImageFont
+        font = Path(os.environ.get('WINDIR', '')) / 'Fonts' / 'simsun.ttc'
+        if not font.is_file():
+            self.skipTest('The separately supplied cinematic font is required')
+        return ImageFont.truetype(str(font), 20)
+
+    def effect(self):
+        import copy
+        tracks = [[(0.0, 0.0, 0, 20)] for _ in range(12)]
+        tracks[5] = tracks[6] = [(2.0, -0.0625, 0, 20)]
+        tracks[7] = [(255.0, 0.0, 0, 20)]
+        def layer(index, name):
+            return dict(index=index, name=name, srcblend=5, dstblend=2,
+                        tracks=copy.deepcopy(tracks), info=bytes(48).hex())
+        return dict(duration=20, unknown=0, layers=[layer(0, 'ep15_dg00_st00_intro_F_T_00.im3'),
+                    layer(1, 'ep15_dg00_st00_intro_B_T_00.im3'), layer(2, 'portrait.im3')])
+
+    def test_effect_roundtrip_and_only_text_position_scale_change(self):
+        before = self.effect()
+        raw = codec.encode_eff(before)
+        self.assertEqual(codec.encode_eff(codec.decode_eff(raw)), raw)
+        after = codec.decode_eff(cinema.normalize_dialogue_layers(raw))
+        self.assertEqual(after['layers'][2], before['layers'][2])
+        for index, x in ((0, -200.0), (1, 200.0)):
+            self.assertEqual(after['layers'][index]['tracks'][0], [(x, 0.0, 0, 20)])
+            for track in range(12):
+                if track not in (0, 5, 6):
+                    self.assertEqual(after['layers'][index]['tracks'][track],
+                                     before['layers'][index]['tracks'][track])
+
+    def test_screen_check_rejects_offscreen_even_with_unclipped_sprite(self):
+        layer = self.effect()['layers'][0]
+        layer['tracks'][0] = [(-390.0, 0.0, 0, 20)]
+        layer['tracks'][5] = layer['tracks'][6] = [(1.0, 0.0, 0, 20)]
+        layout = dict(canvas=[352, 28], bbox=[4, 4, 348, 24])
+        with self.assertRaisesRegex(ValueError, 'safe viewport'):
+            cinema.screen_bounds(layer, layout, 20)
+
+    def test_wrap_preserves_text_names_and_punctuation(self):
+        face = self.font_face()
+        text = '旋转弹药发射机，把那家伙打下来！'
+        lines = cinema.wrap_dialogue(text, face)
+        self.assertEqual(''.join(lines), text)
+        self.assertTrue(any('旋转弹药发射机' in line for line in lines))
+        self.assertTrue(all(line[0] not in '，。！？…' for line in lines))
+
+    def test_wrap_rejects_more_than_two_lines(self):
+        face = self.font_face()
+        with self.assertRaisesRegex(ValueError, 'shortening'):
+            cinema.wrap_dialogue('很长的对白' * 30, face)
+
+    def test_offline_html_embeds_data_without_external_assets(self):
+        import preview_dungeon_cinematics as preview
+        from html.parser import HTMLParser
+        class Assets(HTMLParser):
+            external = []
+            def handle_starttag(self, tag, attributes):
+                for name, value in attributes:
+                    if name in ('src', 'href') and value and not value.startswith(('data:', '#')):
+                        self.external.append(value)
+        raw = preview.html_document(dict(recipe_id='a' * 64, text='</script>'))
+        parser = Assets()
+        parser.feed(raw.decode('utf-8'))
+        self.assertFalse(parser.external)
+        self.assertIn(b'\\u003c/script>', raw)
+        self.assertNotIn(b'__DATA__', raw)
 
 
 if __name__ == '__main__':

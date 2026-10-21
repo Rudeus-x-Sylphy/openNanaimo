@@ -1,0 +1,497 @@
+{
+  "schema": "openNanaimo.dungeon-cinematic-terms.v1",
+  "terms": [
+    {
+      "chinese": "机炮飞艇",
+      "korean": "크라운롤리폴리",
+      "table": "GS._D20",
+      "text_id": 2062
+    },
+    {
+      "chinese": "大机械熊偶",
+      "korean": "킹베드보그",
+      "table": "GS._D20",
+      "text_id": 2066
+    },
+    {
+      "chinese": "斯巴特洛",
+      "korean": "스파도르나이트",
+      "table": "GS._D20",
+      "text_id": 2070
+    },
+    {
+      "chinese": "单眼怪里奥",
+      "korean": "외눈키클롭스",
+      "table": "GS._D20",
+      "text_id": 2074
+    },
+    {
+      "chinese": "石鬼豪斯",
+      "korean": "마스터스톤헤드",
+      "table": "GS._D20",
+      "text_id": 2078
+    },
+    {
+      "chinese": "立忠大将军",
+      "korean": "지옥의대장군",
+      "table": "GS._D20",
+      "text_id": 2082
+    },
+    {
+      "chinese": "独角蓝鬼咒魁",
+      "korean": "도깨비기면수",
+      "table": "GS._D20",
+      "text_id": 2086
+    },
+    {
+      "chinese": "不老的始皇帝",
+      "korean": "대블진시",
+      "table": "GS._D20",
+      "text_id": 2090
+    },
+    {
+      "chinese": "乔伊桑和蜈蚣王",
+      "korean": "삼단안면각",
+      "table": "GS._D20",
+      "text_id": 2094
+    },
+    {
+      "chinese": "疾风刺客法雷",
+      "korean": "패어리스피리트",
+      "table": "GS._D20",
+      "text_id": 2098
+    },
+    {
+      "chinese": "不死神坛",
+      "korean": "리브리온",
+      "table": "GS._D20",
+      "text_id": 2102
+    },
+    {
+      "chinese": "坏熊梅尔文",
+      "korean": "황금곰돌상",
+      "table": "GS._D20",
+      "text_id": 2106
+    },
+    {
+      "chinese": "海盗王丹尼",
+      "korean": "선장훅",
+      "table": "GS._D20",
+      "text_id": 2110
+    },
+    {
+      "chinese": "轰天炮台",
+      "korean": "고스트아일",
+      "table": "GS._D20",
+      "text_id": 2114
+    },
+    {
+      "chinese": "三龟巨魔",
+      "korean": "키메이라",
+      "table": "GS._D20",
+      "text_id": 2118
+    },
+    {
+      "chinese": "派·罗斯",
+      "korean": "포이달로스",
+      "table": "GS._D20",
+      "text_id": 2122
+    },
+    {
+      "chinese": "瓦格拉诺",
+      "korean": "와그라노",
+      "table": "GS._D20",
+      "text_id": 2125
+    },
+    {
+      "chinese": "闇黑法老王",
+      "korean": "다크파라오",
+      "table": "GS._D20",
+      "text_id": 2128
+    },
+    {
+      "chinese": "邪神马米加",
+      "korean": "마메파",
+      "table": "GS._D20",
+      "text_id": 2131
+    },
+    {
+      "chinese": "迷之爱丽丝",
+      "korean": "앨리스",
+      "table": "GS._D20",
+      "text_id": 2134
+    },
+    {
+      "chinese": "冰龙邪王",
+      "korean": "아이시러",
+      "table": "GS._D20",
+      "text_id": 2137
+    },
+    {
+      "chinese": "超级竹蜻蜓船",
+      "korean": "프로프쉽",
+      "table": "GS._D20",
+      "text_id": 2268
+    },
+    {
+      "chinese": "巨大飞船",
+      "korean": "빅롤리폴리",
+      "table": "GS._D20",
+      "text_id": 2269
+    },
+    {
+      "chinese": "火球蓝魂",
+      "korean": "아이언보글",
+      "table": "GS._D20",
+      "text_id": 2270
+    },
+    {
+      "chinese": "森林入口大门",
+      "korean": "숲의입구게이트",
+      "table": "GS._D20",
+      "text_id": 2271
+    },
+    {
+      "chinese": "森林中央大门",
+      "korean": "숲의중앙게이트",
+      "table": "GS._D20",
+      "text_id": 2272
+    },
+    {
+      "chinese": "小魔王小门",
+      "korean": "보스게이트",
+      "table": "GS._D20",
+      "text_id": 2273
+    },
+    {
+      "chinese": "大嘴巴鱼",
+      "korean": "빅마우스피쉬",
+      "table": "GS._D20",
+      "text_id": 2274
+    },
+    {
+      "chinese": "地下室中央大门",
+      "korean": "지하수로중앙게이트",
+      "table": "GS._D20",
+      "text_id": 2275
+    },
+    {
+      "chinese": "大魔王大门",
+      "korean": "대보스게이트",
+      "table": "GS._D20",
+      "text_id": 2276
+    },
+    {
+      "chinese": "机器合体岩",
+      "korean": "시스톨메키닉암",
+      "table": "GS._D20",
+      "text_id": 2277
+    },
+    {
+      "chinese": "超大型机枪",
+      "korean": "헤비머신건",
+      "table": "GS._D20",
+      "text_id": 2278
+    },
+    {
+      "chinese": "火球机器",
+      "korean": "파이어볼 머신",
+      "table": "GS._D20",
+      "text_id": 2279
+    },
+    {
+      "chinese": "破灭的夜光珠",
+      "korean": "파멸의 야광주",
+      "table": "GS._D20",
+      "text_id": 2280
+    },
+    {
+      "chinese": "巨人的呐喊",
+      "korean": "거인의 함성",
+      "table": "GS._D20",
+      "text_id": 2281
+    },
+    {
+      "chinese": "火焰宝珠",
+      "korean": "화염보주",
+      "table": "GS._D20",
+      "text_id": 2282
+    },
+    {
+      "chinese": "弓箭地狱",
+      "korean": "화살지옥",
+      "table": "GS._D20",
+      "text_id": 2283
+    },
+    {
+      "chinese": "消失的光线",
+      "korean": "소멸의 광선",
+      "table": "GS._D20",
+      "text_id": 2284
+    },
+    {
+      "chinese": "火焰风车",
+      "korean": "화염의 풍차",
+      "table": "GS._D20",
+      "text_id": 2285
+    },
+    {
+      "chinese": "108尾狐像",
+      "korean": "백팔미호상",
+      "table": "GS._D20",
+      "text_id": 2286
+    },
+    {
+      "chinese": "封锁的鬼眼",
+      "korean": "봉인된 귀안",
+      "table": "GS._D20",
+      "text_id": 2287
+    },
+    {
+      "chinese": "死亡咒语",
+      "korean": "죽음의 주문진",
+      "table": "GS._D20",
+      "text_id": 2288
+    },
+    {
+      "chinese": "混沌状态",
+      "korean": "혼돈의 석경",
+      "table": "GS._D20",
+      "text_id": 2289
+    },
+    {
+      "chinese": "铁链拦截队",
+      "korean": "사슬철퇴진",
+      "table": "GS._D20",
+      "text_id": 2290
+    },
+    {
+      "chinese": "死神之门",
+      "korean": "사신의 관문",
+      "table": "GS._D20",
+      "text_id": 2291
+    },
+    {
+      "chinese": "三乘三眼球树",
+      "korean": "써전아이트리",
+      "table": "GS._D20",
+      "text_id": 2292
+    },
+    {
+      "chinese": "七杀花",
+      "korean": "킬링플라워",
+      "table": "GS._D20",
+      "text_id": 2293
+    },
+    {
+      "chinese": "死亡图像",
+      "korean": "데쓰비젼",
+      "table": "GS._D20",
+      "text_id": 2294
+    },
+    {
+      "chinese": "燃烧岩",
+      "korean": "버닝스톤",
+      "table": "GS._D20",
+      "text_id": 2295
+    },
+    {
+      "chinese": "险恶要塞",
+      "korean": "데인저러스잼",
+      "table": "GS._D20",
+      "text_id": 2296
+    },
+    {
+      "chinese": "上古之谜要塞",
+      "korean": "스프린터",
+      "table": "GS._D20",
+      "text_id": 2297
+    },
+    {
+      "chinese": "死亡链球",
+      "korean": "스피어 체인",
+      "table": "GS._D20",
+      "text_id": 2298
+    },
+    {
+      "chinese": "守护要塞",
+      "korean": "프로텍티브 월",
+      "table": "GS._D20",
+      "text_id": 2299
+    },
+    {
+      "chinese": "铁皮面具怪",
+      "korean": "메탈 마스크",
+      "table": "GS._D20",
+      "text_id": 2300
+    },
+    {
+      "chinese": "黄金雕像",
+      "korean": "골드스테츄",
+      "table": "GS._D20",
+      "text_id": 2301
+    },
+    {
+      "chinese": "火焰的石柱",
+      "korean": "카우스필러",
+      "table": "GS._D20",
+      "text_id": 2302
+    },
+    {
+      "chinese": "黄金石柱",
+      "korean": "포 골드 필러",
+      "table": "GS._D20",
+      "text_id": 2303
+    },
+    {
+      "chinese": "海盗骷髅人",
+      "korean": "스켈레톤 건너",
+      "table": "GS._D20",
+      "text_id": 2304
+    },
+    {
+      "chinese": "潜水艇",
+      "korean": "서브마린",
+      "table": "GS._D20",
+      "text_id": 2305
+    },
+    {
+      "chinese": "战斗机械师",
+      "korean": "베틀머신",
+      "table": "GS._D20",
+      "text_id": 2306
+    },
+    {
+      "chinese": "沙滩城堡寄居蟹",
+      "korean": "모래성의 소라게",
+      "table": "GS._D20",
+      "text_id": 2307
+    },
+    {
+      "chinese": "怪物房子",
+      "korean": "몬스터 하우스",
+      "table": "GS._D20",
+      "text_id": 2308
+    },
+    {
+      "chinese": "幽灵船",
+      "korean": "고스트 쉽",
+      "table": "GS._D20",
+      "text_id": 2309
+    },
+    {
+      "chinese": "黄金大象",
+      "korean": "메머드코끼리상",
+      "table": "GS._D20",
+      "text_id": 2310
+    },
+    {
+      "chinese": "大蟒蛇石柱",
+      "korean": "드라코뱀기둥",
+      "table": "GS._D20",
+      "text_id": 2311
+    },
+    {
+      "chinese": "猴仔石板",
+      "korean": "사스콰치원숭이 석판",
+      "table": "GS._D20",
+      "text_id": 2312
+    },
+    {
+      "chinese": "奇妙的紫水晶",
+      "korean": "스트랜지애머시스트",
+      "table": "GS._D20",
+      "text_id": 2313
+    },
+    {
+      "chinese": "枪弹新兵",
+      "korean": "스트랜지거신병",
+      "table": "GS._D20",
+      "text_id": 2314
+    },
+    {
+      "chinese": "旋转弹药发射机",
+      "korean": "스트랜지가드타워",
+      "table": "GS._D20",
+      "text_id": 2315
+    },
+    {
+      "chinese": "琴之神殿",
+      "korean": "파이프오르간",
+      "table": "GS._D20",
+      "text_id": 2316
+    },
+    {
+      "chinese": "斯芬克斯",
+      "korean": "스핑크스",
+      "table": "GS._D20",
+      "text_id": 2317
+    },
+    {
+      "chinese": "恶魔玛琪咔",
+      "korean": "마메카",
+      "table": "GS._D20",
+      "text_id": 2318
+    },
+    {
+      "chinese": "安德鲁三世",
+      "korean": "앤드류3세",
+      "table": "GS._D20",
+      "text_id": 2319
+    },
+    {
+      "chinese": "冰雪暴上尉",
+      "korean": "상위 블리자드",
+      "table": "GS._D20",
+      "text_id": 2320
+    },
+    {
+      "chinese": "祭祀之神",
+      "korean": "몬스터왓치",
+      "table": "GS._D20",
+      "text_id": 2321
+    },
+    {
+      "chinese": "生化胶囊",
+      "korean": "바이오캡슐",
+      "table": "GS._D20",
+      "text_id": 2322
+    },
+    {
+      "chinese": "糖果大礼盒",
+      "korean": "캔디박스",
+      "table": "GS._D20",
+      "text_id": 2323
+    },
+    {
+      "chinese": "雪橇怪人",
+      "korean": "폭주바켄",
+      "table": "GS._D20",
+      "text_id": 2324
+    },
+    {
+      "chinese": "大魔女明琪",
+      "korean": "대마녀밍키",
+      "table": "GS._D20",
+      "text_id": 2342
+    },
+    {
+      "chinese": "头脑胶囊",
+      "korean": "브레인캡슐",
+      "table": "GS._D20",
+      "text_id": 2345
+    },
+    {
+      "chinese": "马斯特洛克",
+      "korean": "마에스트로쿠크",
+      "table": "GS._D20",
+      "text_id": 2348
+    },
+    {
+      "chinese": "派·罗斯",
+      "korean": "포이달로스",
+      "table": "GS._D20",
+      "text_id": 2460
+    }
+  ]
+}

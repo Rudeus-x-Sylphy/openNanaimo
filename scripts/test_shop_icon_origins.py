@@ -20,7 +20,9 @@ class ShopIconTests(unittest.TestCase):
         cls.records = port.audit.read_pack(cls.payloads[origins.PACK])
 
     def test_exact_corrected_pack_and_two_records(self):
-        self.assertEqual(port.audit.identity(self.payloads[origins.PACK]), origins.CORRECTED_PACK)
+        self.assertEqual(port.audit.identity(self.payloads[origins.PACK]), self.recipe['files'][origins.PACK]['after'])
+        baseline = {k: v for k, v in self.records.items() if k not in range(950901, 950906)}
+        self.assertEqual(port.audit.identity(port.pack_bytes(baseline)), origins.CORRECTED_PACK)
         origins.verify_records(self.records)
         for key, (before, after) in origins.RECORDS.items():
             raw = self.records[key]
@@ -55,7 +57,7 @@ class ShopIconTests(unittest.TestCase):
             10120603,10120604,10120605,10160332,10160333,10160334])
 
     def test_kit_is_complete_and_rejects_extra_member(self):
-        self.assertEqual(len(self.payloads), 531)
+        self.assertEqual(len(self.payloads), 546)
         self.assertEqual(set(self.recipe['files']), set(self.payloads))
         data = io.BytesIO(kit.ARCHIVE.read_bytes())
         with zipfile.ZipFile(data, 'a') as z:
@@ -84,7 +86,7 @@ class ShopIconTests(unittest.TestCase):
             client = Path(tmp)
             for name, raw in self.payloads.items():
                 port.atomic_write(port.audit.safe_path(client,name),raw)
-            records = dict(self.records)
+            records = {k: v for k, v in self.records.items() if k not in range(950901, 950906)}
             for key in origins.RECORDS:
                 raw = records[key]
                 records[key] = raw[:36] + struct.pack('<ff',23,23) + raw[44:]

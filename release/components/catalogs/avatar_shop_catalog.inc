@@ -1,7 +1,7 @@
 #ifndef NANAIMO_AVATAR_SHOP_CATALOG_SHOP_CATALOG_INC
 #define NANAIMO_AVATAR_SHOP_CATALOG_SHOP_CATALOG_INC
 struct shopping_avatar_catalog_row { unsigned code,price,slot_code,hans_price; };
-#define SHOPPING_AVATAR_CATALOG_COUNT 4785u
+#define SHOPPING_AVATAR_CATALOG_COUNT 4790u
 static const struct shopping_avatar_catalog_row shopping_avatar_catalog[SHOPPING_AVATAR_CATALOG_COUNT]={
     {10000001u,0u,0u,0u},
     {10000002u,0u,0u,0u},
@@ -2443,6 +2443,7 @@ static const struct shopping_avatar_catalog_row shopping_avatar_catalog[SHOPPING
     {10100029u,0u,0u,0u},
     {10100030u,0u,0u,0u},
     {10100031u,0u,0u,0u},
+    {10100901u,0u,0u,0u},
     {10110001u,0u,0u,0u},
     {10110002u,0u,0u,0u},
     {10110003u,0u,0u,0u},
@@ -3002,6 +3003,7 @@ static const struct shopping_avatar_catalog_row shopping_avatar_catalog[SHOPPING
     {10110622u,288u,1u,0u},
     {10110623u,288u,1u,0u},
     {10110624u,288u,1u,0u},
+    {10110901u,0u,1u,0u},
     {10119997u,288u,1u,0u},
     {10119998u,288u,1u,0u},
     {10119999u,288u,1u,0u},
@@ -3563,6 +3565,7 @@ static const struct shopping_avatar_catalog_row shopping_avatar_catalog[SHOPPING
     {10120621u,288u,4u,0u},
     {10120622u,288u,4u,0u},
     {10120623u,288u,4u,0u},
+    {10120901u,0u,4u,0u},
     {10129997u,288u,4u,0u},
     {10129998u,288u,4u,0u},
     {10129999u,288u,4u,0u},
@@ -4430,6 +4433,7 @@ static const struct shopping_avatar_catalog_row shopping_avatar_catalog[SHOPPING
     {10150261u,288u,4u,0u},
     {10150262u,288u,4u,0u},
     {10150263u,288u,4u,0u},
+    {10150901u,0u,4u,0u},
     {10160001u,20u,8u,0u},
     {10160002u,40u,8u,0u},
     {10160003u,70u,8u,0u},
@@ -4780,6 +4784,7 @@ static const struct shopping_avatar_catalog_row shopping_avatar_catalog[SHOPPING
     {10160348u,288u,8u,0u},
     {10160349u,288u,8u,0u},
     {10160350u,288u,8u,0u},
+    {10160901u,0u,10u,0u},
     {10169101u,50u,8u,0u},
     {10169102u,148u,8u,0u},
     {10169103u,300u,8u,0u},

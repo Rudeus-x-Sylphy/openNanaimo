@@ -161,6 +161,23 @@ def decode_eff(raw):
     return dict(duration=duration, unknown=unknown, layers=layers)
 
 
+def encode_eff(effect):
+    raw = bytearray(struct.pack('<5I', 2, 0, effect['unknown'], effect['duration'], len(effect['layers'])))
+    for index, layer in enumerate(effect['layers']):
+        require(layer['index'] == index, 'EFF layer order differs')
+        name = layer['name'].encode('ascii')
+        require(len(name) < 260 and len(layer['tracks']) == 12, 'Invalid EFF layer')
+        raw += struct.pack('<2I', layer['srcblend'], layer['dstblend']) + name.ljust(260, b'\0')
+        for keys in layer['tracks']:
+            raw += struct.pack('<I', len(keys))
+            for key in keys:
+                raw += struct.pack('<ffii', *key)
+        raw += bytes.fromhex(layer['info'])
+    result = bytes(raw)
+    require(decode_eff(result) == effect, 'EFF roundtrip differs')
+    return result
+
+
 def evaluate(keys, frame):
     for value, delta, start, end in keys:
         if start <= frame < end:

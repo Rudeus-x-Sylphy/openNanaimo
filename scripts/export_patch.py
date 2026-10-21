@@ -131,8 +131,10 @@ STORY_SOURCES = {
 DUNGEON_CINEMATIC_SOURCES = {
     'manifest/dungeon_cinematics.json', 'manifest/dungeon_cinematics_coverage.json',
     'manifest/dungeon_cinematics_translations.tsv', 'manifest/dungeon_cinematics_revisions.tsv',
+    'manifest/dungeon_cinematics_terms.json',
     'scripts/cinematic_codec.py', 'scripts/dungeon_cinematics.py',
     'scripts/audit_dungeon_cinematics.py', 'scripts/port_lumineos_resources.py',
+    'scripts/preview_dungeon_cinematics.py',
     'scripts/test_dungeon_cinematics.py', 'scripts/test_dungeon_cinematics_host.py',
 }
 # This is only a rejection aid; NOT a privacy certification. Exact-byte human review
@@ -170,6 +172,7 @@ def payload_policy(value: str, layer: str) -> None:
         good = value in {
             "start_nanaimo_launcher.bat", "gui_launcher/nanaimo_launcher.ps1",
             "gui_launcher/projectile_browser.ps1",
+            "gui_launcher/kobe_outfit.ps1",
             "gui_launcher/start_social_client.ps1",
             "gui_launcher/launcher_worker.ps1",
             "gui_launcher/lumineos_resource_identity.ps1",
@@ -214,7 +217,8 @@ def payload_policy(value: str, layer: str) -> None:
                              "manifest/knowledge_migration.json", "manifest/knowledge_baseline.json.gz",
                              "manifest/document_fusion.json", "manifest/document_fusion_baseline.json.gz",
                              "manifest/monk_dialogue_resources.json",
-                             "manifest/korean_wardrobe_resources.json", "manifest/korean_wardrobe_catalog.json"})
+                             "manifest/korean_wardrobe_resources.json", "manifest/korean_wardrobe_catalog.json",
+                             "manifest/kobe_wardrobe.json"})
     elif layer == "docs":
         good = value == "README.md"
     elif layer == "knowledge":
@@ -452,6 +456,8 @@ def validated_closure(closure: dict) -> list[dict]:
             'scripts/test_korean_wardrobe.py', 'scripts/audit_korean_wardrobe_interior.py',
             'scripts/generate_avatar_resource_effects.py',
             'manifest/korean_wardrobe_resources.json', 'manifest/korean_wardrobe_catalog.json',
+            'scripts/prepare_kobe_wardrobe.py', 'scripts/test_kobe_wardrobe.py',
+            'manifest/kobe_wardrobe.json',
         }
         if not (native or managed or build_script or embedded_recipe or card_distribution
                 or wardrobe_derivation or rel in STORY_SOURCES or rel in DUNGEON_CINEMATIC_SOURCES):

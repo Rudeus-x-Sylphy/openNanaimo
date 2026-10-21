@@ -7,6 +7,7 @@ Add-Type -AssemblyName System.Drawing
 $Root=Split-Path $PSScriptRoot -Parent
 $Client=Join-Path $Root 'game.exe'
 . (Join-Path $PSScriptRoot 'projectile_browser.ps1')
+. (Join-Path $PSScriptRoot 'kobe_outfit.ps1')
 $AdapterRuntimeRoot=Join-Path $Root 'adapter_runtime'
 $Adapter=Join-Path $AdapterRuntimeRoot 'Nanaimo.Adapter.exe'
 $AdapterBridge=Join-Path $AdapterRuntimeRoot 'nanaimo_gameplay_bridge.exe'
@@ -358,13 +359,13 @@ if($SelfTestTitleIO){
 if($SelfTestInventoryIO){Write-Output (Test-InventoryAdminInstallation $Root);exit 0}
 if($ValidateOnly){
     $inventoryValidation=Test-InventoryAdminInstallation $Root
-    if($pets.Count-ne990){throw 'pet catalog count'};if($equips.Count-ne4785){throw 'equipment catalog count'};if($furniture.Count-ne2008){throw 'furniture catalog count'};if($attackModes.Count-ne990){throw 'attack mode catalog count'};if($petPreviewRows.Count-ne990-or$equipPreviewRows.Count-ne4785-or$furniturePreviewRows.Count-ne2008-or-not(Test-Path -LiteralPath $PetPreviewPng)-or-not(Test-Path -LiteralPath $EquipPreviewPng)-or-not(Test-Path -LiteralPath $FurniturePreviewPng)){throw 'catalog preview assets'}
+    if($pets.Count-ne990){throw 'pet catalog count'};if($equips.Count-ne4790){throw 'equipment catalog count'};if($furniture.Count-ne2008){throw 'furniture catalog count'};if($attackModes.Count-ne990){throw 'attack mode catalog count'};if($petPreviewRows.Count-ne990-or$equipPreviewRows.Count-ne4790-or$furniturePreviewRows.Count-ne2008-or-not(Test-Path -LiteralPath $PetPreviewPng)-or-not(Test-Path -LiteralPath $EquipPreviewPng)-or-not(Test-Path -LiteralPath $FurniturePreviewPng)){throw 'catalog preview assets'}
     foreach($path in @($AdapterManifest,$Adapter,$AdapterBridge)){if(-not(Test-Path -LiteralPath $path)){throw "adapter artifact missing: $path"}};if((Get-Item -LiteralPath $Adapter).Length-ne$ExpectedAdapterSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $Adapter).Hash-ne$ExpectedAdapterHash){throw 'adapter validation'};if((Get-Item -LiteralPath $AdapterBridge).Length-ne$ExpectedBridgeSize-or(Get-FileHash -Algorithm SHA256 -LiteralPath $AdapterBridge).Hash-ne$ExpectedBridgeHash){throw 'bridge validation'}
     foreach($id in 15009205,10130337,10100028,10110337,10120352,10150103,10160017){if(-not($petById.ContainsKey([uint32]$id)-or$equipById.ContainsKey([uint32]$id))){throw "missing default id $id"}}
     $round=Decode-NameHex (Encode-NameHex '测试角色');if($round-ne'测试角色'){throw 'GBK name roundtrip'}
-    $pt=New-GridTable 'pet' $pets;$et=New-GridTable 'equip' $equips;$ft=New-GridTable 'furniture' $furniture;if($pt.Rows.Count-ne990-or$et.Rows.Count-ne4785-or$ft.Rows.Count-ne2008){throw 'grid table count'}
+    $pt=New-GridTable 'pet' $pets;$et=New-GridTable 'equip' $equips;$ft=New-GridTable 'furniture' $furniture;if($pt.Rows.Count-ne990-or$et.Rows.Count-ne4790-or$ft.Rows.Count-ne2008){throw 'grid table count'}
     $pv=New-Object Data.DataView;$pv.Table=$pt;$pv.RowFilter="[ID] LIKE '%15009205%'";if($pv.Count-ne1){throw 'pet filter'}
-    $ev=New-Object Data.DataView;$ev.Table=$et;$ev.RowFilter="[部位] = '发型'";if($ev.Count-ne1205){throw 'equipment hair filter'};$ev.RowFilter="[部位] = '效果（特效道具）'";if($ev.Count-ne714){throw 'equipment effect filter'}
+    $ev=New-Object Data.DataView;$ev.Table=$et;$ev.RowFilter="[部位] = '发型'";if($ev.Count-ne1205){throw 'equipment hair filter'};$ev.RowFilter="[部位] = '效果（特效道具）'";if($ev.Count-ne715){throw 'equipment effect filter'}
     if(@($equips|Where-Object{$_.part-eq'other'}).Count-ne2){throw 'equipment other classification'}
     $networkInfo=Get-LaunchModeInfo 'network' '127.0.0.1'
     [void](Test-LaunchModeTemplate $networkInfo)
@@ -1082,6 +1083,10 @@ $equipSearch=New-Object Windows.Forms.TextBox;$equipSearch.Location=New-Object D
 $partFilter=New-Object Windows.Forms.ComboBox;$partFilter.Location=New-Object Drawing.Point(450,16);$partFilter.Size=New-Object Drawing.Size(170,30);$partFilter.DropDownStyle='DropDownList';[void]$partFilter.Items.Add('全部部位');foreach($x in @('body','hair','top','bottom','accessory','effect','other')){[void]$partFilter.Items.Add($PartLabels[$x])};$partFilter.SelectedIndex=0;$tabEquip.Controls.Add($partFilter)
 $equipSearchBtn=New-Object Windows.Forms.Button;$equipSearchBtn.Text='筛选';$equipSearchBtn.Location=New-Object Drawing.Point(635,16);$equipSearchBtn.Size=New-Object Drawing.Size(90,32);$tabEquip.Controls.Add($equipSearchBtn)
 $equipClearBtn=New-Object Windows.Forms.Button;$equipClearBtn.Text='清除';$equipClearBtn.Location=New-Object Drawing.Point(735,16);$equipClearBtn.Size=New-Object Drawing.Size(90,32);$tabEquip.Controls.Add($equipClearBtn)
+$kobeOutfitBtn=New-Object Windows.Forms.Button;$kobeOutfitBtn.Text='穿戴科比套装';$kobeOutfitBtn.Location=New-Object Drawing.Point(835,16);$kobeOutfitBtn.Size=New-Object Drawing.Size(130,32);$tabEquip.Controls.Add($kobeOutfitBtn)
+$syncKobeOutfitState={$kobeOutfitBtn.Enabled=(-not$pureNewPlayerBox.Checked-and$genderCombo.SelectedIndex-eq1)}
+$pureNewPlayerBox.add_CheckedChanged($syncKobeOutfitState);$genderCombo.add_SelectedIndexChanged($syncKobeOutfitState);&$syncKobeOutfitState
+$kobeOutfitBtn.add_Click({try{Set-KobeOutfit ([int]$genderCombo.SelectedIndex) $comboMap;$tabs.SelectedTab=$tabStart;Update-LaunchPreview}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'科比套装')|Out-Null}})
 $equipSplit=New-Object Windows.Forms.SplitContainer;$equipSplit.Location=New-Object Drawing.Point(18,58);$equipSplit.Size=New-Object Drawing.Size(1060,710);$equipSplit.Anchor='Top,Left';$equipSplit.Orientation='Vertical';$equipSplit.FixedPanel='Panel2';$equipSplit.SplitterDistance=790;$equipSplit.Panel1MinSize=520;$equipSplit.Panel2MinSize=245;$tabEquip.Controls.Add($equipSplit)
 $equipGrid=New-Object Windows.Forms.DataGridView;$equipGrid.Dock='Fill';$equipGrid.ReadOnly=$true;$equipGrid.AllowUserToAddRows=$false;$equipGrid.SelectionMode='FullRowSelect';$equipGrid.MultiSelect=$false;$equipGrid.AutoSizeColumnsMode='DisplayedCells';$equipSplit.Panel1.Controls.Add($equipGrid)
 $equipPreviewPane=New-CatalogPreviewPane $equipSplit.Panel2 '装备资源预览'
@@ -1163,7 +1168,7 @@ if($SelfTestLayout){
     $form.ShowInTaskbar=$false;$form.Opacity=0;[void]$form.Show()
     try{
         $tabs.SelectedTab=$tabStart;[Windows.Forms.Application]::DoEvents();$defaultBtn.PerformClick()
-        if((@($tabs.TabPages|ForEach-Object{$_.Text})-join'|')-ne'社交模式|本地模式|数值管理|衣物箱管理|宠物箱管理|游戏道具管理|装饰家具管理|卡片管理|本次启动详情|宠物查表|装扮查表|装饰家具查表'){throw 'launcher tab order'}
+        if((@($tabs.TabPages|ForEach-Object{$_.Text})-join'|')-ne'社交模式|本地模式|数值管理|衣物箱管理|宠物箱管理|游戏道具管理|装饰家具管理|卡片管理|本次启动详情|宠物查表|装扮查表|装饰家具查表|子弹 DIY'){throw ('launcher tab order: '+(@($tabs.TabPages|ForEach-Object{$_.Text})-join'|'))}
         if($nameBox.Text-ne'Greyrat'){throw 'default name'}
         if($pureNewPlayerBox.Checked){throw 'default pure-new-player mode'}
         $pureNewPlayerBox.Checked=$true;[Windows.Forms.Application]::DoEvents()
@@ -1181,6 +1186,11 @@ if($SelfTestLayout){
         if($remaining-ne$protectedBefore){throw 'card remove-all must preserve uncatalogued rows'}
         $expectedOutfit=@{hair=10130337;body=10100028;top=10110337;bottom=10120352;accessory=10150103;effect=10160017}
         foreach($part in $expectedOutfit.Keys){if((Get-SelectedData $comboMap[$part]).id-ne$expectedOutfit[$part]){throw "default outfit $part"}}
+        $genderCombo.SelectedIndex=0;if($kobeOutfitBtn.Enabled){throw 'Kobe female control gate'}
+        $genderCombo.SelectedIndex=1;$pureNewPlayerBox.Checked=$true;if($kobeOutfitBtn.Enabled){throw 'Kobe new-player control gate'}
+        $pureNewPlayerBox.Checked=$false;$tabs.SelectedTab=$tabEquip;[Windows.Forms.Application]::DoEvents();$kobeOutfitBtn.PerformClick()
+        $kobeIds=Get-KobeOutfitIds;foreach($part in $kobeIds.Keys){if((Get-SelectedData $comboMap[$part]).id-ne$kobeIds[$part]){throw "Kobe outfit selection $part"}}
+        $defaultBtn.PerformClick()
         if((Get-SelectedLaunchModeInfo).AdapterIP-ne'127.0.0.1'){throw 'fixed loopback mode'}
         foreach($page in $tabs.TabPages){
             $tabs.SelectedTab=$page;[Windows.Forms.Application]::DoEvents()
@@ -1214,6 +1224,9 @@ if($SelfTestLayout){
                     $rect=$control.RectangleToScreen($control.ClientRectangle)
                     if(-not$control.Visible-or$rect.Width-lt30-or$rect.Height-lt15-or-not$viewport.Contains($rect)){throw "skill control inaccessible: $($control.Name) $rect viewport=$viewport"}
                 }
+                $tabs.SelectedTab=$tabEquip;[Windows.Forms.Application]::DoEvents()
+                if(-not$tabEquip.ClientRectangle.Contains($kobeOutfitBtn.Bounds)-or$kobeOutfitBtn.Bounds.IntersectsWith($equipClearBtn.Bounds)){throw 'Kobe toolbar layout'}
+                $tabs.SelectedTab=$tabResources
             }
         }
         Write-Output 'GUI_LAYOUT_SELFTEST_PASS sizes=1000x870,1120x940 scales=1,1.25,1.5 skill_grades=16 prerequisite_sections=2 separators=2 routes=2 slots=2 overlap=false defaults=PASS connection_text=absent startup_compaction=40 new_player_options=independent_single_row tabs=ordered card_add_all=PASS card_remove_all=PASS editor_writes=0 legacy_reads_may_migrate=true'

@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 451,
+  "count": 457,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -9,15 +9,15 @@
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
       "size": 25778688,
-      "sha256": "A631D897B38A44314969199F64D242AD2BA1E4BCAB309DBF4699DF9FC6FACD96"
+      "sha256": "BE9E8E7D02A1DE2CD6A899C5A84C95A64C7CEECFFAEA02D5A3AE31331CBD8EFC"
     },
     "adapter/nanaimo_adapter_testports.exe": {
       "size": 25778688,
-      "sha256": "5A343BE638A3A19A6DD197541602DA54F44879A7CD8F26DB98864DED166F8425"
+      "sha256": "C71ED755A51409722AE5800C1D5D4CE9E4CFB64D0C770A70872683F347B7B3D5"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 25872896,
-      "sha256": "AA14CA30742753FF5771B39AD3D9D2B45E14F89AC620A26FC496D3D8F17B936A"
+      "size": 25873408,
+      "sha256": "52E50E54EC1972DCC7AA08D51F2A8C66C5A2D96D43F014AD468AA28921464561"
     }
   },
   "files": [
@@ -237,9 +237,14 @@
       "sha256": "0A39CC3A6E536A4DCC59A7BD25C274D9C5696C1A0288B015BC2F1D2D7EA2B979"
     },
     {
+      "path": "managed-host/KobeWardrobeChecks.cs",
+      "size": 2758,
+      "sha256": "8C6D0B6AFA6FAB297144965CCD7B8C9E97DB28920C3BDA60DD50CEAEF8345E8F"
+    },
+    {
       "path": "managed-host/KoreanWardrobeChecks.cs",
       "size": 6556,
-      "sha256": "38BBE8E3372FC50499700A00DFDEFFC91C7C83A8013CCE216C88659CDCF289BB"
+      "sha256": "00E7F957BB21BA70ADE8FB72822328FF6AE52AF5A4B9FC81917DCE6E22EB2BA0"
     },
     {
       "path": "managed-host/LauncherProfileChecks.cs",
@@ -348,8 +353,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 20625,
-      "sha256": "0FFE8F94EA37CB212DC735752394CABDCB2A5ECF4B49D6CE06808B9DC807993C"
+      "size": 20739,
+      "sha256": "162D16145A63AA771070CC09A48500FB3A69E910B67E856641AE99FE0B4EE8BF"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -1348,23 +1353,33 @@
     },
     {
       "path": "manifest/dungeon_cinematics.json",
-      "size": 2288503,
-      "sha256": "F4FEDA84BC22DDCC9B5EB440317C5C85DA72851B73D5DE6E805588CA72C88CDA"
+      "size": 2890239,
+      "sha256": "04F466F584A05885D77C67AF6B5B6F14AF9CC98C469A970391BD9D2894B66B42"
     },
     {
       "path": "manifest/dungeon_cinematics_coverage.json",
       "size": 566251,
-      "sha256": "65BDE4668C492A221691307016AB6EB422DB22D4DE998E7646F0F2B2F839E68B"
+      "sha256": "2DD018642EFBA2A6898B78F397BABC1F5474004BC7162FA166CF27C117D125AC"
     },
     {
       "path": "manifest/dungeon_cinematics_revisions.tsv",
-      "size": 5622,
-      "sha256": "AE3A37DF6A3C2AE0718E96F387F64BDB1BA755F0FD4DAF85736C179A2EAF6314"
+      "size": 68651,
+      "sha256": "C294078DAECC5B8126F10C56707F497CC9FCED8FF6C1C6D59602C21F6615CF9E"
+    },
+    {
+      "path": "manifest/dungeon_cinematics_terms.json",
+      "size": 10917,
+      "sha256": "62BE6C37BA0772DD9D675C5A7879226B4ECFCB5DECFDAC5B52650ED56602D232"
     },
     {
       "path": "manifest/dungeon_cinematics_translations.tsv",
-      "size": 14136,
-      "sha256": "87C72E0663ABA01020DABBFD70CF418BB99291EE070D46441780534C3325F223"
+      "size": 14154,
+      "sha256": "82D75F4FB5799C74FD293BA1A7C0E7F2333C20FED1B61A3926CE662CB6C70055"
+    },
+    {
+      "path": "manifest/kobe_wardrobe.json",
+      "size": 7855,
+      "sha256": "530E82350BB782FD55C01E64B12785319183C4C009997D19349AAAE99A55A30A"
     },
     {
       "path": "manifest/korean_wardrobe_catalog.json",
@@ -1373,8 +1388,8 @@
     },
     {
       "path": "manifest/korean_wardrobe_resources.json",
-      "size": 263002,
-      "sha256": "12DBD63DFC581A0657071AF44C44D9044CC1D57DA9CAB5338F265C6919D62DCD"
+      "size": 266836,
+      "sha256": "FF064F1D879C9BD437ECBD10B79841EC3D8546651DB58B899C258AAF4B2E7AA5"
     },
     {
       "path": "manifest/story_localization.json",
@@ -1518,8 +1533,8 @@
     },
     {
       "path": "release/components/catalogs/avatar_shop_catalog.inc",
-      "size": 130947,
-      "sha256": "115DD684E39B6F51FA0339515D07EF137260ADC07AD8680DF4842C99E5F6D5F2"
+      "size": 131078,
+      "sha256": "7CC67CF09D789A9C9AB90DBEAE1DFECAD25866F63F3351F5FD1297478DEF9AAB"
     },
     {
       "path": "release/components/catalogs/pet_shop_catalog.inc",
@@ -1708,8 +1723,8 @@
     },
     {
       "path": "release/components/inventory_instances/avatar_resource_data.inc",
-      "size": 104321,
-      "sha256": "E79F06270D7E2799A1AE543774C01FD130FBE60BA5A149F57F7E4E8BF4CBEFE3"
+      "size": 104432,
+      "sha256": "A46351EF77295E368312CE8E3450C9B2E91B2087660D38EAD5235CBD123D9B99"
     },
     {
       "path": "release/components/inventory_instances/avatar_resource_runtime.inc",
@@ -2068,8 +2083,8 @@
     },
     {
       "path": "scripts/cinematic_codec.py",
-      "size": 6710,
-      "sha256": "B093262810D858C08EDF5A2545E137257F0858908227CA20982A87D01B323DE2"
+      "size": 7509,
+      "sha256": "93A09AD525B53ED8F3CB9EF4800BF5112BC515AF7811E6DD78E94991B20719C5"
     },
     {
       "path": "scripts/combat-score-generator/CombatScoreGenerator.csproj",
@@ -2083,8 +2098,8 @@
     },
     {
       "path": "scripts/dungeon_cinematics.py",
-      "size": 25121,
-      "sha256": "F240CB85C52ECEAC106CE7B278FB57CD1A8557404CC19BF3E5A83CC652DC81D6"
+      "size": 31568,
+      "sha256": "1FB02EC628858C023F358CC91A7F647C262D16334F79D84C499B32C633B07CDE"
     },
     {
       "path": "scripts/generate_arena_targets.py",
@@ -2182,9 +2197,14 @@
       "sha256": "EB51AB347415CF089DF2C263C82979927C60F3DCAEAD984AB55F56F3A1565D03"
     },
     {
+      "path": "scripts/prepare_kobe_wardrobe.py",
+      "size": 18698,
+      "sha256": "22538B37ADEC14CEE98A5F11DEEC787B22C3E7FF91417F32C0DD40237D43F4D7"
+    },
+    {
       "path": "scripts/prepare_korean_wardrobe.py",
-      "size": 27510,
-      "sha256": "83D90610ED0EEF6F7D8D907764D59FAFBAF9A012D28D28581A73F7CD7D87FBC8"
+      "size": 27820,
+      "sha256": "C1D1253A4DC0CEE28569045653F03671BDCED818D7593F48EB9C2ACBDBB31433"
     },
     {
       "path": "scripts/prepare_story_catalog.py",
@@ -2200,6 +2220,11 @@
       "path": "scripts/prepare_story_portraits.py",
       "size": 5688,
       "sha256": "F087A574DEC8C0D16AF1EAFC5DA75BA2F4C0E29E09D2E173D32A35D47DB45242"
+    },
+    {
+      "path": "scripts/preview_dungeon_cinematics.py",
+      "size": 16608,
+      "sha256": "8E17DD36DE745BF3165266588B9747044088E21ADB88179504C4C5A78F2D97BB"
     },
     {
       "path": "scripts/shop_icon_origins.py",
@@ -2233,8 +2258,8 @@
     },
     {
       "path": "scripts/test_dungeon_cinematics.py",
-      "size": 12201,
-      "sha256": "1A0674EB8BB2F85D9DDE5AB57E62D5BEB59CD8DEA7FF8B6691062400185E547F"
+      "size": 19231,
+      "sha256": "71638A52BA2D10E34705F04E7CB20269628E5E062A6C66D4B2588C1C5B6A95F2"
     },
     {
       "path": "scripts/test_dungeon_cinematics_host.py",
@@ -2242,9 +2267,14 @@
       "sha256": "E30C4E313E55337C8F2ADA7814341147F928813B8B960957970F6A25804C3D74"
     },
     {
+      "path": "scripts/test_kobe_wardrobe.py",
+      "size": 7447,
+      "sha256": "0728C72BFA81947E6176A9AD71920072D30936AAF4B9FB039DBFB20BAA6CCC23"
+    },
+    {
       "path": "scripts/test_korean_wardrobe.py",
-      "size": 11028,
-      "sha256": "1E5B391F8E64EB574A9F4B3624A5F52CB7DB776451406F82C75085C8E5FB2DB6"
+      "size": 12251,
+      "sha256": "57066BD6B87BB398C85438409B8A226BDEDF9BEC8DFA7058B872CA34BD4D4B3B"
     },
     {
       "path": "scripts/test_l7_combat_resources.py",
@@ -2253,8 +2283,8 @@
     },
     {
       "path": "scripts/test_shop_icon_origins.py",
-      "size": 5053,
-      "sha256": "548177B677865D998D62E33F7124A6231125D24B0CA4C269DE143BC248E31273"
+      "size": 5319,
+      "sha256": "3668B4162B464E983570B06F25D19D8E0554539A5FEB9F177BA7E13507270C6E"
     },
     {
       "path": "scripts/test_special_encounters.py",

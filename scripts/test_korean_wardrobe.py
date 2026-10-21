@@ -40,6 +40,9 @@ class WardrobeTests(unittest.TestCase):
             path=port.ROOT/'adapter_runtime/资源/数据'/name
             header,rows=port.audit.read_catalog(path.read_bytes(),kind,port.crypto.CN_KEY,'gbk')
             ids={x['id'] for x in self.localized[kind]}
+            if kind=='clothing':
+                from prepare_kobe_wardrobe import PARTS
+                ids.update(v[0] for v in PARTS.values())
             self.assertEqual(len(rows),self.recipe['counts'][kind])
             base={k:r for k,r in rows.items() if k not in ids}
             self.assertEqual(port.crypto.digest(port.catalog_bytes(kind,header,base)),port.BASELINES[name])
@@ -59,7 +62,7 @@ class WardrobeTests(unittest.TestCase):
     def test_launcher_filter_counts_match_expanded_catalog(self):
         rows=json.loads((port.ROOT/'gui_launcher/data/equipment.json').read_text('utf-8-sig'))
         launcher=(port.ROOT/'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
-        for part,count in [('hair',1205),('effect',714)]:
+        for part,count in [('hair',1205),('effect',715)]:
             self.assertEqual(sum(row['part']==part for row in rows),count)
             self.assertIn('if($ev.Count-ne'+str(count)+'){throw '+repr('equipment '+part+' filter')+'}',launcher)
 
@@ -164,6 +167,23 @@ class WardrobeTests(unittest.TestCase):
                 with self.assertRaises(OSError):port.install(stage,client,True)
                 self.assertEqual((client/'existing.bin').read_bytes(),b'old')
                 self.assertFalse((client/'.openNanaimo-korean-wardrobe.json').exists())
+
+    def test_recipe_metadata_upgrade_has_exact_marker_rollback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            client,stage,recipe=self.fixture(Path(tmp))
+            with patch.object(port,'verify_stage',return_value=recipe),patch.object(port,'ensure_stopped'):
+                port.install(stage,client,True)
+                marker=client/'.openNanaimo-korean-wardrobe.json'
+                original=marker.read_bytes()
+                recipe['custom_addons']={'kobe':{'count':5}}
+                result=port.install(stage,client,True)
+                self.assertEqual(result['changed'],1)
+                current=json.loads(marker.read_text('utf-8'))
+                self.assertEqual(current['manifest_sha256'],port.crypto.digest(port.encoded(recipe)))
+                self.assertEqual(port.install(stage,client,True)['status'],'already-installed')
+                port.restore(client,Path(result['receipt']))
+                self.assertEqual(marker.read_bytes(),original)
+                self.assertEqual((client/'existing.bin').read_bytes(),b'new')
 
     def test_changed_target_rejected_before_any_write(self):
         with tempfile.TemporaryDirectory() as tmp:

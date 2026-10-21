@@ -427,10 +427,17 @@ def install(stage, client, apply=False):
         if current!=row['after']:changed.append(name)
     if not apply:return {'status':'dry-run','changed':len(changed)}
     ensure_stopped(client)
-    if not changed:return {'status':'already-installed','runtime_acceptance':False}
+    marker='.openNanaimo-korean-wardrobe.json'
+    if not changed:
+        try:
+            current_marker=json.loads((client/marker).read_text('utf-8'))
+        except (OSError,ValueError):
+            current_marker={}
+        if (current_marker.get('schema')==SCHEMA and
+                current_marker.get('manifest_sha256')==crypto.digest(encoded(manifest))):
+            return {'status':'already-installed','runtime_acceptance':False}
     backup=client/'.openNanaimo-wardrobe-backups'/uuid.uuid4().hex
     journal={'schema':SCHEMA,'client':str(client),'status':'prepared','files':{}}
-    marker='.openNanaimo-korean-wardrobe.json'
     marker_data=encoded({'schema':SCHEMA,'manifest_sha256':crypto.digest(encoded(manifest)),
         'backup':str(backup.relative_to(client)),'runtime_acceptance':False,'counts':manifest['counts']})
     payloads={name:audit.safe_path(stage/'client',name).read_bytes() for name in changed}

@@ -29,10 +29,10 @@
   },
   {
     "name": "equipment_icons",
-    "unique_sources": 2034,
-    "decoded": 2034,
-    "mapped_ids": 4785,
-    "available_ids": 4783,
+    "unique_sources": 2039,
+    "decoded": 2039,
+    "mapped_ids": 4790,
+    "available_ids": 4788,
     "atlas_size": [
       2048,
       4096

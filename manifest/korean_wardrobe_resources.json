@@ -3,7 +3,7 @@
   "runtime_acceptance": false,
   "price": 288,
   "counts": {
-    "clothing": 4785,
+    "clothing": 4790,
     "furniture": 2008
   },
   "added_counts": {
@@ -7792,13 +7792,17 @@
         "sha256": "9443111131dc27bc69d8eb7b21e9a2a55c3911ef43fc9625acbebf7c67ac6da8"
       },
       "after": {
-        "size": 9514469,
-        "sha256": "cdfb4bd52273b19dfc476d7f37f59886616b1bd97a4c928a7a8b9b5edd345344"
+        "size": 9520473,
+        "sha256": "c2e6ecfd815468bbaf24a3f989c5573b5d24a6c57a4f9b2e8ce9ccfef55cbd9a"
       },
       "upgrade_from": [
         {
           "size": 9514469,
           "sha256": "5719dafd319ce3b451011492059d336ddce73f9e973cb197e41ba4cb77257d7a"
+        },
+        {
+          "size": 9514469,
+          "sha256": "cdfb4bd52273b19dfc476d7f37f59886616b1bd97a4c928a7a8b9b5edd345344"
         }
       ]
     },
@@ -7808,9 +7812,15 @@
         "sha256": "3e5ef4a992260fad0867832311186a7daef0cda3d86c8ecaa8f011d8250d0b20"
       },
       "after": {
-        "size": 106852841,
-        "sha256": "dbba0d2daab702e10fa1be44c9a0e5526f7c5182026c5ebf40e38f8e7f6d56ce"
-      }
+        "size": 107035133,
+        "sha256": "99133767bdbb41ebd0f345fd57f75e0e811c813c9b43d6cf177794238254b061"
+      },
+      "upgrade_from": [
+        {
+          "size": 106852841,
+          "sha256": "dbba0d2daab702e10fa1be44c9a0e5526f7c5182026c5ebf40e38f8e7f6d56ce"
+        }
+      ]
     },
     "images/Avatar_images_fav.pack": {
       "before": {
@@ -7818,9 +7828,15 @@
         "sha256": "be4d484bd49cc4aa5ff06c99f09e10acbd4de35b89fb55d71dacd5834040caa9"
       },
       "after": {
-        "size": 249440,
-        "sha256": "e0f7e3c4c07095108569a577441629de1404e627d6b9e8fb0c72388457c3a1ca"
-      }
+        "size": 250016,
+        "sha256": "3eb7a8820e865ceeafb69cad306ab5fcd475e7b4ac9948eb2896acf9aca0170a"
+      },
+      "upgrade_from": [
+        {
+          "size": 249440,
+          "sha256": "e0f7e3c4c07095108569a577441629de1404e627d6b9e8fb0c72388457c3a1ca"
+        }
+      ]
     },
     "images/InteriorIcon.pack": {
       "before": {
@@ -7838,9 +7854,15 @@
         "sha256": "9ed34d2dce90b4cce596f1f5f79e11be89b01f6ca0ab1efeed3ee919b4301d09"
       },
       "after": {
-        "size": 975248,
-        "sha256": "ffa1f2c7590a4f9ec67b0dd6310e5315628c89e8243ba997f742af21ad1b4880"
-      }
+        "size": 976160,
+        "sha256": "2b25bb595c8948fe2fb632314ef12f72c6694788ae93d318992e58bcd6a60805"
+      },
+      "upgrade_from": [
+        {
+          "size": 975248,
+          "sha256": "ffa1f2c7590a4f9ec67b0dd6310e5315628c89e8243ba997f742af21ad1b4880"
+        }
+      ]
     },
     "inter._D3": {
       "before": {
@@ -7850,6 +7872,111 @@
       "after": {
         "size": 437952,
         "sha256": "910fe9355f92ef3178cbd6ce1fd10d2c55bbe79622c9d65659e5b25d51e5f1a1"
+      }
+    },
+    "effs/a_ef/950905_kobe_mamba_out.eff": {
+      "before": null,
+      "after": {
+        "size": 576,
+        "sha256": "94646c657f9c1d8a85268fe5e7ddff66412b82979de2d2da9f67bffea1ba5330"
+      }
+    },
+    "effs/a_ef/950905_kobe_mamba_out.im3": {
+      "before": null,
+      "after": {
+        "size": 11540,
+        "sha256": "a4eb2b9e583df80232740b37e4b4091e54b0559b3a19f1723ce6e56df4ee0df2"
+      }
+    },
+    "images/950901_kobe_icon.im3": {
+      "before": null,
+      "after": {
+        "size": 2034,
+        "sha256": "2e85aa99e9bd11b5e472c41909a489e610012769e1749c6d9d30ce287727ee7b"
+      }
+    },
+    "images/950901_kobe_body.im3": {
+      "before": null,
+      "after": {
+        "size": 96252,
+        "sha256": "967ec572b139878326a0dafa130e3170ddcc0d755bbc59dc1e039f1d5e04bad8"
+      }
+    },
+    "images/950901_kobe_body.fav": {
+      "before": null,
+      "after": {
+        "size": 132,
+        "sha256": "9b5e8578d52093c7cc337cd59a97b6966eeac88ccb840eb1c2f798067c0fbfca"
+      }
+    },
+    "images/950902_kobe_icon.im3": {
+      "before": null,
+      "after": {
+        "size": 1060,
+        "sha256": "839cd57bc46324e39fbfc0bb80164e23172605984c9f8da0f9f7f56ce749837c"
+      }
+    },
+    "images/950902_kobe_top.im3": {
+      "before": null,
+      "after": {
+        "size": 29146,
+        "sha256": "5212c8bd2d1d57ffc54039df09db2b4201c6760935895bae4d1a6b4ec5baf178"
+      }
+    },
+    "images/950902_kobe_top.fav": {
+      "before": null,
+      "after": {
+        "size": 132,
+        "sha256": "6172792f3a411c8b82745f133105f62caf65cbd1ab9aad06b350e6c32fbe326b"
+      }
+    },
+    "images/950903_kobe_icon.im3": {
+      "before": null,
+      "after": {
+        "size": 1016,
+        "sha256": "4c7e5ebb45910da347405282123a0e8e9eb769a2149279eba0f4c742bb5d9e96"
+      }
+    },
+    "images/950903_kobe_bottom.im3": {
+      "before": null,
+      "after": {
+        "size": 29684,
+        "sha256": "62dad1928c8b3a324f5fc97be949c9edef2362c267641764d6eb42dc796367b4"
+      }
+    },
+    "images/950903_kobe_bottom.fav": {
+      "before": null,
+      "after": {
+        "size": 132,
+        "sha256": "61e972f4d980a24380f21b5b3c6d75f9b0643b637a5c5347d860a541f352157d"
+      }
+    },
+    "images/950904_kobe_icon.im3": {
+      "before": null,
+      "after": {
+        "size": 858,
+        "sha256": "e7c5dea36d893bc1045d7e6e085763e3230c1b4706e636c68519a6759eab5bab"
+      }
+    },
+    "images/950904_kobe_accessory.im3": {
+      "before": null,
+      "after": {
+        "size": 27162,
+        "sha256": "526904db7c3b5dfc2c652cf588166f233845fa71f9e5c05ea00036aacd0c6b91"
+      }
+    },
+    "images/950904_kobe_accessory.fav": {
+      "before": null,
+      "after": {
+        "size": 132,
+        "sha256": "886af5cb46ee19a75de5fc1fc0d2be7af77dd7f02f476fdcf6d353841f21e013"
+      }
+    },
+    "images/950905_kobe_icon.im3": {
+      "before": null,
+      "after": {
+        "size": 976,
+        "sha256": "98c0c673abfdea4f7b0d6b2433f5881ad25525d90bb3116608bbfbcef34c5f11"
       }
     }
   },
@@ -7878,5 +8005,12 @@
   },
   "decoded_additional_icons": 597,
   "currency_policy": "Source Hans price, otherwise same-model CN furniture currency; otherwise Nana. Existing prices unchanged.",
-  "effect_policy": "Preserve authored attributes and duration; rendering/unsupported attributes require runtime acceptance."
+  "effect_policy": "Preserve authored attributes and duration; rendering/unsupported attributes require runtime acceptance.",
+  "custom_addons": {
+    "kobe": {
+      "schema": "openNanaimo.kobe-wardrobe.v1",
+      "count": 5,
+      "recipe_sha256": "530e82350bb782fd55c01e64b12785319183c4c009997d19349aaae99a55a30a"
+    }
+  }
 }

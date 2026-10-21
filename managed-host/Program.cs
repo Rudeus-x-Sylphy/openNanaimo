@@ -269,6 +269,11 @@ static async Task RunAsync(string[] args)
         await ShopCurrencyPaginationChecks.RunAsync();
         return;
     }
+    if (args.Contains("--kobe-wardrobe-self-test"))
+    {
+        KobeWardrobeChecks.Run();
+        return;
+    }
     if (args.Contains("--korean-wardrobe-self-test"))
     {
         await KoreanWardrobeChecks.RunAsync();

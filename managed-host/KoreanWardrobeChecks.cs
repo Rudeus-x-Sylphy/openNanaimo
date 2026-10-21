@@ -42,7 +42,7 @@ internal static class KoreanWardrobeChecks
                 command.Parameters.AddWithValue("$id", characterId); await command.ExecuteNonQueryAsync();
                 Set("Character", (await db.GetCharacterAsync(account))!);
             }
-            Check(ShopCatalog.All.Count(x => x.Source == "ava._D1") == 4785, "complete avatar catalog");
+            Check(ShopCatalog.All.Count(x => x.Source == "ava._D1") == 4790, "complete avatar catalog");
             Check(ShopCatalog.All.Count(x => x.Source == "inter._D3") == 2008, "complete interior catalog");
             foreach (var (code, mode, furniture) in new (uint, byte, bool)[]
                 { (10010573, 0, false), (10010577, 4, false), (11000080, 0, true), (11000060, 4, true) })
@@ -87,7 +87,7 @@ internal static class KoreanWardrobeChecks
             Check(!stale.Success, "stale session rejected");
             var final = (await db.GetCharacterAsync(account))!;
             Check(final.Hans == 2000 && final.Cash == 3000, "invalid requests preserve balances");
-            Console.WriteLine("KOREAN_WARDROBE_CHECKS_PASS catalogs=4785/2008 currencies=Hans/Nana price=288 runtime_acceptance=false");
+            Console.WriteLine("KOREAN_WARDROBE_CHECKS_PASS catalogs=4790/2008 currencies=Hans/Nana price=288 runtime_acceptance=false");
         }
         finally
         {

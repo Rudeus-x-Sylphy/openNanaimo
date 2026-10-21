@@ -48,8 +48,10 @@ def collect(root=ROOT):
     # Authoritative card distribution inputs must travel with the compiled table.
     if (root / 'manifest/dungeon_cinematics.json').resolve() in seen:
         for rel in ('manifest/dungeon_cinematics_translations.tsv', 'manifest/dungeon_cinematics_revisions.tsv',
-                    'manifest/dungeon_cinematics_coverage.json', 'scripts/cinematic_codec.py',
+                    'manifest/dungeon_cinematics_coverage.json', 'manifest/dungeon_cinematics_terms.json',
+                    'scripts/cinematic_codec.py',
                     'scripts/dungeon_cinematics.py', 'scripts/audit_dungeon_cinematics.py',
+                    'scripts/preview_dungeon_cinematics.py',
                     'scripts/port_lumineos_resources.py', 'scripts/test_dungeon_cinematics.py',
                     'scripts/test_dungeon_cinematics_host.py'):
             path = root / rel
@@ -136,6 +138,12 @@ def collect(root=ROOT):
         for rel in ('release/components/cards/card_reward_rows.json', 'scripts/generate_card_reward_rows.py'):
             path = root / rel
             if not path.is_file(): raise ValueError('missing reviewed card row policy: ' + rel)
+            seen.add(path.resolve())
+    if (root / 'release/components/inventory_instances/avatar_resource_data.inc').resolve() in seen:
+        for rel in ('scripts/prepare_kobe_wardrobe.py', 'scripts/test_kobe_wardrobe.py',
+                    'manifest/kobe_wardrobe.json'):
+            path = root / rel
+            if not path.is_file(): raise ValueError('missing wardrobe input: ' + rel)
             seen.add(path.resolve())
     complete_build = root / 'scripts/build_complete_adapter.ps1'
     if (root / 'release/components/multiplayer/special_encounters.inc').resolve() in seen:

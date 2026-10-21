@@ -6,6 +6,7 @@ import csv
 from dataclasses import replace
 import io as memory_io
 import json
+import math
 from pathlib import Path
 import re
 import struct
@@ -20,6 +21,12 @@ REL = 'effs/game/shootinggamebasic/Ending_Event/'
 RECIPE = ROOT / 'manifest/dungeon_cinematics.json'
 SCHEMA = 'openNanaimo.dungeon-cinematics.v1'
 MARKER = '.openNanaimo-dungeon-cinematics.json'
+TERMS = ROOT / 'manifest/dungeon_cinematics_terms.json'
+FONT_SIZE = 20
+TEXT_WIDTH = 352
+LINE_HEIGHT = 22
+VIEWPORT = (800, 600)
+SAFE_MARGIN = 16
 BACKUPS = '.openNanaimo-resource-backups'
 EFFECT = re.compile(r'ep(\d{2})_dg(\d{2})_st(\d{2})_intro_0([01])\.eff')
 TEXT = re.compile(r'ep(\d{2})_dg(\d{2})(?:_st(\d{2}))?_intro_([BF])_T_(\d{2})\.im3')
@@ -38,14 +45,53 @@ def translations():
             for row in csv.DictReader(stream, delimiter='\t'):
                 key, ko, zh = (row[k] for k in ('id', 'korean_transcript', 'chinese_translation'))
                 require(key not in rows and TEXT.fullmatch(key + '.im3'), 'Invalid dialogue identity')
-                require(ko and zh and not re.search(r'[\uac00-\ud7af]|TODO', zh), 'Invalid translation')
+                require((ko or name == 'revisions') and zh
+                        and not re.search(r'[\uac00-\ud7af]|TODO', zh), 'Invalid translation')
                 rows[key] = dict(row, translation_status='reviewed',
                                  reviewer='bilingual-context-and-source-image-review')
     expected = {f'ep{e:02d}_dg{d:02d}_intro_{s}_T_{i:02d}'
                 for e in range(16, 24) for d in range(2)
                 for s, indices in (('B', (0, 1, 2, 10, 11)), ('F', (0, 1, 10, 11))) for i in indices}
     require({key for key in rows if int(key[2:4]) >= 16} == expected, 'L1-L8 translation coverage differs')
+    require(len(rows) == 720, 'Complete Chinese dialogue coverage differs')
     return rows
+
+
+def terms():
+    data = io.load(TERMS)
+    require(data.get('schema') == 'openNanaimo.dungeon-cinematic-terms.v1', 'Invalid terminology schema')
+    rows = data['terms']
+    require(len({r['text_id'] for r in rows}) == len(rows)
+            and all(r['table'] == 'GS._D20' and r['korean'] and r['chinese'] for r in rows),
+            'Invalid canonical terminology')
+    return rows
+
+
+def wrap_dialogue(text, face):
+    from PIL import Image, ImageDraw
+    draw = ImageDraw.Draw(Image.new('RGBA', (1, 1)))
+    def width(line):
+        box = draw.textbbox((0, 0), line, font=face)
+        return box[2] - box[0]
+    require(text and '\n' not in text and '\r' not in text, 'Invalid dialogue paragraph')
+    if width(text) <= TEXT_WIDTH - 8:
+        return [text]
+    protected = []
+    for row in terms():
+        for match in re.finditer(re.escape(row['chinese']), text):
+            protected.append(match.span())
+    candidates = []
+    for at in range(1, len(text)):
+        if (text[at] in '，。！？：；、）》」』…' or text[at - 1] in '（《「『“'
+                or any(start < at < end for start, end in protected)):
+            continue
+        left, right = text[:at], text[at:]
+        a, b = width(left), width(right)
+        if max(a, b) <= TEXT_WIDTH - 8:
+            penalty = 0 if text[at - 1] in '，。！？：；、…' else 3000
+            candidates.append((abs(a - b) + penalty, at, [left, right]))
+    require(candidates, 'Dialogue needs editorial shortening: ' + text)
+    return min(candidates)[2]
 
 
 def render(raw, text, font_path):
@@ -55,33 +101,67 @@ def render(raw, text, font_path):
             and source.height == source.frame_height, 'Dialogue sprite must have one frame')
     require(source.format == 10, 'Dialogue alpha format differs')
     original_canvas = [source.width, source.height]
-    if source.height < 24:
-        source = replace(source, height=24, frame_height=24,
-                         pivot=struct.pack('<2f', *struct.unpack('<f', source.pivot[:4]), 12.0),
-                         pixels=(0,) * (source.width * 24))
+    face = ImageFont.truetype(str(font_path), FONT_SIZE, index=0)
+    lines = wrap_dialogue(text, face)
+    height = LINE_HEIGHT * len(lines) + 2
+    source = replace(source, width=TEXT_WIDTH, height=height, frame_width=TEXT_WIDTH,
+                     frame_height=height, pivot=struct.pack('<2f', TEXT_WIDTH / 2, height / 2),
+                     pixels=(0,) * (TEXT_WIDTH * height))
     image = Image.new('RGBA', (source.width, source.height))
     draw = ImageDraw.Draw(image)
-    for size in range(20, 13, -1):
-        face = ImageFont.truetype(str(font_path), size, index=0)
-        box = draw.textbbox((0, 0), text, font=face, stroke_width=0)
-        if box[2] - box[0] <= source.width - 4 and box[3] - box[1] <= source.height - 4:
-            break
-    else:
-        raise ValueError('Translation exceeds original canvas: ' + text)
-    x = (source.width - (box[2] - box[0])) // 2 - box[0]
-    y = (source.height - (box[3] - box[1])) // 2 - box[1]
-    draw.text((x, y), text, font=face, fill=(255, 255, 255, 255), stroke_width=0)
+    for index, line in enumerate(lines):
+        box = draw.textbbox((0, 0), line, font=face, stroke_width=0)
+        x = (source.width - (box[2] - box[0])) // 2 - box[0]
+        y = index * LINE_HEIGHT + (LINE_HEIGHT - (box[3] - box[1])) // 2 - box[1] + 1
+        draw.text((x, y), line, font=face, fill=(255, 255, 255, 255), stroke_width=0)
     encoded = codec.encode_im3(source, image)
     decoded = codec.decode_im3(encoded)
     require(replace(decoded, pixels=source.pixels) == source, 'Dialogue metadata changed')
     bounds = decoded.rgba().getbbox()
     require(bounds and bounds[0] >= 1 and bounds[1] >= 1
             and bounds[2] < source.width and bounds[3] < source.height, 'Clipped translation')
-    return encoded, dict(font_size=size, bbox=list(bounds), canvas=[source.width, source.height],
+    return encoded, dict(font_size=FONT_SIZE, bbox=list(bounds), canvas=[source.width, source.height],
                          original_canvas=original_canvas,
                          pivot=list(struct.unpack('<2f', source.pivot)), stroke=0,
-                         fill=[255, 255, 255, 255], spacing=0, lines=1,
-                         roundtrip='quantized-pixel-exact', metadata='minimum-readable-height' if original_canvas[1] < 24 else 'preserved')
+                         fill=[255, 255, 255, 255], spacing=0, lines=len(lines), text_lines=lines,
+                         line_height=LINE_HEIGHT, roundtrip='quantized-pixel-exact',
+                         metadata='centered-dialogue-lane')
+
+
+def normalize_dialogue_layers(raw):
+    effect = codec.decode_eff(raw)
+    for layer in effect['layers']:
+        match = TEXT.fullmatch(layer['name'])
+        if match:
+            duration = effect['duration']
+            layer['tracks'][0] = [(float(-200 if match[4] == 'F' else 200), 0.0, 0, duration)]
+            for track in (5, 6):
+                layer['tracks'][track] = [(1.0, 0.0, 0, duration)]
+    return codec.encode_eff(effect)
+
+
+def screen_bounds(layer, layout, duration):
+    bounds = layout['bbox']
+    width, height = layout['canvas']
+    result, frames = [], []
+    for frame in range(duration):
+        tracks = [codec.evaluate(keys, frame) for keys in layer['tracks']]
+        if tracks[7] <= 0:
+            continue
+        require(tracks[2:5] == [0.0, 0.0, 0.0] and tracks[5:7] == [1.0, 1.0],
+                'Unsupported dialogue transform')
+        x, y = 400 + tracks[0], 300 + tracks[1]
+        box = [math.floor(x + bounds[0] - width / 2), math.floor(y + bounds[1] - height / 2),
+               math.ceil(x + bounds[2] - width / 2), math.ceil(y + bounds[3] - height / 2)]
+        require(box[0] >= SAFE_MARGIN and box[1] >= SAFE_MARGIN
+                and box[2] <= VIEWPORT[0] - SAFE_MARGIN
+                and box[3] <= VIEWPORT[1] - SAFE_MARGIN, 'Dialogue exceeds safe viewport')
+        result.append(box)
+        frames.append(frame)
+    require(frames, 'Dialogue has no visible frames')
+    return dict(screen_bounds=[min(b[0] for b in result), min(b[1] for b in result),
+                               max(b[2] for b in result), max(b[3] for b in result)],
+                visible_frames=[frames[0], frames[-1]], checked_frames=len(frames))
 
 
 def identity(raw):
@@ -149,9 +229,25 @@ def validate(recipe):
     require({r['path'] for r in recipe['dialogues']} == set(texts), 'Dialogue identities differ')
     require(sum(int(p[len(REL) + 2:len(REL) + 4]) >= 16 for p in texts) == 144,
             'L1-L8 dialogue count differs')
+    if recipe['summary'].get('fixed_font_dialogues') == 720:
+        require(recipe['font']['font_size'] == FONT_SIZE and recipe['font']['max_lines'] == 2,
+                'Dialogue typography contract differs')
+        for row in recipe['dialogues']:
+            layout = row['layout']
+            require(row['chinese_translation'] and not row['retained_cn_image']
+                    and layout['font_size'] == FONT_SIZE and layout['lines'] in (1, 2)
+                    and ''.join(layout['text_lines']) == row['chinese_translation']
+                    and layout['canvas'] == [TEXT_WIDTH, LINE_HEIGHT * layout['lines'] + 2],
+                    'Dialogue typography differs: ' + row['id'])
+        for effect in recipe['effects']:
+            for row in effect['dialogue_layers']:
+                left, top, right, bottom = row['screen_bounds']
+                require(left >= SAFE_MARGIN and top >= SAFE_MARGIN
+                        and right <= VIEWPORT[0] - SAFE_MARGIN and bottom <= VIEWPORT[1] - SAFE_MARGIN,
+                        'Dialogue exceeds safe viewport')
 
 
-def build(source, baseline, output, font, *, write_recipe=False):
+def build(source, baseline, output, font, *, write_recipe=False, previous_recipe=None):
     import PIL
     from PIL import features
     from fontTools.ttLib import TTFont
@@ -160,6 +256,7 @@ def build(source, baseline, output, font, *, write_recipe=False):
     require(not output.is_relative_to(source / 'effs') and not output.is_relative_to(baseline / 'effs')
             and not source.is_relative_to(output) and not baseline.is_relative_to(output), 'Overlapping build roots')
     translated = translations()
+    canonical_terms = terms()
     face = TTFont(str(font), fontNumber=0)
     glyphs = set().union(*(set(t.cmap) for t in face['cmap'].tables))
     require(all(ord(c) in glyphs for row in translated.values() for c in row['chinese_translation']),
@@ -179,12 +276,12 @@ def build(source, baseline, output, font, *, write_recipe=False):
         restore = 8 <= ep <= 15
         require(not restore or (old_eff['duration'] == 10 and len(old_eff['layers']) == 1)
                 or before == src, 'Unknown placeholder timeline')
-        raw = src if restore else before
+        raw = normalize_dialogue_layers(src if restore else before)
         effect = codec.decode_eff(raw)
         require(effect['duration'] == 730, 'Incomplete candidate timeline')
         payload[REL + path.name] = raw
         files[REL + path.name] = dict(path=REL + path.name, **identity(raw),
-                                     accepted_before=[identity(before)], action='restore-timeline' if raw != before else 'preserve',
+                                     accepted_before=[identity(before)], action='restore-timeline' if restore else 'normalize-dialogue-layout',
                                      source_identity=identity(src))
         text_layers = []
         for layer in effect['layers']:
@@ -218,7 +315,8 @@ def build(source, baseline, output, font, *, write_recipe=False):
                         layout=layout, render_status='verified', runtime_acceptance=False)
             if TEXT.fullmatch(name):
                 visible = [k for k in layer['tracks'][7] if k[0] > 0 or k[1] > 0]
-                text_layers.append(dict(path=relative, layer=layer['index'], visibility=visible))
+                positioning = screen_bounds(layer, dialogues[relative]['layout'], effect['duration'])
+                text_layers.append(dict(path=relative, layer=layer['index'], visibility=visible, **positioning))
         require(len(text_layers) == (5 if phase == 0 else 4), 'Dialogue layer coverage differs')
         effects.append(dict(path=REL + path.name, resource_episode=ep, dungeon=dg, stage=st,
                             phase='before' if phase == 0 else 'after', duration=effect['duration'],
@@ -235,14 +333,35 @@ def build(source, baseline, output, font, *, write_recipe=False):
         row['references'] = image_refs[path]
     font_identity = dict(filename=font.name, **identity(font.read_bytes()), face_index=0,
                          pillow=PIL.__version__, freetype=features.version('freetype2'),
-                         font_redistribution='separately-supplied', layout='original-canvas-single-line')
+                         font_redistribution='separately-supplied', layout='fixed-size-centered-two-line',
+                         font_size=FONT_SIZE, text_width=TEXT_WIDTH, line_height=LINE_HEIGHT,
+                         max_lines=2, viewport=list(VIEWPORT), safe_margin=SAFE_MARGIN)
+    pinned = io.load(RECIPE) if RECIPE.exists() else None
+    previous = io.load(previous_recipe) if previous_recipe else None
+    if previous:
+        validate(previous)
+        for old in previous['files']:
+            current = files[old['path']]
+            old_identity = {k: old[k] for k in ('size', 'sha256')}
+            if old_identity not in current['accepted_before']:
+                current['accepted_before'].append(old_identity)
+        upgrade = previous['id']
+    elif pinned and not write_recipe:
+        for old in pinned['files']:
+            files[old['path']]['accepted_before'] = old['accepted_before']
+        upgrade = pinned.get('upgrade_from')
+    else:
+        upgrade = None
     recipe = dict(schema=SCHEMA, runtime_acceptance=False, font=font_identity,
                   translation_inputs={n:io.file_hash(ROOT / n) for n in
-                    ('manifest/dungeon_cinematics_translations.tsv', 'manifest/dungeon_cinematics_revisions.tsv')},
+                    ('manifest/dungeon_cinematics_translations.tsv', 'manifest/dungeon_cinematics_revisions.tsv',
+                     'manifest/dungeon_cinematics_terms.json')},
+                  upgrade_from=upgrade, terms=canonical_terms,
                   summary=dict(episodes=24, encounters=80, timelines=160, dialogues=720,
                                l1_l8_dialogues=144, translated_images=len(translated),
                                restored_timelines=sum(r['action'] == 'restore-timeline' for r in files.values()),
-                               corrected_stage_references=len(STAGE_FIXES),
+                               normalized_dialogue_timelines=len(effects),
+                               fixed_font_dialogues=len(dialogues), corrected_stage_references=len(STAGE_FIXES),
                                resources=len(files)),
                   effects=effects, dialogues=[dialogues[p] for p in sorted(dialogues)],
                   files=[dict(files[p], references=image_refs.get(p, [])) for p in sorted(files)])
@@ -328,14 +447,15 @@ def validate_receipt(client, receipt):
             'Receipt ownership differs')
     recipe = io.load(RECIPE)
     validate(recipe)
-    require(journal['id'] == recipe['id'], 'Receipt release differs')
-    allowed = {r['path']:r['sha256'] for r in recipe['files']}
+    require(journal['id'] in (recipe['id'], recipe.get('upgrade_from')), 'Receipt release differs')
+    allowed = {r['path']:{r['sha256']} if journal['id'] == recipe['id'] else
+               {old['sha256'] for old in r['accepted_before']} for r in recipe['files']}
     allowed[MARKER] = None
     names = set()
     prefix = receipt.rsplit('/', 1)[0]
     for row in journal['files']:
         require(row['path'] in allowed and row['path'] not in names
-                and (allowed[row['path']] is None or allowed[row['path']] == row['sha256'])
+                and (allowed[row['path']] is None or row['sha256'] in allowed[row['path']])
                 and row['backup'] == prefix + '/original/' + row['path'], 'Invalid receipt file')
         io.safe(client, row['path'])
         io.safe(client, row['backup'])
@@ -375,17 +495,21 @@ def apply(kit, client):
         marker = io.safe(client, MARKER)
         if marker.exists():
             prior = io.load(marker)
-            require(prior.get('schema') == SCHEMA and prior['id'] == recipe['id'],
+            require(prior.get('schema') == SCHEMA and prior['id'] in (recipe['id'], recipe.get('upgrade_from')),
                     'Another cinematic release is installed')
-            require(not changed, 'Installed cinematic files differ')
             require(validate_receipt(client, prior['receipt'])['status'] == 'installed',
                     'Cinematic installation receipt is incomplete')
-            return dict(status='already-installed', changed=0, receipt=prior['receipt'])
+            if prior['id'] == recipe['id']:
+                require(not changed, 'Installed cinematic files differ')
+                return dict(status='already-installed', changed=0, receipt=prior['receipt'])
+            for row in recipe['files']:
+                require(identity(io.safe(client, row['path']).read_bytes()) == row['accepted_before'][-1],
+                        'Previous cinematic release differs: ' + row['path'])
         prefix = BACKUPS + '/cinematics-' + uuid.uuid4().hex
         receipt = prefix + '/receipt.json'
         marker_raw = io.encoded(dict(schema=SCHEMA, id=recipe['id'], receipt=receipt, runtime_acceptance=False))
         payload[MARKER] = marker_raw
-        work = changed + [dict(path=MARKER, sha256=io.digest(marker_raw), before_sha256=None)]
+        work = changed + [dict(path=MARKER, sha256=io.digest(marker_raw), before_sha256=io.file_hash(marker))]
         for row in work:
             row['backup'] = prefix + '/original/' + row['path']
             if row['before_sha256'] is not None:
@@ -416,6 +540,7 @@ def main():
     for name in ('source', 'baseline', 'output', 'font'):
         p.add_argument('--' + name, type=Path, required=True)
     p.add_argument('--write-recipe', action='store_true')
+    p.add_argument('--previous-recipe', type=Path)
     p = commands.add_parser('package')
     p.add_argument('--built', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
@@ -430,7 +555,8 @@ def main():
             p.add_argument('--receipt', required=True)
     args = parser.parse_args()
     if args.command == 'build':
-        result = build(args.source, args.baseline, args.output, args.font, write_recipe=args.write_recipe)
+        result = build(args.source, args.baseline, args.output, args.font, write_recipe=args.write_recipe,
+                       previous_recipe=args.previous_recipe)
     elif args.command == 'package':
         result = package(args.built, args.output)
     elif args.command == 'apply':
