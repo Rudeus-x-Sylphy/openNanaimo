@@ -135,6 +135,25 @@ try{
     New-Item -ItemType Junction -Path $linkedReceipt -Target $root|Out-Null
     try{Reject {Sync-LumineosResourceIdentity $source $work $cache} 'L7/L8 overlay receipt cannot be a reparse point:*'}
     finally{[IO.Directory]::Delete($linkedReceipt)}
+    [IO.File]::Delete((Join-Path $source $dialogueName))
+    [IO.File]::Delete((Join-Path $source $challengeName))
+    $cinematicName='.openNanaimo-dungeon-cinematics.json'
+    [IO.File]::WriteAllText((Join-Path $source $cinematicName),'cinematic-marker')
+    $script:cinematicRow=[pscustomobject]@{
+        path='scene.im3';size=8;sha256=(Get-Sha256 (Join-Path $source 'scene.im3')).ToLowerInvariant()
+        accepted_before=@([pscustomobject]@{size=6;sha256=$row.sha256})
+    }
+    function Get-DungeonCinematicContract([string]$SourceRoot){return [pscustomobject]@{files=@($script:cinematicRow)}}
+    Sync-LumineosResourceIdentity $source $work $cache
+    Check ((Get-Sha256 (Join-Path $source $cinematicName))-eq(Get-Sha256 (Join-Path $work $cinematicName))) 'Cinematic marker synchronized after candidate verification'
+    [IO.File]::WriteAllText((Join-Path $work 'scene.im3'),'stale')
+    Reject {Sync-LumineosResourceIdentity $source $work $cache} 'L7/L8 resource version mismatch;*'
+    [IO.File]::WriteAllText((Join-Path $work 'scene.im3'),'dialogue')
+    $script:cinematicRow.accepted_before[0].sha256='f'*64
+    Reject {Sync-LumineosResourceIdentity $source $work $cache} 'L7/L8 resource version mismatch;*'
+    $script:cinematicRow.accepted_before[0].sha256=$row.sha256
+    [IO.File]::Delete((Join-Path $source $cinematicName))
+    Reject {Sync-LumineosResourceIdentity $source $work $cache} 'Cinematic release changed;*'
     Write-Host "LUMINEOS_SOCIAL_IDENTITY_PASS checks=$checks"
 }finally{
     $resolved=[IO.Path]::GetFullPath($root)

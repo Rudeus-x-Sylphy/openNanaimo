@@ -34,6 +34,17 @@ class ExportPatchTests(unittest.TestCase):
             with self.subTest(path=name), self.assertRaises(patch.ExportError):
                 patch.payload_policy(name,'source')
 
+    def test_cinematic_source_closure_inputs_are_exactly_scoped(self):
+        rows = [dict(path=name, size=0, sha256='0' * 64)
+                for name in sorted(patch.DUNGEON_CINEMATIC_SOURCES)]
+        self.assertEqual(patch.validated_closure(dict(count=len(rows), files=rows)), rows)
+        for name in ('manifest/dungeon_cinematics_private.json',
+                     'scripts/dungeon_cinematics_unreviewed.py',
+                     'resource-packs/nanaimo-dungeon-cinematics-kit.zip',
+                     'effs/game/shootinggamebasic/Ending_Event/ep23_dg00_intro_B_T_00.im3'):
+            with self.subTest(path=name), self.assertRaises(patch.ExportError):
+                patch.validated_closure(dict(count=1, files=[dict(path=name, size=0, sha256='0' * 64)]))
+
     def test_l7_source_closure_inputs_are_exactly_scoped(self):
         names = ['scripts/audit_l7_combat_resources.py',
                  'scripts/generate_boss_contact_catalog.py',

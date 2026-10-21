@@ -82,6 +82,9 @@ internal static partial class LauncherTools
     static void CheckFile(string root,string relative,long? size,string hash){var path=SafePath(root,relative);Require(File.Exists(path)&&(!size.HasValue||new FileInfo(path).Length==size)&&Hash(File.ReadAllBytes(path)).Equals(hash,StringComparison.OrdinalIgnoreCase),"Installed resource mismatch: "+relative);}
     static JsonObject VerifyLumineos(string root)
     {
+        var cinematic = File.Exists(SafePath(root,".openNanaimo-dungeon-cinematics.json"))
+            ? Objects(VerifyCinematics(root),"files").ToDictionary(r=>S(r,"path"),StringComparer.OrdinalIgnoreCase)
+            : null;
         var path=SafePath(root,"openNanaimo-l7-l8-resources.json");var text=File.ReadAllText(path,Encoding.UTF8);var doc=JsonNode.Parse(text)!.AsObject();Require(S(doc,"schema")=="openNanaimo.l7-visual-l8-resources.v1"&&A(doc,"files").Count>0,"Invalid L7/L8 receipt");var regex=new Regex("(?m)^[ \\t]+\"id\": \"([0-9a-f]{64})\",\\r?\\n");Require(regex.Matches(text).Count==1&&Hash(Encoding.UTF8.GetBytes(regex.Replace(text,"",1))).Equals(S(doc,"id"),StringComparison.OrdinalIgnoreCase),"L7/L8 receipt digest mismatch");foreach(var group in new[]{"files","preserve_l7_combat"}){var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);foreach(var row in Objects(doc,group)){Require(seen.Add(S(row,"path")),"Duplicate resource entry");var entry=Recipe()["monk_village_entries"]!;
             var entryLayer=group=="files"&&S(row,"path")==S(entry,"pack_path")
                 &&S(row,"sha256").Equals(S(entry,"pack_before_sha256"),StringComparison.OrdinalIgnoreCase)
@@ -95,7 +98,10 @@ internal static partial class LauncherTools
                 &&Objects(dialogue,"files").Any(r=>S(r,"path")==S(row,"path"))
                 &&S(row,"sha256").Equals(parentHash,StringComparison.OrdinalIgnoreCase)
                 &&File.Exists(SafePath(root,".openNanaimo-monk-dialogue.json"));
-            if(dialogueLayer){VerifyMonkDialogue(root);VerifyChallenges(root);}
+            if(group=="files"&&cinematic is not null&&cinematic.TryGetValue(S(row,"path"),out var cinematicRow)
+                &&CinematicParentMatches(cinematicRow,row))
+                CheckFile(root,S(cinematicRow,"path"),N(cinematicRow,"size"),S(cinematicRow,"sha256"));
+            else if(dialogueLayer){VerifyMonkDialogue(root);VerifyChallenges(root);}
             else if(entryLayer){CheckFile(root,S(entry,"visual_resource"),N(entry,"visual_resource_size"),S(entry,"visual_resource_sha256"));VerifyChallenges(root);}
             else CheckFile(root,S(row,"path"),row["size"] is null?null:N(row,"size"),S(row,"sha256"));}}return Obj(new{status="LUMINEOS_RESOURCES_PASS"});
     }
@@ -122,6 +128,7 @@ internal static partial class LauncherTools
     static void VerifyResources(string[] args)
     {
         var root=Path.GetFullPath(Option(args,"--client-root"));var repo=Path.GetFullPath(Option(args,"--root",Directory.GetCurrentDirectory()));var type=Option(args,"--kind");if(type=="lumineos"){Console.WriteLine(VerifyLumineos(root));return;}if(type=="monk-dialogue"){VerifyMonkDialogue(root);VerifyChallenges(root);Console.WriteLine("MONK_DIALOGUE_RESOURCES_PASS");return;}
+        if(type=="cinematics"){var cinematic=VerifyCinematics(root);Console.WriteLine(Obj(new{status="CINEMATIC_RESOURCES_PASS",id=S(cinematic,"id"),files=Objects(cinematic,"files").Select(r=>new{path=S(r,"path"),size=N(r,"size"),sha256=S(r,"sha256"),accepted_before=r["accepted_before"]})}).ToJsonString());return;}
         Require(type is "hero" or "korean","Unknown resource verifier");var recipePath=SafePath(repo,type=="hero"?"manifest/hero_dragon_resources.json":"manifest/korean_pet_resources.json");var recipe=ReadJson(recipePath);foreach(var row in Objects(recipe,"resources"))CheckFile(root,S(row,"path"),N(row,"installed_size"),S(row,"installed_sha256"));foreach(var row in Objects(recipe,"shared_resources"))CheckFile(root,S(row,"path"),N(row,"size"),S(row,"sha256"));
         if(type=="korean"){var receipt=ReadJson(SafePath(root,".openNanaimo-korean-pets.json"));Require(S(receipt,"schema")=="openNanaimo.korean-pets-install.v1"&&S(receipt,"recipe_sha256").Equals(Hash(File.ReadAllBytes(recipePath)),StringComparison.OrdinalIgnoreCase)&&N(receipt,"catalog_count")==N(recipe,"catalog_count")&&A(receipt,"pet_codes").Select(x=>Num(x)).SequenceEqual(Objects(recipe,"pets").Select(x=>N(x,"code"))),"Invalid Korean PET receipt");var cat=recipe["installed_catalog"]!;CheckFile(root,"pi._D7",N(cat,"size"),S(cat,"sha256"));}
         else{var receipt=ReadJson(SafePath(root,".openNanaimo-hero-dragon.json"));Require(S(receipt,"schema")=="openNanaimo.hero-dragon-install.v1"&&N(receipt,"item_code")==15003361&&N(receipt,"model_stage")==3&&N(receipt,"required_level")==N(recipe,"required_level")&&N(receipt,"source_required_level")==N(recipe,"source_required_level")&&N(receipt,"max_durability")==N(recipe,"max_durability")&&N(receipt,"catalog_count")>0,"Invalid Hero Dragon receipt");var cat=receipt["pet_catalog"]!;CheckFile(root,"pi._D7",N(cat,"size"),S(cat,"sha256"));}

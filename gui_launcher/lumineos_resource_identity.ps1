@@ -3,6 +3,40 @@
     try{return [BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text))).Replace('-','').ToLowerInvariant()}
     finally{$hash.Dispose()}
 }
+function Get-DungeonCinematicContract([string]$SourceRoot){
+    $tool=Join-Path (Split-Path -Parent $PSScriptRoot) 'adapter_runtime/Nanaimo.Adapter.exe'
+    $text=& $tool --tools verify-resources --kind cinematics --client-root $SourceRoot 2>&1
+    if($LASTEXITCODE-ne0){throw ('Cinematic source verification failed: '+($text -join ' '))}
+    $contract=($text -join "`n")|ConvertFrom-Json
+    if([string]$contract.status-ne'CINEMATIC_RESOURCES_PASS'){throw 'Invalid cinematic verifier result.'}
+    return $contract
+}
+function Sync-DungeonCinematicIdentity([string]$SourceRoot,[string]$WorkRoot,[string]$CacheRoot){
+    $name='.openNanaimo-dungeon-cinematics.json'
+    $source=Join-Path $SourceRoot $name
+    $target=Join-Path $WorkRoot $name
+    Assert-ChildPath $CacheRoot $target
+    foreach($path in @($source,$target)){
+        Assert-NoReparseAncestors (Split-Path -Parent $path)
+        if(Test-ReparsePoint $path){throw 'Cinematic identity cannot be a reparse point.'}
+        if((Test-Path -LiteralPath $path)-and-not(Test-Path -LiteralPath $path -PathType Leaf)){throw 'Cinematic identity must be a regular file.'}
+    }
+    if(-not(Test-Path -LiteralPath $source -PathType Leaf)){
+        if(Test-Path -LiteralPath $target){throw 'Cinematic release changed; rebuild the isolated client.'}
+        return @{}
+    }
+    $sourceHash=Get-Sha256 $source
+    $contract=Get-DungeonCinematicContract $SourceRoot
+    $files=@{}
+    foreach($row in @($contract.files)){
+        if($files.ContainsKey([string]$row.path)){throw 'Duplicate cinematic resource.'}
+        Assert-LumineosResourcePair $SourceRoot $WorkRoot $row
+        $files[[string]$row.path]=$row
+    }
+    if((Get-Sha256 $source)-ne$sourceHash){throw 'Cinematic identity changed during preparation.'}
+    if((Get-OptionalFileHash $target)-ne$sourceHash){Write-AtomicSocialMetadata $target $null ([IO.File]::ReadAllBytes($source))}
+    return $files
+}
 function Assert-LumineosInstalledOverlay([string]$SourceRoot){
     # Use normal launch's embedded recipes, not a receipt-only waiver.
     $tool=Join-Path (Split-Path -Parent $PSScriptRoot) 'adapter_runtime/Nanaimo.Adapter.exe'
@@ -28,6 +62,7 @@ function Assert-LumineosResourcePair([string]$SourceRoot,[string]$WorkRoot,[obje
 # Resources are usually directory links; a copied fallback must have exactly
 # the same overlay, otherwise fail closed instead of running mixed versions.
 function Sync-LumineosResourceIdentity([string]$SourceRoot,[string]$WorkRoot,[string]$CacheRoot){
+    $cinematics=Sync-DungeonCinematicIdentity $SourceRoot $WorkRoot $CacheRoot
     $name='openNanaimo-l7-l8-resources.json'
     $source=Join-Path $SourceRoot $name
     $target=Join-Path $WorkRoot $name
@@ -79,6 +114,11 @@ function Sync-LumineosResourceIdentity([string]$SourceRoot,[string]$WorkRoot,[st
         Assert-ChildPath $SourceRoot $original
         Assert-ChildPath $WorkRoot $prepared
         $expected=$row
+        if($cinematics.ContainsKey($relative)){
+            $candidate=$cinematics[$relative]
+            $parentMatches=@($candidate.accepted_before|Where-Object{[string]$_.sha256-eq[string]$row.sha256-and($row.PSObject.Properties.Name-notcontains'size'-or[long]$_.size-eq[long]$row.size)}).Count-gt0
+            if($parentMatches){$expected=$candidate}
+        }
         if((Get-OptionalFileHash $original)-ne[string]$row.sha256-and(Test-Path -LiteralPath (Join-Path $SourceRoot '.openNanaimo-monk-dialogue.json') -PathType Leaf)){
             if($null-eq$overlay){
                 $overlay=@{}

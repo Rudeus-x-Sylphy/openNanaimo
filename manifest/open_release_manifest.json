@@ -67,6 +67,16 @@
     "recipe_manifest": "manifest/patch_runtime_requirements.json"
   },
   "optional_resource_ports": {
+    "dungeon_cinematics": {
+      "recipe_manifest": "manifest/dungeon_cinematics.json",
+      "coverage_manifest": "manifest/dungeon_cinematics_coverage.json",
+      "tool": "scripts/dungeon_cinematics.py",
+      "resource_kit": "resource-packs/nanaimo-dungeon-cinematics-kit.zip",
+      "client_marker": ".openNanaimo-dungeon-cinematics.json",
+      "validation": "reviewed-dialogue-images-authored-timelines-and-transaction",
+      "default_installation": false,
+      "runtime_acceptance": false
+    },
     "korean_wardrobe": {
       "recipe_manifest": "manifest/korean_wardrobe_resources.json",
       "catalog_manifest": "manifest/korean_wardrobe_catalog.json",
@@ -144,16 +154,16 @@
         "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
       },
       "adapter_runtime/Nanaimo.Adapter.dll": {
-        "size": 2876416,
-        "sha256": "138C4C1FD6BC37344489CBB231B36055C84A6E9F6777CEF46867FF02DD7D5E94"
+        "size": 5169664,
+        "sha256": "747D4BF46A3BDACA9AF28754E2AE3438D9120EF4371F271F9252D6F8CEAD3404"
       },
       "adapter_runtime/Nanaimo.Adapter.exe": {
         "size": 151552,
-        "sha256": "20F6F15BDDB8F267F40BEDC77A2B6F527D3E4491B3C535CEDABDDA746DBE2356"
+        "sha256": "9AFF7C9BCF37F1EF98A7D098D93D2D2AD94FD91F9083D9496DE6934AC25176FF"
       },
       "adapter_runtime/Nanaimo.Adapter.pdb": {
-        "size": 267416,
-        "sha256": "68F6ADF437D118F39514AC6567598A90205A08E35809C4C1BFA37BC00D1E1F7A"
+        "size": 268084,
+        "sha256": "B447AF7AE1E4D4F170CC34E08531DFFDCBB26CE5C1E68BE925E740DAAD694446"
       },
       "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
         "size": 372,
@@ -161,11 +171,11 @@
       },
       "adapter_runtime/Nanaimo.Gameplay.dll": {
         "size": 6296064,
-        "sha256": "D3E0BB98EA2A347FC09AEB059629BB12153BECB11FCC386B13F20EFDA5E7B596"
+        "sha256": "A5B8EE1DF127A0F4DD629DF7B0125B7C8ACFAF9D3AD4E5ED0BF737B82FE7648F"
       },
       "adapter_runtime/Nanaimo.Gameplay.pdb": {
-        "size": 608756,
-        "sha256": "F076F9528B9350C57924F24BAD28F838461EF7EBEFB082D0CEBC6504BD5E3559"
+        "size": 608748,
+        "sha256": "6C4CC3B402289CAFFB87A14E281BCDBA8F0D231E6E3EEADF811D5ECD509256D9"
       },
       "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
         "size": 5120,
@@ -829,7 +839,7 @@
       },
       "adapter_runtime/adapter_manifest.json": {
         "size": 52662,
-        "sha256": "3371644E38DAEE7A66E74E6123B67EC7D5D495BF01E476BCAF5701E1863F0A6B"
+        "sha256": "7E717E997003A3ACE18AF55DFFFB37F02F2B2E82A460C4AF19BBB6BECBC036E6"
       },
       "adapter_runtime/clretwrc.dll": {
         "size": 310568,
@@ -3117,8 +3127,8 @@
       "sha256": "F3D0717F0DC7FE99550EF06CD7D7E4E206FE713CD9B6BA273D668B2FD185685A"
     },
     "gui_launcher/lumineos_resource_identity.ps1": {
-      "size": 7475,
-      "sha256": "DEEF0E91D7F7E6C8A5836F4C11B88CB89DBC1D0C7D6EF823C37C7D5FFAC37E3E"
+      "size": 9836,
+      "sha256": "4B26EE43FA9C04F4EADED398F275C34FDCDF00215026D6A4B97598764B0E3E0B"
     },
     "gui_launcher/nanaimo_launcher.ps1": {
       "size": 157267,
@@ -3501,8 +3511,8 @@
       "sha256": "FD66AE71E260D994EB46B8B0086D1F6BA6E839BE818AC035A266B8E62ED8800E"
     },
     "knowledge/指南/索引.md": {
-      "size": 2397,
-      "sha256": "1A69B963514A02544E4585518E24CE1F5797B4D10EFD0DAC1395F0C52C089E22"
+      "size": 2614,
+      "sha256": "8459EEB0A81CD2FF4EF386652AD1E0E6535BA54F282BED1C6783B68A55B8A14D"
     },
     "knowledge/指南/运行依赖.md": {
       "size": 9876,
@@ -3543,6 +3553,22 @@
     "manifest/document_fusion_baseline.json.gz": {
       "size": 95252,
       "sha256": "7261DA8299457949BBE74DCB416002426D4DA73A826CDA8ED63668E26511B80C"
+    },
+    "manifest/dungeon_cinematics.json": {
+      "size": 2288503,
+      "sha256": "F4FEDA84BC22DDCC9B5EB440317C5C85DA72851B73D5DE6E805588CA72C88CDA"
+    },
+    "manifest/dungeon_cinematics_coverage.json": {
+      "size": 566251,
+      "sha256": "65BDE4668C492A221691307016AB6EB422DB22D4DE998E7646F0F2B2F839E68B"
+    },
+    "manifest/dungeon_cinematics_revisions.tsv": {
+      "size": 5622,
+      "sha256": "AE3A37DF6A3C2AE0718E96F387F64BDB1BA755F0FD4DAF85736C179A2EAF6314"
+    },
+    "manifest/dungeon_cinematics_translations.tsv": {
+      "size": 14136,
+      "sha256": "87C72E0663ABA01020DABBFD70CF418BB99291EE070D46441780534C3325F223"
     },
     "manifest/hero_dragon_resources.json": {
       "size": 17803,
@@ -3665,8 +3691,16 @@
       "sha256": "DAE216BED35C38B7D292CFE50793BDF429F4C151B020F0FB0FFEF093DABAF2D5"
     },
     "resource-packs/README.md": {
-      "size": 2197,
-      "sha256": "0D77F0B0FDB2B4DAFDC9A38FB8EB385351430CCDCB11409BE94FEBA4F588DE6A"
+      "size": 2688,
+      "sha256": "BFA522E634A8035D101AC01C28326EC5A5119D30046162A739D3B840617A7836"
+    },
+    "resource-packs/nanaimo-dungeon-cinematics-kit.zip": {
+      "size": 4300124,
+      "sha256": "64FCF8093785AA7F43E9B81C9C04FC4CC79C12E3D8DDBEE8FDA236EC61D517DC"
+    },
+    "resource-packs/nanaimo-dungeon-cinematics-kit.zip.sha256": {
+      "size": 101,
+      "sha256": "DCC149CC5F09121F7299615DB248056CF2530E1D485117B659BD65FA89574020"
     },
     "resource-packs/nanaimo-korean-resource-kit.zip": {
       "size": 60210309,
@@ -3720,6 +3754,10 @@
       "size": 52808,
       "sha256": "C54CD42E98FC654408C6DA21D1663D5A05C8594CD2CBA404D7AE3D03B47DF240"
     },
+    "scripts/audit_dungeon_cinematics.py": {
+      "size": 5231,
+      "sha256": "C90DD6AC8B36982DB3690CCF002656B4D344ADCA4377D3230B57E2497BBCE2FC"
+    },
     "scripts/audit_l7_combat_resources.py": {
       "size": 3525,
       "sha256": "AC90A5DB83D462003143FB41AEB7026FA02E32B49C35D849687D9DABFB98C9C4"
@@ -3727,6 +3765,10 @@
     "scripts/audit_story_localization.py": {
       "size": 6683,
       "sha256": "11D60202BA7185441A6F5CC6199674B07EB3255C8E853D2294811F4DC0A78AF8"
+    },
+    "scripts/cinematic_codec.py": {
+      "size": 6710,
+      "sha256": "B093262810D858C08EDF5A2545E137257F0858908227CA20982A87D01B323DE2"
     },
     "scripts/deploy_adapter_runtime.py": {
       "size": 5785,
@@ -3752,6 +3794,10 @@
       "size": 12178,
       "sha256": "78DC20638EE6F4461F8F231A2172CE759C7788ACD8F4613704AF603B13ABB8AC"
     },
+    "scripts/dungeon_cinematics.py": {
+      "size": 25121,
+      "sha256": "F240CB85C52ECEAC106CE7B278FB57CD1A8557404CC19BF3E5A83CC652DC81D6"
+    },
     "scripts/dungeon_experience_compat.py": {
       "size": 2339,
       "sha256": "FBB9551A4198278E03C276ABA436DD0194517FB80F850E5043838D9890286CD3"
@@ -3773,8 +3819,8 @@
       "sha256": "032774731901A7C0F6B3793C3381DEE4369115E65AC254BCAD8F4694D5517570"
     },
     "scripts/export_patch.py": {
-      "size": 32917,
-      "sha256": "B9637D6E7CDAEF56BAEA7A1DCEFEEC7258A48DCF6FD82C03122B6D1FECB9FD8A"
+      "size": 33470,
+      "sha256": "0559981D12FE643C64C51E008C310C9EC8EAA6B227C9AAA4DA7DF67F288D3089"
     },
     "scripts/generate_arena_targets.py": {
       "size": 2986,
@@ -3877,8 +3923,8 @@
       "sha256": "69B84EC7A3C8769F73D6F4B17933C3FD54171D0ED0918D9EDA080F4AB84369EB"
     },
     "scripts/port_lumineos_resources.py": {
-      "size": 22733,
-      "sha256": "6B47D0CACDB5225C0170E6449A2DC9F65C2BA844328AEAC2A388E098F2D4BAC2"
+      "size": 23630,
+      "sha256": "7792AB994644A20B4F58BC28DF7C6756F459FCF5B71DC89A5F8891FA2092DFE2"
     },
     "scripts/prepare_card_page_update.py": {
       "size": 5581,
@@ -3945,16 +3991,16 @@
       "sha256": "F087A574DEC8C0D16AF1EAFC5DA75BA2F4C0E29E09D2E173D32A35D47DB45242"
     },
     "scripts/refresh_manifest.py": {
-      "size": 21680,
-      "sha256": "E1CA2BD1CA1AA207455CBD2F14CECA3D0CE2A979AA4335539F1B3A75A3545372"
+      "size": 22819,
+      "sha256": "E319B741F2464806106EA0183F72451DCD7DB92489BC31A604943A0F2C689045"
     },
     "scripts/refresh_patch_manifest.py": {
       "size": 12919,
       "sha256": "240ADA4892BA4624D7C4124882500FFC83A375D94DAF2A1FB379D2DAA1235658"
     },
     "scripts/refresh_source_manifest.py": {
-      "size": 11719,
-      "sha256": "2C5332CF2B7BF7E201B38EC41085BAAD295AA6603559CF16D9208DDDB9B976FE"
+      "size": 12426,
+      "sha256": "47EDACB6FD6E0D0D2C741FACC40B38487C60F428E619FF4C4EFD5F18C7E01290"
     },
     "scripts/reset_chapter_checkpoint.py": {
       "size": 3916,
@@ -4032,6 +4078,14 @@
       "size": 2773,
       "sha256": "69493F33F50E9DFD81F8D0B17A01EBD4E223800C3E8B58584C2CC8794691FF5A"
     },
+    "scripts/test_dungeon_cinematics.py": {
+      "size": 12201,
+      "sha256": "1A0674EB8BB2F85D9DDE5AB57E62D5BEB59CD8DEA7FF8B6691062400185E547F"
+    },
+    "scripts/test_dungeon_cinematics_host.py": {
+      "size": 2961,
+      "sha256": "E3181AF0B15D2F518940F18F4881A8650CDD442330A3C35FA47B81481581F366"
+    },
     "scripts/test_dungeon_continuation_client.py": {
       "size": 7771,
       "sha256": "0774244BBCCEF14A8D94A0C4B0C7AF254718C2F9C0301CA4BB5ECB533C03C337"
@@ -4065,8 +4119,8 @@
       "sha256": "AE7609B00751DA1C1DD0C06DDDC983D37E7FE15EA3C10908D74082DE76A7CB59"
     },
     "scripts/test_export_patch.py": {
-      "size": 49630,
-      "sha256": "9413AF3715466C905171498CBCF8391029541195399306656DD619BCB04D7689"
+      "size": 50401,
+      "sha256": "C8D2D939329B724748E03140C0EE008DDAE7C32F3083CF039A99E19AC6EA762D"
     },
     "scripts/test_fifth_village_land.py": {
       "size": 5121,
@@ -4117,8 +4171,8 @@
       "sha256": "89B3E5D1F45784A36507F2DD1C7E3AEB881C35718DBE0A33ACDE720ED542EB35"
     },
     "scripts/test_lumineos_resource_identity.ps1": {
-      "size": 10062,
-      "sha256": "1C5DC27253EACBC781B7B161590109D6F1692A4CDEBB0DEA612FC83723309AD5"
+      "size": 11497,
+      "sha256": "D33840CF7833461985A752838B0711948E42DF6FC8C6C8A323CEF2D1F2698DDC"
     },
     "scripts/test_mana_absorption.py": {
       "size": 6024,
@@ -4605,16 +4659,16 @@
       "sha256": "5725C63BAAA544B352051156F8796C38B182D4481BC027D9C17FDF88FA403A43"
     },
     "knowledge/业务/地宫/BOSS/索引.md": {
-      "size": 2191,
-      "sha256": "8071FF062A8024206DA69A93C5A00E9C1397E574CC10109DE879B6082C513478"
+      "size": 2251,
+      "sha256": "BA2A0B92E2CA12AD99E9A4FD0E6433F77D55871C2A0105AF2007CC30404C9B25"
     },
     "knowledge/业务/地宫/BOSS/组件与零生命附件.md": {
       "size": 16326,
       "sha256": "15EE971884890461562EDC7ABF00E34C298FA224B1261CF7050D443E0D67D4C4"
     },
     "knowledge/业务/地宫/BOSS/阶段推进与开场.md": {
-      "size": 3075,
-      "sha256": "00891BE87EB45B2E93C013C6A2BF53887A63133F8F97FB3684C5CD88508C6891"
+      "size": 8780,
+      "sha256": "AEFBD183B8FABF4A6F1A935D53C366E6A5BE08D38126232A8C06E8A4D7282AB6"
     },
     "knowledge/业务/地宫/BOSS.md": {
       "size": 317,
@@ -5537,8 +5591,8 @@
       "sha256": "1CBE73B77E0042F1A3B33FB5F31955FF10076B9820529198DCC51B94C1650243"
     },
     "knowledge/工程/验证状态/地宫与成长验收.md": {
-      "size": 20464,
-      "sha256": "721B8595A5F4280198FCDC3290A27239B334CD1A7A3A97C00D0A9FC967669B56"
+      "size": 22093,
+      "sha256": "1D32C7E68D618F31CF99462F9DF1747058BF3F11CA3F83F342302463E590B39C"
     },
     "knowledge/工程/验证状态/层级与版本归属.md": {
       "size": 14873,
@@ -5563,6 +5617,10 @@
     "knowledge/指南/专题检索.md": {
       "size": 22362,
       "sha256": "8E6E62D35AA9976F088F4EAFFF2320C53BBAA9D3F6B34DEC70365C29A04659E6"
+    },
+    "knowledge/指南/地宫过场移植与汉化.md": {
+      "size": 3701,
+      "sha256": "016D167C0B365DC69519BB21BB8148FC36F6AC5229C0794C9AAD5896D364823E"
     },
     "knowledge/指南/客户端二进制补丁/BOSS退场效果.md": {
       "size": 3164,
@@ -5600,6 +5658,10 @@
       "size": 2594,
       "sha256": "973C96C6ACE335EC81ADC64A2BE353F29BBCD3E969D05A9485731577C99B12FF"
     },
+    "knowledge/指南/客户端二进制补丁/地宫过场中文资源安装.md": {
+      "size": 8901,
+      "sha256": "52149D358E6339D713CF2190800192639C870D64C3EA93AB458D930B216734C4"
+    },
     "knowledge/指南/客户端二进制补丁/娱乐室等级显示.md": {
       "size": 2231,
       "sha256": "20479C0E56F0878CE28C2943DA0EAFEE2B93D6BFFB9D2F92B0DBE5C352F894DB"
@@ -5617,8 +5679,8 @@
       "sha256": "9656BA4660832B58FADF013A4EDE89AC6EB6B7935FDA3ECF89512A39C392C331"
     },
     "knowledge/指南/客户端二进制补丁/索引.md": {
-      "size": 1709,
-      "sha256": "E989031B19C59B1C1171A2457D87B54AE8DA179995097EAD336814A0CDD396A6"
+      "size": 1886,
+      "sha256": "ECF77A88E0B44CBF27D9ECC9C54BD064D7873307B55BBFF3AF13DBD9910AA1F2"
     },
     "knowledge/指南/客户端二进制补丁/统一安装与恢复.md": {
       "size": 5718,
@@ -5721,16 +5783,16 @@
       "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
     },
     "adapter_runtime/Nanaimo.Adapter.dll": {
-      "size": 2876416,
-      "sha256": "138C4C1FD6BC37344489CBB231B36055C84A6E9F6777CEF46867FF02DD7D5E94"
+      "size": 5169664,
+      "sha256": "747D4BF46A3BDACA9AF28754E2AE3438D9120EF4371F271F9252D6F8CEAD3404"
     },
     "adapter_runtime/Nanaimo.Adapter.exe": {
       "size": 151552,
-      "sha256": "20F6F15BDDB8F267F40BEDC77A2B6F527D3E4491B3C535CEDABDDA746DBE2356"
+      "sha256": "9AFF7C9BCF37F1EF98A7D098D93D2D2AD94FD91F9083D9496DE6934AC25176FF"
     },
     "adapter_runtime/Nanaimo.Adapter.pdb": {
-      "size": 267416,
-      "sha256": "68F6ADF437D118F39514AC6567598A90205A08E35809C4C1BFA37BC00D1E1F7A"
+      "size": 268084,
+      "sha256": "B447AF7AE1E4D4F170CC34E08531DFFDCBB26CE5C1E68BE925E740DAAD694446"
     },
     "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
       "size": 372,
@@ -5738,11 +5800,11 @@
     },
     "adapter_runtime/Nanaimo.Gameplay.dll": {
       "size": 6296064,
-      "sha256": "D3E0BB98EA2A347FC09AEB059629BB12153BECB11FCC386B13F20EFDA5E7B596"
+      "sha256": "A5B8EE1DF127A0F4DD629DF7B0125B7C8ACFAF9D3AD4E5ED0BF737B82FE7648F"
     },
     "adapter_runtime/Nanaimo.Gameplay.pdb": {
-      "size": 608756,
-      "sha256": "F076F9528B9350C57924F24BAD28F838461EF7EBEFB082D0CEBC6504BD5E3559"
+      "size": 608748,
+      "sha256": "6C4CC3B402289CAFFB87A14E281BCDBA8F0D231E6E3EEADF811D5ECD509256D9"
     },
     "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
       "size": 5120,
@@ -6406,7 +6468,7 @@
     },
     "adapter_runtime/adapter_manifest.json": {
       "size": 52662,
-      "sha256": "3371644E38DAEE7A66E74E6123B67EC7D5D495BF01E476BCAF5701E1863F0A6B"
+      "sha256": "7E717E997003A3ACE18AF55DFFFB37F02F2B2E82A460C4AF19BBB6BECBC036E6"
     },
     "adapter_runtime/clretwrc.dll": {
       "size": 310568,
@@ -6561,7 +6623,7 @@
       "sha256": "0388592AD03CAE6025409410578D58F3276983E409A350033AE2B2613E6C906A"
     }
   },
-  "source_closure_count": 440,
+  "source_closure_count": 451,
   "public_export_policy": {
     "mode": "explicit-reviewed-allowlist-only",
     "exclude_private_profiles_states_logs_backups": true,

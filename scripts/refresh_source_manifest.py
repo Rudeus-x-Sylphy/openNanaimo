@@ -46,6 +46,16 @@ def collect(root=ROOT):
                 raise ValueError('missing or unsafe embedded source resource: ' + rel)
             seen.add(resource)
     # Authoritative card distribution inputs must travel with the compiled table.
+    if (root / 'manifest/dungeon_cinematics.json').resolve() in seen:
+        for rel in ('manifest/dungeon_cinematics_translations.tsv', 'manifest/dungeon_cinematics_revisions.tsv',
+                    'manifest/dungeon_cinematics_coverage.json', 'scripts/cinematic_codec.py',
+                    'scripts/dungeon_cinematics.py', 'scripts/audit_dungeon_cinematics.py',
+                    'scripts/port_lumineos_resources.py', 'scripts/test_dungeon_cinematics.py',
+                    'scripts/test_dungeon_cinematics_host.py'):
+            path = root / rel
+            if not path.is_file():
+                raise ValueError('missing cinematic source input: ' + rel)
+            seen.add(path.resolve())
     if (root / 'release/components/story_chapters/chapters.json').resolve() in seen:
         for rel in ('release/components/story_chapters/manifest.json',
                     'manifest/story_localization.json', 'manifest/story_terms.json',

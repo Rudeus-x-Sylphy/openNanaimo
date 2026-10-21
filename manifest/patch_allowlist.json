@@ -6,7 +6,7 @@
   "official_baseline_verified": false,
   "binary_delta_implemented": false,
   "complete_playable_game": false,
-  "source_closure_count_observed": 440,
+  "source_closure_count_observed": 451,
   "default_layers": [
     "runtime",
     "source",
@@ -118,8 +118,8 @@
     {
       "path": "gui_launcher/lumineos_resource_identity.ps1",
       "layer": "runtime",
-      "size": 7475,
-      "sha256": "deef0e91d7f7e6c8a5836f4c11b88cb89dbc1d0c7d6ef823c37c7d5ffac37e3e",
+      "size": 9836,
+      "sha256": "4b26ee43fa9c04f4eaded398f275c34fdcdf00215026d6a4b97598764b0e3e0b",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -638,8 +638,8 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5730\u5bab/BOSS/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 2191,
-      "sha256": "8071ff062a8024206da69a93c5a00e9c1397e574cc10109de879b6082c513478",
+      "size": 2251,
+      "sha256": "ba2a0b92e2ca12ad99e9a4fd0e6433f77d55871c2a0105af2007cc30404c9b25",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -654,8 +654,8 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5730\u5bab/BOSS/\u9636\u6bb5\u63a8\u8fdb\u4e0e\u5f00\u573a.md",
       "layer": "knowledge",
-      "size": 3075,
-      "sha256": "00891be87eb45b2e93c013c6a2bf53887a63133f8f97fb3684c5cd88508c6891",
+      "size": 8780,
+      "sha256": "aefbd183b8fabf4a6f1a935d53c366e6a5be08d38126232a8c06e8a4d7282ab6",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3030,8 +3030,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u5730\u5bab\u4e0e\u6210\u957f\u9a8c\u6536.md",
       "layer": "knowledge",
-      "size": 20464,
-      "sha256": "721b8595a5f4280198fcdc3290a27239b334cd1a7a3a97c00d0a9fc967669b56",
+      "size": 22093,
+      "sha256": "1d32c7e68d618f31cf99462f9df1747058bf3f11ca3f83f342302463e590b39c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3132,6 +3132,14 @@
       "approval": "required_per_file"
     },
     {
+      "path": "knowledge/\u6307\u5357/\u5730\u5bab\u8fc7\u573a\u79fb\u690d\u4e0e\u6c49\u5316.md",
+      "layer": "knowledge",
+      "size": 3701,
+      "sha256": "016d167c0b365dc69519bb21bb8148fc36f6ac5229c0794c9aad5896d364823e",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "knowledge/\u6307\u5357/\u5b50\u5f39DIY\u4e0e\u7bee\u7403\u8bd5\u73a9.md",
       "layer": "knowledge",
       "size": 2888,
@@ -3228,6 +3236,14 @@
       "approval": "required_per_file"
     },
     {
+      "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u5730\u5bab\u8fc7\u573a\u4e2d\u6587\u8d44\u6e90\u5b89\u88c5.md",
+      "layer": "knowledge",
+      "size": 8901,
+      "sha256": "52149d358e6339d713cf2190800192639c870d64c3ea93ab458d930b216734c4",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u5a31\u4e50\u5ba4\u7b49\u7ea7\u663e\u793a.md",
       "layer": "knowledge",
       "size": 2231,
@@ -3262,8 +3278,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 1709,
-      "sha256": "e989031b19c59b1c1171a2457d87b54ae8da179995097ead336814a0cdd396a6",
+      "size": 1886,
+      "sha256": "ecf77a88e0b44cbf27d9ecc9c54bd064d7873307b55bbff3af13dbd9910aa1f2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3430,8 +3446,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 2397,
-      "sha256": "1a69b963514a02544e4585518e24ce1f5797b4d10efd0dac1395f0c52c089e22",
+      "size": 2614,
+      "sha256": "8459eeb0a81cd2ff4ef386652ad1e0e6535ba54f282bed1c6783b68a55b8a14d",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3812,10 +3828,18 @@
       "approval": "required_per_file"
     },
     {
+      "path": "managed-host/LauncherTools.Cinematics.cs",
+      "layer": "source",
+      "size": 1758,
+      "sha256": "a5eceb934b830ad9053c1c9aa0e6b634341dd84fd28194f97d3f3453602ab140",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "managed-host/LauncherTools.Compatibility.cs",
       "layer": "source",
-      "size": 18427,
-      "sha256": "d70cbfb5104ca928ba00868558597a0a8539703bff4829b57b50b7c7a4e506c4",
+      "size": 19259,
+      "sha256": "5b3225fc6f9aefc1ca5f9ad54ae84d60c7708f5c4d665d55abbc3241ad9cc267",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3910,8 +3934,8 @@
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
       "layer": "source",
-      "size": 688,
-      "sha256": "bc62fded0ac1ea4d35436a4c058d79770e0e3c8d791318b55adfcd5cafe24d3b",
+      "size": 804,
+      "sha256": "07353c45823f460ddb9f926118263ee82a1d5b7bf4a1c2e459cb632bc851a406",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5580,6 +5604,38 @@
       "approval": "required_per_file"
     },
     {
+      "path": "manifest/dungeon_cinematics.json",
+      "layer": "source",
+      "size": 2288503,
+      "sha256": "f4feda84bc22ddcc9b5eb440317c5c85da72851b73d5de6e805588ca72c88cda",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "manifest/dungeon_cinematics_coverage.json",
+      "layer": "source",
+      "size": 566251,
+      "sha256": "65bde4668c492a221691307016ab6eb422db22d4de998e7646f0f2b2f839e68b",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "manifest/dungeon_cinematics_revisions.tsv",
+      "layer": "source",
+      "size": 5622,
+      "sha256": "ae3a37df6a3c2ae0718e96f387f64bdb1ba755f0fd4daf85736c179a2eaf6314",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "manifest/dungeon_cinematics_translations.tsv",
+      "layer": "source",
+      "size": 14136,
+      "sha256": "87c72e0663aba01020dabbfd70cf418bb99291ee070d46441780534c3325f223",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "manifest/knowledge_baseline.json.gz",
       "layer": "source",
       "size": 305419,
@@ -5662,8 +5718,8 @@
     {
       "path": "manifest/source_closure.json",
       "layer": "source",
-      "size": 79780,
-      "sha256": "e4d83eb427148a97a544a324a4ccbbe246deedb6409d179be06946c9ca21748c",
+      "size": 81658,
+      "sha256": "2cf7e62a35f5357356fd7ef501c4ef82b572a74f158662598c171f98af73262c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -6796,6 +6852,14 @@
       "approval": "required_per_file"
     },
     {
+      "path": "scripts/audit_dungeon_cinematics.py",
+      "layer": "source",
+      "size": 5231,
+      "sha256": "c90dd6ac8b36982db3690ccf002656b4d344adca4377d3230b57e2497bbce2fc",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "scripts/audit_korean_wardrobe_interior.py",
       "layer": "source",
       "size": 13029,
@@ -6848,6 +6912,14 @@
       "layer": "source",
       "size": 5969,
       "sha256": "b22587cfc7d7f3e1975ee07b61a34f0499ddf0d46bfd4ce23e4993ce54ebaae7",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/cinematic_codec.py",
+      "layer": "source",
+      "size": 6710,
+      "sha256": "b093262810d858c08edf5a2545e137257f0858908227ca20982a87d01b323de2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -6972,6 +7044,14 @@
       "approval": "required_per_file"
     },
     {
+      "path": "scripts/dungeon_cinematics.py",
+      "layer": "source",
+      "size": 25121,
+      "sha256": "f240cb85c52eceac106ce7b278fb57cd1a8557404cc19bf3e5a83cc652dc81d6",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "scripts/dungeon_experience_compat.py",
       "layer": "source",
       "size": 2339,
@@ -7006,8 +7086,8 @@
     {
       "path": "scripts/export_patch.py",
       "layer": "source",
-      "size": 32917,
-      "sha256": "b9637d6e7cdaef56baea7a1dcefeec7258a48dcf6fd82c03122b6d1fecb9fd8a",
+      "size": 33470,
+      "sha256": "0559981d12fe643c64c51e008c310c9ec8eaa6b227c9aaa4da7df67f288d3089",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7254,8 +7334,8 @@
     {
       "path": "scripts/port_lumineos_resources.py",
       "layer": "source",
-      "size": 22733,
-      "sha256": "6b47d0cacdb5225c0170e6449a2dc9f65c2ba844328aeac2a388e098f2d4bac2",
+      "size": 23630,
+      "sha256": "7792ab994644a20b4f58bc28df7c6756f459fcf5b71dc89a5f8891fa2092dfe2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7366,8 +7446,8 @@
     {
       "path": "scripts/refresh_manifest.py",
       "layer": "source",
-      "size": 21680,
-      "sha256": "e1ca2bd1ca1aa207455cbd2f14ceca3d0ce2a979aa4335539f1b3a75a3545372",
+      "size": 22819,
+      "sha256": "e319b741f2464806106ea0183f72451dcd7db92489bc31a604943a0f2c689045",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7382,8 +7462,8 @@
     {
       "path": "scripts/refresh_source_manifest.py",
       "layer": "source",
-      "size": 11719,
-      "sha256": "2c5332cf2b7bf7e201b38ec41085baad295aa6603559cf16d9208dddb9b976fe",
+      "size": 12426,
+      "sha256": "47edacb6fd6e0d0d2c741facc40b38487c60f428e619ff4c4efd5f18c7e01290",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7796,6 +7876,22 @@
       "approval": "required_per_file"
     },
     {
+      "path": "scripts/test_dungeon_cinematics.py",
+      "layer": "source",
+      "size": 12201,
+      "sha256": "1a0674eb8bb2f85d9dde5ab57e62d5beb59cd8dea7ff8b6691062400185e547f",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/test_dungeon_cinematics_host.py",
+      "layer": "source",
+      "size": 2961,
+      "sha256": "e3181af0b15d2f518940f18f4881a8650cdd442330a3c35fa47b81481581f366",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "scripts/test_dungeon_continuation_rearm.py",
       "layer": "source",
       "size": 10017,
@@ -7886,8 +7982,8 @@
     {
       "path": "scripts/test_export_patch.py",
       "layer": "source",
-      "size": 49630,
-      "sha256": "9413af3715466c905171498cbcf8391029541195399306656dd619bcb04d7689",
+      "size": 50401,
+      "sha256": "c8d2d939329b724748e03140c0ee008ddae7c32f3083cf039a99e19ac6ea762d",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8030,8 +8126,8 @@
     {
       "path": "scripts/test_lumineos_resource_identity.ps1",
       "layer": "source",
-      "size": 10062,
-      "sha256": "1c5dc27253eacbc781b7b161590109d6f1692a4cdebb0dea612fc83723309ad5",
+      "size": 11497,
+      "sha256": "d33840cf7833461985a752838b0711948e42df6fc8c6c8a323cef2d1f2698ddc",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

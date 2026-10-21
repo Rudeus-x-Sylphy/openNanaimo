@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 440,
+  "count": 451,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -247,9 +247,14 @@
       "sha256": "F8AC4F3955C97DEFF435D3F78C8979A4DD0361FA0D2D48CF1367939E61ED5954"
     },
     {
+      "path": "managed-host/LauncherTools.Cinematics.cs",
+      "size": 1758,
+      "sha256": "A5ECEB934B830AD9053C1C9AA0E6B634341DD84FD28194F97D3F3453602AB140"
+    },
+    {
       "path": "managed-host/LauncherTools.Compatibility.cs",
-      "size": 18427,
-      "sha256": "D70CBFB5104CA928BA00868558597A0A8539703BFF4829B57B50B7C7A4E506C4"
+      "size": 19259,
+      "sha256": "5B3225FC6F9AEFC1CA5F9AD54AE84D60C7708F5C4D665D55ABBC3241AD9CC267"
     },
     {
       "path": "managed-host/LauncherTools.Inventory.cs",
@@ -308,8 +313,8 @@
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
-      "size": 688,
-      "sha256": "BC62FDED0AC1EA4D35436A4C058D79770E0E3C8D791318B55ADFCD5CAFE24D3B"
+      "size": 804,
+      "sha256": "07353C45823F460DDB9F926118263EE82A1D5B7BF4A1C2E459CB632BC851A406"
     },
     {
       "path": "managed-host/NativeDungeonExperienceChecks.cs",
@@ -1342,6 +1347,26 @@
       "sha256": "99BDF2D770CAF8F950BD7DF548C0E275692266E6FEC92D27EA2FFBA1DF4885A7"
     },
     {
+      "path": "manifest/dungeon_cinematics.json",
+      "size": 2288503,
+      "sha256": "F4FEDA84BC22DDCC9B5EB440317C5C85DA72851B73D5DE6E805588CA72C88CDA"
+    },
+    {
+      "path": "manifest/dungeon_cinematics_coverage.json",
+      "size": 566251,
+      "sha256": "65BDE4668C492A221691307016AB6EB422DB22D4DE998E7646F0F2B2F839E68B"
+    },
+    {
+      "path": "manifest/dungeon_cinematics_revisions.tsv",
+      "size": 5622,
+      "sha256": "AE3A37DF6A3C2AE0718E96F387F64BDB1BA755F0FD4DAF85736C179A2EAF6314"
+    },
+    {
+      "path": "manifest/dungeon_cinematics_translations.tsv",
+      "size": 14136,
+      "sha256": "87C72E0663ABA01020DABBFD70CF418BB99291EE070D46441780534C3325F223"
+    },
+    {
       "path": "manifest/korean_wardrobe_catalog.json",
       "size": 2670069,
       "sha256": "E3AB17226A5AB770431146094AA20508566F2660FE4EF62625B498E866984C76"
@@ -2007,6 +2032,11 @@
       "sha256": "B347BD0FC6884533C98644AC4D37AE26CBBCEED5F73AE57FAEE72CEDD22C3117"
     },
     {
+      "path": "scripts/audit_dungeon_cinematics.py",
+      "size": 5231,
+      "sha256": "C90DD6AC8B36982DB3690CCF002656B4D344ADCA4377D3230B57E2497BBCE2FC"
+    },
+    {
       "path": "scripts/audit_korean_wardrobe_interior.py",
       "size": 13029,
       "sha256": "953E29D05110258403D2C40117DE2D0E4559281033FF0E7928A19DCBCCB64437"
@@ -2037,6 +2067,11 @@
       "sha256": "B22587CFC7D7F3E1975EE07B61A34F0499DDF0D46BFD4CE23E4993CE54EBAAE7"
     },
     {
+      "path": "scripts/cinematic_codec.py",
+      "size": 6710,
+      "sha256": "B093262810D858C08EDF5A2545E137257F0858908227CA20982A87D01B323DE2"
+    },
+    {
       "path": "scripts/combat-score-generator/CombatScoreGenerator.csproj",
       "size": 237,
       "sha256": "031DA6A6F6D810B9F23FFE7818F3ACEFB7B0FF54B0EB8C6752735AD58D254904"
@@ -2045,6 +2080,11 @@
       "path": "scripts/combat-score-generator/Program.cs",
       "size": 12190,
       "sha256": "A1EC6DDA5712AC9CFEBE4630D3A75B22653E68150294CF32212FC17BED3F78AD"
+    },
+    {
+      "path": "scripts/dungeon_cinematics.py",
+      "size": 25121,
+      "sha256": "F240CB85C52ECEAC106CE7B278FB57CD1A8557404CC19BF3E5A83CC652DC81D6"
     },
     {
       "path": "scripts/generate_arena_targets.py",
@@ -2137,6 +2177,11 @@
       "sha256": "7571F4AAD5543D7DEFD449BEA13F722BB16A7702BB4AA62DD5DD05E814DEF537"
     },
     {
+      "path": "scripts/port_lumineos_resources.py",
+      "size": 23630,
+      "sha256": "7792AB994644A20B4F58BC28DF7C6756F459FCF5B71DC89A5F8891FA2092DFE2"
+    },
+    {
       "path": "scripts/prepare_korean_wardrobe.py",
       "size": 27510,
       "sha256": "83D90610ED0EEF6F7D8D907764D59FAFBAF9A012D28D28581A73F7CD7D87FBC8"
@@ -2185,6 +2230,16 @@
       "path": "scripts/test_default_chapter_startup.py",
       "size": 4624,
       "sha256": "DFD90D18E967F66B8247D3E50C5FCA910D702FC6719A756F3E2106AA64FC9EE5"
+    },
+    {
+      "path": "scripts/test_dungeon_cinematics.py",
+      "size": 12201,
+      "sha256": "1A0674EB8BB2F85D9DDE5AB57E62D5BEB59CD8DEA7FF8B6691062400185E547F"
+    },
+    {
+      "path": "scripts/test_dungeon_cinematics_host.py",
+      "size": 2961,
+      "sha256": "E3181AF0B15D2F518940F18F4881A8650CDD442330A3C35FA47B81481581F366"
     },
     {
       "path": "scripts/test_korean_wardrobe.py",

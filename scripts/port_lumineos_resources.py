@@ -269,6 +269,16 @@ def verify(client, manifest=None, dialogue_recipe=None):
     if manifest is None:
         manifest = load(safe(client, MARKER))
     validate_manifest(manifest)
+    cinematic_files = {}
+    if (client / '.openNanaimo-dungeon-cinematics.json').is_file():
+        import dungeon_cinematics as cinematic
+        cinematic_recipe = load(cinematic.RECIPE)
+        cinematic.validate(cinematic_recipe)
+        marker = load(client / cinematic.MARKER)
+        if marker.get('schema') != cinematic.SCHEMA or marker.get('id') != cinematic_recipe['id']:
+            raise ValueError('cinematic release identity differs')
+        cinematic.preflight(client, cinematic_recipe, installed=True)
+        cinematic_files = {r['path']:r for r in cinematic_recipe['files']}
     monk_entry_sha256 = None
     monk_entry_size = None
     monk_entry_base = None
@@ -281,6 +291,10 @@ def verify(client, manifest=None, dialogue_recipe=None):
     for row in manifest['files']:
         path = safe(client, row['path'])
         actual = file_hash(path)
+        candidate = cinematic_files.get(row['path'])
+        allowed_cinematic_overlay = bool(candidate and any(
+            old['sha256'].lower() == row['sha256'].lower() and old['size'] == row['size']
+            for old in candidate['accepted_before']))
         allowed_monk_entry_overlay = (row['path'] == 'Village_map_image/Village_map_image.pack'
                                       and monk_entry_sha256
                                       and row['sha256'].lower() == monk_entry_base
@@ -293,7 +307,7 @@ def verify(client, manifest=None, dialogue_recipe=None):
             if row['sha256'] == parents.get(row['path']) and any(r['path']==row['path'] for r in recipe['files']):
                 dialogue.verify(client,recipe)
                 allowed_monk_entry_overlay = True
-        if (actual != row['sha256'] or path.stat().st_size != row['size']) and not allowed_monk_entry_overlay:
+        if (actual != row['sha256'] or path.stat().st_size != row['size']) and not (allowed_monk_entry_overlay or allowed_cinematic_overlay):
             raise ValueError('installed resource mismatch: ' + row['path'])
     for row in manifest['preserve_l7_combat']:
         if file_hash(safe(client, row['path'])) != row['sha256']:

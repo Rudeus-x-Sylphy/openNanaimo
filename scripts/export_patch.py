@@ -128,6 +128,13 @@ STORY_SOURCES = {
     'scripts/test_default_chapter_startup.py',
     'scripts/story_runtime_evidence.py',
 }
+DUNGEON_CINEMATIC_SOURCES = {
+    'manifest/dungeon_cinematics.json', 'manifest/dungeon_cinematics_coverage.json',
+    'manifest/dungeon_cinematics_translations.tsv', 'manifest/dungeon_cinematics_revisions.tsv',
+    'scripts/cinematic_codec.py', 'scripts/dungeon_cinematics.py',
+    'scripts/audit_dungeon_cinematics.py', 'scripts/port_lumineos_resources.py',
+    'scripts/test_dungeon_cinematics.py', 'scripts/test_dungeon_cinematics_host.py',
+}
 # This is only a rejection aid; NOT a privacy certification. Exact-byte human review
 # remains mandatory for every payload, especially knowledge and protocol fixtures.
 PRIVATE_MARKERS = (
@@ -202,6 +209,7 @@ def payload_policy(value: str, layer: str) -> None:
                 or value in DUNGEON7_ARTWORK
                 or value in card_generation_sources
                 or value in STORY_SOURCES
+                or value in DUNGEON_CINEMATIC_SOURCES
                 or value in {"manifest/source_closure.json", "manifest/lumineos_combat.json", "manifest/l7_combat.json", "manifest/lumineos_resource_port.json", "manifest/korean_pet_resources.json",
                              "manifest/knowledge_migration.json", "manifest/knowledge_baseline.json.gz",
                              "manifest/document_fusion.json", "manifest/document_fusion_baseline.json.gz",
@@ -445,7 +453,8 @@ def validated_closure(closure: dict) -> list[dict]:
             'scripts/generate_avatar_resource_effects.py',
             'manifest/korean_wardrobe_resources.json', 'manifest/korean_wardrobe_catalog.json',
         }
-        if not (native or managed or build_script or embedded_recipe or card_distribution or wardrobe_derivation or rel in STORY_SOURCES):
+        if not (native or managed or build_script or embedded_recipe or card_distribution
+                or wardrobe_derivation or rel in STORY_SOURCES or rel in DUNGEON_CINEMATIC_SOURCES):
             raise ExportError("source closure contains an ineligible project source")
         payload_policy(rel, "source")
         if rel.casefold() in seen:

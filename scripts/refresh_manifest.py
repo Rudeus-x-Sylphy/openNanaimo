@@ -14,6 +14,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
+    'scripts/cinematic_codec.py',
+    'scripts/dungeon_cinematics.py',
+    'scripts/audit_dungeon_cinematics.py',
+    'scripts/test_dungeon_cinematics.py',
+    'scripts/test_dungeon_cinematics_host.py',
+    'manifest/dungeon_cinematics.json',
+    'manifest/dungeon_cinematics_coverage.json',
+    'manifest/dungeon_cinematics_translations.tsv',
+    'manifest/dungeon_cinematics_revisions.tsv',
+    'resource-packs/nanaimo-dungeon-cinematics-kit.zip',
+    'resource-packs/nanaimo-dungeon-cinematics-kit.zip.sha256',
     'scripts/shop_icon_origins.py',
     'scripts/test_shop_icon_origins.py',
     'scripts/test_verify_package.py',
@@ -386,6 +397,16 @@ def main() -> None:
             'recipe_manifest': 'manifest/patch_runtime_requirements.json',
         },
         'optional_resource_ports': {
+            'dungeon_cinematics': {
+                'recipe_manifest': 'manifest/dungeon_cinematics.json',
+                'coverage_manifest': 'manifest/dungeon_cinematics_coverage.json',
+                'tool': 'scripts/dungeon_cinematics.py',
+                'resource_kit': 'resource-packs/nanaimo-dungeon-cinematics-kit.zip',
+                'client_marker': '.openNanaimo-dungeon-cinematics.json',
+                'validation': 'reviewed-dialogue-images-authored-timelines-and-transaction',
+                'default_installation': False,
+                'runtime_acceptance': False,
+            },
             'korean_wardrobe': {
                 'recipe_manifest': 'manifest/korean_wardrobe_resources.json',
                 'catalog_manifest': 'manifest/korean_wardrobe_catalog.json',

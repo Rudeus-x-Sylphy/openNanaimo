@@ -13,5 +13,6 @@
   <ItemGroup>
     <ProjectReference Include="../managed/Nanaimo.Gameplay.csproj" />
     <EmbeddedResource Include="Resources/client-compatibility.json" LogicalName="Nanaimo.ClientCompatibility.json" />
+    <EmbeddedResource Include="../manifest/dungeon_cinematics.json" LogicalName="Nanaimo.DungeonCinematics.json" />
   </ItemGroup>
 </Project>
