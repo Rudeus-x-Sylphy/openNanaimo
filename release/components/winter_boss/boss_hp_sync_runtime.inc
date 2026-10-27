@@ -673,6 +673,18 @@ static int boss_hp_sync_apply_external_damage(struct boss_hp_sync_context*c,unsi
 static unsigned pet_crafting_pet_economy_percent(unsigned effect);
 static unsigned flight_items_flight_card_percent(void);
 static unsigned boss_hp_sync_terminal_card(const struct boss_hp_sync_result*r){
+    /* L8 wire ep100/dg7 resolves to resource ep23/dg0. st1 is its
+       super-boss; this fixed 30% offer ignores gems/clover and replaces
+       the ordinary pool only at the existing first-final-terminal gate. */
+    if(r&&r->card_pool_hd==0u&&
+       (r->card_pool_key>>25)==23u&&((r->card_pool_key>>23)&3u)==0u&&
+       ((r->card_pool_key>>22)&1u)==1u&&((r->card_pool_key>>18)&15u)<=8u){
+        static const unsigned pool[]={22000019u};
+        static const unsigned char grades[]={1u};
+        unsigned card=card_roll_percent(30u)?card_drop_create_from(1u,r->stage,pool,grades,1u):0u;
+        printf("  [CARD_DRAGON] l8-superboss key=%u chance=30 code=%u\n",r->card_pool_key,card);fflush(0);
+        return card;
+    }
     const struct card_cn_pool*pool=r?card_cn_boss_lookup(r->card_pool_hd,r->card_pool_key):0;
     /* Same active-player gems/clover and capped total probability as ordinary
        targets. Final-terminal eligibility and the boss ledger stay separate. */

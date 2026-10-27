@@ -459,7 +459,12 @@ def validated_closure(closure: dict) -> list[dict]:
             'scripts/prepare_kobe_wardrobe.py', 'scripts/test_kobe_wardrobe.py',
             'manifest/kobe_wardrobe.json',
         }
-        if not (native or managed or build_script or embedded_recipe or card_distribution
+        pet_market_derivation = rel in {
+            'scripts/prepare_pet_market.py', 'scripts/test_pet_market.py',
+            'scripts/shop_catalog_order.py', 'scripts/prepare_shortcut_shop.py',
+            'scripts/test_shortcut_shop.py',
+        }
+        if not (native or managed or build_script or embedded_recipe or card_distribution or pet_market_derivation
                 or wardrobe_derivation or rel in STORY_SOURCES or rel in DUNGEON_CINEMATIC_SOURCES):
             raise ExportError("source closure contains an ineligible project source")
         payload_policy(rel, "source")

@@ -38,7 +38,12 @@ class KobeWardrobeTests(unittest.TestCase):
                   if code not in {v[0] for v in kobe.PARTS.values()}}
         baseline = kobe.wardrobe.catalog_bytes('clothing', ['AVATA', '20070311', str(len(legacy))], legacy)
         before, after = fields(baseline), fields(self.payloads['ava._D1'])
-        self.assertEqual(before[4:4 + 25 * len(legacy)], after[4:4 + 25 * len(legacy)])
+        before_rows = {int(before[i+3]): before[i:i+25] for i in range(4, 4+25*len(legacy), 25)}
+        after_rows = {int(after[i+3]): after[i:i+25] for i in range(4, 4+25*len(self.rows), 25)}
+        # Legacy-view dates prefix the next row. Compare actual item fields;
+        # full 25-field movement and date ownership are covered by shortcut-shop.
+        for code, row in before_rows.items():
+            self.assertEqual(row[:24], after_rows[code][:24])
 
     def test_pack_and_loose_models_preserve_every_action_and_pivot(self):
         images = kobe.audit.read_pack(self.payloads['images/Avatar_images_im3.pack'])

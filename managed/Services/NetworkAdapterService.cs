@@ -4703,7 +4703,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         paymentMode,
                         itemCode,
                         purchase.NewQuantity,
-                        purchase.Success ? (byte)1 : (byte)0,
+                        purchase.Success && !catalogItem.IsNanaExchange ? (byte)1 : (byte)0,
                         purchase.Cash,
                         purchase.Hans),
                     session);
@@ -4835,7 +4835,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         (byte)paymentMode,
                         itemCode,
                         purchase.NewQuantity,
-                        purchase.Success ? (byte)1 : (byte)0,
+                        purchase.Success && !catalogItem.IsNanaExchange ? (byte)1 : (byte)0,
                         purchase.Cash,
                         purchase.Hans),
                     session);
@@ -5404,7 +5404,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 if (persisted)
                 {
                     await EnsureSessionStoryQuestAsync(session, token);
-                    _log($"{channel}:{remote} 已原子保存主线引导完成、出生点与宠物变体：petVariant={session.Character?.PetVariant ?? petVariant}");
+                    _log($"{channel}:{remote} 已原子保存主线引导完成、出生点、宠物与一次性普通钥匙奖励：petVariant={session.Character?.PetVariant ?? petVariant} normalKeys={session.Character?.CardSummonCount}");
                     AccountStateChanged?.Invoke();
                     var guideState = await _database.GetStoryGuideStateAsync(
                         session.AccountId, session.Character!.Id, session.SessionId, token);
@@ -5413,7 +5413,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         : null;
                 }
 
-                _log($"{channel}:{remote} 主线引导完成状态未保存：账号、角色或活动世界会话已失效");
+                _log($"{channel}:{remote} 主线引导完成状态未保存：账号、角色或活动世界会话已失效，或普通钥匙余额无法容纳完整奖励");
                 return null;
             }
 

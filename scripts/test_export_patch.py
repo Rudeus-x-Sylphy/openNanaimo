@@ -45,6 +45,15 @@ class ExportPatchTests(unittest.TestCase):
             with self.subTest(path=name), self.assertRaises(patch.ExportError):
                 patch.validated_closure(dict(count=1, files=[dict(path=name, size=0, sha256='0' * 64)]))
 
+    def test_pet_market_source_closure_is_exactly_scoped(self):
+        rows = [dict(path=name, size=0, sha256='0' * 64) for name in
+                ('scripts/prepare_pet_market.py', 'scripts/test_pet_market.py',
+                 'scripts/shop_catalog_order.py', 'scripts/prepare_shortcut_shop.py',
+                 'scripts/test_shortcut_shop.py')]
+        self.assertEqual(patch.validated_closure(dict(count=len(rows), files=rows)), rows)
+        with self.assertRaises(patch.ExportError):
+            patch.validated_closure(dict(count=1, files=[dict(path='scripts/prepare_pet_market_private.py', size=0, sha256='0' * 64)]))
+
     def test_l7_source_closure_inputs_are_exactly_scoped(self):
         names = ['scripts/audit_l7_combat_resources.py',
                  'scripts/generate_boss_contact_catalog.py',

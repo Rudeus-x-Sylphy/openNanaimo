@@ -14539,8 +14539,8 @@
   ],
   "policy": "Preserve the original 868 CN rows, growth, attacks, BOO and shared assets. All 122 imported pets use original Korean field1 level requirements (character cap 200); no level downscaling. Chinese names are project translations; panda theme names use source text and resource icons, not asserted official etymologies. Existing catalogs migrate only by exact reviewed catalog/row identities.",
   "installed_catalog": {
-    "size": 550496,
-    "sha256": "0388592ad03cae6025409410578d58f3276983e409a350033ae2b2613e6c906a"
+    "size": 551264,
+    "sha256": "e1308931f2f885404ff8546b1c67e4f087045f7438aa42c5896eceef03520168"
   },
   "catalog_migrations": [
     {
@@ -23510,6 +23510,23 @@
       },
       "row_replacements": [],
       "receipt_recipe_sha256": null
+    },
+    {
+      "before": {
+        "size": 550496,
+        "sha256": "0388592ad03cae6025409410578d58f3276983e409a350033ae2b2613e6c906a"
+      },
+      "receipt_recipe_sha256": "4a3f31e412c04ab2dacea3415c27d35397223fc418f605de5709e02a4609b444",
+      "row_replacements": []
+    },
+    {
+      "before": {
+        "size": 553536,
+        "sha256": "f7c4601b15cd0460a61626f7eac84d6bcee7fd9256f9037480438844ad97681f"
+      },
+      "receipt_recipe_sha256": "493d7b0428d5382153b096910e5b11905619f0ab025dca7571d2196ddf6979d2",
+      "row_replacements": [],
+      "shop_policy_upgrade": true
     }
   ],
   "client_string_capacities_including_nul": {
@@ -23542,5 +23559,9361 @@
       "localized_row_sha256": "52ba6e9061a2c679f28b6120fd5520656516cdc7862d9b7f5fe3264d74bed5d8",
       "durability_policy": "Project durability cap: 50; permanent expiry maintained independently"
     }
+  ],
+  "shop_price_overrides": [
+    {
+      "code": 15000001,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "0",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000002,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "0",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000003,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "0",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000004,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000005,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000006,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003322,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003323,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15001031,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003324,
+      "hans": 0,
+      "cash": 7000,
+      "reference": 15001065,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003325,
+      "hans": 0,
+      "cash": 78000,
+      "reference": 15001099,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003326,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003327,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003328,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003329,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003330,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003331,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003332,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15001031,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003333,
+      "hans": 0,
+      "cash": 7000,
+      "reference": 15001065,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003334,
+      "hans": 0,
+      "cash": 78000,
+      "reference": 15001099,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003335,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003336,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003337,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003338,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003339,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003340,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003341,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15001031,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003342,
+      "hans": 0,
+      "cash": 7000,
+      "reference": 15001065,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003343,
+      "hans": 0,
+      "cash": 78000,
+      "reference": 15001099,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003344,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003345,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003346,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003347,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003348,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003349,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003350,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15001031,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003351,
+      "hans": 0,
+      "cash": 7000,
+      "reference": 15001065,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003352,
+      "hans": 0,
+      "cash": 78000,
+      "reference": 15001099,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003353,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003354,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003355,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003356,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003357,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003362,
+      "hans": 0,
+      "cash": 2200,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003363,
+      "hans": 0,
+      "cash": 4500,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003364,
+      "hans": 0,
+      "cash": 5500,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003365,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003366,
+      "hans": 0,
+      "cash": 9900,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005004,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005005,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005006,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009002,
+      "hans": 0,
+      "cash": 75,
+      "reference": 15009017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009005,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15009095,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009007,
+      "hans": 0,
+      "cash": 140,
+      "reference": 15009022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009010,
+      "hans": 0,
+      "cash": 1050,
+      "reference": 15009100,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009012,
+      "hans": 0,
+      "cash": 300,
+      "reference": 15009027,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009015,
+      "hans": 0,
+      "cash": 1640,
+      "reference": 15009105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009018,
+      "hans": 0,
+      "cash": 144,
+      "reference": 15009003,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009019,
+      "hans": 0,
+      "cash": 340,
+      "reference": 15009004,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009020,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15009095,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009023,
+      "hans": 0,
+      "cash": 238,
+      "reference": 15009008,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009024,
+      "hans": 0,
+      "cash": 580,
+      "reference": 15009009,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009025,
+      "hans": 0,
+      "cash": 1050,
+      "reference": 15009100,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009028,
+      "hans": 0,
+      "cash": 560,
+      "reference": 15009013,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009029,
+      "hans": 0,
+      "cash": 1080,
+      "reference": 15009014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009030,
+      "hans": 0,
+      "cash": 1640,
+      "reference": 15009105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009048,
+      "hans": 0,
+      "cash": 128,
+      "reference": 15009033,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009050,
+      "hans": 0,
+      "cash": 420,
+      "reference": 15009035,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009053,
+      "hans": 0,
+      "cash": 236,
+      "reference": 15009038,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009055,
+      "hans": 0,
+      "cash": 690,
+      "reference": 15009040,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009058,
+      "hans": 0,
+      "cash": 480,
+      "reference": 15009043,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009060,
+      "hans": 0,
+      "cash": 1280,
+      "reference": 15009045,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009078,
+      "hans": 0,
+      "cash": 75,
+      "reference": 15009017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009079,
+      "hans": 0,
+      "cash": 75,
+      "reference": 15009017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009080,
+      "hans": 0,
+      "cash": 128,
+      "reference": 15009033,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009083,
+      "hans": 0,
+      "cash": 140,
+      "reference": 15009022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009084,
+      "hans": 0,
+      "cash": 140,
+      "reference": 15009022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009085,
+      "hans": 0,
+      "cash": 236,
+      "reference": 15009038,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009088,
+      "hans": 0,
+      "cash": 300,
+      "reference": 15009027,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009089,
+      "hans": 0,
+      "cash": 300,
+      "reference": 15009027,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009090,
+      "hans": 0,
+      "cash": 480,
+      "reference": 15009043,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009093,
+      "hans": 0,
+      "cash": 144,
+      "reference": 15009003,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009098,
+      "hans": 0,
+      "cash": 238,
+      "reference": 15009008,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009103,
+      "hans": 0,
+      "cash": 560,
+      "reference": 15009013,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009106,
+      "hans": 0,
+      "cash": 100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009107,
+      "hans": 0,
+      "cash": 2000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009108,
+      "hans": 0,
+      "cash": 4000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009109,
+      "hans": 0,
+      "cash": 6000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009110,
+      "hans": 0,
+      "cash": 25,
+      "reference": 15009001,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009113,
+      "hans": 0,
+      "cash": 128,
+      "reference": 15009033,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009114,
+      "hans": 0,
+      "cash": 280,
+      "reference": 15009034,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009115,
+      "hans": 0,
+      "cash": 766,
+      "reference": 15009269,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009118,
+      "hans": 0,
+      "cash": 236,
+      "reference": 15009038,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009119,
+      "hans": 0,
+      "cash": 510,
+      "reference": 15009039,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009120,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15009274,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009123,
+      "hans": 0,
+      "cash": 480,
+      "reference": 15009043,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009124,
+      "hans": 0,
+      "cash": 960,
+      "reference": 15009044,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009125,
+      "hans": 0,
+      "cash": 2888,
+      "reference": 15009279,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009131,
+      "hans": 0,
+      "cash": 340,
+      "reference": 15009004,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009133,
+      "hans": 0,
+      "cash": 766,
+      "reference": 15009269,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009139,
+      "hans": 0,
+      "cash": 580,
+      "reference": 15009009,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009141,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15009274,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009147,
+      "hans": 0,
+      "cash": 1080,
+      "reference": 15009014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009149,
+      "hans": 0,
+      "cash": 2888,
+      "reference": 15009279,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009152,
+      "hans": 0,
+      "cash": 420,
+      "reference": 15009035,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009153,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009156,
+      "hans": 0,
+      "cash": 690,
+      "reference": 15009040,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009157,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009160,
+      "hans": 0,
+      "cash": 1280,
+      "reference": 15009045,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009161,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009163,
+      "hans": 0,
+      "cash": 42,
+      "reference": 15009032,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009164,
+      "hans": 0,
+      "cash": 128,
+      "reference": 15009033,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009165,
+      "hans": 0,
+      "cash": 280,
+      "reference": 15009034,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009166,
+      "hans": 0,
+      "cash": 766,
+      "reference": 15009269,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009168,
+      "hans": 0,
+      "cash": 79,
+      "reference": 15009037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009169,
+      "hans": 0,
+      "cash": 236,
+      "reference": 15009038,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009170,
+      "hans": 0,
+      "cash": 510,
+      "reference": 15009039,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009171,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15009274,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009173,
+      "hans": 0,
+      "cash": 168,
+      "reference": 15009042,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009174,
+      "hans": 0,
+      "cash": 480,
+      "reference": 15009043,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009175,
+      "hans": 0,
+      "cash": 960,
+      "reference": 15009044,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009176,
+      "hans": 0,
+      "cash": 2888,
+      "reference": 15009279,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009178,
+      "hans": 0,
+      "cash": 75,
+      "reference": 15009017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009182,
+      "hans": 0,
+      "cash": 140,
+      "reference": 15009022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009186,
+      "hans": 0,
+      "cash": 300,
+      "reference": 15009027,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009189,
+      "hans": 0,
+      "cash": 42,
+      "reference": 15009032,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009191,
+      "hans": 0,
+      "cash": 144,
+      "reference": 15009003,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009192,
+      "hans": 0,
+      "cash": 192,
+      "reference": 15009130,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009193,
+      "hans": 0,
+      "cash": 766,
+      "reference": 15009269,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009194,
+      "hans": 0,
+      "cash": 79,
+      "reference": 15009037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009196,
+      "hans": 0,
+      "cash": 238,
+      "reference": 15009008,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009197,
+      "hans": 0,
+      "cash": 334,
+      "reference": 15009138,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009198,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15009274,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009199,
+      "hans": 0,
+      "cash": 168,
+      "reference": 15009042,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009201,
+      "hans": 0,
+      "cash": 560,
+      "reference": 15009013,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009202,
+      "hans": 0,
+      "cash": 720,
+      "reference": 15009146,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009203,
+      "hans": 0,
+      "cash": 2888,
+      "reference": 15009279,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009206,
+      "hans": 0,
+      "cash": 144,
+      "reference": 15009003,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009207,
+      "hans": 0,
+      "cash": 340,
+      "reference": 15009004,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009208,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009211,
+      "hans": 0,
+      "cash": 238,
+      "reference": 15009008,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009212,
+      "hans": 0,
+      "cash": 580,
+      "reference": 15009009,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009213,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009216,
+      "hans": 0,
+      "cash": 560,
+      "reference": 15009013,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009217,
+      "hans": 0,
+      "cash": 1080,
+      "reference": 15009014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009218,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009231,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009234,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009237,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009241,
+      "hans": 0,
+      "cash": 6000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009245,
+      "hans": 0,
+      "cash": 6000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009249,
+      "hans": 0,
+      "cash": 6000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009265,
+      "hans": 0,
+      "cash": 25,
+      "reference": 15009001,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009270,
+      "hans": 0,
+      "cash": 45,
+      "reference": 15009006,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009275,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15009011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009280,
+      "hans": 0,
+      "cash": 25,
+      "reference": 15009001,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009281,
+      "hans": 0,
+      "cash": 75,
+      "reference": 15009017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009282,
+      "hans": 0,
+      "cash": 192,
+      "reference": 15009130,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009283,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15009095,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009284,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009285,
+      "hans": 0,
+      "cash": 45,
+      "reference": 15009006,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009286,
+      "hans": 0,
+      "cash": 140,
+      "reference": 15009022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009287,
+      "hans": 0,
+      "cash": 334,
+      "reference": 15009138,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009288,
+      "hans": 0,
+      "cash": 1050,
+      "reference": 15009100,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009289,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009290,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15009011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009291,
+      "hans": 0,
+      "cash": 300,
+      "reference": 15009027,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009292,
+      "hans": 0,
+      "cash": 720,
+      "reference": 15009146,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009293,
+      "hans": 0,
+      "cash": 1640,
+      "reference": 15009105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009294,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009295,
+      "hans": 0,
+      "cash": 42,
+      "reference": 15009032,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009296,
+      "hans": 0,
+      "cash": 75,
+      "reference": 15009017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009297,
+      "hans": 0,
+      "cash": 144,
+      "reference": 15009003,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009298,
+      "hans": 0,
+      "cash": 420,
+      "reference": 15009035,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009299,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009300,
+      "hans": 0,
+      "cash": 79,
+      "reference": 15009037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009301,
+      "hans": 0,
+      "cash": 140,
+      "reference": 15009022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009302,
+      "hans": 0,
+      "cash": 238,
+      "reference": 15009008,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009303,
+      "hans": 0,
+      "cash": 690,
+      "reference": 15009040,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009304,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009305,
+      "hans": 0,
+      "cash": 168,
+      "reference": 15009042,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009306,
+      "hans": 0,
+      "cash": 300,
+      "reference": 15009027,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009307,
+      "hans": 0,
+      "cash": 560,
+      "reference": 15009013,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009308,
+      "hans": 0,
+      "cash": 1280,
+      "reference": 15009045,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009309,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009310,
+      "hans": 0,
+      "cash": 25,
+      "reference": 15009001,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009311,
+      "hans": 0,
+      "cash": 75,
+      "reference": 15009017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009312,
+      "hans": 0,
+      "cash": 192,
+      "reference": 15009130,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009313,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15009095,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009314,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009315,
+      "hans": 0,
+      "cash": 45,
+      "reference": 15009006,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009316,
+      "hans": 0,
+      "cash": 140,
+      "reference": 15009022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009317,
+      "hans": 0,
+      "cash": 334,
+      "reference": 15009138,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009318,
+      "hans": 0,
+      "cash": 1050,
+      "reference": 15009100,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009319,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009320,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15009011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009321,
+      "hans": 0,
+      "cash": 300,
+      "reference": 15009027,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009322,
+      "hans": 0,
+      "cash": 720,
+      "reference": 15009146,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009323,
+      "hans": 0,
+      "cash": 1640,
+      "reference": 15009105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009324,
+      "hans": 0,
+      "cash": 8100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009325,
+      "hans": 0,
+      "cash": 25,
+      "reference": 15009001,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009326,
+      "hans": 0,
+      "cash": 75,
+      "reference": 15009017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009327,
+      "hans": 0,
+      "cash": 192,
+      "reference": 15009130,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009328,
+      "hans": 0,
+      "cash": 766,
+      "reference": 15009269,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009329,
+      "hans": 0,
+      "cash": 45,
+      "reference": 15009006,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009330,
+      "hans": 0,
+      "cash": 140,
+      "reference": 15009022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009331,
+      "hans": 0,
+      "cash": 334,
+      "reference": 15009138,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009332,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15009274,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009333,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15009011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009334,
+      "hans": 0,
+      "cash": 300,
+      "reference": 15009027,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009335,
+      "hans": 0,
+      "cash": 720,
+      "reference": 15009146,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009336,
+      "hans": 0,
+      "cash": 2888,
+      "reference": 15009279,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009337,
+      "hans": 0,
+      "cash": 25,
+      "reference": 15009001,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009338,
+      "hans": 0,
+      "cash": 75,
+      "reference": 15009017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009339,
+      "hans": 0,
+      "cash": 144,
+      "reference": 15009003,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009340,
+      "hans": 0,
+      "cash": 420,
+      "reference": 15009035,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009341,
+      "hans": 0,
+      "cash": 766,
+      "reference": 15009269,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009342,
+      "hans": 0,
+      "cash": 45,
+      "reference": 15009006,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009343,
+      "hans": 0,
+      "cash": 140,
+      "reference": 15009022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009344,
+      "hans": 0,
+      "cash": 238,
+      "reference": 15009008,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009345,
+      "hans": 0,
+      "cash": 690,
+      "reference": 15009040,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009346,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15009274,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009347,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15009011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009348,
+      "hans": 0,
+      "cash": 300,
+      "reference": 15009027,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009349,
+      "hans": 0,
+      "cash": 560,
+      "reference": 15009013,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009350,
+      "hans": 0,
+      "cash": 1280,
+      "reference": 15009045,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009351,
+      "hans": 0,
+      "cash": 2888,
+      "reference": 15009279,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009352,
+      "hans": 0,
+      "cash": 1600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009353,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009354,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009355,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15009356,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    }
+  ],
+  "shop_price_retractions": [
+    {
+      "code": 15000007,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000008,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000009,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000010,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000011,
+      "hans": 0,
+      "cash": 310,
+      "reference": 15002007,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000012,
+      "hans": 0,
+      "cash": 310,
+      "reference": 15002007,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000013,
+      "hans": 0,
+      "cash": 310,
+      "reference": 15002007,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000014,
+      "hans": 0,
+      "cash": 400,
+      "reference": 15001017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000015,
+      "hans": 0,
+      "cash": 400,
+      "reference": 15001017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000016,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15002016,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000017,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15002016,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000018,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15002016,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000020,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000021,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000022,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15002022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000023,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15002022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000024,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15002022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000025,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000026,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000027,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15002022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000028,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15002022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000029,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15002022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000031,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15001031,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000032,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15001031,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000033,
+      "hans": 0,
+      "cash": 1200,
+      "reference": 15002033,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000034,
+      "hans": 0,
+      "cash": 1200,
+      "reference": 15002033,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000035,
+      "hans": 0,
+      "cash": 1200,
+      "reference": 15002033,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000037,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000038,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000039,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15002041,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000040,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15002041,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000041,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15002041,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000042,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000043,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000044,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15002041,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000045,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15002041,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000046,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15002041,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000048,
+      "hans": 0,
+      "cash": 1700,
+      "reference": 15001048,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000049,
+      "hans": 0,
+      "cash": 1700,
+      "reference": 15001048,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000050,
+      "hans": 0,
+      "cash": 2400,
+      "reference": 15002050,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000051,
+      "hans": 0,
+      "cash": 2400,
+      "reference": 15002050,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000052,
+      "hans": 0,
+      "cash": 2400,
+      "reference": 15002050,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000054,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000055,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000056,
+      "hans": 0,
+      "cash": 3000,
+      "reference": 15002056,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000057,
+      "hans": 0,
+      "cash": 3000,
+      "reference": 15002056,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000058,
+      "hans": 0,
+      "cash": 3000,
+      "reference": 15002056,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000059,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000060,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000061,
+      "hans": 0,
+      "cash": 3000,
+      "reference": 15002056,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000062,
+      "hans": 0,
+      "cash": 3000,
+      "reference": 15002056,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000063,
+      "hans": 0,
+      "cash": 3000,
+      "reference": 15002056,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000065,
+      "hans": 0,
+      "cash": 7000,
+      "reference": 15001065,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000066,
+      "hans": 0,
+      "cash": 7000,
+      "reference": 15001065,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000067,
+      "hans": 0,
+      "cash": 9900,
+      "reference": 15002067,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000068,
+      "hans": 0,
+      "cash": 9900,
+      "reference": 15002067,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000069,
+      "hans": 0,
+      "cash": 9900,
+      "reference": 15002067,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000071,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000072,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000073,
+      "hans": 0,
+      "cash": 19300,
+      "reference": 15002073,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000074,
+      "hans": 0,
+      "cash": 19300,
+      "reference": 15002073,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000075,
+      "hans": 0,
+      "cash": 19300,
+      "reference": 15002073,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000076,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000077,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000078,
+      "hans": 0,
+      "cash": 19300,
+      "reference": 15002073,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000079,
+      "hans": 0,
+      "cash": 19300,
+      "reference": 15002073,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000080,
+      "hans": 0,
+      "cash": 19300,
+      "reference": 15002073,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000082,
+      "hans": 0,
+      "cash": 32200,
+      "reference": 15001082,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000083,
+      "hans": 0,
+      "cash": 32200,
+      "reference": 15001082,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000084,
+      "hans": 0,
+      "cash": 46000,
+      "reference": 15002084,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000085,
+      "hans": 0,
+      "cash": 46000,
+      "reference": 15002084,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000086,
+      "hans": 0,
+      "cash": 46000,
+      "reference": 15002084,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000088,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000089,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000090,
+      "hans": 0,
+      "cash": 77000,
+      "reference": 15002090,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000091,
+      "hans": 0,
+      "cash": 77000,
+      "reference": 15002090,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000092,
+      "hans": 0,
+      "cash": 77000,
+      "reference": 15002090,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000093,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000094,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000095,
+      "hans": 0,
+      "cash": 77000,
+      "reference": 15002090,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000096,
+      "hans": 0,
+      "cash": 77000,
+      "reference": 15002090,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000097,
+      "hans": 0,
+      "cash": 77000,
+      "reference": 15002090,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000099,
+      "hans": 0,
+      "cash": 78000,
+      "reference": 15001099,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000100,
+      "hans": 0,
+      "cash": 78000,
+      "reference": 15001099,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000101,
+      "hans": 0,
+      "cash": 112000,
+      "reference": 15002101,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000102,
+      "hans": 0,
+      "cash": 112000,
+      "reference": 15002101,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000103,
+      "hans": 0,
+      "cash": 112000,
+      "reference": 15002101,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000105,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000106,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000107,
+      "hans": 0,
+      "cash": 128000,
+      "reference": 15002107,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000108,
+      "hans": 0,
+      "cash": 128000,
+      "reference": 15002107,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000109,
+      "hans": 0,
+      "cash": 128000,
+      "reference": 15002107,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000110,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000111,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000112,
+      "hans": 0,
+      "cash": 128000,
+      "reference": 15002107,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000113,
+      "hans": 0,
+      "cash": 128000,
+      "reference": 15002107,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000114,
+      "hans": 0,
+      "cash": 128000,
+      "reference": 15002107,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000116,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000117,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000118,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000119,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000120,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000122,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000123,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000124,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000125,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000126,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000127,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000128,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000129,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000130,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000131,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000132,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000133,
+      "hans": 0,
+      "cash": 400,
+      "reference": 15001017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000134,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000135,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000136,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15001031,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000137,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000138,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000139,
+      "hans": 0,
+      "cash": 1700,
+      "reference": 15001048,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000140,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000141,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000142,
+      "hans": 0,
+      "cash": 7000,
+      "reference": 15001065,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000143,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000144,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000145,
+      "hans": 0,
+      "cash": 32200,
+      "reference": 15001082,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000146,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000147,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000148,
+      "hans": 0,
+      "cash": 78000,
+      "reference": 15001099,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000149,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000150,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000151,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000152,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000153,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000154,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000155,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000156,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000157,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000158,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000159,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000160,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000161,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000162,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000163,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000164,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000165,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000166,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000167,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000168,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000169,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000170,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000171,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000172,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000173,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000174,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000175,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000176,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000177,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000178,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000179,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000180,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000181,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000182,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000183,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000184,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000185,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000186,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000187,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000188,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000189,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000190,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000191,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000192,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000193,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000194,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000195,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000196,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000197,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000198,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000199,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000200,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000201,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000202,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000203,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000204,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000205,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000206,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000207,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000208,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000209,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000210,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000211,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000212,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000213,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000214,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000215,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000216,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000217,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000218,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000219,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000220,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000221,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000222,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000223,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000224,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000225,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000226,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000227,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000228,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000229,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000230,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000231,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000232,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000233,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000234,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000235,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000236,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000237,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000238,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000239,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000240,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000241,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000242,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000243,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000244,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000245,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000246,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000247,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000248,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000249,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000250,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000251,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000252,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000253,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000254,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000255,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000256,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000257,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000258,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000259,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000260,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000261,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000262,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000263,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000264,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000265,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000266,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000267,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000268,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000269,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000270,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000271,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000272,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000273,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000274,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000275,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000276,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000277,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000278,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000279,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000280,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000281,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000282,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000283,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000284,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000285,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000286,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000287,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000288,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000289,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000290,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000291,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000292,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000293,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000294,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000295,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000296,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000297,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000298,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000299,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000300,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000301,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000302,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000303,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000304,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000305,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000306,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000307,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000308,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000309,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000310,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000311,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000312,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000313,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000314,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000315,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000316,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000317,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000318,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000319,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000320,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15000321,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001001,
+      "hans": 0,
+      "cash": 400,
+      "reference": 15001017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001002,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001003,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001004,
+      "hans": 0,
+      "cash": 1700,
+      "reference": 15001048,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001005,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001006,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001007,
+      "hans": 0,
+      "cash": 32200,
+      "reference": 15001082,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001008,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001009,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001010,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001116,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001154,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001172,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001178,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001184,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001190,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001208,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001214,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001220,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001226,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001232,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001238,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001244,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001250,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001256,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001262,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001268,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001274,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001280,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001286,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001292,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001298,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001304,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001310,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15001316,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002018,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15002016,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002024,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15002022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002118,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002124,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002129,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002157,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002163,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002169,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002175,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002181,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002187,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002193,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002199,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002205,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002211,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002217,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002223,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002229,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002235,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002241,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002247,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002253,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002259,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002265,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002271,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002277,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002283,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002289,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002295,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002301,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002307,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002313,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15002319,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003007,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003008,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003011,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003056,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003061,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003067,
+      "hans": 0,
+      "cash": 7000,
+      "reference": 15001065,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003073,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003078,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003084,
+      "hans": 0,
+      "cash": 32200,
+      "reference": 15001082,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003090,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003095,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003101,
+      "hans": 0,
+      "cash": 78000,
+      "reference": 15001099,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003107,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003112,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003118,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003124,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003129,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003157,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003163,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003169,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003175,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003181,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003187,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15003193,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15004018,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15004029,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15004041,
+      "hans": 0,
+      "cash": 100,
+      "reference": 15001011,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005007,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005008,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005009,
+      "hans": 0,
+      "cash": 220,
+      "reference": 15001014,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005014,
+      "hans": 0,
+      "cash": 400,
+      "reference": 15001017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005020,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005025,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005031,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15001031,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005037,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005042,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005048,
+      "hans": 0,
+      "cash": 1700,
+      "reference": 15001048,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005054,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005059,
+      "hans": 0,
+      "cash": 2100,
+      "reference": 15001054,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005065,
+      "hans": 0,
+      "cash": 7000,
+      "reference": 15001065,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005072,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005076,
+      "hans": 0,
+      "cash": 13500,
+      "reference": 15001072,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005082,
+      "hans": 0,
+      "cash": 32200,
+      "reference": 15001082,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005088,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005093,
+      "hans": 0,
+      "cash": 54000,
+      "reference": 15001088,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005099,
+      "hans": 0,
+      "cash": 78000,
+      "reference": 15001099,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005105,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005110,
+      "hans": 0,
+      "cash": 90000,
+      "reference": 15001105,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005116,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005122,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005127,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005154,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005160,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005166,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005172,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005178,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005184,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005190,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005196,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005202,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005208,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005214,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005220,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005226,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005232,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005238,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005244,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005250,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005256,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005262,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005268,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005274,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005280,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005286,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005292,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005298,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005304,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005310,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15005316,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006007,
+      "hans": 0,
+      "cash": 310,
+      "reference": 15002007,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006008,
+      "hans": 0,
+      "cash": 310,
+      "reference": 15002007,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006011,
+      "hans": 0,
+      "cash": 310,
+      "reference": 15002007,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006016,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15002016,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006022,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15002022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006027,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15002022,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006033,
+      "hans": 0,
+      "cash": 1200,
+      "reference": 15002033,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006041,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15002041,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006044,
+      "hans": 0,
+      "cash": 1500,
+      "reference": 15002041,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006050,
+      "hans": 0,
+      "cash": 2400,
+      "reference": 15002050,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006056,
+      "hans": 0,
+      "cash": 3000,
+      "reference": 15002056,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006061,
+      "hans": 0,
+      "cash": 3000,
+      "reference": 15002056,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006067,
+      "hans": 0,
+      "cash": 9900,
+      "reference": 15002067,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006073,
+      "hans": 0,
+      "cash": 19300,
+      "reference": 15002073,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006078,
+      "hans": 0,
+      "cash": 19300,
+      "reference": 15002073,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006084,
+      "hans": 0,
+      "cash": 46000,
+      "reference": 15002084,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006090,
+      "hans": 0,
+      "cash": 77000,
+      "reference": 15002090,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006095,
+      "hans": 0,
+      "cash": 77000,
+      "reference": 15002090,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006101,
+      "hans": 0,
+      "cash": 112000,
+      "reference": 15002101,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006107,
+      "hans": 0,
+      "cash": 128000,
+      "reference": 15002107,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006112,
+      "hans": 0,
+      "cash": 128000,
+      "reference": 15002107,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006118,
+      "hans": 0,
+      "cash": 3600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006124,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006129,
+      "hans": 0,
+      "cash": 110000,
+      "reference": 15001122,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006157,
+      "hans": 0,
+      "cash": 4100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006163,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006169,
+      "hans": 0,
+      "cash": 140000,
+      "reference": 15001160,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006175,
+      "hans": 0,
+      "cash": 4600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006181,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006187,
+      "hans": 0,
+      "cash": 4800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006193,
+      "hans": 0,
+      "cash": 5100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006199,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006205,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006211,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006217,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006223,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006229,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006235,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006241,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006247,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006253,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006259,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006265,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006271,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006277,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006283,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006289,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006295,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006301,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006307,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006313,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15006319,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007016,
+      "hans": 0,
+      "cash": 400,
+      "reference": 15001017,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007022,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007027,
+      "hans": 0,
+      "cash": 600,
+      "reference": 15001020,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007033,
+      "hans": 0,
+      "cash": 900,
+      "reference": 15001031,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007041,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007044,
+      "hans": 0,
+      "cash": 1100,
+      "reference": 15001037,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007050,
+      "hans": 0,
+      "cash": 1700,
+      "reference": 15001048,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007201,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007207,
+      "hans": 0,
+      "cash": 195000,
+      "reference": 15001196,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007213,
+      "hans": 0,
+      "cash": 5600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007219,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007225,
+      "hans": 0,
+      "cash": 5800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007231,
+      "hans": 0,
+      "cash": 6100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007237,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007243,
+      "hans": 0,
+      "cash": 6300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007249,
+      "hans": 0,
+      "cash": 6600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007255,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007261,
+      "hans": 0,
+      "cash": 6800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007267,
+      "hans": 0,
+      "cash": 7100,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007273,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007279,
+      "hans": 0,
+      "cash": 7300,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007285,
+      "hans": 0,
+      "cash": 7600,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007291,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007297,
+      "hans": 0,
+      "cash": 7800,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007303,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007309,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007315,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    },
+    {
+      "code": 15007321,
+      "hans": 0,
+      "cash": 8000,
+      "reference": null,
+      "original_flags": [
+        "1",
+        "0",
+        "0"
+      ]
+    }
+  ],
+  "catalog_source_order": [
+    15009250,
+    15009255,
+    15009260,
+    15009251,
+    15009256,
+    15009261,
+    15009252,
+    15009257,
+    15009262,
+    15009253,
+    15009258,
+    15009263,
+    15009254,
+    15009259,
+    15009264,
+    15009229,
+    15009232,
+    15009235,
+    15009230,
+    15009233,
+    15009236,
+    15009231,
+    15009234,
+    15009237,
+    15009266,
+    15009271,
+    15009276,
+    15009267,
+    15009272,
+    15009277,
+    15009268,
+    15009273,
+    15009278,
+    15009269,
+    15009274,
+    15009279,
+    15009238,
+    15009242,
+    15009246,
+    15009265,
+    15009270,
+    15009275,
+    15009046,
+    15009051,
+    15009056,
+    15009001,
+    15009006,
+    15009011,
+    15009110,
+    15009126,
+    15009134,
+    15009142,
+    15009106,
+    15009111,
+    15009116,
+    15009121,
+    15009177,
+    15009181,
+    15009185,
+    15009162,
+    15009167,
+    15009172,
+    15009076,
+    15009081,
+    15009086,
+    15009016,
+    15009021,
+    15009026,
+    15009031,
+    15009036,
+    15009041,
+    15009204,
+    15009209,
+    15009214,
+    15009091,
+    15009096,
+    15009101,
+    15009219,
+    15009220,
+    15009077,
+    15009082,
+    15009087,
+    15009062,
+    15009067,
+    15009072,
+    15009032,
+    15009037,
+    15009042,
+    15009061,
+    15009066,
+    15009071,
+    15009189,
+    15009194,
+    15009199,
+    15009127,
+    15009135,
+    15009143,
+    15009163,
+    15009168,
+    15009173,
+    15009112,
+    15009117,
+    15009122,
+    15009047,
+    15009052,
+    15009057,
+    15009150,
+    15009154,
+    15009158,
+    15009107,
+    15009239,
+    15009243,
+    15009247,
+    15009079,
+    15009084,
+    15009089,
+    15009092,
+    15009097,
+    15009102,
+    15009221,
+    15009222,
+    15009017,
+    15009022,
+    15009027,
+    15009190,
+    15009195,
+    15009200,
+    15009063,
+    15009068,
+    15009073,
+    15009128,
+    15009136,
+    15009144,
+    15009002,
+    15009007,
+    15009012,
+    15009178,
+    15009182,
+    15009186,
+    15009078,
+    15009083,
+    15009088,
+    15009205,
+    15009210,
+    15009215,
+    15009151,
+    15009155,
+    15009159,
+    15009223,
+    15009224,
+    15009048,
+    15009053,
+    15009058,
+    15009033,
+    15009038,
+    15009043,
+    15009064,
+    15009069,
+    15009074,
+    15009164,
+    15009169,
+    15009174,
+    15009129,
+    15009137,
+    15009145,
+    15009113,
+    15009118,
+    15009123,
+    15009080,
+    15009085,
+    15009090,
+    15009093,
+    15009098,
+    15009103,
+    15009065,
+    15009070,
+    15009075,
+    15009018,
+    15009023,
+    15009028,
+    15009003,
+    15009008,
+    15009013,
+    15009191,
+    15009196,
+    15009201,
+    15009179,
+    15009183,
+    15009187,
+    15009206,
+    15009211,
+    15009216,
+    15009108,
+    15009240,
+    15009244,
+    15009248,
+    15009225,
+    15009226,
+    15009130,
+    15009138,
+    15009146,
+    15009192,
+    15009197,
+    15009202,
+    15009114,
+    15009119,
+    15009124,
+    15009165,
+    15009170,
+    15009175,
+    15009049,
+    15009054,
+    15009059,
+    15009034,
+    15009039,
+    15009044,
+    15009207,
+    15009212,
+    15009217,
+    15009094,
+    15009099,
+    15009104,
+    15009227,
+    15009228,
+    15009004,
+    15009009,
+    15009014,
+    15009131,
+    15009139,
+    15009147,
+    15009019,
+    15009024,
+    15009029,
+    15009035,
+    15009040,
+    15009045,
+    15009050,
+    15009055,
+    15009060,
+    15009152,
+    15009156,
+    15009160,
+    15009180,
+    15009184,
+    15009188,
+    15009109,
+    15009241,
+    15009245,
+    15009249,
+    15009095,
+    15009100,
+    15009105,
+    15009005,
+    15009010,
+    15009015,
+    15009020,
+    15009025,
+    15009030,
+    15009132,
+    15009140,
+    15009148,
+    15009166,
+    15009171,
+    15009176,
+    15009193,
+    15009198,
+    15009203,
+    15009133,
+    15009141,
+    15009149,
+    15009115,
+    15009120,
+    15009125,
+    15009153,
+    15009157,
+    15009161,
+    15009208,
+    15009213,
+    15009218,
+    15001011,
+    15001012,
+    15001013,
+    15001065,
+    15001014,
+    15002067,
+    15002007,
+    15001072,
+    15001015,
+    15002073,
+    15002008,
+    15001076,
+    15001016,
+    15002078,
+    15002011,
+    15001082,
+    15001017,
+    15002084,
+    15002016,
+    15001088,
+    15001020,
+    15002090,
+    15002022,
+    15001093,
+    15001025,
+    15002095,
+    15002027,
+    15001099,
+    15001031,
+    15002101,
+    15002033,
+    15001105,
+    15001037,
+    15002107,
+    15002041,
+    15001110,
+    15001042,
+    15002112,
+    15002044,
+    15001122,
+    15001048,
+    15002124,
+    15002050,
+    15001127,
+    15001054,
+    15001160,
+    15002056,
+    15002163,
+    15001059,
+    15001166,
+    15002061,
+    15001178,
+    15001184,
+    15001196,
+    15001202,
+    15001214,
+    15001220,
+    15001232,
+    15001238,
+    15001244,
+    15001250,
+    15001256,
+    15001268,
+    15001274,
+    15001280,
+    15001286,
+    15001292,
+    15001298,
+    15001304,
+    15001310,
+    15001316,
+    15001004,
+    15001005,
+    15001006,
+    15001007,
+    15001008,
+    15001009,
+    15001010,
+    15000001,
+    15001001,
+    15001002,
+    15001003,
+    15000002,
+    15000003,
+    15000004,
+    15005004,
+    15000005,
+    15005005,
+    15000006,
+    15005006,
+    15000007,
+    15005007,
+    15003007,
+    15006007,
+    15000008,
+    15005008,
+    15003008,
+    15006008,
+    15000009,
+    15000010,
+    15000132,
+    15005009,
+    15003011,
+    15006011,
+    15000011,
+    15000012,
+    15000013,
+    15000014,
+    15000015,
+    15000133,
+    15005014,
+    15006016,
+    15007016,
+    15002018,
+    15004018,
+    15000016,
+    15000017,
+    15000018,
+    15000020,
+    15000021,
+    15000134,
+    15005020,
+    15006022,
+    15007022,
+    15002024,
+    15000022,
+    15000023,
+    15000024,
+    15000025,
+    15000026,
+    15000135,
+    15005025,
+    15006027,
+    15007027,
+    15004029,
+    15000027,
+    15000028,
+    15000029,
+    15000031,
+    15000032,
+    15000136,
+    15005031,
+    15006033,
+    15007033,
+    15000033,
+    15000034,
+    15000035,
+    15000037,
+    15000038,
+    15000137,
+    15005037,
+    15006041,
+    15007041,
+    15000039,
+    15004041,
+    15000040,
+    15000041,
+    15000042,
+    15000043,
+    15000138,
+    15005042,
+    15006044,
+    15007044,
+    15000044,
+    15000045,
+    15000046,
+    15000048,
+    15000049,
+    15000139,
+    15005048,
+    15006050,
+    15007050,
+    15000050,
+    15000051,
+    15000052,
+    15000054,
+    15000055,
+    15000140,
+    15005054,
+    15003056,
+    15006056,
+    15000056,
+    15000057,
+    15000058,
+    15000059,
+    15000060,
+    15000141,
+    15005059,
+    15003061,
+    15006061,
+    15000061,
+    15000062,
+    15000063,
+    15000065,
+    15000066,
+    15000142,
+    15005065,
+    15003067,
+    15006067,
+    15000067,
+    15000068,
+    15000069,
+    15000071,
+    15000072,
+    15000143,
+    15005072,
+    15003073,
+    15006073,
+    15000073,
+    15000074,
+    15000075,
+    15000076,
+    15000077,
+    15000144,
+    15005076,
+    15003078,
+    15006078,
+    15000078,
+    15000079,
+    15000080,
+    15000082,
+    15000083,
+    15000145,
+    15005082,
+    15003084,
+    15006084,
+    15000084,
+    15000085,
+    15000086,
+    15000088,
+    15000089,
+    15000146,
+    15005088,
+    15003090,
+    15006090,
+    15000090,
+    15000091,
+    15000092,
+    15000093,
+    15000094,
+    15000147,
+    15005093,
+    15003095,
+    15006095,
+    15000095,
+    15000096,
+    15000097,
+    15000099,
+    15000100,
+    15000148,
+    15005099,
+    15003101,
+    15006101,
+    15000101,
+    15000102,
+    15000103,
+    15000105,
+    15000106,
+    15000149,
+    15005105,
+    15003107,
+    15006107,
+    15000107,
+    15000108,
+    15000109,
+    15000110,
+    15000111,
+    15000150,
+    15005110,
+    15003112,
+    15006112,
+    15000112,
+    15000113,
+    15000114,
+    15000116,
+    15000117,
+    15000151,
+    15001116,
+    15005116,
+    15006118,
+    15002118,
+    15003118,
+    15000118,
+    15000119,
+    15000120,
+    15000122,
+    15000123,
+    15000152,
+    15005122,
+    15003124,
+    15006124,
+    15000124,
+    15000125,
+    15000126,
+    15000127,
+    15000128,
+    15000153,
+    15005127,
+    15006129,
+    15002129,
+    15003129,
+    15000129,
+    15000130,
+    15000131,
+    15000154,
+    15000155,
+    15000156,
+    15000157,
+    15000158,
+    15000159,
+    15005154,
+    15001154,
+    15006157,
+    15002157,
+    15003157,
+    15000160,
+    15000161,
+    15000162,
+    15000163,
+    15000164,
+    15000165,
+    15005160,
+    15006163,
+    15003163,
+    15000166,
+    15000167,
+    15000168,
+    15000169,
+    15000170,
+    15000171,
+    15005166,
+    15006169,
+    15002169,
+    15003169,
+    15000172,
+    15000173,
+    15000174,
+    15000175,
+    15000176,
+    15000177,
+    15001172,
+    15005172,
+    15006175,
+    15002175,
+    15003175,
+    15000178,
+    15000179,
+    15000180,
+    15000181,
+    15000182,
+    15000183,
+    15005178,
+    15003181,
+    15006181,
+    15002181,
+    15000184,
+    15000185,
+    15000186,
+    15000187,
+    15000188,
+    15000189,
+    15005184,
+    15002187,
+    15003187,
+    15006187,
+    15000190,
+    15000191,
+    15000192,
+    15000193,
+    15000194,
+    15000195,
+    15001190,
+    15005190,
+    15002193,
+    15003193,
+    15006193,
+    15000196,
+    15000197,
+    15000198,
+    15000199,
+    15000200,
+    15000201,
+    15005196,
+    15006199,
+    15002199,
+    15007201,
+    15000202,
+    15000203,
+    15000204,
+    15000205,
+    15000206,
+    15000207,
+    15005202,
+    15002205,
+    15006205,
+    15007207,
+    15000208,
+    15000209,
+    15000210,
+    15000211,
+    15000212,
+    15000213,
+    15001208,
+    15005208,
+    15002211,
+    15006211,
+    15007213,
+    15000214,
+    15000215,
+    15000216,
+    15000217,
+    15000218,
+    15000219,
+    15005214,
+    15006217,
+    15002217,
+    15007219,
+    15000220,
+    15000221,
+    15000222,
+    15000223,
+    15000224,
+    15000225,
+    15005220,
+    15002223,
+    15006223,
+    15007225,
+    15000226,
+    15000227,
+    15000228,
+    15000229,
+    15000230,
+    15000231,
+    15001226,
+    15005226,
+    15002229,
+    15006229,
+    15007231,
+    15000232,
+    15000233,
+    15000234,
+    15000235,
+    15000236,
+    15000237,
+    15005232,
+    15006235,
+    15002235,
+    15007237,
+    15000238,
+    15000239,
+    15000240,
+    15000241,
+    15000242,
+    15000243,
+    15005238,
+    15002241,
+    15006241,
+    15007243,
+    15000244,
+    15000245,
+    15000246,
+    15000247,
+    15000248,
+    15000249,
+    15005244,
+    15006247,
+    15002247,
+    15007249,
+    15000250,
+    15000251,
+    15000252,
+    15000253,
+    15000254,
+    15000255,
+    15005250,
+    15002253,
+    15006253,
+    15007255,
+    15000256,
+    15000257,
+    15000258,
+    15000259,
+    15000260,
+    15000261,
+    15005256,
+    15006259,
+    15002259,
+    15007261,
+    15000262,
+    15000263,
+    15000264,
+    15000265,
+    15000266,
+    15000267,
+    15005262,
+    15001262,
+    15006265,
+    15002265,
+    15007267,
+    15000268,
+    15000269,
+    15000270,
+    15000271,
+    15000272,
+    15000273,
+    15005268,
+    15002271,
+    15006271,
+    15007273,
+    15000274,
+    15000275,
+    15000276,
+    15000277,
+    15000278,
+    15000279,
+    15005274,
+    15006277,
+    15002277,
+    15007279,
+    15000280,
+    15000281,
+    15000282,
+    15000283,
+    15000284,
+    15000285,
+    15005280,
+    15002283,
+    15006283,
+    15007285,
+    15000286,
+    15000287,
+    15000288,
+    15000289,
+    15000290,
+    15000291,
+    15005286,
+    15006289,
+    15002289,
+    15007291,
+    15000292,
+    15000293,
+    15000294,
+    15000295,
+    15000296,
+    15000297,
+    15005292,
+    15002295,
+    15006295,
+    15007297,
+    15000298,
+    15000299,
+    15000300,
+    15000301,
+    15000302,
+    15000303,
+    15005298,
+    15006301,
+    15002301,
+    15007303,
+    15000304,
+    15000305,
+    15000306,
+    15000307,
+    15000308,
+    15000309,
+    15005304,
+    15002307,
+    15006307,
+    15007309,
+    15000310,
+    15000311,
+    15000312,
+    15000313,
+    15000314,
+    15000315,
+    15005310,
+    15006313,
+    15002313,
+    15007315,
+    15000316,
+    15000317,
+    15000318,
+    15000319,
+    15000320,
+    15000321,
+    15005316,
+    15002319,
+    15006319,
+    15007321,
+    15003361,
+    15003340,
+    15003341,
+    15003342,
+    15003343,
+    15003344,
+    15003345,
+    15003346,
+    15003347,
+    15003348,
+    15003349,
+    15003350,
+    15003351,
+    15003352,
+    15003353,
+    15003354,
+    15003355,
+    15003356,
+    15003357,
+    15009337,
+    15009338,
+    15009339,
+    15009340,
+    15009341,
+    15009342,
+    15009343,
+    15009344,
+    15009345,
+    15009346,
+    15003362,
+    15009347,
+    15003363,
+    15009348,
+    15003364,
+    15009349,
+    15003365,
+    15009350,
+    15003366,
+    15009351,
+    15009352,
+    15009353,
+    15009354,
+    15009355,
+    15009356,
+    15009325,
+    15009326,
+    15009327,
+    15009328,
+    15009329,
+    15009330,
+    15009331,
+    15009332,
+    15009333,
+    15009334,
+    15009335,
+    15009336,
+    15009310,
+    15009315,
+    15009320,
+    15009311,
+    15009316,
+    15009321,
+    15009312,
+    15009317,
+    15009322,
+    15009313,
+    15009318,
+    15009323,
+    15009314,
+    15009319,
+    15009324,
+    15009295,
+    15009300,
+    15009305,
+    15009296,
+    15009301,
+    15009306,
+    15009297,
+    15009302,
+    15009307,
+    15009298,
+    15009303,
+    15009308,
+    15009299,
+    15009304,
+    15009309,
+    15009280,
+    15009285,
+    15009290,
+    15009281,
+    15009286,
+    15009291,
+    15009282,
+    15009287,
+    15009292,
+    15009283,
+    15009288,
+    15009293,
+    15009284,
+    15009289,
+    15009294,
+    15003322,
+    15003331,
+    15003323,
+    15003332,
+    15003324,
+    15003333,
+    15003325,
+    15003334,
+    15003326,
+    15003335,
+    15003327,
+    15003336,
+    15003328,
+    15003337,
+    15003329,
+    15003338,
+    15003330,
+    15003339,
+    15003358,
+    15003359,
+    15003360
   ]
 }

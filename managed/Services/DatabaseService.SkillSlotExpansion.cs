@@ -27,6 +27,7 @@ public sealed partial class DatabaseService
             || !ShopCatalog.TryGet(itemCode, out var catalogItem)
             || catalogItem.Section != InventorySection.GameItem
             || catalogItem.Category != 44
+            || catalogItem.IsNanaExchange
             || catalogItem.InventoryExpansionType > 6
             || catalogItem.DurationDays == 0)
             return (false, "Invalid inventory-expansion request.", 0, 0);

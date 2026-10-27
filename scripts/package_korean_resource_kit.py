@@ -16,17 +16,20 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ('package_korean_resource_kit.py', 'port_lumineos_resources.py',
          'lumineos_codec.py', 'lumineos_scenes.py', 'dungeon7_visuals.py',
          'prepare_client_compatibility.py', 'apartment_exterior_panel.py',
+         'dungeon_cinematics.py', 'cinematic_codec.py',
          'dungeon_experience_compat.py', 'dungeon_result_compat.py', 'entertainment_mode_compat.py',
          'entertainment_room_compat.py',
          'entertainment_result_compat.py', 'arena_result_compat.py',
-         'player_trade_compat.py', 'level200_compat.py',
+         'player_trade_compat.py', 'level200_compat.py', 'nana_exchange_compat.py',
          'monk_dialogue_compat.py', 'monk_village_compat.py', 'prepare_monk_dialogue.py',
          'chapter_dialogue_patch.py', 'story_qt_patch.py',
          'prepare_story_port.py', 'prepare_story_catalog.py', 'audit_story_localization.py',
          'generate_inventory_card_catalog.py',
          'monk_ranking_resources.py',
          'prepare_monk_entry.py', 'prepare_monk_village_entries.py', 'prepare_monk_resources.py',
-         'prepare_hero_dragon.py', 'prepare_korean_pets.py', 'verify_knowledge.py')
+         'prepare_hero_dragon.py', 'prepare_korean_pets.py', 'prepare_pet_market.py',
+         'shop_catalog_order.py', 'prepare_shortcut_shop.py',
+         'prepare_clover_descriptions.py', 'prepare_nana_exchange.py', 'verify_knowledge.py')
 RECIPES = ('hero_dragon_resources.json', 'korean_pet_resources.json', 'lumineos_resource_port.json')
 COMPATIBILITY_RECIPES = ('monk_dialogue_resources.json', 'monk_localization.json',
                          'monk_resource_port.json', 'story_localization.json',
@@ -241,6 +244,39 @@ def build(source, bundle, output):
         Path(tmp).unlink(missing_ok=True)
 
 
+def refresh(archive, output):
+    """Retain reviewed source assets and original guides while refreshing policy."""
+    verify(archive)
+    output = Path(output).resolve()
+    if output.exists() or output.with_suffix('.zip.sha256').exists() or output == Path(archive).resolve():
+        raise ValueError('Choose a fresh output archive')
+    replacements = {'scripts/' + name: (ROOT / 'scripts' / name).read_bytes() for name in TOOLS}
+    replacements.update({'manifest/' + name: (ROOT / 'manifest' / name).read_bytes()
+                         for name in (*RECIPES, *COMPATIBILITY_RECIPES)})
+    replacements.update({name: (ROOT / name).read_bytes() for name in CHAPTER_FILES})
+    replacements['resource-inventory.tsv'] = inventory()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive) as source, zipfile.ZipFile(output, 'x', zipfile.ZIP_DEFLATED) as target:
+        index = json.loads(source.read('kit-manifest.json'))
+        records = {row['path']: row for row in index['files']}
+        for name in sorted(set(source.namelist()) | set(replacements)):
+            if name == 'kit-manifest.json':
+                continue
+            raw = replacements.get(name)
+            if raw is None:
+                raw = source.read(name)
+            info = zipfile.ZipInfo(name, (2026, 10, 26, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o100644 << 16
+            target.writestr(info, raw)
+            records[name] = dict(path=name, size=len(raw), sha256=port.digest(raw))
+        index['files'] = [records[name] for name in sorted(records)]
+        target.writestr('kit-manifest.json', port.encoded(index))
+    result = verify(output)
+    output.with_suffix('.zip.sha256').write_text(port.digest(output.read_bytes()) + '  ' + output.name + '\n', encoding='ascii')
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -250,6 +286,9 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p = commands.add_parser('verify')
     p.add_argument('--archive', type=Path, required=True)
+    p = commands.add_parser('refresh')
+    p.add_argument('--archive', type=Path, required=True)
+    p.add_argument('--output', type=Path, required=True)
     args = vars(parser.parse_args())
     command = args.pop('command')
     try:

@@ -187,6 +187,11 @@ static async Task RunAsync(string[] args)
         await ShopCurrencyRoutingChecks.RunAsync();
         return;
     }
+    if (args.Contains("--nana-exchange-self-test"))
+    {
+        await ShopCurrencyRoutingChecks.RunAsync("exchange");
+        return;
+    }
     if (args.Contains("--shop-owned-state-self-test"))
     {
         await ShopCurrencyRoutingChecks.RunAsync("owned-state");

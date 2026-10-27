@@ -13,6 +13,7 @@ import re
 import struct
 import uuid
 import shop_icon_origins as icon_origins
+import shop_catalog_order as ordering
 
 import audit_korean_wardrobe_interior as audit
 import prepare_hero_dragon as crypto
@@ -64,6 +65,7 @@ def pack_bytes(records):
 
 def catalog_bytes(kind, header, rows):
     from Crypto.Cipher import AES
+    tail = getattr(header, 'tail', audit.CATALOGS[kind][-1])
     header = header.copy()
     header[2] = str(len(rows))
     if kind == 'clothing':
@@ -79,7 +81,6 @@ def catalog_bytes(kind, header, rows):
         next(iter(rows.values()))[0] = str(sale_count)
     elif kind == 'furniture':
         header[3] = str(sum(int(row[3]) != 0 for row in rows.values()))
-    tail = audit.CATALOGS[kind][-1]
     raw = '#'.join(header + [s for row in rows.values() for s in row] + tail).encode('gbk')
     padding = 16 - len(raw) % 16
     result = AES.new(crypto.CN_KEY, AES.MODE_CBC, bytes(16)).encrypt(raw + bytes([padding])*padding)
@@ -220,6 +221,8 @@ def prepare(source, client, output):
         pricing[kind] = dict(Counter(x['currency'] for x in reviewed))
         catalogs[kind] = result
         payloads[name] = catalog_bytes(kind,header,result)
+        if kind == 'clothing':
+            payloads[name] = ordering.order_avatar(payloads[name])
     # Validate every icon and every added clothing bitmap, not just a contact sheet.
     import sys
     sys.path.insert(0,str(ROOT/'gui_launcher'))

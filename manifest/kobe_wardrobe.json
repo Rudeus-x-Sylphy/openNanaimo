@@ -73,8 +73,14 @@
       },
       "after": {
         "size": 976160,
-        "sha256": "2b25bb595c8948fe2fb632314ef12f72c6694788ae93d318992e58bcd6a60805"
-      }
+        "sha256": "b7780ae88688637f8d64316bfc1e43a605711026d8b22aa577eb7ba5068ec3e4"
+      },
+      "upgrade_from": [
+        {
+          "size": 976160,
+          "sha256": "2b25bb595c8948fe2fb632314ef12f72c6694788ae93d318992e58bcd6a60805"
+        }
+      ]
     },
     "effs/a_ef/950905_kobe_mamba_out.eff": {
       "before": {

@@ -6,6 +6,38 @@ from unittest.mock import patch
 import deploy_pet_catalog_update as d
 
 class DeploymentTests(unittest.TestCase):
+    def paired_fixture(self):
+        names=('gi._D6','IE._D23','ava._D1')
+        data={'adapter_runtime/资源/数据/'+n:(d.ROOT/'adapter_runtime/资源/数据'/n).read_bytes() for n in names}
+        data['manifest/korean_wardrobe_resources.json']=(d.ROOT/'manifest/korean_wardrobe_resources.json').read_bytes()
+        manifest={'critical_files':{n:d.pets.identity(raw) for n,raw in data.items()}}
+        for name in names:
+            (self.root/name).write_bytes(data['adapter_runtime/资源/数据/'+name])
+        return names,data,manifest
+
+    def test_client_catalogs_are_paired_and_idempotent(self):
+        names,data,manifest=self.paired_fixture()
+        d.paired_catalogs(self.root,data,manifest)
+        for name in names:
+            self.assertEqual(data[name],data['adapter_runtime/资源/数据/'+name])
+        before=data.copy()
+        d.paired_catalogs(self.root,data,manifest)
+        self.assertEqual(data,before)
+
+    def test_unknown_root_catalog_is_rejected_before_writing(self):
+        _,data,manifest=self.paired_fixture()
+        path=self.root/'gi._D6'
+        path.write_bytes(b'custom catalog')
+        with self.assertRaisesRegex(ValueError,'Unrecognized installed catalog'):
+            d.paired_catalogs(self.root,data,manifest)
+        self.assertEqual(path.read_bytes(),b'custom catalog')
+
+    def test_transformation_must_match_the_paired_release(self):
+        _,data,manifest=self.paired_fixture()
+        with patch.object(d.clover,'merge',return_value=b'other release'):
+            with self.assertRaisesRegex(ValueError,'differs from paired release'):
+                d.paired_catalogs(self.root,data,manifest)
+
     def test_new_target_requires_exact_reviewed_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'check.py';path.write_bytes(b'old')

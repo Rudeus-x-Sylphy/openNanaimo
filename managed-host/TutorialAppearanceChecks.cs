@@ -85,6 +85,8 @@ internal static class TutorialAppearanceChecks
                 Check(await Send(service, session, 0xC353, wrongIdentity) is null, "wrong guide identity rejected");
                 Check(!(await db.GetCharacterAsync(character.AccountId))!.TutorialCompleted,
                     "invalid guide messages never bypass tutorial");
+                Check((await db.GetCharacterAsync(character.AccountId))!.CardSummonCount == character.CardSummonCount,
+                    "invalid guide messages never grant tutorial keys");
                 var ready = (await Send(service, session, 0xC353, guide))!;
                 Check(ready.Length == 12 && Opcodes(ready).SequenceEqual(new ushort[] { 0xC594 })
                     && Read(ready, 8) == 0,
@@ -93,6 +95,13 @@ internal static class TutorialAppearanceChecks
                 Check(completed.TutorialCompleted && completed.Appearance.SequenceEqual(stored)
                     && completed.EquippedPetItemCode == 15009205 && inventory.All(Owned(completed).Contains),
                     "completion preserves deferred loadout, pet and all owned equipment");
+                Check(completed.CardSummonCount == character.CardSummonCount + 19,
+                    "C353 completion adds exactly 19 normal keys to the persisted counter");
+                var summon = Frame((await Send(service, session, 0xC3E9, []))!, 0xC3EA);
+                var cards = Frame((await Send(service, session, 0xC3E7, [10, 0, 1, 0]))!, 0xC3E8);
+                Check(summon.Length == 20 && summon[9] == completed.CardSummonCount
+                    && cards[64] == completed.CardSummonCount,
+                    "request-driven C3EA and C3E8 expose the tutorial key balance");
                 byte[] expected = DatabaseService.NormalizeAppearanceForGender(stored, gender, 15009205);
                 var village = (await Send(service, session, 0xC354, []))!;
                 var villageReady = Frame(village, 0xC594);
@@ -130,16 +139,21 @@ internal static class TutorialAppearanceChecks
                 var afterRepeat = (await db.GetCharacterAsync(character.AccountId))!;
                 Check(Owned(afterRepeat).SequenceEqual(Owned(beforeRepeat))
                     && afterRepeat.Appearance.SequenceEqual(stored), "duplicate completion cannot duplicate or clear equipment");
+                Check(afterRepeat.CardSummonCount == completed.CardSummonCount,
+                    "duplicate C353 never repeats the normal-key reward");
                 var disconnect = typeof(NetworkAdapterService).GetMethod("TrackDisconnectedAsync", PrivateInstance)!;
                 await (Task)disconnect.Invoke(service, [session])!;
                 var relog = await db.ImportLocalProfileAsync(profile, root);
                 var context = LoginPayload(NewSession(relog));
                 Check(relog.TutorialCompleted && context[5] == 0 && context[6] == 2
                     && context.AsSpan(24, 36).SequenceEqual(expected), "completed relogin immediately restores configured appearance");
+                Check(relog.CardSummonCount == completed.CardSummonCount,
+                    "relogin and profile reimport preserve the tutorial key balance");
                 Check(await File.ReadAllTextAsync(profilePath) == profile && await File.ReadAllTextAsync(sidecarPath) == preservedLegacy
                     && Encoding.UTF8.GetString(new PersistentStateStore(db.DatabasePath).Read(sidecarPath)!) == sidecar,
                     "INI and sidecar are unchanged throughout tutorial lifecycle");
             }
+            await CheckTutorialKeyTransactionAsync(db, root);
             EquipmentInitializationChecks.Run(service);
             Console.WriteLine("TUTORIAL_APPEARANCE_CHECKS_PASS cases=8 plus no-character; host construction only");
         }
@@ -151,6 +165,118 @@ internal static class TutorialAppearanceChecks
                 && Directory.Exists(root))
                 Directory.Delete(root, recursive: true);
         }
+    }
+
+    private static async Task CheckTutorialKeyTransactionAsync(DatabaseService db, string root)
+    {
+        async Task Execute(string sql, long id)
+        {
+            await using var connection = new SqliteConnection($"Data Source={db.DatabasePath}");
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("$id", id);
+            await command.ExecuteNonQueryAsync();
+        }
+        async Task<(CharacterRecord Character, string Session)> Create(string name, int keys)
+        {
+            var profile = $"version=2\nname_hex={Convert.ToHexString(Encoding.ASCII.GetBytes(name))}\ngender=1\nlevel=1\n";
+            var character = await db.ImportLocalProfileAsync(profile, root);
+            var session = Guid.NewGuid().ToString("N");
+            Check(await db.BeginWorldSessionAsync(character.AccountId, character.Id, session, 1, "127.0.0.1"),
+                "tutorial reward fixture owns an active world session");
+            await Execute("UPDATE Characters SET CardSummonCount=" + keys
+                + ",CardGoldenKeyCount=3,CardMysteryKeyCount=4 WHERE Id=$id", character.Id);
+            return (character, session);
+        }
+
+        foreach (var keys in new[] { 0, 7, 236 })
+        {
+            var (character, session) = await Create("KeyReward" + keys, keys);
+            var results = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => Task.Run(
+                () => db.MarkTutorialCompletedAsync(character.AccountId, character.Id, session, 1))));
+            var saved = (await db.GetCharacterAsync(character.AccountId))!;
+            Check(results.All(result => result) && saved.TutorialCompleted && saved.CardSummonCount == keys + 19
+                && saved.CardGoldenKeyCount == 3 && saved.CardMysteryKeyCount == 4
+                && !saved.Items.Any(item => item.ItemCode / 1_000_000u == 47),
+                $"concurrent completion at {keys} keys grants exactly 19 without inventory key items or other-key changes");
+            await Execute("UPDATE Characters SET CardSummonCount=CardSummonCount-1 WHERE Id=$id", character.Id);
+            Check(await db.MarkTutorialCompletedAsync(character.AccountId, character.Id, session, 3)
+                && (await db.GetCharacterAsync(character.AccountId))!.CardSummonCount == keys + 18,
+                "database replay after spending a key neither refills nor repeats the reward");
+            var reopened = new DatabaseService(root);
+            await reopened.InitializeAsync();
+            Check((await reopened.GetCharacterAsync(character.AccountId))!.CardSummonCount == keys + 18,
+                "database reinitialization does not migrate tutorial keys into mystery keys or grant again");
+        }
+
+        var (guarded, activeSession) = await Create("KeyGuard", 0);
+        foreach (var request in new[]
+        {
+            (guarded.AccountId, guarded.Id, "stale-session"),
+            (guarded.AccountId + 1, guarded.Id, activeSession),
+            (guarded.AccountId, guarded.Id + 1, activeSession)
+        })
+            Check(!await db.MarkTutorialCompletedAsync(request.Item1, request.Item2, request.Item3, 1),
+                "wrong identity or stale session cannot claim tutorial keys");
+        await Execute("UPDATE Accounts SET IsOnline=0 WHERE Id=$id", guarded.AccountId);
+        Check(!await db.MarkTutorialCompletedAsync(guarded.AccountId, guarded.Id, activeSession, 1),
+            "offline account cannot claim tutorial keys");
+        await Execute("UPDATE Accounts SET IsOnline=1 WHERE Id=$id", guarded.AccountId);
+        await Execute("UPDATE Characters SET IsOnline=0 WHERE Id=$id", guarded.Id);
+        Check(!await db.MarkTutorialCompletedAsync(guarded.AccountId, guarded.Id, activeSession, 1),
+            "offline character cannot claim tutorial keys");
+        await Execute("UPDATE Characters SET IsOnline=1 WHERE Id=$id", guarded.Id);
+        Check(!(await db.GetCharacterAsync(guarded.AccountId))!.TutorialCompleted
+            && (await db.GetCharacterAsync(guarded.AccountId))!.CardSummonCount == 0,
+            "rejected authorization attempts leave completion and balance unchanged");
+
+        await Execute("CREATE TRIGGER RejectTutorialPet BEFORE INSERT ON CharacterItems WHEN NEW.CharacterId="
+            + guarded.Id + " BEGIN SELECT RAISE(ABORT,'tutorial rollback probe'); END", guarded.Id);
+        try
+        {
+            await db.MarkTutorialCompletedAsync(guarded.AccountId, guarded.Id, activeSession, 1);
+            throw new InvalidDataException("Expected tutorial pet write failure");
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        {
+            var rolledBack = (await db.GetCharacterAsync(guarded.AccountId))!;
+            Check(!rolledBack.TutorialCompleted && rolledBack.CardSummonCount == 0
+                && rolledBack.PetVariant == guarded.PetVariant && rolledBack.CurrentMapId == guarded.CurrentMapId
+                && rolledBack.Items.Count == guarded.Items.Count,
+                "later pet write failure rolls back tutorial status, keys, pet and position together");
+        }
+        await Execute("DROP TRIGGER RejectTutorialPet", guarded.Id);
+        Check(await db.MarkTutorialCompletedAsync(guarded.AccountId, guarded.Id, activeSession, 1)
+            && (await db.GetCharacterAsync(guarded.AccountId))!.CardSummonCount == 19,
+            "retry after rollback grants the full reward once");
+
+        var (full, fullSession) = await Create("KeyFull", 237);
+        Check(!await db.MarkTutorialCompletedAsync(full.AccountId, full.Id, fullSession, 1),
+            "insufficient key capacity rejects the entire completion without clamping");
+        var unchanged = (await db.GetCharacterAsync(full.AccountId))!;
+        Check(!unchanged.TutorialCompleted && unchanged.CardSummonCount == 237,
+            "capacity failure leaves tutorial retryable and balance unchanged");
+        await Execute("UPDATE Characters SET CardSummonCount=236 WHERE Id=$id", full.Id);
+        Check(await db.MarkTutorialCompletedAsync(full.AccountId, full.Id, fullSession, 1)
+            && (await db.GetCharacterAsync(full.AccountId))!.CardSummonCount == 255,
+            "exact-capacity retry grants all 19 keys");
+
+        var (legacy, legacySession) = await Create("KeyLegacy", 0);
+        await Execute("UPDATE Characters SET TutorialCompleted=1 WHERE Id=$id", legacy.Id);
+        Check(await db.MarkTutorialCompletedAsync(legacy.AccountId, legacy.Id, legacySession, 1)
+            && (await db.GetCharacterAsync(legacy.AccountId))!.CardSummonCount == 0,
+            "completed legacy characters are not assumed to be owed a reward");
+        var (story, storySession) = await Create("KeyStory", 0);
+        Check(await db.MarkTutorialCompletedAsync(story.AccountId, story.Id, storySession, 1),
+            "main tutorial completes before village guide reward");
+        var intro = await db.CompleteStoryGuideAsync(story.AccountId, story.Id, storySession, 0, 0);
+        var village = await db.CompleteStoryGuideAsync(story.AccountId, story.Id, storySession, 2, 0);
+        var repeat = await db.CompleteStoryGuideAsync(story.AccountId, story.Id, storySession, 2, 0);
+        Check(intro.Success && village.Success && repeat.Success
+            && (await db.GetCharacterAsync(story.AccountId))!.CardSummonCount == 29,
+            "village card guide adds its independent 10 keys once after the tutorial's 19");
+        Console.WriteLine("TUTORIAL_KEY_TRANSACTION_CHECKS_PASS host construction and SQLite only");
     }
 
     private static void AssertGuideLogin(object session, int gender)

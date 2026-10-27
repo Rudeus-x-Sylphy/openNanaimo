@@ -8,7 +8,7 @@ internal static class ShopCurrencyResourceChecks
 {
     public static void Run()
     {
-        CheckTable("pi._D7", "PET", 4, 35, 0, 13, 14, 990, 51, 165);
+        CheckTable("pi._D7", "PET", 4, 35, 0, 13, 14, 990, 51, 396);
         CheckTable("PA._D9", "PETACCESSORY", 4, 24, 0, 19, 20, 18931, 65, 0);
         CheckTable("inter._D3", "INTERIOR", 4, 20, 0, 6, 7, 2008, 1304, 522);
         CheckPrice(15_001_011, 100, 0);
@@ -51,9 +51,9 @@ internal static class ShopCurrencyResourceChecks
                 Check(item!.DurationDays == Number(5) && item.InteriorType == Number(2)
                     && item.IconPath == fields[offset + 13], $"{file} non-price columns at {code}", quiet: true);
         }
-        // Runtime pi._D7 disables 114 Cash rows present in the supplied original client.
-        // Do not rewrite those resources or call disabled rows purchasable. Every row above
-        // must match the actual resource, while accepting both evidenced resource revisions.
+        // Cash listings exclude gold-pet progression; original Hans prices stay.
+        // Retain the supplied original-client 279-row oracle for resource audits;
+        // every item must still agree with the resource actually loaded above.
         bool knownCashCount = premium == cashRows || (file == "pi._D7" && premium == 279);
         Check(gold == hansRows && knownCashCount, $"{file} complete price counts {gold}/{premium}");
     }

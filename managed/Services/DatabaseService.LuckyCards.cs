@@ -12,11 +12,13 @@ public sealed partial class DatabaseService
 {
     private static async Task InitializeLuckyCardUsesAsync(SqliteConnection connection, CancellationToken token)
     {
+        await using var transaction = connection.BeginTransaction(deferred: false);
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             CREATE TABLE IF NOT EXISTS LuckyCardPendingDraws (
                 CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
-                CardCode INTEGER NOT NULL CHECK(CardCode BETWEEN 22000011 AND 22000018),
+                CardCode INTEGER NOT NULL CHECK(CardCode BETWEEN 22000011 AND 22000019),
                 RewardCode INTEGER NOT NULL CHECK(RewardCode > 0),
                 Ticket INTEGER NOT NULL CHECK(Ticket BETWEEN 0 AND 9999),
                 PoolVersion TEXT NOT NULL, CreatedAt TEXT NOT NULL,
@@ -30,6 +32,27 @@ public sealed partial class DatabaseService
             );
             """;
         await command.ExecuteNonQueryAsync(token);
+        command.CommandText = "SELECT sql FROM sqlite_master WHERE type='table' AND name='LuckyCardPendingDraws'";
+        var definition = Convert.ToString(await command.ExecuteScalarAsync(token)) ?? string.Empty;
+        if (definition.Contains("BETWEEN 22000011 AND 22000018", StringComparison.OrdinalIgnoreCase))
+        {
+            // SQLite cannot widen a CHECK in place. Preserve every blocked A-H
+            // draw and its pool version while enabling I in the same transaction.
+            command.CommandText = """
+                CREATE TABLE LuckyCardPendingDraws_v2 (
+                    CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,
+                    CardCode INTEGER NOT NULL CHECK(CardCode BETWEEN 22000011 AND 22000019),
+                    RewardCode INTEGER NOT NULL CHECK(RewardCode > 0),
+                    Ticket INTEGER NOT NULL CHECK(Ticket BETWEEN 0 AND 9999),
+                    PoolVersion TEXT NOT NULL, CreatedAt TEXT NOT NULL,
+                    PRIMARY KEY(CharacterId,CardCode));
+                INSERT INTO LuckyCardPendingDraws_v2 SELECT * FROM LuckyCardPendingDraws;
+                DROP TABLE LuckyCardPendingDraws;
+                ALTER TABLE LuckyCardPendingDraws_v2 RENAME TO LuckyCardPendingDraws;
+                """;
+            await command.ExecuteNonQueryAsync(token);
+        }
+        await transaction.CommitAsync(token);
     }
 
     private static async Task InitializeEntertainmentLuckyCardsAsync(SqliteConnection connection, CancellationToken token)

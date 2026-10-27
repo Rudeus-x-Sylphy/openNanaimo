@@ -45,8 +45,21 @@ class WardrobeTests(unittest.TestCase):
                 ids.update(v[0] for v in PARTS.values())
             self.assertEqual(len(rows),self.recipe['counts'][kind])
             base={k:r for k,r in rows.items() if k not in ids}
-            self.assertEqual(port.crypto.digest(port.catalog_bytes(kind,header,base)),port.BASELINES[name])
-            for item in self.localized[kind]:self.assertEqual(rows[item['id']],item['localized_row'])
+            if kind == 'clothing':
+                from prepare_pet_market import encrypt
+                from test_shortcut_shop import avatar_rows
+                full_header, actual, tail = avatar_rows(path.read_bytes())
+                by_code = {int(r[3]): r for r in actual}
+                original = [by_code[c] for c in self.recipe['catalog_source_order']]
+                unsorted = encrypt(full_header + [v for r in original for v in r] + tail)
+                header, original_view = port.audit.read_catalog(unsorted,kind,port.crypto.CN_KEY,'gbk')
+                base = {k:r for k,r in original_view.items() if k not in ids}
+            reconstructed = port.catalog_bytes(kind,header,base)
+            self.assertEqual(port.crypto.digest(reconstructed),port.BASELINES[name])
+            for item in self.localized[kind]:
+                actual, expected = rows[item['id']], item['localized_row']
+                self.assertEqual(actual[1:] if kind=='clothing' else actual,
+                                 expected[1:] if kind=='clothing' else expected)
 
     def test_gui_catalogs_and_every_new_icon(self):
         for kind,name,preview in [('clothing','inventory_clothing.json','equipment_icons.json'),

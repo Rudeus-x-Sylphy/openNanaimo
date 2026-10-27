@@ -51,9 +51,16 @@ def merge_pet(base, source, recipe):
     _, source_rows, source_tail = hero.read_pet(source, hero.SOURCE_KEY, 'cp949')
     if tail != source_tail:
         raise ValueError('Source growth table differs from preserved CN growth table')
+    if recipe.get('shop_price_overrides') and identity(base) == recipe['installed_catalog']:
+        return base
     by_source = {int(r[0]): r for r in source_rows}
     positions = {int(r[0]): i for i, r in enumerate(rows)}
     migration = catalog_migration(base, recipe)
+    if migration and migration.get('shop_policy_upgrade'):
+        from prepare_pet_market import apply_shop_policy, encrypt
+        apply_shop_policy(rows, recipe)
+        header[3] = str(sum(int(row[10]) != 0 for row in rows))
+        return encrypt(header + [v for r in rows for v in r] + tail)
     reviewed = {r['code']:r for r in migration['row_replacements']} if migration else {}
     additions = []
     changed = False
@@ -81,6 +88,13 @@ def merge_pet(base, source, recipe):
                 raise ValueError('Required preserved PET baseline row missing')
             additions.append(row)
     validate_client_pet_rows(rows + additions)
+    if recipe.get('shop_price_overrides'):
+        from prepare_pet_market import apply_shop_policy
+        rows += additions
+        additions = []
+        apply_shop_policy(rows, recipe)
+        header[3] = str(sum(int(row[10]) != 0 for row in rows))
+        changed = True
     if not additions and not changed:
         return base
     header[2] = str(len(rows) + len(additions))

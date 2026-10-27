@@ -82,6 +82,13 @@ def collect(root=ROOT):
             path = root / rel
             if not path.is_file(): raise ValueError('missing arena target derivation input: ' + rel)
             seen.add(path.resolve())
+    if (root / 'release/components/catalogs/pet_shop_catalog.inc').resolve() in seen:
+        for rel in ('scripts/prepare_pet_market.py', 'scripts/test_pet_market.py',
+                    'scripts/shop_catalog_order.py', 'scripts/prepare_shortcut_shop.py',
+                    'scripts/test_shortcut_shop.py'):
+            path = root / rel
+            if not path.is_file(): raise ValueError('missing PET shop derivation input: ' + rel)
+            seen.add(path.resolve())
     if (root / "release/components/cards/card_drop_cn_data.inc").resolve() in seen:
         for rel in ('release/components/cards/card_drop_cn.csv',
                     'release/components/cards/card_drop_cn_boss_bindings.json',

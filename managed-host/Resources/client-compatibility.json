@@ -6882,6 +6882,27 @@
     },
     {
       "group": "dungeon-state",
+      "va": 7613696,
+      "target": "a180f2d60083380e8b542404899108010000750689910c0100008bc1c20400cc",
+      "known": [
+        "558bec51894dfc8b45fc8b4d088988080100008be55dc20400cccccccccccccc",
+        "a180f2d60083380c8b542404899108010000750689910c0100008bc1c20400cc"
+      ],
+      "operation": "boss_health_tutorial_local",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 9599948,
+      "target": "020202",
+      "known": [
+        "000000"
+      ],
+      "operation": "tutorial_pet_prompt_lines",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
       "va": 7133071,
       "target": "83b8c0030000020f8d6a010000",
       "known": [
@@ -6929,6 +6950,46 @@
         "6a008b953cfcffff8b8a9c040000e8372ec8ff0fb7c083f802757c68d851c8008b0d68f3d60051e8439bc7ff83c4088d8d44fdffffe85fd6c6ff8d9544fdffff526a008b0d78ced800e8f6033400680c52c800a168f3d60050e8119bc7ff83c408683852c8008b0d68f3d60051e8fd9ac7ff83c4086a038b8d3cfcffffe8ab54c8ff6a016a008b953cfcffff8b8a9c040000e8e688c6ff8b0d78ced800e8f20634008b853cfcffffc680ee010000006a028b8d3cfcffffe898fbc7ff6a016a018b8d3cfcffff8b899c040000e8ac88c6ff"
       ],
       "operation": "patch_player_trade_cancel_reset",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 9207104,
+      "target": "558bec83ec185657538bf131ff83bef0020000000f85e500000080be04030000000f85d80000008d45f8508d8ed8010000e86895b4ff8d45f0508d8ed8010000e8a124b5ff508d4df8e8bdd7b4ff84c00f849c0000008d4df8e84bc7b3ff8b18837b04000f8475000000813b16639f020f851b000000817b0ce80300000f855c0000000fb643146bc00103f8e94e000000813b17639f020f851b000000817b0c102700000f85350000000fb643146bc00a03f8e927000000813b18639f020f851b000000817b0ca08601000f850e0000000fb643146bc06403f8e9000000006a008d45e8508d4df8e8cc19b5ffe944ffffff01bea00200008396a4020000008bce5b5f5e8be55de937d2b3ffcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "known": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "patch_nana_exchange_preview_code",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 9207424,
+      "target": "9c60837c242803751f8b74242c85f67417bfaf7e8c00b939000000fcf3a67508c744242808000000619de9614d1f00696d616765735c73686f705f696d616765735c49636f6e5c6974656d69636f6e5c3030303031395f69636f6e5f6974656d5f32302e696d3300cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "known": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "patch_nana_exchange_icon_code",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 9194343,
+      "target": "e8d4310000",
+      "known": [
+        "e81705b4ff"
+      ],
+      "operation": "patch_nana_exchange_preview_call",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 4317415,
+      "target": "e9949d4a00",
+      "known": [
+        "e924eb6900"
+      ],
+      "operation": "patch_nana_exchange_icon_entry",
       "known_hashes": []
     },
     {

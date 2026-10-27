@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 457,
+  "count": 464,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -8,16 +8,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 25778688,
-      "sha256": "BE9E8E7D02A1DE2CD6A899C5A84C95A64C7CEECFFAEA02D5A3AE31331CBD8EFC"
+      "size": 25783296,
+      "sha256": "DA0FDB10458B6571F90C892A3F6AC8DECDEB5F07BD3F9041A398C6D0F7EA34AD"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 25778688,
-      "sha256": "C71ED755A51409722AE5800C1D5D4CE9E4CFB64D0C770A70872683F347B7B3D5"
+      "size": 25783296,
+      "sha256": "EC64E95BB359492CAF269EB55BEC5D4424821119A2FDB917A751B2865153E62F"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 25873408,
-      "sha256": "52E50E54EC1972DCC7AA08D51F2A8C66C5A2D96D43F014AD468AA28921464561"
+      "size": 25878016,
+      "sha256": "5C70E6644B30E8BBE8402DC8CA3072620D6C76ACC0025BA7474A10E06DE1DB37"
     }
   },
   "files": [
@@ -353,8 +353,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 20739,
-      "sha256": "162D16145A63AA771070CC09A48500FB3A69E910B67E856641AE99FE0B4EE8BF"
+      "size": 20881,
+      "sha256": "DFB03E0D3E7C0B0D7C6AF810FE69ACEFC9F7EC1FE3A3B9290DFC27A7810C4BC2"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -368,8 +368,8 @@
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
-      "size": 1048936,
-      "sha256": "496248808554E1ACA6EA62EF1F696A109A1D0025DC51FED0039C586CE11698E3"
+      "size": 1052952,
+      "sha256": "C9CECDAD2839E585A71A82783D5533996A638AB40E9EF862D299010632A1A8D9"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -378,13 +378,13 @@
     },
     {
       "path": "managed-host/ShopCurrencyResourceChecks.cs",
-      "size": 3628,
-      "sha256": "86E9EAB4B1058B94F48DD03FE66461381FDB4C49AC6867C99D2144E3D5A53FB1"
+      "size": 3596,
+      "sha256": "1861F00B09E9AA08937A584C898ED212A767D275ADB9EC78E80CE52E564DAB51"
     },
     {
       "path": "managed-host/ShopCurrencyRoutingChecks.cs",
-      "size": 27966,
-      "sha256": "530737EC6A2FD3CA245A32B7E8B66C525C6A380E6DFBC91E1D7CC60C4A5A3E78"
+      "size": 34069,
+      "sha256": "6C9BCB673C16A8E9BC2DCC42B451F9AC869A9ABC5892C52093984644C92114B1"
     },
     {
       "path": "managed-host/ShopDungeonChecks.cs",
@@ -398,8 +398,8 @@
     },
     {
       "path": "managed-host/TutorialAppearanceChecks.cs",
-      "size": 15451,
-      "sha256": "47151F5BEB46D994A8814611D54494E3F8B0C8C359C0C59DB2225BB1DBCE2E5E"
+      "size": 24381,
+      "sha256": "98B0E9F6EB5C17C61EB69DFC10B04CE05918FC92552C54CCE8FCF8457D9CB681"
     },
     {
       "path": "managed-host/VillagePositionChecks.cs",
@@ -793,8 +793,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.LuckyCards.cs",
-      "size": 19674,
-      "sha256": "A04635D31E62A06DEC38970F4CE24892B0591FCB8303B4E8E304D02588CE349A"
+      "size": 21230,
+      "sha256": "EA9E14EC6071DAE325C4780DF281EE1090E4FDE70DED7D4ECDFB3A27A0C05A86"
     },
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",
@@ -815,6 +815,11 @@
       "path": "managed/Services/DatabaseService.MonkTravel.cs",
       "size": 1933,
       "sha256": "C3629A7FC354A641A256CB789AE13D491B978103C4C7D6307D5249E2C9289625"
+    },
+    {
+      "path": "managed/Services/DatabaseService.NanaExchange.cs",
+      "size": 3123,
+      "sha256": "F9CF2E8FA5E08537B3D9A4DC6F0516CC518CDA32665551E221425DD7F812A8B0"
     },
     {
       "path": "managed/Services/DatabaseService.NativeDungeon.cs",
@@ -858,8 +863,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.SkillSlotExpansion.cs",
-      "size": 8665,
-      "sha256": "40DA3EC35A213ED3A83892705B70AA4DED586DE7062B68BBE11ED3B113BB7208"
+      "size": 8707,
+      "sha256": "051024979A9C112314755894A8DF080D32A271D3B59D46729085FA76A833CB54"
     },
     {
       "path": "managed/Services/DatabaseService.TownOptions.cs",
@@ -873,8 +878,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 605824,
-      "sha256": "9A4F391C6194A8B2B84484401D2D74FF477225B31C1EF207D7D38FB9F72C371E"
+      "size": 606523,
+      "sha256": "FF18F11A2165FC072DC8A4B1BEF86D9763D3965E15139C4A6CF4B85C6C99B313"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -968,8 +973,8 @@
     },
     {
       "path": "managed/Services/LuckyCardPolicy.cs",
-      "size": 5990,
-      "sha256": "F56F77517607E4769D64C043A7728220143B7248A72DDA62E9414573FE54D432"
+      "size": 5985,
+      "sha256": "10E5CC2453298356B441891DAF4BEFA0958FA69728C4D37C7E294DB90EF8BDEE"
     },
     {
       "path": "managed/Services/MentorProtocol.cs",
@@ -980,6 +985,11 @@
       "path": "managed/Services/MonkChallengePolicy.cs",
       "size": 2132,
       "sha256": "CFBE5A5FA7A8F2B6B157F7BB38909B8B383DD1E8EA9618325DB58D8CB64E03D7"
+    },
+    {
+      "path": "managed/Services/NanaExchangeCatalog.cs",
+      "size": 256,
+      "sha256": "33A7557626D0BF7E39E986B2E3F84DDFCD635B0B490C1F77E1F3023CEC6FE235"
     },
     {
       "path": "managed/Services/NativeDungeonClient.cs",
@@ -1213,8 +1223,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.PetInstances.cs",
-      "size": 4538,
-      "sha256": "111625D55CA4A5ACE6050A72356D167E7D9C59E439263D1CC3E2B29868D641AF"
+      "size": 4712,
+      "sha256": "A154EC39F4242B2EDC3618E93578F223E488B799F65B69EBD17A174435F0A647"
     },
     {
       "path": "managed/Services/NetworkAdapterService.PetLifetime.cs",
@@ -1253,8 +1263,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 1020964,
-      "sha256": "609B6C819486B9D9E226D98C33D398F4D53E8539688A56381C272DB5B5385564"
+      "size": 1021146,
+      "sha256": "F896435BE935332F1F6E620E3D20BF0385AC043F799ECFFF984274417BAE73C9"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1273,8 +1283,8 @@
     },
     {
       "path": "managed/Services/PetShopCatalog.cs",
-      "size": 47600,
-      "sha256": "9C6F923B24932B81BB77BC1D7EA71466689995F9435B60A800E97820D0C2513E"
+      "size": 47731,
+      "sha256": "D3C0CDDE9E2D70D5FAFDAB2ECA6D3CFB74C033192FF1712445C2F1D2950C2823"
     },
     {
       "path": "managed/Services/PrivateChatProtocol.cs",
@@ -1378,8 +1388,8 @@
     },
     {
       "path": "manifest/kobe_wardrobe.json",
-      "size": 7855,
-      "sha256": "530E82350BB782FD55C01E64B12785319183C4C009997D19349AAAE99A55A30A"
+      "size": 8021,
+      "sha256": "74226415625DE5A2CC5D20A40B8FF76CBCECA266C8A57330B6D1E148A9A1965D"
     },
     {
       "path": "manifest/korean_wardrobe_catalog.json",
@@ -1388,8 +1398,8 @@
     },
     {
       "path": "manifest/korean_wardrobe_resources.json",
-      "size": 266836,
-      "sha256": "FF064F1D879C9BD437ECBD10B79841EC3D8546651DB58B899C258AAF4B2E7AA5"
+      "size": 334062,
+      "sha256": "67EC578801E38ADC94290E9B3FC182DCC03D633E7A0F982C7E14C1EE5C7883C8"
     },
     {
       "path": "manifest/story_localization.json",
@@ -1538,8 +1548,8 @@
     },
     {
       "path": "release/components/catalogs/pet_shop_catalog.inc",
-      "size": 29751,
-      "sha256": "E1113EBDFC5181D02E54BEF8310790A86827ED5D299A657CBE4D6EAE79A04820"
+      "size": 34551,
+      "sha256": "46880B0387CF51CF57663747148671214FEE4583428AAF3229600B54CF94AED9"
     },
     {
       "path": "release/components/channel_reentry/channel_reentry_runtime.inc",
@@ -1724,7 +1734,7 @@
     {
       "path": "release/components/inventory_instances/avatar_resource_data.inc",
       "size": 104432,
-      "sha256": "A46351EF77295E368312CE8E3450C9B2E91B2087660D38EAD5235CBD123D9B99"
+      "sha256": "8101FCB74371C06E0C5313FECB68542A019B1AD34061F9BEFD87E1ADB75F09B7"
     },
     {
       "path": "release/components/inventory_instances/avatar_resource_runtime.inc",
@@ -1743,8 +1753,8 @@
     },
     {
       "path": "release/components/inventory_instances/shop_runtime.inc",
-      "size": 13152,
-      "sha256": "6441B25455801F602134EAA90620744E31168DB271AC6D545F62EC40DB9BB1ED"
+      "size": 13222,
+      "sha256": "ED0BB1C59D6BDB2867DE2350E407A672BC790EAFBD28A0B2B36B59348D810445"
     },
     {
       "path": "release/components/multiplayer/party_continuation_runtime.inc",
@@ -1843,8 +1853,8 @@
     },
     {
       "path": "release/components/profile/shopping_inventory_state.inc",
-      "size": 15933,
-      "sha256": "8875D32ADA463F86714A244499715CDD531A193F13FCBDCA070080D7AFCBC400"
+      "size": 16059,
+      "sha256": "3FE7819CF973E1BAB4D8B599698F471CB81A5C32903AA32C9225210A011F931B"
     },
     {
       "path": "release/components/protocol/experience_carriers.inc",
@@ -2038,8 +2048,8 @@
     },
     {
       "path": "release/components/winter_boss/boss_hp_sync_runtime.inc",
-      "size": 63329,
-      "sha256": "8348B3082CD7714AD0D257D29CE2009457B8C8CDD7C84EAA4838624C80401FE1"
+      "size": 64055,
+      "sha256": "2800F30911FDB43FC98D196424E6A6C37EF2352C8BEE3813E07B340ECFB0A17D"
     },
     {
       "path": "release/teamplay_common.inc",
@@ -2053,8 +2063,8 @@
     },
     {
       "path": "scripts/audit_korean_wardrobe_interior.py",
-      "size": 13029,
-      "sha256": "953E29D05110258403D2C40117DE2D0E4559281033FF0E7928A19DCBCCB64437"
+      "size": 13494,
+      "sha256": "C71D62D99F153D7BA6B6728456379CC9904547E8771E6E2B07BF2BC3689ABA3F"
     },
     {
       "path": "scripts/audit_l7_combat_resources.py",
@@ -2198,13 +2208,23 @@
     },
     {
       "path": "scripts/prepare_kobe_wardrobe.py",
-      "size": 18698,
-      "sha256": "22538B37ADEC14CEE98A5F11DEEC787B22C3E7FF91417F32C0DD40237D43F4D7"
+      "size": 18730,
+      "sha256": "ED73224AFE04DFE34B6333B2216E42D28C8D6332E0A915B2C1ABDFF5BC1ED27A"
     },
     {
       "path": "scripts/prepare_korean_wardrobe.py",
-      "size": 27820,
-      "sha256": "C1D1253A4DC0CEE28569045653F03671BDCED818D7593F48EB9C2ACBDBB31433"
+      "size": 27981,
+      "sha256": "7D759143A39BD7FE3AE7F1BE17EC33A23E2431D392D383B5CFA1C38991423A6A"
+    },
+    {
+      "path": "scripts/prepare_pet_market.py",
+      "size": 8867,
+      "sha256": "9B10B37D010704CB33EF527610C97B29847FBB6702FB81DB32523B860D95CCD6"
+    },
+    {
+      "path": "scripts/prepare_shortcut_shop.py",
+      "size": 3208,
+      "sha256": "F39D8CFC4E43F0E69723F90C492C479CDD4F39BCF1E5D26B181C499EED3A962C"
     },
     {
       "path": "scripts/prepare_story_catalog.py",
@@ -2225,6 +2245,11 @@
       "path": "scripts/preview_dungeon_cinematics.py",
       "size": 16894,
       "sha256": "585D776882D9565222EEE85261768CCC06CF11ECA4BF98701823FD2362ECE93E"
+    },
+    {
+      "path": "scripts/shop_catalog_order.py",
+      "size": 2026,
+      "sha256": "2FA8725C02039203138F80B4E761875FF8FDC027CD9209288427FA451AD9B834"
     },
     {
       "path": "scripts/shop_icon_origins.py",
@@ -2268,13 +2293,13 @@
     },
     {
       "path": "scripts/test_kobe_wardrobe.py",
-      "size": 7447,
-      "sha256": "0728C72BFA81947E6176A9AD71920072D30936AAF4B9FB039DBFB20BAA6CCC23"
+      "size": 7820,
+      "sha256": "E0E8E1B9A62B24C0BFE74058EEE085AEC6043C7E08832FBECD0731DD70D695D3"
     },
     {
       "path": "scripts/test_korean_wardrobe.py",
-      "size": 12251,
-      "sha256": "57066BD6B87BB398C85438409B8A226BDEDF9BEC8DFA7058B872CA34BD4D4B3B"
+      "size": 13108,
+      "sha256": "8ACA402D3FEB3B20E2D356749D996D7716A15BB7B82277588730DBB75644D710"
     },
     {
       "path": "scripts/test_l7_combat_resources.py",
@@ -2282,9 +2307,19 @@
       "sha256": "E09B8253A2D4193B441AC58B87569F2AF413DF797EE9DE04902FDC0725F69585"
     },
     {
+      "path": "scripts/test_pet_market.py",
+      "size": 12900,
+      "sha256": "B0D69B74132E1B5F8F0228C8B6695EFF7F14C69733EDFA3F4117EC7E910B7C7D"
+    },
+    {
       "path": "scripts/test_shop_icon_origins.py",
       "size": 5319,
       "sha256": "3668B4162B464E983570B06F25D19D8E0554539A5FEB9F177BA7E13507270C6E"
+    },
+    {
+      "path": "scripts/test_shortcut_shop.py",
+      "size": 4762,
+      "sha256": "C24784885480EFA43DE708B4053E1E70FF04EC8CD833C9C0B8F87CCB150B00A4"
     },
     {
       "path": "scripts/test_special_encounters.py",

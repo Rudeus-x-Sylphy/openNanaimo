@@ -26,12 +26,101 @@ internal static class ShopCurrencyRoutingChecks
             if (suite is null or "db") { await DatabaseGuards(f); await Atomicity(f); }
             if (suite is null or "gift") await Gifts(f);
             if (suite is null or "owned-state") await OwnedState(f);
+            if (suite is null or "exchange") await Exchanges(f);
         }
-        Check(suite is null or "catalog" or "purchase" or "db" or "gift" or "owned-state", "known test suite");
+        Check(suite is null or "catalog" or "purchase" or "db" or "gift" or "owned-state" or "exchange", "known test suite");
         Console.WriteLine($"SHOP_CURRENCY_ROUTING_PASS suite={suite ?? "all"} assertions={assertions}");
     }
 
     private static string[] Fields(string name) => CardCatalog.DecryptFields("OpenNanaimo.Adapter.ClientData." + name);
+
+    private static async Task Exchanges(Fixture f)
+    {
+        foreach (var (code, value) in new[] { (44_000_022u, 1u), (44_000_023u, 10u), (44_000_024u, 100u) })
+        {
+            Check(ShopCatalog.TryGet(code, out var item) && item.IsNanaExchange
+                && item.Name == $"{value}Nana点" && item.NanaExchangeValue == value
+                && item.HansPrice == value * 1000 && !item.PaysWithCash,
+                $"exchange catalog {code}");
+            foreach (ushort mode in new ushort[] { 0, 2, 3, 4 })
+            {
+                await f.Reset(1_000_000, 7);
+                var reply = await f.Buy(0xC46F, code, mode, 3);
+                Check(reply.Length == 104 && reply[8] == 10 && reply[9] == mode,
+                    "exchange success and payment echo");
+                Check(reply[10] == 0 && reply[11] == 0
+                    && BinaryPrimitives.ReadUInt16LittleEndian(reply.AsSpan(18)) == 0,
+                    "exchange never creates a client inbox item");
+                Check(BinaryPrimitives.ReadInt64LittleEndian(reply.AsSpan(88)) == 7 + 3 * value
+                    && BinaryPrimitives.ReadInt64LittleEndian(reply.AsSpan(96)) == 1_000_000 - 3 * value * 1000,
+                    "exchange response publishes both committed balances");
+                var state = await f.State();
+                Check(state.Hans == 1_000_000 - 3 * value * 1000 && state.Cash == 7 + 3 * value
+                    && state.Stock == "", "bulk exchange persists immediately without inbox");
+            }
+            await f.Reset(value * 1000 - 1, 1_000_000);
+            var before = await f.State();
+            Check((await f.Buy(0xC46F, code, 4, 1))[8] == 40 && await f.State() == before,
+                "insufficient gold never spends Nana or changes inventory");
+            await f.Reset(value * 1000, long.MaxValue - value);
+            Check((await f.Buy(0xC46F, code, 0, 1))[8] == 10 && (await f.State()).Cash == long.MaxValue,
+                "exact Nana upper boundary is accepted");
+            await f.Reset(value * 1000, long.MaxValue - value + 1);
+            before = await f.State();
+            Check((await f.Buy(0xC46F, code, 0, 1))[8] == 40 && await f.State() == before,
+                "Nana overflow rolls back gold debit");
+            await f.Reset(1_000_000, 0);
+            before = await f.State();
+            Check(!(await f.Db.PurchaseShopItemAsync(f.Account, f.CharacterId, "stale", 0,
+                code, 1, item.PurchasePrice, false)).Success && await f.State() == before,
+                "stale exchange session rejected");
+            Check(!(await f.Db.PurchaseShopItemForAccountAsync(f.Account, code, 1, item.PurchasePrice)).Success,
+                "offline grant cannot turn exchange into inventory");
+            Check(!(await f.Db.GiftShopItemAsync(f.Account, f.CharacterId, f.SessionId,
+                "CurrencyBuyer", code, 1, item.PurchasePrice, false, null)).Success,
+                "exchange is not giftable");
+            Check(!(await f.Db.UseInventoryExpansionAsync(f.Account, f.CharacterId, f.SessionId,
+                code, DateTime.Now)).Success, "exchange code is not an expansion coupon");
+            Check((await f.Buy(0xC46F, code, 0, 0))[8] == 40
+                && (await f.Buy(0xC46F, code, 256, 1))[8] == 40 && await f.State() == before,
+                "zero quantity and malformed payment rejected");
+            Check(await f.Quantity(code) == 0 && (await f.Db.GetCharacterAsync(f.Account))!
+                .Items.All(i => i.ItemCode != code), "exchange never reaches either inventory ledger");
+            Check(!(await f.Db.PurchaseShopItemAsync(f.Account, f.CharacterId, f.SessionId, 0,
+                code, 1, item.PurchasePrice - 1, false)).Success
+                && !(await f.Db.PurchaseShopItemAsync(f.Account, f.CharacterId, f.SessionId, 0,
+                code, 1, item.PurchasePrice, true)).Success && await f.State() == before,
+                "caller cannot override exchange price or wallet");
+            await f.Reset(7_000_000_000, 0);
+            var bulk = await f.Buy(0xC46F, code, 0, ushort.MaxValue);
+            Check(bulk[8] == 10 && (await f.State()) ==
+                (7_000_000_000L - (long)ushort.MaxValue * value * 1000,
+                 (long)ushort.MaxValue * value, ""), "bulk math uses 64-bit gold totals");
+            await f.Reset(100_000, 0);
+            var alternate = await f.Buy(0xC431, code, 0, 1, 44);
+            Check(alternate[8] == 10 && alternate[10] == 0 && alternate[11] == 0
+                && (await f.State()) == (100_000L - value * 1000, (long)value, ""),
+                "alternate purchase carrier also suppresses inventory");
+        }
+        await f.Reset(1000, 0);
+        var concurrent = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ =>
+            f.Db.PurchaseShopItemAsync(f.Account, f.CharacterId, f.SessionId, 0,
+                44_000_022, 1, 1000, false)));
+        Check(concurrent.Count(r => r.Success) == 1 && (await f.State()) == (0L, 1L, ""),
+            "concurrent exchanges cannot double spend");
+        await f.Reset(1_000_000, 0);
+        await f.Execute("CREATE TRIGGER RejectExchange BEFORE UPDATE OF Cash ON Characters "
+            + "BEGIN SELECT RAISE(ABORT, 'exchange failure'); END;");
+        try
+        {
+            await f.Db.PurchaseShopItemAsync(f.Account, f.CharacterId, f.SessionId, 0,
+                44_000_024, 1, 100000, false);
+            Check(false, "injected database failure must propagate");
+        }
+        catch (SqliteException) { Check((await f.State()) == (1_000_000L, 0L, ""), "failed write is atomic"); }
+        finally { await f.Execute("DROP TRIGGER RejectExchange;"); }
+        Console.WriteLine("NANA_EXCHANGE_PASS runtime_acceptance=false");
+    }
     private static uint Number(string value) => uint.Parse(value, CultureInfo.InvariantCulture);
 
     private static void Table(string name, int header, int width, int code, int? gold, int? cash)
@@ -58,7 +147,7 @@ internal static class ShopCurrencyRoutingChecks
 
     private static void Catalog()
     {
-        Table("ava._D1", 3, 25, 4, null, 9);
+        Table("ava._D1", 3, 25, 4, 8, 9);
         Table("inter._D3", 4, 20, 0, 6, 7);
         Table("pi._D7", 4, 35, 0, 13, 14);
         Table("PA._D9", 4, 24, 0, 19, 20);
@@ -95,7 +184,8 @@ internal static class ShopCurrencyRoutingChecks
         var synthesisCodes = CardCatalog.All.Select(card => card.SynthesisItemCode).ToHashSet();
         var synthesisOnly = supported.First(item => !item.IsPurchasable
             && synthesisCodes.Contains(item.ItemCode));
-        var retail = supported.Where(item => item.IsPurchasable).Take(111).ToArray();
+        var retail = supported.Where(item => item.IsPurchasable && !item.PaysWithCash).Take(55)
+            .Concat(supported.Where(item => item.IsPurchasable && item.PaysWithCash).Take(56)).ToArray();
         Check(nonRetail.Length > 100 && retail.Length > 100, "list fixture exceeds response capacity");
         Check(retail.Any(item => item.PaysWithCash) && retail.Any(item => !item.PaysWithCash),
             "list fixture has both retail currencies");
@@ -168,6 +258,7 @@ internal static class ShopCurrencyRoutingChecks
         var samples = ShopCatalog.All.Where(i => i.IsPurchasable && i.Category is 14 or 15 or 17 or 18 or 21)
             .GroupBy(i => (i.Source, i.PaysWithCash)).Select(g => g.First())
             .Concat(ShopCatalog.All.Where(i => i.IsPurchasable && i.Category is 42 or 43 or 44 or 45 or 47 or 48))
+            .Where(i => !i.IsNanaExchange)
             .OrderBy(i => i.ItemCode).ToArray();
         foreach (var item in samples)
         {

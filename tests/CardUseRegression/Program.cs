@@ -16,9 +16,12 @@ byte[] Request(uint card, uint key) { var p = new byte[20]; BinaryPrimitives.Wri
 byte[] Page(uint page) { var b = new byte[4]; BinaryPrimitives.WriteUInt32LittleEndian(b,page); return b; }
 string Id() => Guid.NewGuid().ToString("N");
 
-Check(LuckyCardPolicy.All.Count == 8, "all eight authored pools load, I/J disabled");
-Check(LuckyCardPolicy.IsUnopened(22000019) && LuckyCardPolicy.IsUnopened(22000020), "unopened lucky pools are disabled");
-Check(!LuckyCardPolicy.TryParse(Request(22000019, 40), out _), "unopened lucky card cannot be opened");
+Check(LuckyCardPolicy.All.Count == 9, "A-I pools load, J disabled");
+Check(!LuckyCardPolicy.IsUnopened(22000019) && LuckyCardPolicy.IsUnopened(22000020), "only J remains unopened");
+Check(LuckyCardPolicy.TryParse(Request(22000019, 40), out _) && !LuckyCardPolicy.TryParse(Request(22000020, 40), out _), "dragon lucky I opens and J is rejected");
+Check(LuckyCardPolicy.TryGet(22000019, out var dragonPool)
+    && dragonPool.Rewards.Select(r => (r.Code, r.UpperBound)).SequenceEqual(new (uint, int)[] {
+        (15003358,3300),(15003359,6600),(15003360,9900),(15003361,10000)}), "dragon probabilities exactly 33/33/33/1");
 foreach (var pool in LuckyCardPolicy.All.Values)
 {
     var counts = Enumerable.Range(0,10000).Select(t=>LuckyCardPolicy.Pick(pool,t)).GroupBy(x=>x).ToDictionary(x=>x.Key,x=>x.Count());
@@ -108,6 +111,36 @@ uint WirePetExpiration(byte[] payload,uint code)
             return BinaryPrimitives.ReadUInt32LittleEndian(record.Slice(4,4));
     }
     return 0;
+}
+
+// Upgrade a real legacy CHECK while retaining its blocked A-H draw verbatim.
+await Sql("DROP TABLE LuckyCardPendingDraws; CREATE TABLE LuckyCardPendingDraws (CharacterId INTEGER NOT NULL REFERENCES Characters(Id) ON DELETE CASCADE,CardCode INTEGER NOT NULL CHECK(CardCode BETWEEN 22000011 AND 22000018),RewardCode INTEGER NOT NULL CHECK(RewardCode>0),Ticket INTEGER NOT NULL CHECK(Ticket BETWEEN 0 AND 9999),PoolVersion TEXT NOT NULL,CreatedAt TEXT NOT NULL,PRIMARY KEY(CharacterId,CardCode)); INSERT INTO LuckyCardPendingDraws VALUES($id,22000011,46000008,123,'legacy-version','legacy-time')");
+await db.InitializeAsync();await db.InitializeAsync();
+Check(await Sql("SELECT COUNT(*) FROM LuckyCardPendingDraws WHERE CharacterId=$id AND CardCode=22000011 AND RewardCode=46000008 AND Ticket=123 AND PoolVersion='legacy-version' AND CreatedAt='legacy-time'")==1,"legacy pending draw survives idempotent I schema migration");
+Check(await db.BeginWorldSessionAsync(account,character,sessionId,1,"127.0.0.1"),"reenter after startup migration clears stale online sessions");
+await Reset();await Seed(22000019);await Item(17000072,55);
+Check((await Draw(22000019,9999)).Result==100 && await Cards(22000019)==2
+    &&await Sql("SELECT CardMysteryKeyCount FROM Characters WHERE Id=$id")==99,"full pet box retains lucky I and key");
+await Item(17000072,0);var dragonRequest=Id();
+var retainedDragon=await new DatabaseService(root).OpenLuckyCardAsync(account,character,sessionId,dragonRequest,22000019,nextTicket:_=>0);
+Check(retainedDragon.Success&&retainedDragon.Reward==15003361&&await Cards(22000019)==1
+    &&await Sql("SELECT COUNT(*) FROM CharacterInventoryInstances WHERE CharacterId=$id AND ItemCode=15003361 AND PetCurrentStage=3 AND PetMaximumStage=3")==1,"blocked I keeps hero reward after reopen instead of rerolling");
+Check((await Draw(22000019,0,dragonRequest)).Reward==15003361&&await Cards(22000019)==1,"lucky I replay never double charges");
+foreach(uint code in new uint[]{15003340,15000001,15009337,15009106})
+{
+    await Reset();await Sql("DELETE FROM CharacterCashInboxItems WHERE CharacterId=$id;UPDATE Characters SET Hans=1000000,Cash=1000000 WHERE Id=$id");
+    Check(ShopCatalog.TryGet(code,out var product)&&product.PaysWithCash,"new PET has Nana shop quote "+code);
+    var marketPurchase=await db.PurchaseShopItemAsync(account,character,sessionId,4,code,1,product.PurchasePrice,true);
+    Check(marketPurchase.Success&&marketPurchase.Hans==1000000&&marketPurchase.Cash==1000000-product.PurchasePrice
+        &&await Sql("SELECT Quantity FROM CharacterCashInboxItems WHERE CharacterId=$id AND ItemCode=$code",("$code",code))==1,"new PET purchase uses Nana and persistent inbox "+code);
+    Check(!(await db.PurchaseShopItemAsync(account,character,sessionId,0,code,1,product.PurchasePrice,false)).Success,"new PET rejects wrong wallet "+code);
+}
+
+foreach(var product in ShopCatalog.All.Where(item=>item.Category==15&&item.PetGrowthClass>0&&item.HansPrice==0))
+{
+    Check(!product.IsPurchasable,"growth-only PET has no direct shop price "+product.ItemCode);
+    Check(!(await db.PurchaseShopItemAsync(account,character,sessionId,4,product.ItemCode,1,100,true)).Success,
+        "growth-only PET cannot bypass progression through purchase "+product.ItemCode);
 }
 
 // Every resource reward is actually committed; checking lazy initialization alone is insufficient.

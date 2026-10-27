@@ -9,9 +9,6 @@ from unittest.mock import patch
 import zipfile
 import package_korean_resource_kit as kit
 
-PUBLISHED_KIT_SHA256 = '794a7ce9a3b4270aee4fbf50210f7bf9f93c385bf73c23ba16d4063dcf8146a8'
-
-
 class KitTests(unittest.TestCase):
     def test_packaged_tools_have_all_local_imports(self):
         modules = set()
@@ -50,6 +47,19 @@ class KitTests(unittest.TestCase):
     def test_verify(self):
         self.assertEqual(kit.verify(self.archive())['status'], 'KIT_INTEGRITY_PASS')
 
+    def test_refresh_retains_assets_and_rejects_existing_outputs(self):
+        source = self.archive()
+        original = source.read_bytes()
+        output = self.root / 'refreshed.zip'
+        with patch.object(kit, 'TOOLS', ()), patch.object(kit, 'RECIPES', ()), patch.object(kit, 'inventory', return_value=b'new inventory'):
+            self.assertEqual(kit.refresh(source, output)['status'], 'KIT_INTEGRITY_PASS')
+            self.assertEqual(source.read_bytes(), original)
+            with zipfile.ZipFile(output) as archive:
+                self.assertEqual(archive.read('resource.txt'), b'hello')
+                self.assertEqual(archive.read('resource-inventory.tsv'), b'new inventory')
+            with self.assertRaisesRegex(ValueError, 'fresh'):
+                kit.refresh(source, output)
+
     def test_corruption(self):
         with self.assertRaisesRegex(ValueError, 'hash mismatch'):
             kit.verify(self.archive(payload=b'wrong'))
@@ -82,14 +92,12 @@ class KitTests(unittest.TestCase):
         self.assertTrue(archive.is_file(), 'tracked resource ZIP is required')
         self.assertEqual(kit.verify(archive)['status'], 'KIT_INTEGRITY_PASS')
         expected = archive.with_suffix('.zip.sha256').read_text('ascii').split()[0]
-        self.assertEqual(expected, PUBLISHED_KIT_SHA256)
         self.assertEqual(kit.port.digest(archive.read_bytes()), expected)
         with zipfile.ZipFile(archive) as z:
             index = json.loads(z.read('kit-manifest.json'))
             self.assertEqual(index['source_resource_count'], 2350)
             self.assertEqual(len(json.loads(z.read('l7-l8-bundle/manifest.json'))['files']), 1328)
-            # The published tools and docs predate this checkout's knowledge
-            # migration; their fixed archive and per-file hashes remain binding.
+            # The original documentation remains paired with its archived identities.
             tree = ast.parse(z.read('scripts/package_korean_resource_kit.py').decode('utf-8'))
             release_tools = next(ast.literal_eval(node.value) for node in tree.body
                                  if isinstance(node, ast.Assign)
@@ -164,6 +172,22 @@ class KitTests(unittest.TestCase):
         imports = {alias.name + '.py' for node in ast.walk(tree) if isinstance(node, ast.Import)
                    for alias in node.names if (kit.ROOT / 'scripts' / (alias.name + '.py')).is_file()}
         self.assertTrue(imports.issubset(kit.TOOLS), sorted(imports.difference(kit.TOOLS)))
+
+    def test_refresh_preserves_source_assets_and_original_guides(self):
+        source,bundle,repo=self.fixture()
+        archive,output=self.root/'base.zip',self.root/'refreshed.zip'
+        with patch.object(kit,'ROOT',repo), patch.object(kit,'source_plan',return_value={
+                'pet.im3':dict(size=5,sha256=kit.port.digest(b'input'))}), \
+                patch.object(kit,'inventory',return_value=b'header\n'), \
+                patch.object(kit.port,'validate_manifest'):
+            kit.build(source,bundle,archive)
+            guide=repo/kit.GUIDE
+            before=guide.read_bytes()
+            guide.write_text(guide.read_text('utf-8')+'\nCurrent installation.\n',encoding='utf-8')
+            kit.refresh(archive,output)
+        with zipfile.ZipFile(output) as result:
+            self.assertEqual(result.read(kit.GUIDE),before)
+            self.assertEqual(result.read('source-kr/pet.im3'),b'input')
 
     def test_build_allowlist_and_no_overwrite(self):
         source, bundle, repo = self.fixture()

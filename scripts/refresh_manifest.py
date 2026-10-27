@@ -14,6 +14,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
+    'scripts/prepare_clover_descriptions.py',
+    'scripts/test_clover_descriptions.py',
+    'scripts/shop_catalog_order.py',
+    'scripts/prepare_shortcut_shop.py',
+    'scripts/test_shortcut_shop.py',
+    'scripts/prepare_pet_market.py',
+    'scripts/test_pet_market.py',
+    'scripts/prepare_nana_exchange.py',
+    'scripts/test_nana_exchange.py',
+    'scripts/nana_exchange_compat.py',
+    'scripts/test_nana_exchange_compat.py',
     'scripts/prepare_kobe_wardrobe.py',
     'scripts/test_kobe_wardrobe.py',
     'manifest/kobe_wardrobe.json',

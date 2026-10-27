@@ -11,6 +11,9 @@ import uuid
 import port_lumineos_resources as io
 import prepare_hero_dragon as hero
 import prepare_korean_pets as pets
+import prepare_pet_market as market
+import prepare_clover_descriptions as clover
+import prepare_nana_exchange as exchange
 import verify_package as package
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -21,6 +24,26 @@ def verify_new_target(name,path,raw,known,reviewed_before):
     current=path.read_bytes()
     if current!=raw and io.digest(current)!=reviewed_before.get(name):
         raise ValueError('Unmanaged existing deployment target: '+name)
+
+
+def paired_catalogs(client, data, old_manifest):
+    """Pair root catalogs with runtime bytes after checking installed identities."""
+    for name, transform in (('gi._D6', clover.merge), ('IE._D23', exchange.merge),
+                            ('ava._D1', market.ordering.order_avatar)):
+        relative = 'adapter_runtime/资源/数据/' + name
+        current = io.safe(client, name).read_bytes()
+        expected = data[relative]
+        allowed = [old_manifest['critical_files'][relative], pets.identity(expected)]
+        if name == 'ava._D1':
+            row = json.loads(data['manifest/korean_wardrobe_resources.json'])['files'][name]
+            allowed.extend([row['before'], *row.get('upgrade_from', [])])
+        identity = pets.identity(current)
+        if not any(identity['size'] == entry['size'] and
+                   identity['sha256'] == entry['sha256'].lower() for entry in allowed):
+            raise ValueError('Unrecognized installed catalog: ' + name)
+        if transform(current) != expected:
+            raise ValueError('Installed catalog differs from paired release: ' + name)
+        data[name] = expected
 
 
 def build_payloads(client,reviewed_before=None):
@@ -71,8 +94,24 @@ def build_payloads(client,reviewed_before=None):
         'recipe_sha256':hero.digest((ROOT/'manifest/korean_pet_resources.json').read_bytes()),
         'catalog_count':recipe['catalog_count'],'pet_codes':[p['code'] for p in recipe['pets']],
         'runtime_acceptance':False})
+    card_path=io.safe(client,'Sddakg._D35')
+    current_card=card_path.read_bytes() if card_path.exists() else data['adapter_runtime/资源/数据/Sddakg._D35']
+    data['Sddakg._D35']=market.lucky_i(current_card)
+    if data['Sddakg._D35']!=data['adapter_runtime/资源/数据/Sddakg._D35']:
+        raise ValueError('Installed lucky-card A-H definitions differ from the paired release')
+    paired_catalogs(client,data,old_manifest)
+    marker='.openNanaimo-korean-wardrobe.json'
+    marker_path=io.safe(client,marker)
+    if marker_path.exists():
+        receipt=json.loads(marker_path.read_bytes())
+        wardrobe=json.loads(data['manifest/korean_wardrobe_resources.json'])
+        if receipt.get('schema')!=wardrobe['schema']:
+            raise ValueError('Invalid installed wardrobe receipt')
+        receipt['manifest_sha256']=io.digest(pets.encode_json(wardrobe))
+        data[marker]=pets.encode_json(receipt)
     known=set(old_manifest['critical_files'])|{r['path'] for r in old_closure['files']}|{
-        'manifest/source_closure.json','manifest/open_release_manifest.json','pi._D7',hero.RECEIPT_NAME,pets.RECEIPT}
+        'manifest/source_closure.json','manifest/open_release_manifest.json','pi._D7','Sddakg._D35',
+        'gi._D6','IE._D23','ava._D1',marker,hero.RECEIPT_NAME,pets.RECEIPT}
     for name,raw in data.items():
         path=io.safe(client,name)
         verify_new_target(name,path,raw,known,reviewed_before)
@@ -158,6 +197,9 @@ def verify_installed(client):
     package.verify_runtime_contract(client,manifest)
     hero.verify_installed(client,io.safe(client,'manifest/hero_dragon_resources.json'))
     pets.verify_installed(client,io.safe(client,'manifest/korean_pet_resources.json'))
+    for name in ('gi._D6','IE._D23','pi._D7','ava._D1','Sddakg._D35'):
+        if io.file_hash(io.safe(client,name))!=io.file_hash(io.safe(client,'adapter_runtime/资源/数据/'+name)):
+            raise ValueError('Installed client/runtime catalog mismatch: '+name)
 
 
 def restore(client,journal):

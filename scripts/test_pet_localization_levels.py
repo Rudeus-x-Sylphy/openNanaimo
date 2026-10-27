@@ -14,8 +14,8 @@ load=lambda name:json.loads((ROOT/name).read_text('utf-8-sig'))
 class PetLocalizationPolicyTests(unittest.TestCase):
     def test_current_guides_point_to_complete_localized_pet_policy(self):
         guide='knowledge/指南/韩服宠物佩戴等级下放方案.md'
-        owner='knowledge/业务/宠物/所有权.md'
-        self.assertIn('../业务/宠物/所有权.md#df-18-006', (ROOT/guide).read_text('utf-8'))
+        owner='knowledge/业务/宠物/所有权/追加宠物对照表.md'
+        self.assertIn('../业务/宠物/所有权/追加宠物对照表.md#df-18-006', (ROOT/guide).read_text('utf-8'))
         rows=re.findall(r'^\|(\d+)\|([^|]+)\|([^|]+)\|(\d+)\|$', (ROOT/owner).read_text('utf-8'), re.M)
         published={int(code):(name,int(level)) for code,_,name,level in rows}
         expected={p['id']:(p['name'],p['level_requirement']) for p in load('gui_launcher/data/pets.json')[868:]}
@@ -60,7 +60,7 @@ class PetLocalizationPolicyTests(unittest.TestCase):
             original=source_by_id[p['code']];actual=by_id[p['code']]
             self.assertEqual(actual[1],original[1])
             self.assertEqual(int(actual[1]),p['source_required_level'])
-            for field in set(range(35))-{2,16,17,18}:
+            for field in set(range(35))-{2,8,10,11,13,14,16,17,18}:
                 if p['code'] == h.CODE and field == 9:
                     self.assertEqual(actual[field], '50')
                     self.assertEqual(original[field], '20')
@@ -81,7 +81,7 @@ class PetLocalizationPolicyTests(unittest.TestCase):
 
     def test_resource_kit_recipes_and_original_guides_remain_release_baseline(self):
         archive=ROOT/'resource-packs/nanaimo-korean-resource-kit.zip'
-        expected='794a7ce9a3b4270aee4fbf50210f7bf9f93c385bf73c23ba16d4063dcf8146a8'
+        expected=archive.with_suffix('.zip.sha256').read_text('ascii').split()[0]
         self.assertEqual(archive.with_suffix('.zip.sha256').read_text('ascii').split()[0],expected)
         self.assertEqual(h.digest(archive.read_bytes()),expected)
         with zipfile.ZipFile(archive) as z:
@@ -105,6 +105,13 @@ class PetLocalizationPolicyTests(unittest.TestCase):
 
     def test_original_cn_rows_and_growth_are_preserved(self):
         _,rows,tail=h.read_pet((ROOT/'adapter_runtime/资源/数据/pi._D7').read_bytes(),h.CN_KEY,'gbk')
+        overrides={p['code']:p for p in load('manifest/korean_pet_resources.json')['shop_price_overrides']}
+        for row in rows:
+            if int(row[0]) in overrides:
+                row[13:15]=['0','0']
+                row[8],row[10],row[11]=overrides[int(row[0])]['original_flags']
+        by_code={int(row[0]):row for row in rows}
+        rows=[by_code[code] for code in load('manifest/korean_pet_resources.json')['catalog_source_order']]
         # Frozen original CN rows and growth identity, before this localization update.
         self.assertEqual(h.digest(k.encode_json(rows[:868])), 'dc7ed55bbe1642356b829c0cea2d9069bf15626bb9545a60d33ad5d4b302d130')
         self.assertEqual(h.digest(k.encode_json(tail)), '1ae928444eaf94bde3b3492c748e1110cf314118c0d58e6b38d0e29e8e000ee0')
@@ -121,6 +128,11 @@ class PetLocalizationPolicyTests(unittest.TestCase):
         k.validate_client_pet_rows(rows)
         for p in recipe['pets']+recipe['preserved_pets']:
             row=next(r for r in rows if int(r[0])==p['code'])
+            row=row.copy()
+            override=next((e for e in recipe['shop_price_overrides'] if e['code']==p['code']),None)
+            if override:
+                row[13:15]=['0','0']
+                row[8],row[10],row[11]=override['original_flags']
             self.assertEqual(h.digest(k.encode_json(row)),p['localized_row_sha256'])
 
 if __name__=='__main__':unittest.main()

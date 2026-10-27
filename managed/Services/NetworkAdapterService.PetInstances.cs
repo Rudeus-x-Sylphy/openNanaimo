@@ -43,8 +43,11 @@ public sealed partial class NetworkAdapterService
     internal static CharacterItemRecord[] GetPetWireItems(CharacterRecord? character)
     {
         if (character is null) return [];
+        // The client dereferences PET definitions without a missing-code guard.
+        // Retain retired ownership in storage, but never publish undefined rows.
         var pets = character.Items.Where(item => item.Quantity > 0 && item.ItemCode / 1000000 == 15
-            && (!ShopCatalog.TryGet(item.ItemCode, out var catalog) || !catalog.HasExpiry
+            && ShopCatalog.TryGet(item.ItemCode, out var catalog)
+            && (!catalog.HasExpiry
                 || ClothingExpirationTime.IsActive(item.ItemExpiration, DateTime.Now)))
             .OrderBy(item => item.ItemCode).ThenBy(item => item.PetInstanceId).ToList();
         if (character.PetVariant is >= 1 and <= 3)

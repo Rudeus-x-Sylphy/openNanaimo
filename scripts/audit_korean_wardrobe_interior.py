@@ -38,19 +38,30 @@ def safe_path(root, value):
     return path
 
 
+class CatalogHeader(list):
+    # The legacy AVATA view includes a previous-row date in each row prefix;
+    # retain the last actual date too, so reordering cannot discard it.
+    def __init__(self, fields, tail):
+        super().__init__(fields)
+        self.tail = tail
+
+
 def read_catalog(data, kind, key, encoding):
     _, magic, start, width, idcol, expected_tail = CATALOGS[kind]
     fields = codec.decrypt(data, key).decode(encoding).split('#')
     if len(fields) < start or fields[0] != magic:
         raise ValueError('Invalid catalog header')
     count = int(fields[2])
-    if count < 0 or fields[start + count * width:] != expected_tail:
+    tail = fields[start + count * width:]
+    valid_tail = (len(tail) == 2 and tail[-1] == ''
+                  and (tail[0] == '' or tail[0].isdigit())) if kind == 'clothing' else tail == expected_tail
+    if count < 0 or not valid_tail:
         raise ValueError('Invalid catalog count/tail')
     rows = [fields[start + i * width:start + (i + 1) * width] for i in range(count)]
     ids = [int(r[idcol]) for r in rows]
     if len(set(ids)) != count:
         raise ValueError('Duplicate catalog ID')
-    return fields[:start], dict(zip(ids, rows))
+    return CatalogHeader(fields[:start], tail), dict(zip(ids, rows))
 
 
 def read_pack(data):

@@ -26,6 +26,7 @@ try:
     from . import dungeon_experience_compat
     from . import level200_compat
     from . import player_trade_compat
+    from . import nana_exchange_compat
     from . import monk_village_compat
     from . import monk_dialogue_compat
 except ImportError:
@@ -40,6 +41,7 @@ except ImportError:
     import dungeon_experience_compat
     import level200_compat
     import player_trade_compat
+    import nana_exchange_compat
     import monk_village_compat
     import monk_dialogue_compat
 from pathlib import Path
@@ -598,10 +600,32 @@ def restore_native_state(data: bytes) -> tuple[bytes, dict]:
     return data, _migration_report('restore_native_state', revival=revival, power=power)
 
 
-# Boss width and its zero gate share the authoritative remaining-health field.
+# Normal dungeons keep authoritative HP. State14 is the tutorial flight scene,
+# so its local setter must also update the field consumed by the shared meter.
+BOSS_HEALTH_LOCAL_SETTER_VA = 0x00742D00
+BOSS_HEALTH_STATE_POINTER_VA = 0x00D6F280
+BOSS_HEALTH_TUTORIAL_LEGACY = (
+    b'\xA1' + struct.pack('<I', BOSS_HEALTH_STATE_POINTER_VA) + bytes.fromhex(
+        '83380C8B542404899108010000750689910C0100008BC1C20400CC'))
+TUTORIAL_PET_PROMPT_SITE = (
+    'tutorial_pet_prompt_lines', 0x00927BCC, b'\x00\x00\x00', b'\x02\x02\x02',
+)
+
+
+def patch_tutorial_pet_prompt(data: bytes) -> tuple[bytes, dict]:
+    # GS 10059..10061 end in '^& ^&': the third 260-byte slot is unwritten.
+    # Only modes 0..2 use one line; the three-line mode11 remains unchanged.
+    name, va, old, new = TUTORIAL_PET_PROMPT_SITE
+    return _patch_site(data, va, old, new, name, 'the tutorial pet prompt line table differs')
+
+
 BOSS_HEALTH_DISPLAY_SITES = (
     ('boss_health_zero_gate', 0x00742DF1, bytes.fromhex('83B90801000000'), bytes.fromhex('83B90C01000000')),
     ('boss_health_width', 0x00742E12, bytes.fromhex('DB8008010000'), bytes.fromhex('DB800C010000')),
+    ('boss_health_tutorial_local', BOSS_HEALTH_LOCAL_SETTER_VA,
+     bytes.fromhex('558BEC51894DFC8B45FC8B4D088988080100008BE55DC20400') + b'\xCC' * 7,
+     b'\xA1' + struct.pack('<I', BOSS_HEALTH_STATE_POINTER_VA) + bytes.fromhex(
+         '83380E8B542404899108010000750689910C0100008BC1C20400CC')),
 )
 
 # Completed animation state3 is still present in the child vector. D013 can
@@ -623,7 +647,11 @@ def patch_boss_terminal_effects(data: bytes) -> tuple[bytes, dict]:
 def patch_boss_health_display(data: bytes) -> tuple[bytes, dict]:
     rows = {}
     for name, va, old, new in BOSS_HEALTH_DISPLAY_SITES:
-        data, rows[name] = _patch_site(data, va, old, new, name, 'the Boss health display differs')
+        if name == 'boss_health_tutorial_local':
+            data, rows[name] = _migrate_site(data, va, new, (old, BOSS_HEALTH_TUTORIAL_LEGACY),
+                name, 'the Boss health display differs')
+        else:
+            data, rows[name] = _patch_site(data, va, old, new, name, 'the Boss health display differs')
     return data, _migration_report('patch_boss_health_display', **rows)
 
 
@@ -681,11 +709,15 @@ def patch_dungeon_state_controls(data: bytes) -> tuple[bytes, dict]:
     data, actor_level = dungeon_experience_compat.patch_local_actor_level(data, _patch_site)
     data, level200 = level200_compat.patch(data, _patch_site)
     data, boss_health = patch_boss_health_display(data)
+    data, tutorial_pet_prompt = patch_tutorial_pet_prompt(data)
     data, boss_terminal = patch_boss_terminal_effects(data)
     data, quickbar = patch_quickbar_refresh(data)
     data, player_trade = player_trade_compat.patch(data, _patch_site)
+    data, nana_exchange = nana_exchange_compat.patch(data, _patch_site)
     return data, _migration_report('patch_dungeon_state_controls', timer=timer,
         other_timer=other_timer, mouse_confirmation=mouse, power_cleanup=power, result_entry=result_entry,
+        tutorial_pet_prompt=tutorial_pet_prompt,
+        nana_exchange=_migration_report('patch_nana_exchange', **nana_exchange),
         social_gameplay=_migration_report('patch_social_gameplay', **gameplay),
         settlement_experience=experience, actor_level=actor_level, level200=_migration_report("patch_level200", **level200), boss_health=boss_health, boss_terminal=boss_terminal, quickbar=quickbar,
         member_town=_migration_report('patch_settlement_member_town', **member_town),
@@ -1236,11 +1268,14 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
                               for name, va, _, new in dungeon_experience_compat.patch_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in level200_compat.patch_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in BOSS_HEALTH_DISPLAY_SITES)
+        name, va, _, target = TUTORIAL_PET_PROMPT_SITE
+        expected_sites.append((name, va, target))
         expected_sites.extend((name, va, new) for name, va, _, new in BOSS_TERMINAL_EFFECT_SITES)
         expected_sites.extend((name, va, new) for name, va, _, new in quickbar_refresh_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in SETTLEMENT_MEMBER_TOWN_SITES)
         expected_sites.extend((name, va, new) for name, va, _, new in social_gameplay_patch_sites())
         expected_sites.extend((name, va, new) for name, va, _, new in player_trade_compat.patch_sites())
+        expected_sites.extend((name, va, new) for name, va, _, new in nana_exchange_compat.patch_sites())
         expected_sites.extend((name, va, new) for name, va, _, new
                               in dungeon_result_compat.continuation_sites() + dungeon_result_compat.sorting_sites())
         result_hook, result_code = dungeon_result_compat.encodings()

@@ -255,4 +255,37 @@ await db.ChangeGmStockAsync(account, "item", petCode, 2);
 await db.ChangeGmStockAsync(account, "item", petCode, -1);
 Check((await Load())!.Items.Count(item => item.ItemCode == petCode) == adminCount + 2
     && (await Load())!.EquippedPetInstanceId == second, "GM stock edits honor independent and protected instances");
+// Retired PET definitions remain in storage after a resource port is removed.
+const uint retiredPet = 15009901;
+Check(!ShopCatalog.TryGet(retiredPet, out _), "retired pet is absent from the active client catalog");
+await SeedItem(retiredPet, 1);
+state = (await Load())!;
+var visiblePets = NetworkAdapterService.GetPetWireItems(state);
+Check(visiblePets.All(item => item.ItemCode != retiredPet)
+    && visiblePets.Any(item => item.ItemCode == petCode && item.PetInstanceId == second),
+    "wire projection omits undefined pet without hiding valid selected copies");
+Check(await db.BeginWorldSessionAsync(account, id, sessionId, 1, "127.0.0.1"), "reopen isolated session for retired pet routes");
+Set("Character", state);
+var boxFrames = await Dispatch(0xC378, []);
+var filteredInventory = Frame(boxFrames, 0xC44C);
+Check(PetRows(filteredInventory).All(row => row.Code != retiredPet)
+    && PetRows(filteredInventory).Any(row => row.Code == petCode && row.Handle == secondHandle),
+    "C378 equipment open excludes retired pet and retains session handles in C44C");
+Check(U32(Frame(boxFrames, 0xC379), 168) == petCode
+    && U16(Frame(boxFrames, 0xC379), 172) == secondHandle,
+    "equipment snapshot still selects the valid independent pet");
+var retiredCharge = Frame(await Dispatch(0xC451, []), 0xC452);
+Check(Enumerable.Range(0, (int)U32(retiredCharge, 8)).All(index => U32(retiredCharge, 12 + index * 36) != retiredPet),
+    "charge list excludes undefined pet using the same projection");
+await Sql("UPDATE Characters SET EquippedPetItemCode=$code,EquippedPetInstanceId=0 WHERE Id=$id", ("$code", retiredPet));
+boxFrames = await Dispatch(0xC378, []);
+var retiredSelectionBox = Frame(boxFrames, 0xC379);
+Check(U32(retiredSelectionBox, 160) == 0 && U32(retiredSelectionBox, 168) == 0
+    && Frame(boxFrames, 0xC44C)[11] == byte.MaxValue,
+    "undefined selected pet is absent from appearance, selected summary and handle");
+Check((await Load())!.Items.Single(item => item.ItemCode == retiredPet).Quantity == 1
+    && (await Load())!.EquippedPetItemCode == retiredPet,
+    "opening equipment does not delete or rewrite retired persistent ownership or selection");
+await Sql("UPDATE Characters SET EquippedPetItemCode=$code,EquippedPetInstanceId=$instance WHERE Id=$id",
+    ("$code", petCode), ("$instance", second));
 Console.WriteLine($"PET_INSTANCE_REGRESSION_OK checks={checks} runtime_acceptance=false database={db.DatabasePath}");

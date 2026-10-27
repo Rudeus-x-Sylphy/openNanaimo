@@ -90,7 +90,9 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         (0x230000, 0x10000, 0x1E9400), # entertainment result level controller
     ]
     sections.append((0x320000, 0x10000, 0x1F9400))
-    data = bytearray(0x209400)
+    sections.append((0x520000, 0x10000, 0x209400))
+    sections.append((0x4C0000, 0x10000, 0x219400))
+    data = bytearray(0x229400)
     data[:2] = b'MZ'
     struct.pack_into('<I', data, 0x3C, 0x80)
     data[0x80:0x84] = b'PE\0\0'
@@ -115,6 +117,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         put(va, old)
     for _, va, old, _ in compat.player_trade_compat.patch_sites():
         put(va, old)
+    for _, va, old, _ in compat.nana_exchange_compat.patch_sites():
+        put(va, old)
     put(compat.dungeon7_visuals.MINIMAP_VA, compat.dungeon7_visuals.MINIMAP_OLD)
     for _, va, old, _ in compat.dungeon_experience_compat.patch_sites():
         put(va, old)
@@ -122,6 +126,8 @@ def synthetic_pe(furniture=compat.FURNITURE_OLD,
         put(va, old)
     for _, va, old, _ in compat.BOSS_HEALTH_DISPLAY_SITES:
         put(va, old)
+    _, va, old, _ = compat.TUTORIAL_PET_PROMPT_SITE
+    put(va, old)
     for _, va, old, _ in compat.BOSS_TERMINAL_EFFECT_SITES:
         put(va, old)
     put(0xA67B73, character_skip)

@@ -217,7 +217,7 @@ def prepare(client, output, font_path, baseline_recipe=None):
                 records.pop(key, None)
     for values in PARTS.values():
         codec.require(all(values[1] not in p for p in packs.values()), 'DIY pack key already exists')
-    payloads = {'ava._D1': wardrobe.catalog_bytes('clothing', header, rows)}
+    payloads = {'ava._D1': wardrobe.ordering.order_avatar(wardrobe.catalog_bytes('clothing', header, rows))}
     inputs = {'ava._D1': audit.identity((client / 'ava._D1').read_bytes()),
               'font': audit.identity(font_path.read_bytes())}
     font = ImageFont.truetype(str(font_path), 8)

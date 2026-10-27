@@ -64,6 +64,8 @@ public sealed class ShopCatalogItem
     public uint ShoppingCouponValue { get; init; }
     public uint HansGiftValue { get; init; }
     public bool IsHansGiftCertificate => Category == 46 && HansGiftValue > 0;
+    public uint NanaExchangeValue => NanaExchangeCatalog.Value(ItemCode);
+    public bool IsNanaExchange => NanaExchangeValue > 0;
 
     // Timed entries carry a wire expiration: clothing, furniture with an authored usage period
     // (inter._D3 field 5) and pets whose catalog row authors a life (pi._D7 field 34). Every

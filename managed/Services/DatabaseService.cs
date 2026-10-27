@@ -23,6 +23,7 @@ public readonly record struct FriendRecommendationResult(
 public sealed partial class DatabaseService
 {
     private const int TutorialMapId = 0;
+    private const int TutorialNormalKeyReward = 19;
     private const int DefaultSpawnMapId = 1;
     private const int DefaultTownPage = 33;
     private const int DefaultSpawnX = 320;
@@ -3693,6 +3694,7 @@ public sealed partial class DatabaseService
         if (accountId <= 0 || quantity == 0 || unitPrice == 0
             || !ShopCatalog.TryGet(itemCode, out var catalogItem)
             || !catalogItem.IsPurchasable
+            || catalogItem.IsNanaExchange
             || unitPrice != catalogItem.PurchasePrice
             || payWithCash != catalogItem.PaysWithCash)
             return (false, false, "商城购买参数无效。", 0, 0, 0);
@@ -4137,6 +4139,10 @@ public sealed partial class DatabaseService
             || payWithCash != catalogItem.PaysWithCash)
             return (false, false, "商城付款参数无效。", 0, 0, 0);
 
+        if (catalogItem.IsNanaExchange)
+            return await PurchaseNanaExchangeAsync(accountId, characterId, sessionId,
+                catalogItem, quantity, cancellationToken);
+
         var totalPrice = checked((long)quantity * unitPrice);
         var purchaseTime = DateTime.Now;
         await using var connection = await OpenConnectionAsync(cancellationToken);
@@ -4541,6 +4547,7 @@ public sealed partial class DatabaseService
             || unitPrice == 0
             || !ShopCatalog.TryGet(itemCode, out var catalogItem)
             || !catalogItem.IsPurchasable
+            || catalogItem.IsNanaExchange
             || unitPrice != catalogItem.PurchasePrice
             || payWithCash != catalogItem.PaysWithCash
             || requiredRecipientGender is < 0 or > 1)
@@ -7173,6 +7180,9 @@ public sealed partial class DatabaseService
         command.CommandText = """
             UPDATE Characters
                 SET TutorialCompleted = 1,
+                CardSummonCount = CASE WHEN TutorialCompleted = 0
+                    THEN CardSummonCount + $normalKeyReward ELSE CardSummonCount END,
+                CardKeyStateVersion = 1,
                 PetVariant = CASE
                     WHEN PetVariant BETWEEN 1 AND 3 THEN PetVariant
                     WHEN $petVariant BETWEEN 1 AND 3 THEN $petVariant
@@ -7195,6 +7205,7 @@ public sealed partial class DatabaseService
               AND AccountId = $accountId
               AND IsOnline = 1
               AND ActiveSessionId = $sessionId
+              AND (TutorialCompleted = 1 OR CardSummonCount BETWEEN 0 AND 255 - $normalKeyReward)
               AND EXISTS (
                   SELECT 1
                   FROM Accounts AS account
@@ -7207,6 +7218,7 @@ public sealed partial class DatabaseService
         command.Parameters.AddWithValue("$accountId", accountId);
         command.Parameters.AddWithValue("$sessionId", sessionId);
         command.Parameters.AddWithValue("$petVariant", petVariant);
+        command.Parameters.AddWithValue("$normalKeyReward", TutorialNormalKeyReward);
         command.Parameters.AddWithValue("$townPage", DefaultTownPage);
         var now = DateTime.UtcNow.ToString("O");
         command.Parameters.AddWithValue("$now", now);

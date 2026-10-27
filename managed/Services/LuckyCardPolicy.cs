@@ -81,7 +81,7 @@ internal static class LuckyCardPolicy
                     throw new InvalidDataException($"Uncatalogued lucky-card reward {code}.");
                 rewards.Add(new(code, upper)); previous = upper;
             }
-            if (row >= 8 && rewards.Count == 0) continue; // I/J explicitly unimplemented.
+            if (row == 9 && rewards.Count == 0) continue; // J remains unimplemented.
             if (previous != 10000) throw new InvalidDataException("Incomplete lucky-card range.");
             // Local adapter policy: interpret the authored ascending cutoffs as
             // cumulative ranges. This is not a recovered original-server RNG.
