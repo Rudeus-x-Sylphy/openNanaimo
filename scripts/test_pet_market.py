@@ -24,6 +24,8 @@ class PetMarketTests(unittest.TestCase):
         cls.header, cls.rows, cls.tail = hero.read_pet(cls.data, hero.CN_KEY, 'gbk')
         cls.by_code = {int(r[0]): r for r in cls.rows}
         cls.baseline = copy.deepcopy(cls.rows)
+        market.restore_shop_adjustments(cls.baseline, cls.recipe)
+        cls.legacy_rows = copy.deepcopy(cls.baseline)
         codes = {r['code']: r for r in cls.recipe['shop_price_overrides']}
         for row in cls.baseline:
             if int(row[0]) in codes:
@@ -39,9 +41,9 @@ class PetMarketTests(unittest.TestCase):
         self.assertEqual(plan, self.recipe['shop_price_overrides'])
         self.assertEqual(len(plan), 231)
         self.assertEqual(sum(e['reference'] is None for e in plan), 55)
-        self.assertEqual(self.header[3], '447')
+        self.assertEqual(self.header[3], '434')
         by_before = {int(r[0]): r for r in self.baseline}
-        for row in self.rows:
+        for row in self.legacy_rows:
             code = int(row[0])
             excluded = (code in market.DRAGONS or 'TEST' in row[2].upper()
                         or int(row[24]) > 0 and not int(by_before[code][13]))
@@ -50,7 +52,7 @@ class PetMarketTests(unittest.TestCase):
             for field in set(range(35)) - {8, 10, 11, 13, 14}:
                 self.assertEqual(row[field], by_before[code][field], (code, field))
         for entry in plan:
-            row = self.by_code[entry['code']]
+            row = next(r for r in self.legacy_rows if int(r[0]) == entry['code'])
             self.assertGreater(int(row[14]), 0)
             self.assertEqual([row[8],row[10],row[11]], ['1','2','-1'])
             if entry['reference'] is not None:
@@ -59,9 +61,64 @@ class PetMarketTests(unittest.TestCase):
                 self.assertEqual(row[13:15], ['0', str(int(ref[13]) or int(ref[14]))])
             else:
                 self.assertEqual(row[13:15], ['0', str(max(1, int(row[1])) * 100)])
-        self.assertEqual((self.by_code[15009106][1], self.by_code[15009106][14]), ('0', '100'))
+        self.assertEqual((self.by_code[15009106][1], self.by_code[15009106][14]), ('0', '50'))
         self.assertEqual(market.native_catalog(self.rows),
                          (ROOT / 'release/components/catalogs/pet_shop_catalog.inc').read_bytes())
+
+    def test_listing_exclusions_keep_definitions_and_town_hans(self):
+        hidden = [r for r in self.rows if int(r[32]) == 9039]
+        starters = [r for r in self.rows if int(r[32]) in (1, 2, 3)]
+        self.assertEqual(len(hidden), 4)
+        self.assertEqual(len(starters), 12)
+        for row in hidden + [r for r in starters if int(r[0]) not in (15001011,15001012,15001013)]:
+            self.assertEqual(market.shop_values(row), ['0','0','-1','0','0'])
+        for code in (15001011,15001012,15001013):
+            self.assertEqual(self.by_code[code][13:15], ['100','0'])
+        before = {int(r[0]): r for r in self.legacy_rows}
+        for row in self.rows:
+            for field in set(range(35)) - set(market.SHOP_FIELDS):
+                self.assertEqual(row[field], before[int(row[0])][field])
+        self.assertEqual(market.shop_adjustment_plan(self.legacy_rows),
+                         self.recipe['shop_policy_adjustments'])
+
+    def test_duration_price_groups_and_conflict_protection(self):
+        expected = {15009231:675,15009234:1350,15009237:4050,
+                    15009150:133,15009154:266,15009158:800,15009352:8,
+                    15003366:4950,15009106:50,15009238:4}
+        for code, price in expected.items():
+            self.assertEqual(int(self.by_code[code][14]), price)
+        rows = copy.deepcopy(self.rows)
+        market.apply_shop_policy(rows, self.recipe)
+        self.assertEqual(rows, self.rows)
+        next(r for r in rows if int(r[0]) == 15009238)[14] = '999999'
+        with self.assertRaisesRegex(ValueError, 'Conflicting PET shop policy'):
+            market.apply_shop_policy(rows, self.recipe)
+
+    def test_duration_plan_rounding_permanent_and_level_isolation(self):
+        def row(code, level, days, cash, hans=0):
+            result = self.by_code[15009231].copy()
+            result[0], result[1], result[34] = str(code), str(level), str(days)
+            result[13:15] = [str(hans), str(cash)]
+            return result
+        rows = [row(1,1,1,100),row(2,1,180,45),row(3,2,15,45),
+                row(4,1,90,0,999),row(5,3,0,300)]
+        plan = {e['code']: e for e in market.shop_adjustment_plan(rows)}
+        self.assertEqual({c:e['after'][4] for c,e in plan.items()}, {1:'1',2:'50',5:'150'})
+        rows.append(row(6,3,30,45))
+        with self.assertRaisesRegex(ValueError, 'Mixed permanent'):
+            market.shop_adjustment_plan(rows)
+
+    def test_previous_hundred_multiplier_policy_migrates_without_compounding(self):
+        previous = copy.deepcopy(self.legacy_rows)
+        for entry in market.shop_adjustment_plan(previous, multiplier=100):
+            row = next(r for r in previous if int(r[0]) == entry['code'])
+            market.set_shop_values(row, entry['after'])
+        header = self.header.copy()
+        header[3] = str(sum(int(r[10]) != 0 for r in previous))
+        raw = market.encrypt(header + [v for r in previous for v in r] + self.tail)
+        self.assertTrue(pets.catalog_migration(raw, self.recipe)['shop_policy_upgrade'])
+        market.apply_shop_policy(previous, self.recipe)
+        self.assertEqual(previous, self.rows)
 
     def test_installer_migrates_old_catalog_and_is_idempotent(self):
         baseline = market.encrypt(self.baseline_header + [v for r in self.baseline for v in r] + self.tail)
@@ -213,10 +270,22 @@ int main(void){unsigned price;stable_u64 cash;
  assert(g_profile_nana_cash==cash-price&&g_profile_coin_hans==999900u);
  assert(shopping_purchase_pet(15003340u,&price)==-2);
  cash=g_profile_nana_cash;fail_save=1;
- assert(shopping_purchase_pet(15000001u,&price)==-5);
+ assert(shopping_purchase_pet(15003341u,&price)==-5);
  assert(g_profile_nana_cash==cash&&g_gift_pets_n==2u);
  fail_save=0;g_profile_nana_cash=0;
- assert(shopping_purchase_pet(15000001u,&price)==-4);
+ assert(shopping_purchase_pet(15003341u,&price)==-4);
+ assert(shopping_purchase_pet(15000001u,&price)==-1);
+ assert(shopping_purchase_pet(15000002u,&price)==-1);
+ assert(shopping_purchase_pet(15000003u,&price)==-1);
+ assert(shopping_purchase_pet(15009109u,&price)==-1);
+ assert(shopping_purchase_pet(15009241u,&price)==-1);
+ assert(shopping_purchase_pet(15009245u,&price)==-1);
+ assert(shopping_purchase_pet(15009249u,&price)==-1);
+ { unsigned i;unsigned hidden[]={15000004u,15000005u,15000006u,15005004u,15005005u,15005006u};
+   for(i=0;i<6u;i++)assert(shopping_purchase_pet(hidden[i],&price)==-1); }
+ g_profile_nana_cash=8u;
+ assert(shopping_purchase_pet(15009352u,&price)==1&&price==8u);
+ assert(g_profile_nana_cash==0u&&g_profile_coin_hans==999900u);
  assert(shopping_purchase_pet(15000116u,&price)==-1);
  assert(shopping_purchase_pet(15003358u,&price)==-1);
  assert(shopping_purchase_pet(15003359u,&price)==-1);

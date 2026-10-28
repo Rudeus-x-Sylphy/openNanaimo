@@ -196,7 +196,7 @@ public sealed partial class DatabaseService
             return await CanGrantPetAsync(connection, tx, id, item, 1, token)
                 ? CardRewardCapacity.Available : CardRewardCapacity.Full;
         if (item.IsPetMaterial)
-            return await GetPetInventoryOccupancyAsync(connection, tx, id, token) < 56
+            return await GetPetInventoryOccupancyAsync(connection, tx, id, token) < InventoryCapacity.Slots
                 ? CardRewardCapacity.Available : CardRewardCapacity.Full;
         read.CommandText = "SELECT ItemCode,Quantity,ItemExpiration FROM CharacterItems WHERE CharacterId=$id AND Quantity>0";
         long occupied = 0;
@@ -215,7 +215,7 @@ public sealed partial class DatabaseService
                 || item.IsGameInventoryItem && owned.IsGameInventoryItem
                 || item.IsShoppingCoupon && owned.IsShoppingCoupon) occupied += count;
         }
-        int cap = item.Section == InventorySection.Clothing ? 56 : item.IsShoppingCoupon ? 256 : 84;
+        int cap = item.IsShoppingCoupon ? 256 : InventoryCapacity.Slots;
         return occupied < cap ? CardRewardCapacity.Available : CardRewardCapacity.Full;
     }
     // Only calendar-duration pets merge with other calendar-duration variants.

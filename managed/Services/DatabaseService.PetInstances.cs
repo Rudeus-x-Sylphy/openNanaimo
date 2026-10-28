@@ -157,7 +157,7 @@ public sealed partial class DatabaseService
         if (!item.IsIndependentPet && await FindPetFamilyRowAsync(connection, tx, id, item, token) is { } owned
             && ClothingExpirationTime.IsActive(owned.Expiration, DateTime.Now)) required = 0;
         var occupied = await GetPetInventoryOccupancyAsync(connection, tx, id, token);
-        return required == 0 || occupied + (long)required <= 56;
+        return required == 0 || occupied + (long)required <= InventoryCapacity.Slots;
     }
 
     private static async Task<ushort> GetPetInstanceQuantityAsync(SqliteConnection connection, SqliteTransaction tx,

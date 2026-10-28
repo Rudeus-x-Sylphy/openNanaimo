@@ -19,16 +19,18 @@ public sealed partial class NetworkAdapterService
 
     private static InventoryIdentityMap SessionPetMaterials(ConnectionSession session)
     {
-        session.PetMaterialIdentities.Synchronize(GetPetMaterialWireItemCodes(session.Character));
+        session.PetMaterialIdentities.Limit = session.Inventory99Enabled ? InventoryCapacity.Slots : InventoryIdentityMap.Capacity;
+        session.PetMaterialIdentities.Synchronize(GetSessionPetMaterialCodes(session));
         return session.PetMaterialIdentities;
     }
 
     private static bool TryResolveSessionPetMaterialIdentity(ConnectionSession session, uint wire,
-        out byte ordinal, out uint code)
+        out ushort ordinal, out uint code)
     {
         ordinal = 0; code = 0;
-        return wire >= PetMaterialIdentityBase
-            && SessionPetMaterials(session).TryStorage(wire - PetMaterialIdentityBase, out ordinal, out code);
+        var first = session.Inventory99Enabled ? InventoryCapacity.ExtendedPetMaterialBase : PetMaterialIdentityBase;
+        return wire >= first
+            && SessionPetMaterials(session).TryStorage(wire - (uint)first, out ordinal, out code);
     }
 
     private static bool TryResolvePetMaterialOrdinal(CharacterRecord character, uint selector, out uint code)
@@ -41,6 +43,7 @@ public sealed partial class NetworkAdapterService
 
     private static void RewriteSessionPetMaterialIdentities(Span<byte> frame, ConnectionSession session)
     {
+        if (session.Inventory99Enabled) return;
         if (session.Character is null || frame.Length < 12
             || BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6)) != 0xC44C) return;
         var map = SessionPetMaterials(session);
@@ -66,7 +69,8 @@ public sealed partial class NetworkAdapterService
             : (Success: false, Quantity: (ushort)0);
         if (result.Success)
         {
-            session.PetMaterialIdentities.Remove((uint)(identity - PetMaterialIdentityBase));
+            session.PetMaterialIdentities.Remove((uint)(identity - (session.Inventory99Enabled
+                ? InventoryCapacity.ExtendedPetMaterialBase : PetMaterialIdentityBase)));
             await RefreshInventoryCharacterAsync(session, token);
             AccountStateChanged?.Invoke();
         }

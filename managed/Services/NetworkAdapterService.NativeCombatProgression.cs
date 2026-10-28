@@ -28,7 +28,7 @@ public sealed partial class NetworkAdapterService
         using var resourceCommit = await LockNativeDungeonResourcesAsync(session, token);
         if (!ReferenceEquals(session.NativeDungeon, worker) || session.NativeBattleEpoch != epoch
             || session.NativeCheckpoint is not { } current || current.Get(4) != before.Get(4)) return;
-        var updated = new NativeDungeonState(current.Bytes.ToArray());
+        var updated = current.Clone();
         BinaryPrimitives.WriteUInt32LittleEndian(updated.Bytes.AsSpan(NativeDungeonState.AttackModifierOffset), attack);
         BinaryPrimitives.WriteUInt32LittleEndian(updated.Bytes.AsSpan(NativeDungeonState.DefenseFlatOffset), defense);
         session.NativeCheckpoint = updated;

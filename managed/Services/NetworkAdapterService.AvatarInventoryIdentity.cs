@@ -9,9 +9,9 @@ public sealed partial class NetworkAdapterService
     // references. Appearance offsets are body parts, NOT instance identities.
     // In particular, a missing +16 slot must not shift only one carrier's D5/D6.
     internal static List<(uint ItemCode, ushort Equipped, ushort Slot, uint Expiration)> GetAvatarInventoryRows(
-        CharacterRecord? character)
+        CharacterRecord? character, int capacity = AvatarInventoryCapacity)
     {
-        var rows = new List<(uint ItemCode, ushort Equipped, ushort Slot, uint Expiration)>(AvatarInventoryCapacity);
+        var rows = new List<(uint ItemCode, ushort Equipped, ushort Slot, uint Expiration)>(capacity);
         if (character is null)
             return rows;
         var appearance = BuildStoredAppearance(character);
@@ -26,7 +26,7 @@ public sealed partial class NetworkAdapterService
         }
         foreach (var item in character.Items)
         {
-            if (rows.Count >= AvatarInventoryCapacity)
+            if (rows.Count >= capacity)
                 break;
             if (item.Quantity == 0 || rows.Any(row => row.ItemCode == item.ItemCode)
                 || !ShopCatalog.TryGet(item.ItemCode, out var catalog)

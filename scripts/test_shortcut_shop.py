@@ -37,7 +37,7 @@ class ShortcutShopTests(unittest.TestCase):
     def test_pet_order_and_no_progression_pets_in_mall(self):
         self.assertEqual(self.rows, ordering.order_pets(self.rows))
         mall = [r for r in self.rows if int(r[10]) and int(r[14])]
-        self.assertEqual(len(mall), 396)
+        self.assertEqual(len(mall), 383)
         self.assertTrue(all(int(r[13]) == 0 and int(r[24]) == 0 for r in mall))
         self.assertEqual(sum(int(r[13]) > 0 for r in self.rows), 51)
         self.assertEqual(len(self.recipe['shop_price_retractions']), 529)
@@ -48,6 +48,7 @@ class ShortcutShopTests(unittest.TestCase):
 
     def test_old_market_migrates_without_changing_growth_or_gold_prices(self):
         previous = copy.deepcopy(self.rows)
+        market.restore_shop_adjustments(previous, self.recipe)
         by_code = {int(r[0]): r for r in previous}
         for entry in self.recipe['shop_price_retractions']:
             row = by_code[entry['code']]
@@ -62,7 +63,9 @@ class ShortcutShopTests(unittest.TestCase):
         with zipfile.ZipFile(ROOT / 'resource-packs/nanaimo-korean-resource-kit.zip') as archive:
             source = archive.read('source-kr/pi._D7')
         self.assertEqual(pets.merge_pet(raw, source, self.recipe), self.pet_data)
-        current = {int(r[0]): r for r in self.rows}
+        restored = copy.deepcopy(self.rows)
+        market.restore_shop_adjustments(restored, self.recipe)
+        current = {int(r[0]): r for r in restored}
         for row in previous:
             after = current[int(row[0])]
             for field in set(range(35)) - {8, 10, 11, 13, 14}:

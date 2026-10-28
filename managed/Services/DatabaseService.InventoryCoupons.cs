@@ -22,13 +22,13 @@ public sealed partial class DatabaseService
             string sessionId,
             uint itemCode,
             byte[] requestedAppearance,
-            byte inventoryIndex,
+            int inventoryIndex,
             CancellationToken cancellationToken = default)
     {
         if (accountId <= 0
             || characterId <= 0
             || string.IsNullOrEmpty(sessionId)
-            || inventoryIndex >= 84
+            || inventoryIndex >= InventoryCapacity.Slots
             || requestedAppearance.Length != 36
             || !ShopCatalog.TryGet(itemCode, out var coupon)
             || coupon.Category != 45

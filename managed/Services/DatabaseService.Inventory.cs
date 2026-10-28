@@ -5,6 +5,40 @@ namespace OpenNanaimo.Adapter.Services;
 
 public sealed partial class DatabaseService
 {
+    private static async Task PruneInvalidGameQuickSlotsAsync(
+        SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var transaction = connection.BeginTransaction(deferred: false);
+        var characterIds = new List<long>();
+        await using (var read = connection.CreateCommand())
+        {
+            read.Transaction = transaction;
+            read.CommandText = "SELECT DISTINCT CharacterId FROM CharacterQuickSlots ORDER BY CharacterId";
+            await using var reader = await read.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken)) characterIds.Add(reader.GetInt64(0));
+        }
+        foreach (var characterId in characterIds)
+        {
+            var inventory = await GetGameInventoryItemCodesAsync(
+                connection, transaction, characterId, cancellationToken);
+            var slots = await GetCharacterQuickSlotsAsync(connection, characterId, cancellationToken);
+            foreach (var slot in slots)
+            {
+                if (slot.InventoryIndex < inventory.Count && inventory[slot.InventoryIndex] == slot.ItemCode)
+                    continue;
+                // A stale ordinal cannot identify its old same-code occurrence.
+                // Clear only the binding; never choose another medicine or debit it.
+                await using var remove = connection.CreateCommand();
+                remove.Transaction = transaction;
+                remove.CommandText = "DELETE FROM CharacterQuickSlots WHERE CharacterId=$id AND Slot=$slot";
+                remove.Parameters.AddWithValue("$id", characterId);
+                remove.Parameters.AddWithValue("$slot", slot.Slot);
+                await remove.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Removes exactly one instance from the current DB C430 projection (ItemCode order,
     /// quantities expanded, Category 41 excluded). inventoryIndex is zero-based, NOT a
@@ -17,7 +51,7 @@ public sealed partial class DatabaseService
         long characterId,
         string sessionId,
         uint itemCode,
-        byte inventoryIndex,
+        int inventoryIndex,
         CancellationToken cancellationToken = default)
         => DeleteGameInventoryItemCoreAsync(
             accountId, characterId, sessionId, itemCode, inventoryIndex, cancellationToken);
@@ -39,7 +73,7 @@ public sealed partial class DatabaseService
         long characterId,
         string sessionId,
         uint itemCode,
-        byte inventoryIndex,
+        int inventoryIndex,
         CancellationToken cancellationToken = default,
         int? authoritativeCurrentHp = null,
         int? authoritativeCurrentMp = null,
@@ -156,13 +190,13 @@ public sealed partial class DatabaseService
         long characterId,
         string sessionId,
         uint itemCode,
-        byte inventoryIndex,
+        int inventoryIndex,
         CancellationToken cancellationToken = default)
     {
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId)
             || !ShopCatalog.TryGet(itemCode, out var item)
             || !item.IsHansGiftCertificate
-            || inventoryIndex > 83)
+            || inventoryIndex >= InventoryCapacity.Slots)
             return (false, 0, 0);
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
@@ -245,7 +279,7 @@ public sealed partial class DatabaseService
         long characterId,
         string sessionId,
         uint itemCode,
-        byte? inventoryIndex,
+        int? inventoryIndex,
         CancellationToken cancellationToken)
     {
         var result = await ConsumeGameInventoryItemCoreAsync(
@@ -270,7 +304,7 @@ public sealed partial class DatabaseService
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId)
             || !ShopCatalog.TryGet(itemCode, out var item)
             || inventoryIndex is < 0
-            || inventoryIndex > (item.IsShoppingCoupon ? 255 : 83)
+            || inventoryIndex > (item.IsShoppingCoupon ? 255 : InventoryCapacity.Slots - 1)
             || (specialDelete
                 ? item.Category is < 41 or > 48
                 : !item.IsGameInventoryItem || item.Category == 47)
@@ -483,7 +517,7 @@ public sealed partial class DatabaseService
         long characterId,
         CancellationToken cancellationToken)
     {
-        var codes = new List<uint>(84);
+        var codes = new List<uint>(InventoryCapacity.Slots);
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
@@ -492,12 +526,12 @@ public sealed partial class DatabaseService
             """;
         command.Parameters.AddWithValue("$characterId", characterId);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (codes.Count < 84 && await reader.ReadAsync(cancellationToken))
+        while (codes.Count < InventoryCapacity.Slots && await reader.ReadAsync(cancellationToken))
         {
             var code = checked((uint)reader.GetInt64(0));
             if (!ShopCatalog.TryGet(code, out var item) || !item.IsGameInventoryItem)
                 continue;
-            var count = Math.Min(reader.GetInt64(1), 84 - codes.Count);
+            var count = Math.Min(reader.GetInt64(1), InventoryCapacity.Slots - codes.Count);
             for (long i = 0; i < count; i++)
                 codes.Add(code);
         }
@@ -529,7 +563,7 @@ public sealed partial class DatabaseService
                 {
                     Slot = checked((byte)reader.GetInt32(0)),
                     ItemCode = code,
-                    InventoryIndex = checked((byte)(index > removedIndex ? index - 1 : index))
+                    InventoryIndex = checked((ushort)(index > removedIndex ? index - 1 : index))
                 });
             }
         }
@@ -548,7 +582,7 @@ public sealed partial class DatabaseService
         // appended after every old instance of that code, not inserted at the front.
         var insertedIndex = 0;
         while (insertedIndex < before.Count && before[insertedIndex] <= addedCode) insertedIndex++;
-        if (insertedIndex >= 84) return true;
+        if (insertedIndex >= InventoryCapacity.Slots) return true;
         var survivors = new List<CharacterQuickSlotRecord>();
         await using (var read = connection.CreateCommand())
         {
@@ -564,11 +598,11 @@ public sealed partial class DatabaseService
                 var shifted = index >= insertedIndex ? index + 1 : index;
                 // Never silently discard an existing binding beyond the 84-row
                 // projection. The claim caller rolls back inbox and inventory too.
-                if (shifted >= 84) return false;
+                if (shifted >= InventoryCapacity.Slots) return false;
                 survivors.Add(new CharacterQuickSlotRecord
                 {
                     Slot = checked((byte)reader.GetInt32(0)), ItemCode = code,
-                    InventoryIndex = checked((byte)shifted)
+                    InventoryIndex = checked((ushort)shifted)
                 });
             }
         }
@@ -608,7 +642,7 @@ public sealed partial class DatabaseService
                 slots.Add(new CharacterQuickSlotRecord
                 {
                     Slot = checked((byte)reader.GetInt32(0)), ItemCode = code,
-                    InventoryIndex = checked((byte)next)
+                    InventoryIndex = checked((ushort)next)
                 });
             }
         }

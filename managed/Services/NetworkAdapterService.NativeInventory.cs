@@ -25,6 +25,14 @@ public sealed partial class NetworkAdapterService
         byte[] frame, ushort opcode, string channel, string remote, string? remoteIp,
         ConnectionSession session, CancellationToken token)
     {
+        if (channel == "WorldAdapter" && session.OnlineTracked && session.NativeDungeon is not null
+            && session.NativeCheckpoint is { } checkpoint
+            && checkpoint.Items.Values.Sum(quantity => (long)quantity) >= 240)
+        {
+            await CommitNativeCheckpointAsync(session, null, token);
+            await RefreshInventoryCharacterAsync(session, token);
+            await SynchronizeNativeInventoryCoreAsync(session, token, refreshReadyRoom: false);
+        }
         if (channel == "WorldAdapter" && session.OnlineTracked && session.Character is { } noticeCharacter
             && session.CardNoticeCharacterId != noticeCharacter.Id)
         {
@@ -41,6 +49,17 @@ public sealed partial class NetworkAdapterService
         var response = channel == "ArenaAdapter" && session.ArenaGameType is >= 1 and <= 4
             ? await HandleArenaFrameWithDeliveryAsync(frame, opcode, channel, remote, remoteIp, session, token)
             : await HandleNativeFrameCoreAsync(frame, opcode, channel, remote, remoteIp, session, token);
+        // Initial world restoration can precede capability negotiation. Restore
+        // full identities once the actual inventory controller is consuming them.
+        if (response is not null && session.Inventory99Enabled && !session.Inventory99EquipmentRestored
+            && session.Character is { } equippedCharacter && opcode is 0xC378 or 0xC3CB or 0xC42F or 0xC44B)
+        {
+            session.Inventory99EquipmentRestored = true;
+            if (opcode != 0xC378)
+                response = CombineNativeFrames(BuildNativeFrame(frame, 0xC379,
+                    BuildBoxInfoPayloadWithSkills(equippedCharacter,
+                        await _database.GetCharacterSkillsAsync(equippedCharacter.Id, token)), session), response);
+        }
         if (synchronize && response is not null && IsNativeInventoryMutation(opcode))
             response = CombineNativeFrames(response, await SynchronizeNativeInventoryAsync(session, token));
         return response;
@@ -88,4 +107,5 @@ public sealed partial class NetworkAdapterService
         }
         return CombineNativeFrames(frames.ToArray());
     }
+
 }

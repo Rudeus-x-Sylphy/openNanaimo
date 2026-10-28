@@ -12,6 +12,29 @@ ROOT=Path(__file__).resolve().parents[1]
 load=lambda name:json.loads((ROOT/name).read_text('utf-8-sig'))
 
 class PetLocalizationPolicyTests(unittest.TestCase):
+    def test_helicopter_variants_match_korean_numeric_and_model_fields(self):
+        recipe = load('manifest/korean_pet_resources.json')
+        with zipfile.ZipFile(ROOT/'resource-packs/nanaimo-korean-resource-kit.zip') as archive:
+            source = archive.read('source-kr/pi._D7')
+        self.assertEqual(k.identity(source), recipe['source_catalog'])
+        _, original, _ = h.read_pet(source, h.SOURCE_KEY, 'cp949')
+        _, current, _ = h.read_pet((ROOT/'adapter_runtime/资源/数据/pi._D7').read_bytes(),h.CN_KEY,'gbk')
+        original = {int(row[0]): row for row in original}
+        rows = [row for row in current if 9149 <= int(row[32]) <= 9153]
+        self.assertEqual(len(rows), 20)
+        allowed = {2,8,10,11,13,14,16,17,18}
+        for row in rows:
+            for field in set(range(35)) - allowed:
+                self.assertEqual(row[field], original[int(row[0])][field], (row[0],field))
+        for family, permanent_level, timed_level, attack in (
+                (9149,22,0,235),(9150,45,21,340),(9151,55,36,484),
+                (9152,71,56,596),(9153,99,71,723)):
+            variants = [row for row in rows if int(row[32]) == family]
+            self.assertEqual({int(row[19]) for row in variants}, {attack})
+            self.assertEqual({int(row[34]) for row in variants}, {0,15,30,90})
+            self.assertTrue(all(int(row[1]) == (timed_level if int(row[34]) else permanent_level)
+                                for row in variants))
+
     def test_current_guides_point_to_complete_localized_pet_policy(self):
         guide='knowledge/指南/韩服宠物佩戴等级下放方案.md'
         owner='knowledge/业务/宠物/所有权/追加宠物对照表.md'
@@ -104,7 +127,9 @@ class PetLocalizationPolicyTests(unittest.TestCase):
                                      re.findall(row_pattern,baseline[source],re.M))
 
     def test_original_cn_rows_and_growth_are_preserved(self):
+        import prepare_pet_market as market
         _,rows,tail=h.read_pet((ROOT/'adapter_runtime/资源/数据/pi._D7').read_bytes(),h.CN_KEY,'gbk')
+        market.restore_shop_adjustments(rows, load('manifest/korean_pet_resources.json'))
         overrides={p['code']:p for p in load('manifest/korean_pet_resources.json')['shop_price_overrides']}
         for row in rows:
             if int(row[0]) in overrides:
@@ -117,10 +142,12 @@ class PetLocalizationPolicyTests(unittest.TestCase):
         self.assertEqual(h.digest(k.encode_json(tail)), '1ae928444eaf94bde3b3492c748e1110cf314118c0d58e6b38d0e29e8e000ee0')
 
     def test_published_pet_catalog_matches_display_and_recipe(self):
+        import prepare_pet_market as market
         path=ROOT/'adapter_runtime/资源/数据/pi._D7';data=path.read_bytes()
         recipe=load('manifest/korean_pet_resources.json')
         self.assertEqual(k.identity(data),recipe['installed_catalog'])
         _,rows,tail=h.read_pet(data,h.CN_KEY,'gbk')
+        market.restore_shop_adjustments(rows, recipe)
         self.assertEqual(len(rows),990);self.assertEqual(int(tail[0]),35)
         gui={p['id']:p for p in load('gui_launcher/data/pets.json')}
         for row in rows:

@@ -109,7 +109,7 @@ public sealed class CharacterQuickSlotRecord
 {
     public byte Slot { get; set; }
     public uint ItemCode { get; set; }
-    public byte InventoryIndex { get; set; }
+    public ushort InventoryIndex { get; set; }
 }
 
 public sealed record DungeonQuickItemTarget(

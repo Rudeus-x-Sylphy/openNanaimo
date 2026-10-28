@@ -37,7 +37,7 @@ public sealed partial class DatabaseService
         CancellationToken token = default)
     {
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId)
-            || inventorySlot >= 84
+            || inventorySlot >= InventoryCapacity.Slots
             || !(CoupleBenefitPolicy.IsRingItemCode(itemCode)
                 || CoupleBenefitPolicy.IsSeparationItemCode(itemCode))) return null;
         await using var connection = await OpenConnectionAsync(token);

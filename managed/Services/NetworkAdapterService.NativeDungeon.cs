@@ -1017,7 +1017,7 @@ public sealed partial class NetworkAdapterService
         BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(28, 4), checked((uint)committed.CurrentMp));
         BinaryPrimitives.WriteInt64LittleEndian(importedBytes.AsSpan(32, 8), committed.Hans);
         BinaryPrimitives.WriteUInt32LittleEndian(importedBytes.AsSpan(60, 4), committed.RevivalUseCount);
-        var importedState = new NativeDungeonState(importedBytes);
+        var importedState = new NativeDungeonState(importedBytes) { InventoryProjection = checkpoint.InventoryProjection };
         var expectedHp = checked((ushort)Math.Clamp(committed.CurrentHp, 1, ushort.MaxValue));
         var expectedMp = checked((ushort)Math.Clamp(committed.CurrentMp, 1, ushort.MaxValue));
         NativeDungeonExchangeResult exchange;
@@ -1262,6 +1262,8 @@ public sealed partial class NetworkAdapterService
                 ? NativePetRevivalDebit(session) : null;
         var record = new { CommitId = commitId, session.AccountId, CharacterId = session.Character.Id, session.SessionId,
             Before = Convert.ToBase64String(session.NativeCheckpoint.Bytes), After = Convert.ToBase64String(next.Bytes),
+            BeforeInventoryProjection = session.NativeCheckpoint.InventoryProjection?.ToJson(),
+            AfterInventoryProjection = next.InventoryProjection?.ToJson(),
             Settlement = settlement, PetLifetime = petLifetime };
         await File.WriteAllTextAsync(journal + ".tmp", System.Text.Json.JsonSerializer.Serialize(record), token);
         File.Move(journal + ".tmp", journal, true);

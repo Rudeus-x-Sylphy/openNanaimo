@@ -58,7 +58,7 @@ internal static class InventoryLifecycleChecks
                 Check(!await operation(), name + " rejected");
                 Check(await Snapshot() == before, name + " leaves inventory/equipment/bindings unchanged");
             }
-            static CharacterQuickSlotRecord Slot(byte slot, uint code, byte index)
+            static CharacterQuickSlotRecord Slot(byte slot, uint code, ushort index)
                 => new() { Slot = slot, ItemCode = code, InventoryIndex = index };
             var empty = new byte[36];
             const uint potion = 14_000_001, other = 21_000_001, pet = 15_000_001;
@@ -154,24 +154,24 @@ internal static class InventoryLifecycleChecks
             var claimResult = await db.ClaimCashInboxItemAsync(account, character, session, potion);
             after = await Read();
             Check(claimResult.Success && claimResult.InboxQuantity == 0 && claimResult.InventoryQuantity == 1
-                && after.QuickSlots.OrderBy(s => s.Slot).Select(s => s.InventoryIndex).SequenceEqual(new byte[] {1,2,3}),
+                && after.QuickSlots.OrderBy(s => s.Slot).Select(s => s.InventoryIndex).SequenceEqual(new ushort[] {1,2,3}),
                 "claim lower code shifts both duplicate bindings and following code");
             Check(await db.SaveInventoryEquipmentAsync(account, character, session, after.QuickSlots, 0, 0, empty),
                 "unchanged equipment commit after lower-code claim remains valid");
             await Inbox(claimExisting);
             Check((await db.ClaimCashInboxItemAsync(account, character, session, claimExisting)).Success, "claim equal-code instance");
             after = await Read();
-            Check(after.QuickSlots.OrderBy(s => s.Slot).Select(s => s.InventoryIndex).SequenceEqual(new byte[] {1,2,4}),
+            Check(after.QuickSlots.OrderBy(s => s.Slot).Select(s => s.InventoryIndex).SequenceEqual(new ushort[] {1,2,4}),
                 "same-code claim appends after old instances and shifts only later codes");
             Check((await db.DeleteGameInventoryItemAsync(account, character, session, claimExisting, 3)).Success,
                 "newly claimed duplicate is removable at appended ordinal");
             after = await Read();
             Check(after.QuickSlots.Count == 3
-                && after.QuickSlots.OrderBy(s => s.Slot).Select(s => s.InventoryIndex).SequenceEqual(new byte[] {1,2,3}),
+                && after.QuickSlots.OrderBy(s => s.Slot).Select(s => s.InventoryIndex).SequenceEqual(new ushort[] {1,2,3}),
                 "removing appended duplicate retains both original instance bindings");
             await Inbox(41_000_001);
             Check((await db.ClaimCashInboxItemAsync(account, character, session, 41_000_001)).Success
-                && (await Read()).QuickSlots.OrderBy(s => s.Slot).Select(s => s.InventoryIndex).SequenceEqual(new byte[] {1,2,3}),
+                && (await Read()).QuickSlots.OrderBy(s => s.Slot).Select(s => s.InventoryIndex).SequenceEqual(new ushort[] {1,2,3}),
                 "claim outside C430 does not shift game bindings");
             await Inbox(potion);
             await Execute("CREATE TRIGGER lifecycle_fail_claim BEFORE INSERT ON CharacterQuickSlots BEGIN SELECT RAISE(ABORT, 'injected claim failure'); END;");
@@ -188,11 +188,11 @@ internal static class InventoryLifecycleChecks
                 && after.QuickSlots.Any(s => s.Slot == 2 && s.InventoryIndex == 2 && s.ItemCode == other),
                 "post-claim deletion clears only the selected original duplicate");
             await ResetItems();
-            await Seed(claimExisting, 84);
-            Check(await db.SaveInventoryEquipmentAsync(account, character, session, [Slot(0, claimExisting, 83)], 0, 0, empty),
+            await Seed(claimExisting, InventoryCapacity.Slots);
+            Check(await db.SaveInventoryEquipmentAsync(account, character, session, [Slot(0, claimExisting, InventoryCapacity.Slots - 1)], 0, 0, empty),
                 "claim projection boundary fixture");
             await RejectUnchanged(async () => (await db.ClaimCashInboxItemAsync(account, character, session, potion)).Success,
-                "claim cannot silently evict a binding beyond ordinal83");
+                "claim cannot silently evict a binding beyond the 99-page capacity");
 
             // Food shares exact-instance deletion, but HP/MP writes must roll back too.
             await ResetItems();

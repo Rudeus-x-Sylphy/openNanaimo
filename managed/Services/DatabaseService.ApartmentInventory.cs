@@ -19,7 +19,7 @@ public sealed partial class DatabaseService
         CancellationToken cancellationToken = default)
     {
         if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId)
-            || inventoryIndex >= 84
+            || inventoryIndex >= InventoryCapacity.Slots
             || !ShopCatalog.TryGet(itemCode, out var catalogItem)
             || catalogItem.Section != InventorySection.Furniture)
             return (false, 0);
@@ -44,7 +44,7 @@ public sealed partial class DatabaseService
         }
 
         // Match the character inventory ordering, filtering and instance expansion.
-        var inventory = new List<uint>(84);
+        var inventory = new List<uint>(InventoryCapacity.Slots);
         long quantity = 0;
         await using (var read = connection.CreateCommand())
         {
@@ -62,7 +62,7 @@ public sealed partial class DatabaseService
                 if (code == itemCode) quantity = count;
                 if (!ShopCatalog.TryGet(code, out var item) || item.Section != InventorySection.Furniture)
                     continue;
-                var visible = (int)Math.Min(count, 84 - inventory.Count);
+                var visible = (int)Math.Min(count, InventoryCapacity.Slots - inventory.Count);
                 for (var i = 0; i < visible; i++) inventory.Add(code);
             }
         }
@@ -131,7 +131,7 @@ public sealed partial class DatabaseService
         long characterId,
         CancellationToken cancellationToken = default)
     {
-        var result = new List<uint>(84);
+        var result = new List<uint>(InventoryCapacity.Slots);
         await using var read = connection.CreateCommand();
         read.Transaction = transaction;
         read.CommandText = """
@@ -140,7 +140,7 @@ public sealed partial class DatabaseService
             """;
         read.Parameters.AddWithValue("$characterId", characterId);
         await using var reader = await read.ExecuteReaderAsync(cancellationToken);
-        while (result.Count < 84 && await reader.ReadAsync(cancellationToken))
+        while (result.Count < InventoryCapacity.Slots && await reader.ReadAsync(cancellationToken))
         {
             var code = checked((uint)reader.GetInt64(0));
             if (!ShopCatalog.TryGet(code, out var item) || item.Section != InventorySection.Furniture)
@@ -148,7 +148,7 @@ public sealed partial class DatabaseService
             // A lapsed furniture item leaves the visible inventory the way timed clothing does.
             if (item.HasExpiry && !ClothingExpirationTime.IsActive(checked((uint)reader.GetInt64(2)), DateTime.Now))
                 continue;
-            var visible = (int)Math.Min(reader.GetInt64(1), 84 - result.Count);
+            var visible = (int)Math.Min(reader.GetInt64(1), InventoryCapacity.Slots - result.Count);
             for (var i = 0; i < visible; i++) result.Add(code);
         }
         return result;

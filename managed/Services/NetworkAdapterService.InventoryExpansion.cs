@@ -41,9 +41,10 @@ public sealed partial class NetworkAdapterService
             out var requestedType,
             out var requestedIdentity);
         uint itemCode = 0;
-        byte inventorySlot = 0;
+        ushort inventorySlot = 0;
         byte[] resultPayload;
-        if (!requestParsed || requestedType > 6 || requestedIdentity > 83)
+        if (!requestParsed || requestedType > 6 || requestedIdentity > (session.Inventory99Enabled
+                ? InventoryCapacity.Slots : InventoryIdentityMap.Capacity))
         {
             _log($"{channel}:{remote} inventory expansion request invalid: payload={payload.Length} type={requestedType} identity={requestedIdentity}; inventory unchanged");
             resultPayload = BuildSkillSlotExpansionResultPayload(1, requestedType, inventorySlot, itemCode, 0);
@@ -63,7 +64,7 @@ public sealed partial class NetworkAdapterService
             else
             {
                 itemCode = ticket.ItemCode;
-                inventorySlot = checked((byte)requestedIdentity);
+                inventorySlot = requestedIdentity;
                 var use = await _database.UseInventoryExpansionAsync(
                     session.AccountId,
                     session.Character.Id,
@@ -119,7 +120,7 @@ public sealed partial class NetworkAdapterService
     private static byte[] BuildSkillSlotExpansionResultPayload(
         byte result,
         byte expansionType,
-        byte inventorySlot,
+        ushort inventorySlot,
         uint itemCode,
         uint expiration)
     {
@@ -130,7 +131,8 @@ public sealed partial class NetworkAdapterService
         var payload = new byte[InventoryExpansionResponsePayloadLength];
         payload[0] = result;
         payload[2] = expansionType;
-        payload[3] = inventorySlot;
+        payload[1] = (byte)(inventorySlot >> 8);
+        payload[3] = (byte)inventorySlot;
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4, 4), itemCode);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(8, 4), expiration);
         return payload;

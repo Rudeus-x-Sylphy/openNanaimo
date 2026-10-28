@@ -12,11 +12,11 @@ internal sealed class InventoryIdentityMap
     // and keep that identity stable after compact DB ordinals change.
     internal const int FirstWireIdentity = 1;
     internal const int Capacity = 84;
-    private const int LastWireIdentity = FirstWireIdentity + Capacity - 1;
+    internal int Limit { get; set; } = Capacity;
 
-    private readonly Dictionary<byte, (uint Code, long Order)> _items = [];
-    private readonly HashSet<byte> _used = [];
-    private byte[] _ordered = [];
+    private readonly Dictionary<ushort, (uint Code, long Order)> _items = [];
+    private readonly HashSet<ushort> _used = [];
+    private ushort[] _ordered = [];
     private long _nextOrder;
 
     internal void Synchronize(IReadOnlyList<uint> codes)
@@ -31,7 +31,7 @@ internal sealed class InventoryIdentityMap
             var missing = group.Value - _items.Values.Count(row => row.Code == group.Key);
             while (missing-- > 0)
             {
-                var available = Enumerable.Range(FirstWireIdentity, Capacity).Select(value => (byte)value)
+                var available = Enumerable.Range(FirstWireIdentity, Limit).Select(value => (ushort)value)
                     .Where(identity => !_items.ContainsKey(identity)).ToArray();
                 if (available.Length == 0)
                     throw new InvalidDataException("C430 inventory capacity exceeded");
@@ -46,26 +46,26 @@ internal sealed class InventoryIdentityMap
             .Select(row => row.Key).ToArray();
     }
 
-    internal bool TryStorage(uint wire, out byte index, out uint code)
+    internal bool TryStorage(uint wire, out ushort index, out uint code)
     {
         index = 0;
         code = 0;
-        if (wire < FirstWireIdentity || wire > LastWireIdentity
-            || !_items.TryGetValue((byte)wire, out var row))
+        if (wire < FirstWireIdentity || wire >= FirstWireIdentity + Limit
+            || !_items.TryGetValue((ushort)wire, out var row))
             return false;
-        var ordinal = Array.IndexOf(_ordered, (byte)wire);
+        var ordinal = Array.IndexOf(_ordered, (ushort)wire);
         if (ordinal < 0)
             return false;
-        index = (byte)ordinal;
+        index = checked((ushort)ordinal);
         code = row.Code;
         return true;
     }
 
-    internal byte Wire(int ordinal) => _ordered[ordinal];
+    internal ushort Wire(int ordinal) => _ordered[ordinal];
     internal void Remove(uint wire)
     {
-        if (wire >= FirstWireIdentity && wire <= LastWireIdentity)
-            _items.Remove((byte)wire);
+        if (wire >= FirstWireIdentity && wire < FirstWireIdentity + Limit)
+            _items.Remove((ushort)wire);
     }
 }
 
@@ -73,10 +73,11 @@ public sealed partial class NetworkAdapterService
 {
     private static InventoryIdentityMap SessionInventory(ConnectionSession session)
     {
-        session.GameInventoryIdentities.Synchronize(GetGameInventoryItemCodes(session.Character));
+        session.GameInventoryIdentities.Limit = session.Inventory99Enabled ? InventoryCapacity.Slots : InventoryIdentityMap.Capacity;
+        session.GameInventoryIdentities.Synchronize(GetGameInventoryItemCodes(session.Character, session.GameInventoryIdentities.Limit));
         return session.GameInventoryIdentities;
     }
-    private static bool TryResolveSessionInventoryIdentity(ConnectionSession session,uint wire,out byte ordinal,out uint code)
+    private static bool TryResolveSessionInventoryIdentity(ConnectionSession session,uint wire,out ushort ordinal,out uint code)
         =>SessionInventory(session).TryStorage(wire,out ordinal,out code);
 
     private static void RewriteSessionInventoryIdentities(Span<byte> frame,ConnectionSession session)
@@ -101,7 +102,7 @@ public sealed partial class NetworkAdapterService
                 int offset=228+i*12;
                 if(BinaryPrimitives.ReadUInt32LittleEndian(frame.Slice(offset,4))==0)continue;
                 int ordinal=(int)BinaryPrimitives.ReadUInt32LittleEndian(frame.Slice(offset+4,4));
-                if(ordinal<GetGameInventoryItemCodes(session.Character).Length)
+                if(ordinal<GetGameInventoryItemCodes(session.Character, identities.Limit).Length)
                     BinaryPrimitives.WriteUInt32LittleEndian(frame.Slice(offset+4,4),identities.Wire(ordinal));
             }
     }
@@ -113,15 +114,15 @@ public sealed partial class NetworkAdapterService
         var map=SessionInventory(session);
         for(int i=0;i<payload[26];i++)
         {
-            if(!map.TryStorage(payload[28+i],out var ordinal,out _))return false;
-            translated[28+i]=ordinal;
+            if(!map.TryStorage(payload[28+i],out var ordinal,out _) || ordinal > 83)return false;
+            translated[28+i]=checked((byte)ordinal);
         }
         for(int i=0;i<payload[27];i++)
         {
             int row=36+i*8;
             uint wire=BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(row+4,2));
             uint code=BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(row,4));
-            if(!map.TryStorage(wire,out var ordinal,out var owned) || owned!=code)return false;
+            if(!map.TryStorage(wire,out var ordinal,out var owned) || owned!=code || ordinal > 83)return false;
             BinaryPrimitives.WriteUInt16LittleEndian(translated.AsSpan(row+4,2),ordinal);
         }
         return true;

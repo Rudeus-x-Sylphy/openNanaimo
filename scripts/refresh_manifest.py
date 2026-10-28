@@ -14,6 +14,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
+    'knowledge/指南/客户端二进制补丁/99页库存安装与恢复.md',
+    'scripts/inventory_storage_compat.py',
+    'scripts/test_inventory_storage_compat.py',
+    'release/components/client_inventory_storage.c',
+    'tests/InventoryStorageRegression/InventoryStorageRegression.csproj',
+    'tests/InventoryStorageRegression/Program.cs',
+    'scripts/inventory_pages_compat.py',
+    'scripts/test_inventory_pages_compat.py',
     'scripts/prepare_clover_descriptions.py',
     'scripts/test_clover_descriptions.py',
     'scripts/shop_catalog_order.py',

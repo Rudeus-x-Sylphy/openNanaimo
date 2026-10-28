@@ -1231,6 +1231,20 @@ public sealed partial class DatabaseService
     internal static IReadOnlyList<CharacterQuickSlotRecord> RestoreNativeQuickSlotBindings(
         IReadOnlyList<uint> itemCodes, NativeDungeonState state)
     {
+        if (state.InventoryProjection is { } projection)
+        {
+            var slots = new List<CharacterQuickSlotRecord>();
+            var used = new HashSet<ushort>();
+            for (byte slot = 0; slot < 6; slot++)
+            {
+                var code = state.Get(224 + 8 * slot); var handle = state.Get(228 + 8 * slot);
+                if (code == 0 && handle == 0) continue;
+                if (!projection.Ordinals.TryGetValue(handle, out var index) || index >= itemCodes.Count
+                    || itemCodes[index] != code || !used.Add(index)) throw new InvalidDataException("Native projected instance binding differs from storage.");
+                slots.Add(new CharacterQuickSlotRecord { Slot = slot, ItemCode = code, InventoryIndex = index });
+            }
+            return slots;
+        }
         // Native instance handles survive consumption with holes. C430 expands
         // the current inventory in code order; only that storage index changes.
         // Never choose a replacement instance by code or move a hotkey slot.
@@ -1243,10 +1257,10 @@ public sealed partial class DatabaseService
                 handlesByCode[code] = handles = new Queue<uint>();
             handles.Enqueue(handle);
         }
-        var indexByHandle = new Dictionary<uint, byte>();
+        var indexByHandle = new Dictionary<uint, ushort>();
         for (var index = 0; index < itemCodes.Count; index++)
             if (handlesByCode.TryGetValue(itemCodes[index], out var handles) && handles.Count > 0)
-                indexByHandle.Add(handles.Dequeue(), checked((byte)index));
+                indexByHandle.Add(handles.Dequeue(), checked((ushort)index));
         var result = new List<CharacterQuickSlotRecord>(6);
         var usedHandles = new HashSet<uint>();
         for (byte slot = 0; slot < 6; slot++)
@@ -1283,7 +1297,7 @@ public sealed partial class DatabaseService
                 if (!ShopCatalog.TryGet(itemCode, out var catalogItem)
                     || !catalogItem.IsGameInventoryItem)
                     continue;
-                for (var i = 0; i < quantity && itemCodes.Count < 84; i++)
+                for (var i = 0; i < quantity && itemCodes.Count < InventoryCapacity.Slots; i++)
                     itemCodes.Add(itemCode);
             }
         }
@@ -1350,10 +1364,15 @@ public sealed partial class DatabaseService
         {
             using var doc = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(path, token));
             var root = doc.RootElement;
+            var before = new NativeDungeonState(Convert.FromBase64String(root.GetProperty("Before").GetString()!));
+            var after = new NativeDungeonState(Convert.FromBase64String(root.GetProperty("After").GetString()!));
+            if (root.TryGetProperty("BeforeInventoryProjection", out var previousProjection) && previousProjection.ValueKind == System.Text.Json.JsonValueKind.String)
+                before.InventoryProjection = NativeInventoryProjection.FromJson(previousProjection.GetString()!);
+            if (root.TryGetProperty("AfterInventoryProjection", out var currentProjection) && currentProjection.ValueKind == System.Text.Json.JsonValueKind.String)
+                after.InventoryProjection = NativeInventoryProjection.FromJson(currentProjection.GetString()!);
             await ApplyNativeDungeonDeltaAsync(root.GetProperty("AccountId").GetInt64(),
                 root.GetProperty("CharacterId").GetInt64(), root.GetProperty("SessionId").GetString()!,
-                new NativeDungeonState(Convert.FromBase64String(root.GetProperty("Before").GetString()!)),
-                new NativeDungeonState(Convert.FromBase64String(root.GetProperty("After").GetString()!)), token,
+                before, after, token,
                 root.GetProperty("CommitId").GetString()!, recovering: true,
                 settlement: TryReadNativeDungeonSettlementJournal(root),
                 petLifetime: root.TryGetProperty("PetLifetime", out var lifetime)

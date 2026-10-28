@@ -185,7 +185,7 @@ public sealed partial class NetworkAdapterService
         using var resourceCommit = await LockNativeDungeonResourcesAsync(session, token);
         before = session.Character!;
         checkpoint = session.NativeCheckpoint!;
-        var after = new NativeDungeonState(checkpoint.Bytes.ToArray());
+        var after = checkpoint.Clone();
         session.NativeBattleResources?.ApplyTo(after);
         var applied = await _database.ApplyNativeDungeonDeltaAsync(
             session.AccountId, before.Id, session.SessionId, checkpoint, after, token,

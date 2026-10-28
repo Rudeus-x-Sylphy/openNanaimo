@@ -4,6 +4,135 @@ using OpenNanaimo.Adapter.Services;
 
 internal static class InventoryQuickbarChecks
 {
+    internal static async Task RunStoryGuideReindexAsync()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "nanaimo-guide-quickbar-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            File.WriteAllBytes(Path.Combine(root, "game.db"), []);
+            var db = new DatabaseService(root);
+            await db.InitializeAsync();
+            var account = await db.OpenLocalAccountAsync("guide-quickbar-check");
+            var id = await db.CreateLocalCharacterAsync(account, "GuideQuickbar", 1);
+            var session = Guid.NewGuid().ToString("N");
+            Check(await db.BeginWorldSessionAsync(account, id, session, 1, "127.0.0.1"), "guide fixture owns session");
+            await using var sql = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={db.DatabasePath}");
+            await sql.OpenAsync();
+            async Task Execute(string text)
+            {
+                await using var cmd = sql.CreateCommand(); cmd.CommandText = text;
+                cmd.Parameters.AddWithValue("$id", id); await cmd.ExecuteNonQueryAsync();
+            }
+            async Task<CharacterRecord> Read() => (await db.GetCharacterAsync(account))!;
+            string Slots(CharacterRecord c) => System.Text.Json.JsonSerializer.Serialize(c.QuickSlots);
+            string Items(CharacterRecord c) => System.Text.Json.JsonSerializer.Serialize(c.Items);
+            await Execute("""
+                DELETE FROM CharacterQuickSlots WHERE CharacterId=$id;
+                DELETE FROM CharacterItems WHERE CharacterId=$id;
+                UPDATE Characters SET TutorialCompleted=1 WHERE Id=$id;
+                INSERT INTO CharacterStoryGuides VALUES($id,0,0,'fixture');
+                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES
+                    ($id,14000003,3,'fixture'),($id,14000006,3,'fixture'),
+                    ($id,14000007,6,'fixture'),($id,14000013,12,'fixture');
+                INSERT INTO CharacterQuickSlots VALUES($id,1,14000007,6,'fixture'),($id,2,14000007,8,'fixture');
+                """);
+            var before = await Read();
+            _ = NativeDungeonState.Create(before, [], []);
+            Check(!(await db.CompleteStoryGuideAsync(account, id, "foreign", 1, 0)).Authorized
+                && Slots(await Read()) == Slots(before) && Items(await Read()) == Items(before),
+                "unauthorized guide claim leaves inventory and bindings intact");
+            var claim = await db.CompleteStoryGuideAsync(account, id, session, 1, 0);
+            var after = await Read();
+            Check(claim.Success && after.QuickSlots.Select(s => (int)s.InventoryIndex).SequenceEqual(new[] { 7, 9 }),
+                "guide1 lower-code medicine shifts both bound duplicate instances atomically");
+            var native = NativeDungeonState.Create(after, [], []);
+            Check(native.Get(236) == 8 && native.Get(244) == 10, "guide rewards import at next CF09 boundary");
+            Check((await db.CompleteStoryGuideAsync(account, id, session, 1, 0)).Success
+                && Slots(await Read()) == Slots(after) && Items(await Read()) == Items(after),
+                "replayed guide neither grants twice nor shifts bindings twice");
+            await Execute($"""
+                DELETE FROM CharacterQuickSlots WHERE CharacterId=$id;
+                DELETE FROM CharacterItems WHERE CharacterId=$id;
+                DELETE FROM CharacterStoryGuides WHERE CharacterId=$id AND GuideId=1;
+                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt)
+                    VALUES($id,14000007,{InventoryCapacity.Slots - 1},'fixture'),($id,14000013,1,'fixture');
+                INSERT INTO CharacterQuickSlots VALUES($id,5,14000013,{InventoryCapacity.Slots - 1},'fixture');
+                """);
+            before = await Read();
+            Check(!(await db.CompleteStoryGuideAsync(account, id, session, 1, 0)).Success
+                && Slots(await Read()) == Slots(before) && Items(await Read()) == Items(before),
+                "guide overflow rolls back every gift without losing selected instances");
+            await Execute("""
+                DELETE FROM CharacterQuickSlots WHERE CharacterId=$id;
+                DELETE FROM CharacterItems WHERE CharacterId=$id;
+                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES($id,14000007,2,'fixture');
+                INSERT INTO CharacterQuickSlots VALUES($id,1,14000007,0,'fixture'),($id,2,14000007,1,'fixture');
+                CREATE TRIGGER reject_guide BEFORE INSERT ON CharacterStoryGuides WHEN NEW.GuideId=1
+                    BEGIN SELECT RAISE(ABORT,'guide-failure'); END;
+                """);
+            before = await Read();
+            try
+            {
+                await db.CompleteStoryGuideAsync(account, id, session, 1, 0);
+                throw new InvalidDataException("Expected guide transaction failure.");
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException) { }
+            Check(Slots(await Read()) == Slots(before) && Items(await Read()) == Items(before),
+                "failure after reindex rolls back the full guide transaction");
+            await Execute("DROP TRIGGER reject_guide;");
+            Check((await db.CompleteStoryGuideAsync(account, id, session, 1, 0)).Success,
+                "rejected guide stays claimable after overflow or transaction failure");
+            await Execute("""
+                DELETE FROM CharacterQuickSlots WHERE CharacterId=$id;
+                DELETE FROM CharacterItems WHERE CharacterId=$id;
+                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES
+                    ($id,14000003,3,'fixture'),($id,14000005,1,'fixture'),($id,14000006,3,'fixture'),
+                    ($id,14000007,6,'fixture'),($id,14000013,12,'fixture');
+                INSERT INTO CharacterQuickSlots VALUES($id,1,14000007,6,'stale'),($id,2,14000007,8,'valid'),
+                    ($id,4,14000007,83,'missing');
+                """);
+            before = await Read();
+            var otherAccount = await db.OpenLocalAccountAsync("guide-quickbar-other");
+            var otherId = await db.CreateLocalCharacterAsync(otherAccount, "OtherQuickbar", 1);
+            await Execute($"""
+                INSERT INTO CharacterItems(CharacterId,ItemCode,Quantity,UpdatedAt) VALUES({otherId},14000007,1,'other');
+                INSERT INTO CharacterQuickSlots VALUES({otherId},5,14000007,0,'other');
+                CREATE TRIGGER reject_prune BEFORE DELETE ON CharacterQuickSlots
+                    WHEN OLD.CharacterId={id} AND OLD.Slot=4 BEGIN SELECT RAISE(ABORT,'prune-failure'); END;
+                """);
+            var otherBefore = (await db.GetCharacterAsync(otherAccount))!;
+            try
+            {
+                await db.InitializeAsync();
+                throw new InvalidDataException("Expected startup cleanup failure.");
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException) { }
+            Check(Slots(await Read()) == Slots(before) && Items(await Read()) == Items(before),
+                "startup cleanup failure rolls back all removed bindings");
+            await Execute("DROP TRIGGER reject_prune;");
+            await db.InitializeAsync();
+            after = await Read();
+            Check(after.QuickSlots.Count == 1 && after.QuickSlots[0].Slot == 2
+                && after.QuickSlots[0].ItemCode == 14000007 && after.QuickSlots[0].InventoryIndex == 8
+                && Items(after) == Items(before),
+                "startup removes only stale bindings without selecting replacement medicine or changing inventory");
+            _ = NativeDungeonState.Create(after, [], []);
+            await db.InitializeAsync();
+            Check(Slots(await Read()) == Slots(after) && Items(await Read()) == Items(before),
+                "startup repair is durable and idempotent");
+            Check(Slots((await db.GetCharacterAsync(otherAccount))!) == Slots(otherBefore)
+                && Items((await db.GetCharacterAsync(otherAccount))!) == Items(otherBefore),
+                "startup repair preserves another character's valid bindings and inventory");
+            Console.WriteLine("STORY_GUIDE_QUICKBAR_CHECKS_PASS reward-reindex rollback stale-startup native-import");
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            Directory.Delete(root, true);
+        }
+    }
+
     internal static async Task RunReindexCollisionAsync()
     {
         await using var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
@@ -68,7 +197,7 @@ internal static class InventoryQuickbarChecks
         command.CommandText = "SELECT group_concat(InventoryIndex, ',') FROM CharacterQuickSlots WHERE CharacterId=1 ORDER BY Slot";
         Check(Convert.ToString(await command.ExecuteScalarAsync()) == "3,4",
             "batch rewards shift both old duplicates and append the newly granted duplicate");
-        command.CommandText = "UPDATE CharacterItems SET Quantity=84 WHERE ItemCode=14000001";
+        command.CommandText = $"UPDATE CharacterItems SET Quantity={InventoryCapacity.Slots} WHERE ItemCode=14000001";
         await command.ExecuteNonQueryAsync();
         await using (var transaction = connection.BeginTransaction())
         {
@@ -273,7 +402,7 @@ internal static class InventoryQuickbarChecks
             Enumerable.Repeat(14002486u, 5).ToArray(), six);
         Check(fixedSlots.Select(x => x.Slot).SequenceEqual(new byte[] { 0, 2, 3, 4, 5 }),
             "using key2 clears only key2; keys1/3/4/5/6 do not move or refill it");
-        Check(fixedSlots.Select(x => x.InventoryIndex).SequenceEqual(new byte[] { 0, 1, 2, 3, 4 }),
+        Check(fixedSlots.Select(x => x.InventoryIndex).SequenceEqual(new ushort[] { 0, 1, 2, 3, 4 }),
             "remaining exact handles map to compact inventory indices without replacing bindings");
         var rebuilt = new CharacterRecord
         {

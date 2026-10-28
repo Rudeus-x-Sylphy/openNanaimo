@@ -66,7 +66,7 @@ internal static class InventoryProtocolChecks
         identities.Synchronize(new uint[]{14000003,14000003,14000003,14000013,14000013,14000013});
         identities.Remove(2); identities.Remove(4);
         identities.Synchronize(new uint[]{14000003,14000003,14000013,14000013});
-        Check(Enumerable.Range(0,4).Select(identities.Wire).SequenceEqual(new byte[]{1,3,5,6}),
+        Check(Enumerable.Range(0,4).Select(identities.Wire).SequenceEqual(new ushort[]{1,3,5,6}),
             "deleting exact instances leaves sparse survivor wire identities unchanged");
         Check(!identities.TryStorage(2,out _,out _) && identities.TryStorage(6,out var ordinal,out var survivor)
             && ordinal==3 && survivor==14000013,"removed handle cannot alias a compacted survivor");

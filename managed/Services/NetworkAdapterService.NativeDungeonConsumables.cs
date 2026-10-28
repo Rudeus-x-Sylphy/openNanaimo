@@ -92,7 +92,7 @@ public sealed partial class NetworkAdapterService
             || session.NativeCheckpoint is not { } current || current.Get(4) != actorUid) return;
         // Keep the existing inventory/financial commit baseline. This exchange
         // acknowledges metadata only, not uncommitted gameplay deltas.
-        var updated = new NativeDungeonState(current.Bytes.ToArray());
+        var updated = current.Clone();
         CoupleBenefitPolicy.WriteNativeRing(updated, ring);
         CoupleBenefitPolicy.WriteNativePartner(updated, partnerUid);
         session.NativeCheckpoint = updated;
@@ -113,7 +113,7 @@ public sealed partial class NetworkAdapterService
         if (updated is null || ReferenceEquals(updated, resources)) return;
         // Persist only a resource change: inventory, money and progression use
         // identical before/after values and cannot be debited a second time.
-        var after = new NativeDungeonState(before.Bytes.ToArray());
+        var after = before.Clone();
         updated.ApplyTo(after);
         try
         {

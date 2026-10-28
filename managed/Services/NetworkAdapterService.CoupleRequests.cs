@@ -100,8 +100,9 @@ public sealed partial class NetworkAdapterService
         var responseOpcode = CoupleProtocol.GetResponseOpcode(opcode);
         byte[] Failure(ushort status, CharacterRecord? peer = null) => BuildNativeFrame(frame, responseOpcode,
             CoupleProtocol.BuildResponse(responseOpcode, peerName, CoupleProtocol.ReadItemCode(payload),
-                CoupleProtocol.ReadInventorySlot(opcode, payload), status, peer ?? session.Character!), session);
-        if (!CoupleProtocol.TryReadRequest(opcode, payload, out var request))
+                CoupleProtocol.ReadInventorySlot(opcode, payload, session.Inventory99Enabled), status, peer ?? session.Character!), session);
+        if (!CoupleProtocol.TryReadRequest(opcode, payload, out var request,
+                session.Inventory99Enabled ? InventoryCapacity.Slots : InventoryIdentityMap.Capacity))
             return Failure(CoupleProtocol.Unavailable);
         await RefreshSessionCharacterAsync(session, token);
         if (!TryResolveSessionInventoryIdentity(session, request.InventorySlot, out var inventoryOrdinal, out var inventoryCode)
@@ -186,7 +187,8 @@ public sealed partial class NetworkAdapterService
         byte[] frame, ushort opcode, byte[] payload, ConnectionSession session,
         string channel, string remote, CancellationToken token)
     {
-        if (session.Character is null || !CoupleProtocol.TryReadAnswer(opcode, payload, out var answer)) return null;
+        if (session.Character is null || !CoupleProtocol.TryReadAnswer(opcode, payload, out var answer,
+                session.Inventory99Enabled ? InventoryCapacity.Slots : InventoryIdentityMap.Capacity)) return null;
         BoundCoupleSelection pending;
         var key = (session.SessionId, opcode, answer.Request.PeerName);
         lock (_coupleSelectionGate)

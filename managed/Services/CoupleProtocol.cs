@@ -40,29 +40,30 @@ internal static class CoupleProtocol
     internal readonly record struct Request(string PeerName, uint ItemCode, ushort InventorySlot);
     internal readonly record struct Answer(Request Request, ushort Status);
 
-    internal static bool TryReadRequest(ushort opcode, ReadOnlySpan<byte> payload, out Request request)
+    internal static bool TryReadRequest(ushort opcode, ReadOnlySpan<byte> payload, out Request request, int capacity = InventoryIdentityMap.Capacity)
     {
         request = default;
         if (!IsRequestOpcode(opcode) || payload.Length != GetPayloadLength(opcode)
             || !TryReadPeerName(payload, out var name)) return false;
         var item = ReadItemCode(payload);
-        var slot = ReadInventorySlot(opcode, payload);
-        if (slot is < InventoryIdentityMap.FirstWireIdentity or >= InventoryIdentityMap.FirstWireIdentity + InventoryIdentityMap.Capacity || (opcode == RingRequestOpcode
+        var slot = ReadInventorySlot(opcode, payload, capacity > InventoryIdentityMap.Capacity);
+        if (slot < InventoryIdentityMap.FirstWireIdentity || slot >= InventoryIdentityMap.FirstWireIdentity + capacity || (opcode == RingRequestOpcode
                 ? !CoupleBenefitPolicy.IsRingItemCode(item)
                 : !CoupleBenefitPolicy.IsSeparationItemCode(item))) return false;
         request = new Request(name, item, slot);
         return true;
     }
 
-    internal static bool TryReadAnswer(ushort opcode, ReadOnlySpan<byte> payload, out Answer answer)
+    internal static bool TryReadAnswer(ushort opcode, ReadOnlySpan<byte> payload, out Answer answer, int capacity = InventoryIdentityMap.Capacity)
     {
         answer = default;
-        if (!IsResponseOpcode(opcode) || payload.Length != GetPayloadLength(opcode)
+        if (!IsResponseOpcode(opcode) || (payload.Length != GetPayloadLength(opcode)
+                && !(opcode == SeparationResponseOpcode && payload.Length == SeparationResponsePayloadLength + 2))
             || !TryReadPeerName(payload, out var name)) return false;
         var status = ReadStatus(opcode, payload);
         var item = ReadItemCode(payload);
         var slot = ReadInventorySlot(opcode, payload);
-        if (!IsOfficialResponseStatus(status) || slot is < InventoryIdentityMap.FirstWireIdentity or >= InventoryIdentityMap.FirstWireIdentity + InventoryIdentityMap.Capacity
+        if (!IsOfficialResponseStatus(status) || slot < InventoryIdentityMap.FirstWireIdentity || slot >= InventoryIdentityMap.FirstWireIdentity + capacity
             || (opcode == RingResponseOpcode
                 ? !CoupleBenefitPolicy.IsRingItemCode(item)
                 : !CoupleBenefitPolicy.IsSeparationItemCode(item))) return false;
@@ -121,10 +122,11 @@ internal static class CoupleProtocol
     internal static uint ReadItemCode(ReadOnlySpan<byte> payload)
         => BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(16, 4));
 
-    internal static ushort ReadInventorySlot(ushort opcode, ReadOnlySpan<byte> payload)
-        => opcode is RingRequestOpcode or RingResponseOpcode
+    internal static ushort ReadInventorySlot(ushort opcode, ReadOnlySpan<byte> payload, bool extended = false)
+        => opcode is RingRequestOpcode or RingResponseOpcode || opcode == SeparationRequestOpcode && extended
             ? BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(20, 2))
-            : payload[20];
+            : payload.Length == SeparationResponsePayloadLength + 2
+                ? BinaryPrimitives.ReadUInt16LittleEndian(payload.Slice(24)) : payload[20];
 
     internal static ushort ReadStatus(ushort opcode, ReadOnlySpan<byte> payload)
         => opcode switch
@@ -161,7 +163,7 @@ internal static class CoupleProtocol
     {
         if (!IsResponseOpcode(responseOpcode))
             throw new InvalidDataException($"Invalid couple response opcode 0x{responseOpcode:X4}.");
-        var payload = new byte[GetPayloadLength(responseOpcode)];
+        var payload = new byte[GetPayloadLength(responseOpcode) + (responseOpcode == SeparationResponseOpcode && inventorySlot > 255 ? 2 : 0)];
         WriteName(payload.AsSpan(0, PeerNameLength), partnerName);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(16, 4), itemCode);
         var peerUid = WireIdentityAllocator.GetSceneEntityId(partner.Id);
@@ -175,9 +177,11 @@ internal static class CoupleProtocol
         }
         else
         {
-            payload[20] = checked((byte)inventorySlot);
+            payload[20] = (byte)inventorySlot;
             payload[21] = checked((byte)status);
             BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(22, 2), peerUid);
+            if (payload.Length > SeparationResponsePayloadLength)
+                BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(24), inventorySlot);
         }
         return payload;
     }

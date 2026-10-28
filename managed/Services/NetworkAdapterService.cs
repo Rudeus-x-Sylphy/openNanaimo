@@ -354,6 +354,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     private sealed class ConnectionSession
     {
+        public bool Inventory99Enabled { get; set; }
+        public bool Inventory99EquipmentRestored { get; set; }
+        public ushort InventoryChargePage { get; set; } = 1;
         public long AccountId { get; set; }
         public string Username { get; set; } = string.Empty;
         public CharacterRecord? Character { get; set; }
@@ -1971,6 +1974,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         ConnectionSession session,
         CancellationToken token)
     {
+        frame = AcceptInventoryStorageVersion(frame, opcode, session);
         var payload = frame[8..];
         if (string.Equals(channel, "WorldAdapter", StringComparison.Ordinal) && session.OnlineTracked)
             ObserveQuestRun(session, opcode, frame);
@@ -2632,28 +2636,21 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var petChangeOperation = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(0, 2));
                 var responseOperation = petChangeOperation <= byte.MaxValue ? (byte)petChangeOperation : (byte)0;
                 var responseState = payload[3];
-                var materialWireIdentity = petChangeOperation == 2 ? payload[5] : payload[4];
-                var petChangePayload = payload.ToArray();
-                var petIdentityValid = TryResolveSessionPet(session, payload[2], out var petOrdinal, out var targetPet);
-                petChangePayload[2] = petOrdinal;
+                var materialWireIdentity = (uint)((petChangeOperation == 2 ? payload[5] : payload[4])
+                    | (session.Inventory99Enabled ? payload[7] << 8 : 0));
+                var petWireIdentity = (uint)(payload[2] | (session.Inventory99Enabled ? payload[6] << 8 : 0));
+                var petIdentityValid = TryResolveSessionPet(session, petWireIdentity, out _, out var targetPet);
                 var materialIdentityValid = TryResolveSessionPetMaterialIdentity(session, materialWireIdentity,
-                    out var materialOrdinal, out _);
-                petChangePayload[petChangeOperation == 2 ? 5 : 4] = checked((byte)(PetMaterialIdentityBase + materialOrdinal));
-                if (!petIdentityValid || !materialIdentityValid || !TryResolvePetChangeRequest(
-                        session.Character,
-                        petChangePayload,
-                        out var resolvedOperation,
-                        out var petItemCode,
-                        out var materialItemCode,
-                        out var gameItemIdentity))
+                    out _, out var materialItemCode);
+                if (!petIdentityValid || !materialIdentityValid || petChangeOperation is < 1 or > 4)
                 {
                     _log($"{channel}:{remote} Pet change rejected: operation={petChangeOperation} petHandle={payload[2]} itemIdentity={(petChangeOperation == 2 ? payload[5] : payload[4])}");
                     return BuildNativeFrame(frame, 0xC450, BuildPetChangeResultPayload(responseOperation, responseState, false), session);
                 }
 
-                petChangeOperation = resolvedOperation;
-                responseOperation = checked((byte)resolvedOperation);
-                var petSlot = payload[2];
+                var petItemCode = targetPet.ItemCode;
+                responseOperation = checked((byte)petChangeOperation);
+                var petSlot = petWireIdentity;
                 var changeResult = petChangeOperation is 3 or 4
                     ? await _database.ApplyPetSpecialGemAsync(
                         session.AccountId,
@@ -2674,9 +2671,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         materialItemCode,
                         token, targetPet.PetInstanceId);
                 if (changeResult.Success)
-                    session.PetMaterialIdentities.Remove((uint)(materialWireIdentity - PetMaterialIdentityBase));
+                    session.PetMaterialIdentities.Remove(materialWireIdentity - (uint)(session.Inventory99Enabled
+                        ? InventoryCapacity.ExtendedPetMaterialBase : PetMaterialIdentityBase));
                 await RefreshInventoryCharacterAsync(session, token);
-                _log($"{channel}:{remote} Pet change: operation={petChangeOperation} pet={petItemCode} petHandle={petSlot} material={materialItemCode} itemIdentity={gameItemIdentity} position={payload[3]} result={(changeResult.Success ? "success" : "failed")} error={changeResult.Error}");
+                _log($"{channel}:{remote} Pet change: operation={petChangeOperation} pet={petItemCode} petHandle={petSlot} material={materialItemCode} itemIdentity={materialWireIdentity} position={payload[3]} result={(changeResult.Success ? "success" : "failed")} error={changeResult.Error}");
                 if (changeResult.Success)
                     AccountStateChanged?.Invoke();
                 var changeResponse = BuildNativeFrame(
@@ -2709,7 +2707,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             {
                 if (!session.OnlineTracked || session.Character is null)
                     return null;
-                if (payload.Length != InventoryChangeRequestPayloadLength)
+                if (payload.Length != InventoryChangeRequestPayloadLength && !IsExtendedEquipment(session, payload))
                 {
                     _log($"{channel}:{remote} 库存穿戴提交长度无效：期望 {InventoryChangeRequestPayloadLength}，实际 {payload.Length}；未修改存档");
                     return BuildNativeFrame(
@@ -2721,9 +2719,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
                 // The C47D constructor writes the newly selected pet at frame+96,
                 // the deselected pet at frame+100, and its 36-byte appearance at +104.
-                var quickSlotLayoutValid = TryTranslateInventoryEquipment(session, payload, out var equipmentPayload);
-                quickSlotLayoutValid &= TryApplyInventoryQuickSlotDelta(
-                    session.Character, equipmentPayload, out var quickSlots);
+                var quickSlotLayoutValid = TryApplySessionQuickSlotDelta(session, payload, out var quickSlots);
                 var equippedPetItemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(88, 4));
                 var unequippedPetItemCode = BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(92, 4));
                 var appearance = payload.AsSpan(96, 36).ToArray();
@@ -2732,7 +2728,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 // sub_819C90 writes selected BYTE frame+93 and removed WORD frame+94.
                 if (equippedPetItemCode != 0)
                 {
-                    quickSlotLayoutValid &= TryResolveSessionPet(session, payload[85], out _, out var selectedPet)
+                    quickSlotLayoutValid &= TryResolveSessionPet(session, SelectedInventoryPetHandle(session, payload), out _, out var selectedPet)
                         && selectedPet.ItemCode == equippedPetItemCode;
                     selectedInstance = selectedPet?.PetInstanceId ?? 0;
                 }
@@ -3141,7 +3137,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var interiorInventoryPayload = interiorInventoryMode == 30
                     ? BuildApartmentExteriorInventoryPayload(await _database.GetApartmentExteriorStateAsync(session.Character!.Id, token))
                     : BuildPlacedInteriorInventoryPayload((byte)interiorInventoryMode, session.Character!,
-                        await _database.GetApartmentPlacementsAsync(session.Character!.Id, token));
+                        await _database.GetApartmentPlacementsAsync(session.Character!.Id, token), session.Inventory99Enabled);
                 _log($"{channel}:{remote} 恢复家装库存：mode={interiorInventoryMode} count={interiorInventoryPayload[3]} starterGranted={starterFurnitureGranted}");
                 if (starterFurnitureGranted)
                     AccountStateChanged?.Invoke();
@@ -3820,7 +3816,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     ? session.ApartmentOwnerCharacterId
                     : session.Character.Id;
                 var roomPlacements = await TryGetApartmentPlacementsForSnapshotAsync(apartmentOwnerId, token);
-                var roomObjectPayload = BuildMiniRoomObjectInfoPayload(roomPlacements);
+                var roomObjectPayload = BuildMiniRoomObjectInfoPayload(roomPlacements, session.Inventory99Enabled);
                 _log($"{channel}:{remote} 杩斿洖鍏瘬鍔ㄦ€佸璞″垪琛細requestId={BinaryPrimitives.ReadUInt32LittleEndian(payload)} ownerCharacterId={apartmentOwnerId} count={BinaryPrimitives.ReadUInt16LittleEndian(roomObjectPayload.AsSpan(0, 2))}");
                 return BuildNativeFrame(
                     frame,
@@ -3838,7 +3834,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     return null;
                 }
                 var placements = await TryGetApartmentPlacementsForSnapshotAsync(session.Character.Id, token);
-                var layoutPayload = BuildApartmentInteriorInfoPayload(placements);
+                var layoutPayload = BuildApartmentInteriorInfoPayload(placements, session.Inventory99Enabled);
                 _log($"{channel}:{remote} 返回公寓布局：requestInfo={BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(0, 2))} requestIndex={BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(2, 2))} objects={BinaryPrimitives.ReadUInt16LittleEndian(layoutPayload.AsSpan(2, 2))} floor={placements.Count(item => item.InteriorType == 0)} wall={placements.Count(item => item.InteriorType == 1)}");
                 return BuildNativeFrame(frame, 0xC424, layoutPayload, session);
             }
@@ -4110,14 +4106,17 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             {
                 if (!session.OnlineTracked || session.Character is null)
                     return null;
-                if (payload.Length != InteriorChangeRequestPayloadLength)
+                var wideFurniture = session.Inventory99Enabled && payload.Length == InteriorChangeRequestPayloadLength + 170
+                    && BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(760)) == 0x9949;
+                if (payload.Length != InteriorChangeRequestPayloadLength && !wideFurniture)
                 {
                     _log($"{channel}:{remote} 装修保存请求长度无效：期望 {InteriorChangeRequestPayloadLength}，实际 {payload.Length}；返回失败");
                     return BuildNativeFrame(frame, 0xC412, BuildInteriorChangeResultPayload(false), session);
                 }
 
                 await RefreshSessionCharacterAsync(session, token);
-                var inventory = GetInteriorItemCodes(session.Character!);
+                var inventory = GetInteriorInventoryRows(session.Character!, session.Inventory99Enabled
+                    ? InventoryCapacity.Slots : InteriorInventoryCapacity).Select(row => row.Code).ToArray();
                 var takeOnCount = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(InteriorChangeTakeOnCountOffset, 2));
                 var takeOffCount = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(InteriorChangeTakeOffCountOffset, 2));
                 if (takeOnCount > ApartmentInteriorObjectCapacity || takeOffCount > ApartmentInteriorObjectCapacity)
@@ -4132,7 +4131,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 {
                     var recordOffset = index * InteriorChangeTakeOnRecordLength;
                     var apartmentSlot = BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(recordOffset, 2));
-                    if (apartmentSlot >= inventory.Length || apartmentSlot >= ApartmentInteriorObjectCapacity)
+                    if (apartmentSlot >= inventory.Length)
                     {
                         valid = false;
                         break;
@@ -4147,7 +4146,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     }
                     takeOn.Add(new ApartmentPlacementRecord
                     {
-                        SlotIndex = checked((byte)apartmentSlot),
+                        SlotIndex = apartmentSlot,
                         ItemCode = itemCode,
                         X = BinaryPrimitives.ReadInt16LittleEndian(payload.AsSpan(recordOffset + 2, 2)),
                         Y = BinaryPrimitives.ReadInt16LittleEndian(payload.AsSpan(recordOffset + 4, 2)),
@@ -4157,13 +4156,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     });
                 }
 
-                var takeOff = payload
-                    .AsSpan(InteriorChangeTakeOffOffset, takeOffCount)
-                    .ToArray();
-                if (takeOff.Any(slotIndex => slotIndex >= ApartmentInteriorObjectCapacity))
-                    valid = false;
+                var takeOff = new ushort[takeOffCount];
+                for (var i = 0; i < takeOff.Length; i++)
+                {
+                    takeOff[i] = wideFurniture ? BinaryPrimitives.ReadUInt16LittleEndian(payload.AsSpan(762 + 2 * i))
+                        : payload[InteriorChangeTakeOffOffset + i];
+                    if (takeOff[i] >= inventory.Length || (byte)takeOff[i] != payload[InteriorChangeTakeOffOffset + i]) valid = false;
+                }
 
-                var saved = valid && await _database.ApplyApartmentChangesAsync(
+                var saved = valid && await _database.ApplyApartmentChangesWideAsync(
                     session.AccountId,
                     session.Character.Id,
                     session.SessionId,
@@ -4182,7 +4183,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                         QueueApartmentBroadcast(
                             session,
                             0xC393,
-                            BuildMiniRoomObjectInfoPayload(refreshedPlacements),
+                            BuildMiniRoomObjectInfoPayload(refreshedPlacements, session.Inventory99Enabled),
                             "apartment furniture refresh");
                     }
                 }
@@ -14092,6 +14093,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     {
         if (request.Length < 8)
             throw new InvalidDataException("原生请求头不足 8 字节。");
+        if (session.Inventory99Enabled && session.Character is not null)
+            payload = BuildExtendedInventoryPayload(responseOpcode, payload, session);
         var totalLength = checked(8 + payload.Length);
         if (totalLength > ushort.MaxValue)
             throw new InvalidOperationException("原生响应过大。");
@@ -14106,6 +14109,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         RewriteSessionInventoryIdentities(response, session);
         RewriteSessionPetIdentities(response, session);
         RewriteSessionPetMaterialIdentities(response, session);
+        RewriteExtendedEquippedPet(response, session);
         return response;
     }
 
@@ -17628,7 +17632,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         if (removedCount > 6 || addedCount > 6)
             return false;
 
-        var removedIdentities = new HashSet<byte>();
+        var removedIdentities = new HashSet<ushort>();
         for (var index = 0; index < removedCount; index++)
         {
             var identity = payload[28 + index];
@@ -17699,14 +17703,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         return payload;
     }
 
-    private static uint[] GetGameInventoryItemCodes(CharacterRecord? character)
+    private static uint[] GetGameInventoryItemCodes(CharacterRecord? character, int capacity = 84)
         => character?.Items
             .Where(item => item.Quantity > 0
                 && ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
                 && catalogItem.IsGameInventoryItem)
             .OrderBy(item => item.ItemCode)
             .SelectMany(item => Enumerable.Repeat(item.ItemCode, item.Quantity))
-            .Take(84)
+            .Take(capacity)
             .ToArray() ?? [];
 
     internal static bool TryResolveGameInventoryIdentity(
@@ -17860,7 +17864,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     /// Ordering, quantity expansion and the 84-instance limit stay identical to the
     /// code-only projection so placement indices keep matching record positions.
     /// </summary>
-    private static (uint Code, uint Expiration)[] GetInteriorInventoryRows(CharacterRecord character)
+    private static (uint Code, uint Expiration)[] GetInteriorInventoryRows(CharacterRecord character,
+        int capacity = InteriorInventoryCapacity)
         => character.Items
             .Where(item => item.Quantity > 0
                 && ShopCatalog.TryGet(item.ItemCode, out var catalogItem)
@@ -17870,7 +17875,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             .SelectMany(item => Enumerable.Repeat(
                 (Code: item.ItemCode, Expiration: ClothingExpirationTime.Effective(item.ItemExpiration)),
                 item.Quantity))
-            .Take(InteriorInventoryCapacity)
+            .Take(capacity)
             .ToArray();
 
     private static uint[] GetInteriorItemCodes(CharacterRecord character)
@@ -19072,7 +19077,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     }
 
     internal static byte[] BuildMiniRoomObjectInfoPayload(
-        IReadOnlyList<ApartmentPlacementRecord> placements)
+        IReadOnlyList<ApartmentPlacementRecord> placements, bool extended = false)
     {
         // C393 is one fixed 1020-byte wire frame: an 8-byte transport header
         // plus a 1012-byte payload. The payload carries WORD count at +0,
@@ -19080,10 +19085,10 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // from +4. Value 6000 asks the client to request a continuation; this
         // adapter returns the complete bounded snapshot and marks it with 2000.
         var objects = placements
-            .Where(item => item.InteriorType is >= 2 and <= 4)
+            .Where(item => item.InteriorType is >= 2 and <= 4 && (extended || item.SlotIndex < 84))
             .Take(ApartmentInteriorObjectCapacity)
             .ToArray();
-        var payload = new byte[MiniRoomObjectInfoResponsePayloadLength];
+        var payload = new byte[MiniRoomObjectInfoResponsePayloadLength + (extended ? 172 : 0)];
         BinaryPrimitives.WriteUInt16LittleEndian(
             payload.AsSpan(0, 2),
             checked((ushort)objects.Length));
@@ -19094,6 +19099,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             WriteApartmentObjectRecord(
                 payload.AsSpan(4 + index * ApartmentInteriorObjectRecordLength, ApartmentInteriorObjectRecordLength),
                 objects[index]);
+        if (extended)
+        {
+            BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(1012), InventoryCapacity.ProtocolMagic);
+            for (var i = 0; i < objects.Length; i++)
+                BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(1016 + 2 * i), objects[i].SlotIndex);
+        }
         return payload;
     }
 
@@ -19118,15 +19129,15 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     }
 
     private static byte[] BuildApartmentInteriorInfoPayload(
-        IReadOnlyList<ApartmentPlacementRecord> placements)
+        IReadOnlyList<ApartmentPlacementRecord> placements, bool extended = false)
     {
         // C424 is a fixed 1044-byte frame. Objects occupy 84 twelve-byte
         // records from frame+12; floor and wall descriptors are fixed at
         // frame+1020 and frame+1032.
-        var payload = new byte[ApartmentInteriorInfoResponsePayloadLength];
+        var payload = new byte[ApartmentInteriorInfoResponsePayloadLength + (extended ? 176 : 0)];
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0, 2), 1000);
         var objects = placements
-            .Where(item => item.InteriorType is >= 2 and <= 4)
+            .Where(item => item.InteriorType is >= 2 and <= 4 && (extended || item.SlotIndex < 84))
             .Take(ApartmentInteriorObjectCapacity)
             .ToArray();
         BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2, 2), checked((ushort)objects.Length));
@@ -19141,6 +19152,14 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         WriteApartmentSurfaceDescriptor(
             payload.AsSpan(1024, ApartmentInteriorObjectRecordLength),
             placements.LastOrDefault(item => item.InteriorType == 1));
+        if (extended)
+        {
+            BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(1036), InventoryCapacity.ProtocolMagic);
+            for (var i = 0; i < objects.Length; i++)
+                BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(1040 + 2 * i), objects[i].SlotIndex);
+            BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(1208), placements.LastOrDefault(item => item.InteriorType == 0)?.SlotIndex ?? 0);
+            BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(1210), placements.LastOrDefault(item => item.InteriorType == 1)?.SlotIndex ?? 0);
+        }
         return payload;
     }
 
@@ -19154,7 +19173,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         destination[8] = placement.Layer;
         destination[9] = placement.InteriorType;
         destination[10] = placement.Mirror;
-        destination[11] = placement.SlotIndex;
+        destination[11] = (byte)placement.SlotIndex;
     }
 
     private static void WriteApartmentSurfaceDescriptor(
@@ -19165,7 +19184,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
             return;
         BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(0, 4), placement.ItemCode);
         destination[9] = placement.InteriorType;
-        destination[11] = placement.SlotIndex;
+        destination[11] = (byte)placement.SlotIndex;
     }
 
     private static byte[] BuildInteriorCatalogPayload(

@@ -137,10 +137,10 @@ public sealed partial class NetworkAdapterService
         foreach (ushort family in new ushort[] { 0xC3CC, 0xC430, 0xC44C, 0xC40A, 0xC46A, 0xC379 })
             session.InventoryAcquisitions.Track(family, InventoryNoticeCodes(character, family));
         if (frame.Length < 12 || opcode is not (0xC3CC or 0xC430 or 0xC44C or 0xC40A or 0xC46A or 0xC379)) return;
-        if (opcode == 0xC40A && frame[8] != 10) return;
+        if (opcode == 0xC40A && (frame[8] & 127) != 10) return;
         var acquired = session.InventoryAcquisitions.Observe(opcode, InventoryNoticeCodes(character, opcode));
         var offset = opcode is 0xC40A or 0xC379 ? 9 : 8;
-        frame[offset] = acquired ? (byte)1 : (byte)0;
+        frame[offset] = (byte)((frame[offset] & 128) | (acquired ? 1 : 0));
         if (opcode == 0xC46A) frame[9] = 0;
     }
 }

@@ -276,6 +276,11 @@ internal static class ApartmentInventoryChecks
             Check(expanded[3] == 84 && Used(expanded, 0) == 0 && Used(expanded, 1) == 1
                 && Used(expanded, 82) == 1 && Used(expanded, 83) == 1,
                 "insertion maps the last visible placement without truncation");
+            Check(await AddFurniture([(Furniture, InventoryCapacity.Slots - 84)]),
+                "insertion reaches the full persistent furniture capacity");
+            Check((await database.GetApartmentPlacementsAsync(characterId)).Any(row =>
+                    row.ItemCode == Interactive && row.SlotIndex == InventoryCapacity.Slots - 1),
+                "last placed instance retains its full persistent ordinal");
             unchanged = await Snapshot();
             Check(!await AddFurniture([(Floor, 1)]) && await Snapshot() == unchanged,
                 "overflowing a placed instance rejects and rolls back the entire addition");

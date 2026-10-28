@@ -207,7 +207,9 @@ def payload_policy(value: str, layer: str) -> None:
                              "scripts/combat-score-generator/CombatScoreGenerator.csproj"}
                 or value in {"tests/PetLifetimeRegression/PetLifetimeRegression.csproj",
                              "tests/PetLifetimeRegression/Program.cs",
-                             "tests/PetLifetimeRegression/RouteChecks.cs"}
+                             "tests/PetLifetimeRegression/RouteChecks.cs",
+                             "tests/InventoryStorageRegression/InventoryStorageRegression.csproj",
+                             "tests/InventoryStorageRegression/Program.cs"}
                 or (parts[0] == "scripts" and p.suffix in {".py", ".ps1"})
                 or value in DUNGEON7_ARTWORK
                 or value in card_generation_sources

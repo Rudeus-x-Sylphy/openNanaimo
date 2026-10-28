@@ -33,7 +33,7 @@ public sealed partial class NetworkAdapterService
     {
         if (session.NativeDungeon is not { } worker || session.NativeCheckpoint is null || session.Character is null) return;
         var character = session.Character!;
-        var next = new NativeDungeonState(session.NativeCheckpoint.Bytes.ToArray());
+        var next = session.NativeCheckpoint.Clone();
         void Put(int offset, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(next.Bytes.AsSpan(offset), value);
         next.SetProgression(character.Level, character.Experience);
         Put(16, (uint)character.MaxHp); Put(24, (uint)character.MaxMp);

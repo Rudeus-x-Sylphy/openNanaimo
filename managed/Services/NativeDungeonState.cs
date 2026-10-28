@@ -52,6 +52,8 @@ public sealed class NativeDungeonState
     public const int SkillPointsMeatOffset = 5114;
     public const int PetCombatLevelOffset = 5116;
     public byte[] Bytes { get; }
+    internal NativeInventoryProjection? InventoryProjection { get; set; }
+    public NativeDungeonState Clone() => new(Bytes.ToArray()) { InventoryProjection = InventoryProjection };
     public NativeDungeonState(byte[] bytes)
     {
         ArgumentNullException.ThrowIfNull(bytes);
@@ -153,8 +155,12 @@ public sealed class NativeDungeonState
         foreach (var card in cards)
             if (TryGetCardOffset(card.CardCode, out var cardOffset)) s.Put(cardOffset, card.Quantity);
         var items = c.Items.Where(i => IsNativeItem(i.ItemCode) && i.Quantity > 0).OrderBy(i => i.ItemCode).ToArray();
-        if (items.Length > 255 || items.Sum(i => (int)i.Quantity) > 255)
-            throw new InvalidDataException("Native dungeon inventory exceeds its 255 instance handles.");
+        if (items.Length > 240 || items.Sum(i => (int)i.Quantity) > 240)
+        {
+            var window = NativeInventoryProjection.Create(c);
+            items = window.Items;
+            s.InventoryProjection = window.Projection;
+        }
         s.Put(1952, items.Length);
         for (int i = 0; i < items.Length; i++)
         {
@@ -190,9 +196,15 @@ public sealed class NativeDungeonState
             }
         }
         var nativeHandlesByInventoryIdentity = new Dictionary<int, int>();
-        for (var inventoryIdentity = 0; inventoryIdentity < inventoryInstances.Length; inventoryIdentity++)
-            if (handlesByCode.TryGetValue(inventoryInstances[inventoryIdentity], out var handles) && handles.Count > 0)
-                nativeHandlesByInventoryIdentity[inventoryIdentity] = handles.Dequeue();
+        if (s.InventoryProjection is { } projection)
+        {
+            foreach (var row in projection.Ordinals)
+                nativeHandlesByInventoryIdentity[row.Value] = checked((int)row.Key);
+        }
+        else
+            for (var inventoryIdentity = 0; inventoryIdentity < inventoryInstances.Length; inventoryIdentity++)
+                if (handlesByCode.TryGetValue(inventoryInstances[inventoryIdentity], out var handles) && handles.Count > 0)
+                    nativeHandlesByInventoryIdentity[inventoryIdentity] = handles.Dequeue();
 
         var selectedHandles = new HashSet<int>();
         foreach (var slot in c.QuickSlots)

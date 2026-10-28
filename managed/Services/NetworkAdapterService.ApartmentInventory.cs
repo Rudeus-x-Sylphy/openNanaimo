@@ -13,8 +13,9 @@ public sealed partial class NetworkAdapterService
     internal static byte[] BuildPlacedInteriorInventoryPayload(
         byte requestMode,
         CharacterRecord character,
-        IReadOnlyList<ApartmentPlacementRecord> placements)
+        IReadOnlyList<ApartmentPlacementRecord> placements, bool extended = false)
     {
+        if (extended) return BuildExtendedInteriorInventory(character, requestMode, placements);
         var payload = BuildInteriorInventoryPayload(requestMode, character);
         if (payload[3] == 0 || placements.Count == 0)
             return payload;

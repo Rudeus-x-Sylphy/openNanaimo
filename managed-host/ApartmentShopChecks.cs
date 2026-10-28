@@ -245,7 +245,7 @@ internal static class ApartmentShopChecks
             invalid = Purchase(); invalid[7] = 2; invalid[9] = 1;
             BinaryPrimitives.WriteUInt32LittleEndian(invalid.AsSpan(52), 11_110_021); await Reject(invalid);
             invalid = Purchase(); BinaryPrimitives.WriteUInt32LittleEndian(invalid, 0x100); await Reject(invalid);
-            await Reset(); await Seed(11_110_021, 83);
+            await Reset(); await Seed(11_110_021, InventoryCapacity.Slots - 1);
             Result(await Request(0xC40B, Purchase()), 10);
             await Reject(Purchase(), 60);
             await Reset(); await Seed(14_000_001, 3570, inbox: true);

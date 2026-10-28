@@ -5,10 +5,10 @@ namespace OpenNanaimo.Adapter.Services;
 
 public sealed partial class NetworkAdapterService
 {
-    internal static byte[] BuildCoupleTokenInventoryPayload(CharacterRecord? character)
+    internal static byte[] BuildCoupleTokenInventoryPayload(CharacterRecord? character, int capacity = 84)
     {
         var coupons = GetShoppingCouponItemCodes(character);
-        var gameItems = GetGameInventoryItemCodes(character);
+        var gameItems = GetGameInventoryItemCodes(character, capacity);
         var coupleItems = gameItems.Select((code, ordinal) => (Code: code, Ordinal: ordinal))
             .Where(row => CoupleBenefitPolicy.IsRingItemCode(row.Code)
                 || CoupleBenefitPolicy.IsSeparationItemCode(row.Code)).ToArray();
@@ -37,7 +37,7 @@ public sealed partial class NetworkAdapterService
         if (count > (response.Length - 12) / 8) throw new InvalidDataException("Invalid special inventory length.");
         session.ShoppingCouponIdentities.Synchronize(GetShoppingCouponItemCodes(session.Character));
         var coupons = GetShoppingCouponItemCodes(session.Character);
-        var gameItems = GetGameInventoryItemCodes(session.Character);
+        var gameItems = GetGameInventoryItemCodes(session.Character, session.Inventory99Enabled ? InventoryCapacity.Slots : 84);
         var identities = SessionInventory(session);
         for (var i = 0; i < count; i++)
         {

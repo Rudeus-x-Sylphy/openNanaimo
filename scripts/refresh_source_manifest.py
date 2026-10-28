@@ -7,7 +7,7 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 ENTRIES = ('adapter/nanaimo_adapter.c', 'adapter/nanaimo_adapter_testports.c')
-OPTIONAL_ENTRIES = ('adapter/nanaimo_gameplay_bridge.c',)
+OPTIONAL_ENTRIES = ('adapter/nanaimo_gameplay_bridge.c', 'release/components/client_inventory_storage.c')
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"\r\n]+)"', re.M)
 
 

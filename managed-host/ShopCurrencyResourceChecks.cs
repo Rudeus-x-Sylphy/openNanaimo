@@ -8,7 +8,15 @@ internal static class ShopCurrencyResourceChecks
 {
     public static void Run()
     {
-        CheckTable("pi._D7", "PET", 4, 35, 0, 13, 14, 990, 51, 396);
+        CheckTable("pi._D7", "PET", 4, 35, 0, 13, 14, 990, 51, 383);
+        foreach (uint code in new uint[] { 15000001,15000002,15000003,15000004,15000005,15000006,
+                     15005004,15005005,15005006,15009109,15009241,15009245,15009249 })
+            CheckPrice(code, 0, 0);
+        CheckPrice(15009231, 0, 675);
+        CheckPrice(15009234, 0, 1350);
+        CheckPrice(15009237, 0, 4050);
+        CheckPrice(15009352, 0, 8);
+        CheckPrice(15003366, 0, 4950);
         CheckTable("PA._D9", "PETACCESSORY", 4, 24, 0, 19, 20, 18931, 65, 0);
         CheckTable("inter._D3", "INTERIOR", 4, 20, 0, 6, 7, 2008, 1304, 522);
         CheckPrice(15_001_011, 100, 0);

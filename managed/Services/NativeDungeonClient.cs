@@ -68,6 +68,9 @@ public sealed class NativeDungeonClient : IAsyncDisposable
                 }
                 finally { _writeGate.Release(); }
                 var state = await pending.Task.WaitAsync(timeout.Token);
+                if (import is not null) _inventoryProjection = import.InventoryProjection;
+                state.InventoryProjection = _inventoryProjection?.Advance(state);
+                _inventoryProjection = state.InventoryProjection;
                 return new NativeDungeonExchangeResult(state, _capturedFrames?.ToArray() ?? []);
             }
             catch (Exception) when (Volatile.Read(ref _readFailure) is not null)
@@ -100,6 +103,8 @@ public sealed class NativeDungeonClient : IAsyncDisposable
             _gate.Release();
         }
     }
+    private NativeInventoryProjection? _inventoryProjection;
+
     public async Task SendAsync(byte[] frame, CancellationToken token)
     {
         await _gate.WaitAsync(token);

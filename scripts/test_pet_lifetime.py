@@ -6,6 +6,7 @@ import zipfile
 from Crypto.Cipher import AES
 import prepare_hero_dragon as h
 import prepare_korean_pets as k
+import prepare_pet_market as market
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -16,6 +17,16 @@ def encode(header, rows, tail):
     return AES.new(h.CN_KEY, AES.MODE_CBC, bytes(16)).encrypt(raw + bytes([padding]) * padding)
 
 
+def original_rows(rows, recipe):
+    market.restore_shop_adjustments(rows, recipe)
+    by_code = {int(r[0]): r for r in rows}
+    for entry in recipe['shop_price_overrides']:
+        row = by_code[entry['code']]
+        row[13:15] = ['0', '0']
+        row[8], row[10], row[11] = entry['original_flags']
+    return [by_code[code] for code in recipe['catalog_source_order']]
+
+
 class PetLifetimeTests(unittest.TestCase):
     def test_previous_full_catalog_migrates_only_hero_lifespan(self):
         target = (ROOT / 'adapter_runtime/资源/数据/pi._D7').read_bytes()
@@ -23,6 +34,8 @@ class PetLifetimeTests(unittest.TestCase):
         with zipfile.ZipFile(ROOT / 'resource-packs/nanaimo-korean-resource-kit.zip') as archive:
             source = archive.read('source-kr/pi._D7')
         header, rows, tail = h.read_pet(target, h.CN_KEY, 'gbk')
+        rows = original_rows(rows, recipe)
+        header[3] = str(sum(int(row[10]) != 0 for row in rows))
         old_rows = [r.copy() for r in rows]
         hero = next(r for r in old_rows if int(r[0]) == h.CODE)
         self.assertEqual(hero[9], '50')
@@ -47,6 +60,8 @@ class PetLifetimeTests(unittest.TestCase):
         hero_recipe = json.loads((ROOT / 'manifest/hero_dragon_resources.json').read_text('utf8'))
         target = (ROOT / 'adapter_runtime/资源/数据/pi._D7').read_bytes()
         header, rows, tail = h.read_pet(target, h.CN_KEY, 'gbk')
+        rows = original_rows(rows, recipe)
+        header[3] = str(sum(int(row[10]) != 0 for row in rows))
         header[2] = '868'
         cn = encode(header, rows[:868], tail)
         with zipfile.ZipFile(ROOT / 'resource-packs/nanaimo-korean-resource-kit.zip') as archive:

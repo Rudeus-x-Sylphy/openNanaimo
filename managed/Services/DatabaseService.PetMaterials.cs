@@ -5,11 +5,11 @@ public sealed partial class DatabaseService
     // C44C material ordinal, NOT a C430 ordinal or client wire identity. Validate
     // the exact code/ordinal under the same write lock as the one-instance debit.
     public async Task<(bool Success, ushort Quantity)> DeletePetMaterialInventoryItemAsync(
-        long accountId, long characterId, string sessionId, uint code, byte ordinal,
+        long accountId, long characterId, string sessionId, uint code, int ordinal,
         CancellationToken cancellationToken = default)
     {
         if (!InventoryClassification.IsPetMaterial(code) || !ShopCatalog.TryGet(code, out _)
-            || ordinal >= 56 || accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId))
+            || ordinal >= InventoryCapacity.Slots || accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId))
             return (false, 0);
         await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var transaction = connection.BeginTransaction(deferred: false);

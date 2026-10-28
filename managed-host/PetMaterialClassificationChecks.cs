@@ -246,7 +246,7 @@ internal static class PetMaterialClassificationChecks
         await f.ReinitializeAsync();
         var migrated=await f.ReadAsync();
         Check(migrated.QuickSlots.Select(x=>x.Slot).SequenceEqual(new byte[] {0,2,5})
-            && migrated.QuickSlots.Select(x=>x.InventoryIndex).SequenceEqual(new byte[] {1,4,3}),
+            && migrated.QuickSlots.Select(x=>x.InventoryIndex).SequenceEqual(new ushort[] {1,4,3}),
             "legacy C430 material removal migrates exact duplicate occurrence and original hotkey slot");
         Check(JsonSerializer.Serialize(migrated.Items)==originalItems, "classification migration never deletes or caps owned items");
         var native=NativeDungeonState.Create(migrated,[],[]);
@@ -255,7 +255,7 @@ internal static class PetMaterialClassificationChecks
         Check(native.Get(228)==2 && native.Get(228+2*8)==9 && native.Get(228+5*8)==8,
             "native quickslot crosswalk uses exact surviving instance across material gaps");
         var restored=DatabaseService.RestoreNativeQuickSlotBindings(new uint[]{14000001,14000001,21000001,21000001,21000001},native);
-        Check(restored.Select(x=>x.InventoryIndex).SequenceEqual(new byte[]{1,4,3}),
+        Check(restored.Select(x=>x.InventoryIndex).SequenceEqual(new ushort[]{1,4,3}),
             "native checkpoint translates material-inclusive handles back to material-exclusive C430 ordinals");
         baseline=await f.SnapshotAsync();
         await f.ReinitializeAsync();

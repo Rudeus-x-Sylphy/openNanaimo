@@ -5,9 +5,10 @@ namespace OpenNanaimo.Adapter.Services;
 
 internal sealed class PetIdentityMap
 {
-    private readonly Dictionary<byte, (uint Code, long Instance)> _rows = [];
-    private readonly HashSet<byte> _used = [];
-    private byte[] _ordered = [];
+    internal int Limit { get; set; } = 56;
+    private readonly Dictionary<ushort, (uint Code, long Instance)> _rows = [];
+    private readonly HashSet<ushort> _used = [];
+    private ushort[] _ordered = [];
 
     internal void Synchronize(IReadOnlyList<CharacterItemRecord> pets)
     {
@@ -16,7 +17,7 @@ internal sealed class PetIdentityMap
         foreach (var key in keys)
         {
             if (_rows.ContainsValue(key)) continue;
-            var free = Enumerable.Range(0, 56).Select(value => (byte)value).Where(value => !_rows.ContainsKey(value)).ToArray();
+            var free = Enumerable.Range(0, Limit).Select(value => (ushort)value).Where(value => !_rows.ContainsKey(value)).ToArray();
             if (free.Length == 0) throw new InvalidDataException("PET inventory capacity exceeded");
             var handle = free.FirstOrDefault(value => !_used.Contains(value), free[0]);
             _rows.Add(handle, key);
@@ -25,22 +26,22 @@ internal sealed class PetIdentityMap
         _ordered = keys.Select(key => _rows.Single(row => row.Value == key).Key).ToArray();
     }
 
-    internal byte Wire(int ordinal) => _ordered[ordinal];
+    internal ushort Wire(int ordinal) => _ordered[ordinal];
     internal void Remove(ushort handle)
     {
-        if (handle < 56) _rows.Remove((byte)handle);
+        if (handle < Limit) _rows.Remove(handle);
     }
-    internal bool TryResolve(uint handle, out byte ordinal)
+    internal bool TryResolve(uint handle, out ushort ordinal)
     {
-        var index = handle < 56 ? Array.IndexOf(_ordered, (byte)handle) : -1;
-        ordinal = index >= 0 ? (byte)index : (byte)0;
+        var index = handle < Limit ? Array.IndexOf(_ordered, (ushort)handle) : -1;
+        ordinal = index >= 0 ? (ushort)index : (ushort)0;
         return index >= 0;
     }
 }
 
 public sealed partial class NetworkAdapterService
 {
-    internal static CharacterItemRecord[] GetPetWireItems(CharacterRecord? character)
+    internal static CharacterItemRecord[] GetPetWireItems(CharacterRecord? character, int capacity = PetChargeCapacity)
     {
         if (character is null) return [];
         // The client dereferences PET definitions without a missing-code guard.
@@ -57,7 +58,7 @@ public sealed partial class NetworkAdapterService
             if (starter is not null) pets.Remove(starter);
             pets.Insert(0, starter ?? new CharacterItemRecord { ItemCode = code, Quantity = 1 });
         }
-        var visible = pets.Take(PetChargeCapacity).ToArray();
+        var visible = pets.Take(capacity).ToArray();
         var selected = pets.FirstOrDefault(item => item.ItemCode == character.EquippedPetItemCode
             && item.PetInstanceId == character.EquippedPetInstanceId);
         if (selected is not null && !visible.Contains(selected) && visible.Length > 0) visible[^1] = selected;
@@ -69,9 +70,10 @@ public sealed partial class NetworkAdapterService
             && item.PetInstanceId == character.EquippedPetInstanceId);
 
     private static bool TryResolveSessionPet(ConnectionSession session, uint handle,
-        out byte ordinal, out CharacterItemRecord pet)
+        out ushort ordinal, out CharacterItemRecord pet)
     {
-        var pets = GetPetWireItems(session.Character);
+        session.PetIdentities.Limit = session.Inventory99Enabled ? InventoryCapacity.Slots : PetChargeCapacity;
+        var pets = GetPetWireItems(session.Character, session.PetIdentities.Limit);
         session.PetIdentities.Synchronize(pets);
         pet = null!;
         if (!session.PetIdentities.TryResolve(handle, out ordinal)) return false;
@@ -81,6 +83,7 @@ public sealed partial class NetworkAdapterService
 
     private static void RewriteSessionPetIdentities(Span<byte> frame, ConnectionSession session)
     {
+        if (session.Inventory99Enabled) return;
         var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.Slice(6, 2));
         if (session.Character is null || opcode is not (0xC44C or 0xC452 or 0xC379)) return;
         var pets = GetPetWireItems(session.Character);
@@ -90,7 +93,7 @@ public sealed partial class NetworkAdapterService
                 BinaryPrimitives.WriteUInt16LittleEndian(frame.Slice(20 + i * 36, 2), session.PetIdentities.Wire(i));
         var selected = GetSelectedPetOrdinal(session.Character);
         if (opcode == 0xC44C && frame.Length >= 12)
-            frame[11] = selected < 0 ? byte.MaxValue : session.PetIdentities.Wire(selected);
+            frame[11] = selected < 0 ? byte.MaxValue : checked((byte)session.PetIdentities.Wire(selected));
         if (opcode == 0xC379 && frame.Length >= 204 && selected >= 0)
             BinaryPrimitives.WriteUInt16LittleEndian(frame.Slice(172, 2), session.PetIdentities.Wire(selected));
     }

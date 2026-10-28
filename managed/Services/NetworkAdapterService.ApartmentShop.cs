@@ -35,6 +35,13 @@ public sealed partial class NetworkAdapterService
             session.ShoppingCouponIdentities.Remove(couponWire.Value);
         await RefreshSessionCharacterAsync(session, token);
         if (purchase.Success) AccountStateChanged?.Invoke();
+        if (purchase.Success && !purchase.DeliveredToInbox && session.Inventory99Enabled)
+        {
+            var acknowledgement = Reply(purchase.ResultCode, [], purchase.Cash, purchase.Hans);
+            var placements = await _database.GetApartmentPlacementsAsync(session.Character!.Id, token);
+            var inventory = BuildExtendedInteriorInventory(session.Character, 20, placements);
+            return CombineNativeFrames(acknowledgement, BuildNativeFrame(frame, 0xC40A, inventory, session));
+        }
         // An inbox purchase carries no direct-inventory rows: C475 performs the ownership transfer.
         return Reply(purchase.ResultCode, purchase.Success && !purchase.DeliveredToInbox ? purchase.Inventory : [],
             purchase.Cash, purchase.Hans);

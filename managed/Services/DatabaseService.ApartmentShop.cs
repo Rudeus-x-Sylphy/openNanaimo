@@ -12,7 +12,7 @@ public readonly record struct ApartmentShopPurchaseResult(
 public sealed partial class DatabaseService
 {
     // Pending furniture reserves a future inventory cell until C475 transfers it.
-    private const int ApartmentShopFurnitureCapacity = 84;
+    private const int ApartmentShopFurnitureCapacity = InventoryCapacity.Slots;
     private const int ApartmentShopInboxCapacity = 14 * byte.MaxValue;
 
     public async Task<ApartmentShopPurchaseResult> PurchaseApartmentShopItemsAsync(

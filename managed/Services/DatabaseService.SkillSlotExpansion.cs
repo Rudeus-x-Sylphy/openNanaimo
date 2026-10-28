@@ -12,18 +12,18 @@ public sealed partial class DatabaseService
 
     public Task<(bool Success, string Error, uint Expiration, ushort RemainingQuantity)>
         UseInventoryExpansionAsync(long accountId, long characterId, string sessionId,
-            uint itemCode, byte inventoryIndex, DateTime now, CancellationToken cancellationToken = default)
+            uint itemCode, int inventoryIndex, DateTime now, CancellationToken cancellationToken = default)
         => UseInventoryExpansionCoreAsync(accountId, characterId, sessionId, itemCode,
             inventoryIndex, now, cancellationToken);
 
     private async Task<(bool Success, string Error, uint Expiration, ushort RemainingQuantity)>
         UseInventoryExpansionCoreAsync(long accountId, long characterId, string sessionId,
-            uint itemCode, byte? inventoryIndex, DateTime now, CancellationToken cancellationToken)
+            uint itemCode, int? inventoryIndex, DateTime now, CancellationToken cancellationToken)
     {
         if (accountId <= 0
             || characterId <= 0
             || string.IsNullOrEmpty(sessionId)
-            || inventoryIndex is >= 84
+            || inventoryIndex is >= InventoryCapacity.Slots
             || !ShopCatalog.TryGet(itemCode, out var catalogItem)
             || catalogItem.Section != InventorySection.GameItem
             || catalogItem.Category != 44

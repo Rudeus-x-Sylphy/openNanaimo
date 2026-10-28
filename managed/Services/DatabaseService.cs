@@ -548,7 +548,9 @@ public sealed partial class DatabaseService
         await InitializeApartmentRecommendationsAsync(connection, cancellationToken);
         await InitializeApartmentHousingAsync(connection, cancellationToken);
         await MigrateQuickSlotIdentitySchemaAsync(connection, cancellationToken);
+        await MigrateInventoryStorageSchemaAsync(connection, cancellationToken);
         await MigratePetMaterialQuickSlotOrdinalsAsync(connection, cancellationToken);
+        await PruneInvalidGameQuickSlotsAsync(connection, cancellationToken);
         await MigrateDungeonProgressToOfficialLayoutAsync(connection, cancellationToken);
         await MigrateDungeonStagePerformanceAsync(connection, cancellationToken);
         await MigrateLumineosTitlesAsync(connection, cancellationToken);
@@ -4809,8 +4811,12 @@ public sealed partial class DatabaseService
         var furnitureBefore = claimedItem.Section == InventorySection.Furniture
             ? await GetInteriorInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken)
             : null;
-        if (furnitureBefore is { Count: >= 84 })
+        if (furnitureBefore is { Count: >= InventoryCapacity.Slots })
             return (false, "Furniture inventory is full.", checked((ushort)inboxQuantity), checked((ushort)inventoryQuantity));
+        if (!(claimedItem.Section == InventorySection.Clothing && inventoryQuantity > 0)
+            && await CheckCardRewardCapacityAsync(connection, transaction, characterId, itemCode, 0, cancellationToken)
+                is CardRewardCapacity.Full or CardRewardCapacity.Unsupported)
+            return (false, "Inventory is full.", checked((ushort)inboxQuantity), checked((ushort)inventoryQuantity));
         var newInboxQuantity = checked((ushort)(inboxQuantity - 1));
         var newInventoryQuantity = checked((ushort)(inventoryQuantity + 1));
         var itemExpiration = claimedItem.HasExpiry
@@ -5115,7 +5121,7 @@ public sealed partial class DatabaseService
             || appearance.Length != 36)
             return false;
 
-        if (quickSlots.Any(slot => slot.Slot > 5 || slot.InventoryIndex > 83 || slot.ItemCode == 0)
+        if (quickSlots.Any(slot => slot.Slot > 5 || slot.InventoryIndex >= InventoryCapacity.Slots || slot.ItemCode == 0)
             || quickSlots.Select(slot => slot.Slot).Distinct().Count() != quickSlots.Count
             || quickSlots.Select(slot => slot.InventoryIndex).Distinct().Count() != quickSlots.Count)
             return false;
@@ -6038,7 +6044,7 @@ public sealed partial class DatabaseService
         {
             result.Add(new ApartmentPlacementRecord
             {
-                SlotIndex = checked((byte)reader.GetInt32(0)),
+                SlotIndex = checked((ushort)reader.GetInt32(0)),
                 ItemCode = checked((uint)reader.GetInt64(1)),
                 X = checked((short)reader.GetInt32(2)),
                 Y = checked((short)reader.GetInt32(3)),
@@ -6679,15 +6685,24 @@ public sealed partial class DatabaseService
         return true;
     }
 
-    public async Task<bool> ApplyApartmentChangesAsync(
+    public Task<bool> ApplyApartmentChangesAsync(
         long accountId,
         long characterId,
         string sessionId,
         IReadOnlyList<ApartmentPlacementRecord> takeOn,
         IReadOnlyCollection<byte> takeOff,
         CancellationToken cancellationToken = default)
+        => ApplyApartmentChangesWideAsync(accountId, characterId, sessionId, takeOn,
+            takeOff.Select(index => (ushort)index).ToArray(), cancellationToken);
+
+    public async Task<bool> ApplyApartmentChangesWideAsync(
+        long accountId, long characterId, string sessionId,
+        IReadOnlyList<ApartmentPlacementRecord> takeOn, IReadOnlyCollection<ushort> takeOff,
+        CancellationToken cancellationToken = default)
     {
-        if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId))
+        if (accountId <= 0 || characterId <= 0 || string.IsNullOrEmpty(sessionId)
+            || takeOn.Count > 84 || takeOff.Count > 84
+            || takeOff.Any(index => index >= InventoryCapacity.Slots))
             return false;
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
@@ -6715,6 +6730,10 @@ public sealed partial class DatabaseService
                 return false;
             }
         }
+
+        var owned = await GetInteriorInventoryItemCodesAsync(connection, transaction, characterId, cancellationToken);
+        if (takeOn.Any(row => row.SlotIndex >= owned.Count || owned[row.SlotIndex] != row.ItemCode
+                || !ShopCatalog.TryGet(row.ItemCode, out var catalog) || row.InteriorType != catalog.InteriorType)) return false;
 
         foreach (var slotIndex in takeOff.Distinct())
         {
@@ -9198,6 +9217,8 @@ public sealed partial class DatabaseService
             pending = false;
             // A full key counter keeps its reward pending; never silently clamp.
             if (guideId == 2 && keys > 245) pending = true;
+            var inventoryBefore = await GetGameInventoryItemCodesAsync(
+                connection, transaction, characterId, cancellationToken);
             var now = DateTime.UtcNow.ToString("O");
             foreach (var itemCode in items)
             {
@@ -9214,6 +9235,9 @@ public sealed partial class DatabaseService
                 grant.Parameters.AddWithValue("$now", now);
                 await grant.ExecuteNonQueryAsync(cancellationToken);
             }
+            if (!await ReindexGameQuickSlotsAfterGrantAsync(
+                    connection, transaction, characterId, inventoryBefore, cancellationToken))
+                return (true, false, false, null);
             if (guideId == 2 && !pending)
             {
                 using var grant = connection.CreateCommand();
@@ -11904,7 +11928,7 @@ public sealed partial class DatabaseService
             {
                 Slot = checked((byte)reader.GetInt32(0)),
                 ItemCode = checked((uint)reader.GetInt64(1)),
-                InventoryIndex = checked((byte)reader.GetInt32(2))
+                InventoryIndex = checked((ushort)reader.GetInt32(2))
             });
         }
         return result;

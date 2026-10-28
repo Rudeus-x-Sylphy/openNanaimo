@@ -4,7 +4,7 @@ namespace OpenNanaimo.Adapter.Models;
 
 public sealed class ApartmentPlacementRecord
 {
-    public byte SlotIndex { get; init; }
+    public ushort SlotIndex { get; init; }
     public uint ItemCode { get; init; }
     public short X { get; init; }
     public short Y { get; init; }

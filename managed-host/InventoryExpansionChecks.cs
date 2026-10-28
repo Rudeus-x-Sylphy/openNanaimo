@@ -117,7 +117,7 @@ internal static class InventoryExpansionChecks
                 var state = await Read();
                 Check(state.Items.Single(x=>x.ItemCode == ticket.ItemCode).Quantity == 2, $"raw{raw}: consumes exactly one");
                 Check(state.QuickSlots.Select(s=>s.Slot).SequenceEqual(new byte[]{0,2})
-                    && state.QuickSlots.Select(s=>s.InventoryIndex).SequenceEqual(new byte[]{0,1}),
+                    && state.QuickSlots.Select(s=>s.InventoryIndex).SequenceEqual(new ushort[]{0,1}),
                     $"raw{raw}: middle clicked duplicate is removed, not the first same-code instance");
                 var liveState = (CharacterRecord)Get(session, "Character")!;
                 var liveIdentities = (InventoryIdentityMap)Get(session, "GameInventoryIdentities")!;
