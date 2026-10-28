@@ -598,16 +598,16 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5361\u7247/\u5408\u6210/\u666e\u901a\u914d\u65b9\u4e0e\u94a5\u5319.md",
       "layer": "knowledge",
-      "size": 5882,
-      "sha256": "57e0b17b132e15b4da0c305e0e011f4d78a22172f0a0992d48ee9f1039913145",
+      "size": 7191,
+      "sha256": "e366d25ddec4de76b9702deb28c926217e65bda3c0a1bae6dd6587211f388b67",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/\u4e1a\u52a1/\u5361\u7247/\u5408\u6210/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 503,
-      "sha256": "f471d67959f91147ce5a45fecc0f6f0e864efff692fe2b043556e100353f760c",
+      "size": 533,
+      "sha256": "af14620cda3c89b8f7af483966285db0fa81575a0a9a9882d3359c1e30ddc75f",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2870,8 +2870,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u6784\u5efa\u53d1\u5e03/\u53d1\u5e03\u8eab\u4efd\u4e0e\u6e05\u5355.md",
       "layer": "knowledge",
-      "size": 7069,
-      "sha256": "28c2329910e496698f90af555f1af701a8989f93941316ef9c17ffc073734cb8",
+      "size": 7083,
+      "sha256": "dabae113b63d777e84f705ebbbb856b1524981f3ae5b2df117c6d650f8a5a7f2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3046,8 +3046,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u5c42\u7ea7\u4e0e\u7248\u672c\u5f52\u5c5e.md",
       "layer": "knowledge",
-      "size": 17325,
-      "sha256": "45183fedb25348aef240ece1089896eb4c9e255c428f947f01fcfdfcfaf24939",
+      "size": 17927,
+      "sha256": "f27f1c0677dc3693af2256289bd53a88b2e860623a7a99a75487eb73ba640909",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3278,8 +3278,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u6559\u7a0b\u4e0e\u5546\u57ce\u8d44\u6e90\u914d\u5957.md",
       "layer": "knowledge",
-      "size": 11283,
-      "sha256": "68cdbd69f7664fb236d0dbea30d809911ddde4280e9bf63ac1ce44242764985c",
+      "size": 14036,
+      "sha256": "70665722fb3401a5059325d86e3e594392197b460ecebf2390a1fbcdd38eed18",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7126,8 +7126,8 @@
     {
       "path": "scripts/deploy_pet_catalog_update.py",
       "layer": "source",
-      "size": 16239,
-      "sha256": "d54eba355850027a1ec03c67cea6c6ab5960b9a8c718d005874bedc027a400ff",
+      "size": 16326,
+      "sha256": "b47e8538f3498a586bbed75dc903fa7bf7ecd03410aa8388c52dbba91dcc66c6",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7478,8 +7478,8 @@
     {
       "path": "scripts/prepare_clover_descriptions.py",
       "layer": "source",
-      "size": 3324,
-      "sha256": "41221a512c2a12271620dad68dd543bc428fe891dd4c9301a95f02e62a1ea767",
+      "size": 6033,
+      "sha256": "32e84736413c439b6656f70f47c5aea177ca035dd3fe7acfd78eb49ba22ccab8",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7982,8 +7982,8 @@
     {
       "path": "scripts/test_clover_descriptions.py",
       "layer": "source",
-      "size": 3913,
-      "sha256": "684d1009dcf478d87c1db151ad1e599de798cd44eb2b38194b5676b0f42040f4",
+      "size": 9099,
+      "sha256": "a9932ec732b11bf371f653ab54caa75c5cf9d96bdbcb2fc71cdccf18a581b324",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8046,8 +8046,8 @@
     {
       "path": "scripts/test_deploy_pet_catalog_update.py",
       "layer": "source",
-      "size": 6574,
-      "sha256": "bb0cb65038ade5372e362dd31a033edb622ff7cf7b719b1c7c93adba3c228dd2",
+      "size": 7309,
+      "sha256": "d8f8a9f2db3c1499906bff2acbd79687a36b9fff674ffbb0b7dfd155502d757f",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

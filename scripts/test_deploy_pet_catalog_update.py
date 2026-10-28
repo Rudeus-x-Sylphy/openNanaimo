@@ -7,7 +7,7 @@ import deploy_pet_catalog_update as d
 
 class DeploymentTests(unittest.TestCase):
     def paired_fixture(self):
-        names=('gi._D6','IE._D23','ava._D1')
+        names=('gi._D6','ddakg._D4','IE._D23','ava._D1')
         data={'adapter_runtime/资源/数据/'+n:(d.ROOT/'adapter_runtime/资源/数据'/n).read_bytes() for n in names}
         data['manifest/korean_wardrobe_resources.json']=(d.ROOT/'manifest/korean_wardrobe_resources.json').read_bytes()
         manifest={'critical_files':{n:d.pets.identity(raw) for n,raw in data.items()}}
@@ -31,6 +31,20 @@ class DeploymentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Unrecognized installed catalog'):
             d.paired_catalogs(self.root,data,manifest)
         self.assertEqual(path.read_bytes(),b'custom catalog')
+
+    def test_old_clover_cards_upgrade_to_the_paired_release(self):
+        _,data,manifest=self.paired_fixture()
+        name='ddakg._D4'
+        resource='adapter_runtime/资源/数据/'+name
+        fields=d.clover.crypto.decrypt(data[resource],d.clover.crypto.CN_KEY).decode('gbk').split('#')
+        for code in d.clover.CARD_NAMES:
+            fields[3+(code-13000001)*17+3]=d.clover.OLD_CARD_DESCRIPTIONS[0]
+        old=d.clover.encrypt(fields)
+        (self.root/name).write_bytes(old)
+        manifest['critical_files'][resource]=d.pets.identity(old)
+        d.paired_catalogs(self.root,data,manifest)
+        self.assertEqual(data[name],data[resource])
+        self.assertEqual((self.root/name).read_bytes(),old)
 
     def test_transformation_must_match_the_paired_release(self):
         _,data,manifest=self.paired_fixture()

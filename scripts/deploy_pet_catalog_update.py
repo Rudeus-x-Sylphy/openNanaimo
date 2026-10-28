@@ -28,7 +28,8 @@ def verify_new_target(name,path,raw,known,reviewed_before):
 
 def paired_catalogs(client, data, old_manifest):
     """Pair root catalogs with runtime bytes after checking installed identities."""
-    for name, transform in (('gi._D6', clover.merge), ('IE._D23', exchange.merge),
+    for name, transform in (('gi._D6', clover.merge), ('ddakg._D4', clover.merge_cards),
+                            ('IE._D23', exchange.merge),
                             ('ava._D1', market.ordering.order_avatar)):
         relative = 'adapter_runtime/资源/数据/' + name
         current = io.safe(client, name).read_bytes()
@@ -111,7 +112,7 @@ def build_payloads(client,reviewed_before=None):
         data[marker]=pets.encode_json(receipt)
     known=set(old_manifest['critical_files'])|{r['path'] for r in old_closure['files']}|{
         'manifest/source_closure.json','manifest/open_release_manifest.json','pi._D7','Sddakg._D35',
-        'gi._D6','IE._D23','ava._D1',marker,hero.RECEIPT_NAME,pets.RECEIPT}
+        'gi._D6','ddakg._D4','IE._D23','ava._D1',marker,hero.RECEIPT_NAME,pets.RECEIPT}
     for name,raw in data.items():
         path=io.safe(client,name)
         verify_new_target(name,path,raw,known,reviewed_before)
@@ -197,7 +198,7 @@ def verify_installed(client):
     package.verify_runtime_contract(client,manifest)
     hero.verify_installed(client,io.safe(client,'manifest/hero_dragon_resources.json'))
     pets.verify_installed(client,io.safe(client,'manifest/korean_pet_resources.json'))
-    for name in ('gi._D6','IE._D23','pi._D7','ava._D1','Sddakg._D35'):
+    for name in ('gi._D6','ddakg._D4','IE._D23','pi._D7','ava._D1','Sddakg._D35'):
         if io.file_hash(io.safe(client,name))!=io.file_hash(io.safe(client,'adapter_runtime/资源/数据/'+name)):
             raise ValueError('Installed client/runtime catalog mismatch: '+name)
 
