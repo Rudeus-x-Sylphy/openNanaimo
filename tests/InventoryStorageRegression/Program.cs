@@ -179,4 +179,16 @@ var reloaded = (await new DatabaseService(root).GetCharacterAsync(account))!;
 Check(reloaded.EquippedPetInstanceId == selectedInstance && reloaded.Items.Count(item => item.ItemCode == petCode) == 1000,
     "reloading storage preserves independent pets, selected identity and quantities");
 
+const uint undefinedPet = 15009901;
+Check(!ShopCatalog.TryGet(undefinedPet, out _), "undefined pet fixture is outside the client catalog");
+await Seed(undefinedPet, 1);
+var filtered = Frame(await Dispatch(0xC378, []), 0xC44C);
+Check(U16(filtered, 10) == 1385
+    && Enumerable.Range(0, U16(filtered, 10)).All(i => U32(filtered, 12 + i * 36) != undefinedPet),
+    "extended equipment inventory filters undefined pets while preserving all valid rows");
+var filteredCharge = Frame(await Dispatch(0xC451, Version(0xC451, 72)), 0xC452);
+Check(Enumerable.Range(0, (int)U32(filteredCharge, 8)).All(i => U32(filteredCharge, 12 + i * 36) != undefinedPet)
+    && (await Load())!.Items.Single(item => item.ItemCode == undefinedPet).Quantity == 1,
+    "extended charge projection preserves undefined ownership in persistent storage");
+
 Console.WriteLine($"INVENTORY_STORAGE_CHECKS_PASS checks={checks} runtime_acceptance=false fixture={root}");

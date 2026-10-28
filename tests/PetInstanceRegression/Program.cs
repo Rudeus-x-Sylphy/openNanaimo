@@ -222,8 +222,10 @@ Check((await Event(lifespan, replay)).Success && (await Load())!.Items.Count == 
 
 // Fill the mixed pet/material box, then require every grant to fail atomically.
 state = (await Load())!;
-var occupied = NetworkAdapterService.GetPetWireItems(state).Length;
-await SeedItem(gem, 56 - occupied);
+var occupied = NetworkAdapterService.GetPetWireItems(state, InventoryCapacity.Slots).Length
+    + state.Items.Where(item => item.ItemCode != gem && ShopCatalog.TryGet(item.ItemCode, out var definition)
+        && definition.IsPetMaterial).Sum(item => item.Quantity);
+await SeedItem(gem, InventoryCapacity.Slots - occupied);
 await SeedCard(13000007, 2);
 var balance = (await Load())!;
 Check(!(await db.SynthesizeCardItemAsync(account, id, sessionId, 7)).Success

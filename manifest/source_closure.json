@@ -1604,8 +1604,8 @@
     },
     {
       "path": "release/components/client_inventory_storage.c",
-      "size": 9478,
-      "sha256": "98FE78DED07EFDF633B42606B362A7A1725CCDBD40DB6F054FFB43F8BE4C85E6"
+      "size": 9665,
+      "sha256": "0B18E04FA11CFF827EA60F1E968353A653F8E06DBE747EA5DDFA13E132B0B4C0"
     },
     {
       "path": "release/components/combat_attribution/map_identity_runtime.inc",

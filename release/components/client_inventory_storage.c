@@ -51,34 +51,35 @@ EXPORT void inv_track(void *box)
         pet_page = B(box,116);
 }
 
-EXPORT int STD inv_send(int channel, u8 *packet)
+/* Match the native thiscall: ECX owns the connection, callee pops two args. */
+EXPORT int FAST inv_send(void *transport, void *unused, int channel, u8 *packet)
 {
     u8 out[1024];
     unsigned i, size = W(packet,4), opcode = W(packet,6);
-    typedef int (STD *send_fn)(int, void *);
+    typedef int (FAST *send_fn)(void *, void *, int, void *);
     send_fn original = (send_fn)inv_original_send;
     if(!channel && opcode==0xC586 && size==32) {
         for(i=0;i<size;i++) out[i]=packet[i];
         W(out,32)=couple_handle; W(out,4)=34;
-        return original(channel,out);
+        return original(transport,0,channel,out);
     }
     if(!channel && opcode==0xC411 && size==768) {
         for(i=0;i<size;i++) out[i]=packet[i];
         W(out,size)=0x9949;
         for(i=0;i<84;i++) W(out,size+2+2*i)=furniture_removed[i];
         W(out,4)=938;
-        return original(channel,out);
+        return original(transport,0,channel,out);
     }
     if (channel || !((size == 8 && (opcode == 0xC378 || opcode == 0xC3CB || opcode == 0xC42F
         || opcode == 0xC44B || opcode == 0xC451))
         || (size == 12 && (opcode == 0xC409 || opcode == 0xC392 || opcode == 0xC423))))
-        return original(channel, packet);
+        return original(transport,0,channel,packet);
     for (i=0; i<size; i++) out[i]=packet[i];
     D(out,size)=0x39394E49;
     W(out,size+4)=1; W(out,size+6)=1386;
     W(out,4)=(u16)(size+8);
     if (opcode == 0xC451) { W(out,size+8)=pet_page; W(out,4)+=2; }
-    return original(channel, out);
+    return original(transport,0,channel,out);
 }
 
 static int extended(const u8 *packet)
@@ -118,7 +119,7 @@ EXPORT void inv_expansion(const u8 *packet, unsigned kind)
     ((setter)setters[kind])(MANAGER,0,mode==(kind==0 || kind==2 ? 4 : 6),expiry);
 }
 
-static void send_packet(u8 *packet) { inv_send(0,packet); }
+static void send_packet(u8 *packet) { inv_send(TRANSPORT,0,0,packet); }
 static void clear_packet(u8 *packet, unsigned length, unsigned opcode)
 {
     unsigned i; for(i=0;i<length;i++) packet[i]=0;

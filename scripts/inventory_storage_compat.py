@@ -295,7 +295,11 @@ def metadata(data):
 def patch(data):
     image = PE(data)
     if any(row[0] == SECTION for row in image.sections):
-        return data, metadata(data)
+        record = metadata(data)
+        need(record['source_sha256'] == hashlib.sha256(SOURCE.read_bytes()).hexdigest()
+             and record['compiler_sha256'] == hashlib.sha256(TCC.read_bytes()).hexdigest(),
+             'installed inventory module differs from this build; use --upgrade with a fresh output')
+        return data, record
     # This is the storage upgrade, not an implicit install of an unrelated UI recipe.
     for name, address, old, installed in pages.patch_sites():
         _patch_site(data, address, installed, installed, name, 'install the reviewed 99-page controller first')
@@ -348,15 +352,22 @@ def restore(data):
     return bytes(output), record
 
 
+def upgrade(data):
+    before, _ = restore(data)
+    return patch(before)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--client', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--restore', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--restore', action='store_true')
+    mode.add_argument('--upgrade', action='store_true')
     args = parser.parse_args()
     need(args.client.resolve() != args.output.resolve() and not args.output.exists(), 'use a fresh separate output path')
     before = args.client.read_bytes()
-    after, record = (restore if args.restore else patch)(before)
+    after, record = (restore if args.restore else upgrade if args.upgrade else patch)(before)
     _atomic_write(args.output, after)
     print(json.dumps(dict(status='restored' if args.restore else 'candidate',
                           input_sha256=hashlib.sha256(before).hexdigest(), output_sha256=hashlib.sha256(after).hexdigest(),

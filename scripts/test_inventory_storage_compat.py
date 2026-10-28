@@ -1,4 +1,5 @@
 """Exact bytes and isolated x86 execution; not original-client acceptance."""
+import json
 import os
 import struct
 import unittest
@@ -25,7 +26,7 @@ class InventoryStorageClientTests(unittest.TestCase):
             cls.before = storage.restore(cls.before)[0]
         cls.image, cls.record = storage.patch(cls.before)
 
-    def machine(self):
+    def machine(self, native_send=False):
         machine = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_32)
         image = storage.PE(self.image)
         machine.mem_map(image.base, storage.align(image.image_size, 0x1000))
@@ -36,6 +37,7 @@ class InventoryStorageClientTests(unittest.TestCase):
         online = box + 0x4000
         machine.mem_write(online + 3, b'\x01')
         machine.mem_write(0xD869D4, struct.pack('<I', box + 0x5000))
+        machine.mem_write(0xD8CE78, struct.pack('<I', box + 0x6000))
         sent, setters, heads = [], [], {}
 
         def intercept(vm, address, size, unused):
@@ -43,8 +45,13 @@ class InventoryStorageClientTests(unittest.TestCase):
                 vm.emu_stop()
                 return
             pop = 0
-            if address == self.record['exports']['inv_original_send']:
+            if address == self.record['exports']['inv_original_send'] or native_send and address == 0xADCEB0:
+                adjusted = address == 0xADCEB0
+                self.assertEqual(vm.reg_read(x.UC_X86_REG_ECX), vm.expected_transport + (12 if adjusted else 0))
+                if native_send and not adjusted:
+                    return
                 sp = vm.reg_read(x.UC_X86_REG_ESP)
+                self.assertEqual(struct.unpack('<I', vm.mem_read(sp + 4, 4))[0], vm.expected_channel)
                 pointer = struct.unpack('<I', vm.mem_read(sp + 8, 4))[0]
                 length = struct.unpack('<H', vm.mem_read(pointer + 4, 2))[0]
                 sent.append(bytes(vm.mem_read(pointer, length)))
@@ -67,7 +74,9 @@ class InventoryStorageClientTests(unittest.TestCase):
         machine.hook_add(uc.UC_HOOK_CODE, intercept)
         return machine, packet, box, stack, end, sent, setters, heads
 
-    def call(self, machine, stack, end, function, args=(), this=0):
+    def call(self, machine, stack, end, function, args=(), this=0x2010000):
+        machine.expected_transport = this if function == 'inv_send' else 0x2016000
+        machine.expected_channel = args[0] if function == 'inv_send' else 0
         machine.reg_write(x.UC_X86_REG_ECX, this)
         machine.reg_write(x.UC_X86_REG_EDX, 0)
         machine.reg_write(x.UC_X86_REG_ESP, stack)
@@ -81,6 +90,20 @@ class InventoryStorageClientTests(unittest.TestCase):
         self.assertEqual(storage.patch(self.before)[0], self.image)
         self.assertEqual(storage.restore(self.image)[0], self.before)
         self.assertEqual(storage.PE(self.image).count, storage.PE(self.before).count + 1)
+
+    def test_upgrade_checks_installed_build_and_keeps_exact_original(self):
+        length = struct.unpack_from('<I', self.image, len(self.image) - 12)[0]
+        for field in ('source_sha256', 'compiler_sha256'):
+            with self.subTest(field=field):
+                record = dict(self.record, **{field: '0' * 64})
+                encoded = json.dumps(record, sort_keys=True, separators=(',', ':')).encode('ascii')
+                self.assertEqual(len(encoded), length)
+                previous = self.image[:-12 - length] + encoded + self.image[-12:]
+                with self.assertRaisesRegex(CompatibilityError, '--upgrade'):
+                    storage.patch(previous)
+                upgraded, _ = storage.upgrade(previous)
+                self.assertEqual(upgraded, self.image)
+                self.assertEqual(storage.restore(upgraded)[0], self.before)
 
     def test_owned_bytes_and_unrelated_changes_refuse_rollback(self):
         for address, old, new in self.record['sites']:
@@ -141,6 +164,36 @@ class InventoryStorageClientTests(unittest.TestCase):
                 self.assertEqual(struct.unpack_from('<IHH', sent[-1], size), (0x39394E49, 1, 1386))
                 if opcode == 0xC451:
                     self.assertEqual(struct.unpack_from('<H', sent[-1], size + 8)[0], 99)
+
+    def test_send_preserves_native_connection_context_for_every_route(self):
+        for channel, opcode, size in ((0, 0xC44B, 8), (1, 0xC44B, 8),
+                                      (0, 0xC47A, 12), (0, 0xC411, 768),
+                                      (0, 0xC586, 32)):
+            with self.subTest(channel=channel, opcode=hex(opcode)):
+                m, pointer, box, stack, end, sent, *_ = self.machine()
+                contexts = []
+
+                def context(vm, address, size, unused):
+                    contexts.append(vm.reg_read(x.UC_X86_REG_ECX))
+
+                target = self.record['exports']['inv_original_send']
+                m.hook_add(uc.UC_HOOK_CODE, context, begin=target, end=target)
+                raw = bytearray(size)
+                struct.pack_into('<HH', raw, 4, size, opcode)
+                m.mem_write(pointer, bytes(raw))
+                self.call(m, stack, end, 'inv_send', (channel, pointer), this=box)
+                self.assertEqual(contexts, [box])
+                self.assertEqual(len(sent), 1)
+                self.assertEqual(m.reg_read(x.UC_X86_REG_ESP), stack + 12)
+
+    def test_original_sender_executes_with_its_native_connection_subobject(self):
+        m, pointer, box, stack, end, sent, *_ = self.machine(native_send=True)
+        raw = bytearray(8)
+        struct.pack_into('<HH', raw, 4, len(raw), 0xC44B)
+        m.mem_write(pointer, bytes(raw))
+        self.call(m, stack, end, 'inv_send', (1, pointer), this=box)
+        self.assertEqual(sent, [bytes(raw)])
+        self.assertEqual(m.reg_read(x.UC_X86_REG_ESP), stack + 12)
 
     def test_commit_keeps_full_game_removal_and_selected_pet_handles(self):
         m, _, box, stack, end, sent, _, heads = self.machine()
