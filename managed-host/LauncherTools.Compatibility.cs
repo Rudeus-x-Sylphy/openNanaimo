@@ -79,7 +79,15 @@ internal static partial class LauncherTools
         report["overlay_writes"]=writes;report["apply_results"]=installed;report["verification"]=Obj(new{all_pass=true});if(!dry){var path=SafePath(output,"nanaimo_compatibility_report.json");AtomicWrite(path,Encoding.UTF8.GetBytes(report.ToJsonString()+"\n"));report["report_path"]=path;}Console.WriteLine(report.ToJsonString());
     }
     static void BackupCompatibility(string output,string key,byte[] bytes){var backup=SafePath(output,"backups/"+Hash(bytes)+"/"+key);var old=ReadOptional(backup);if(old is null)AtomicWrite(backup,bytes);else Require(Same(old,bytes),"Content-addressed backup mismatch");}
-    static void CheckFile(string root,string relative,long? size,string hash){var path=SafePath(root,relative);Require(File.Exists(path)&&(!size.HasValue||new FileInfo(path).Length==size)&&Hash(File.ReadAllBytes(path)).Equals(hash,StringComparison.OrdinalIgnoreCase),"Installed resource mismatch: "+relative);}
+    static void CheckFile(string root,string relative,long? size,string hash)
+    {
+        var path=SafePath(root,relative);
+        var bytes=ReadOptional(path);
+        Require(bytes is not null&&(!size.HasValue||bytes.Length==size)
+            &&(Hash(bytes).Equals(hash,StringComparison.OrdinalIgnoreCase)
+                ||relative=="Village_map_image/Village_map_image.pack"&&VillageRouteParentMatches(bytes,size,hash)),
+            "Installed resource mismatch: "+relative);
+    }
     static JsonObject VerifyLumineos(string root)
     {
         var cinematic = File.Exists(SafePath(root,".openNanaimo-dungeon-cinematics.json"))

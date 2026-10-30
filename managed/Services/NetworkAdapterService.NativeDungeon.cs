@@ -11,7 +11,7 @@ public sealed partial class NetworkAdapterService
 {
     private readonly ConcurrentDictionary<string, ConcurrentQueue<(long AccountId, bool PureNewPlayer, DateTime Expires)>> _localLaunches = new(StringComparer.OrdinalIgnoreCase);
     public bool NativeDungeonEnabled { get; set; }
-    public bool UnlockAllDungeons { get; set; } = true;
+    public bool UnlockAllDungeons { get; set; }
     public NativeDungeonPool? NativeRooms { get; set; }
     public string NativeJournalDirectory { get; set; } = "native-journal";
 
@@ -166,6 +166,37 @@ public sealed partial class NetworkAdapterService
         if (session.NativeDungeonExitRequested && opcode is not (0xCF73 or 0xCF1D))
             return opcode is >= 0xCF00 and <= 0xD03F or 0xC587 or 0x03E8 or 0x044C or 0x0514 or 0x0578 or 0x05DC or 0x0640;
         if (session.NativeDungeon is null) return false;
+        byte accessHd = 0, accessEpisode = 0, accessDungeon = 0, accessStage = 0;
+        var checkLumineosAccess = opcode == 0xCF6C && TryParseNativeDungeonSelectionFrame(frame,
+            out accessHd, out accessEpisode, out accessDungeon, out accessStage, out _);
+        if (opcode == 0xCF77 && frame.Length == 16)
+            checkLumineosAccess = TryParseDungeonQuickSelection(frame.AsSpan(8), out _,
+                out accessHd, out accessEpisode, out accessDungeon, out _);
+        if (opcode == 0xCF7F && session.NativeDungeonSelectionValid)
+        {
+            checkLumineosAccess = true;
+            accessHd = session.NativeDungeonHdIndex;
+            accessEpisode = session.NativeDungeonEpisode;
+            accessDungeon = session.NativeDungeonDungeon;
+            accessStage = session.NativeDungeonStage;
+        }
+        if (checkLumineosAccess && accessEpisode == 100)
+        {
+            var accessOpen = UnlockAllDungeons && !IsPureNewProfile(session);
+            if (!accessOpen && session.Character is { } accessCharacter)
+            {
+                var ordinaryAccess = BuildClientDungeonClearMasks(
+                    await _database.GetDungeonClearMasksAsync(accessCharacter.Id, token));
+                var clearMask = await _database.GetLumineosClearMaskAsync(accessCharacter.Id, token);
+                accessOpen = IsLumineosSelectionOpen(ordinaryAccess, clearMask, accessDungeon, accessStage);
+            }
+            if (accessHd != 0 || accessDungeon >= 8 || accessStage >= 2
+                || !accessOpen)
+            {
+                _log($"NativeDungeon locked Lumineos selection rejected: {accessHd}/{accessEpisode}/{accessDungeon}/{accessStage}");
+                return true;
+            }
+        }
         if (opcode is 0xCF6C or 0xCF77)
         {
             var selectionOffset = opcode == 0xCF6C ? 34 : 10;

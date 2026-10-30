@@ -45,17 +45,38 @@ internal static partial class LauncherTools
             using var stream=new MemoryStream();using var writer=new BinaryWriter(stream);writer.Write(Bytes.AsSpan(scene.Start,scene.Grid+64800-scene.Start));foreach(var texture in scene.Textures)if(!remove.Contains(texture.Id)){writer.Write(texture.Id);writer.Write(texture.Raw);}writer.Write(-1);foreach(var rows in scene.Layers){writer.Write(rows.Count);foreach(var row in rows)writer.Write(row);}writer.Write(scene.Tail);var record=stream.ToArray();BinaryPrimitives.WriteInt32LittleEndian(record,record.Length-4);int delta=record.Length-(scene.End-scene.Start);var result=new byte[Bytes.Length+delta];Bytes.AsSpan(0,scene.Start).CopyTo(result);record.CopyTo(result,scene.Start);Bytes.AsSpan(scene.End).CopyTo(result.AsSpan(scene.Start+record.Length));int count=U32(result,9);for(int i=0;i<count;i++){int off=U32(result,17+8*i);if(off>=scene.End)BinaryPrimitives.WriteInt32LittleEndian(result.AsSpan(17+8*i),off+delta);}return result;
         }
     }
-    static byte[] PatchVillage(byte[] bytes,JsonObject recipe)
+    static byte[] PatchVillage(byte[] bytes,JsonObject recipe,bool sealFuture=true)
     {
         var pack=new Village(bytes.ToArray());bool native=pack.IsNative();for(int x=38;x<50;x++)for(int y=14;y<21;y++)pack.Put(17,x,y,7,0);for(int y=14;y<21;y++){foreach(int x in new[]{48,49})pack.Put(17,x,y,10,18);pack.Put(17,47,y,11,18);}
         if(!native){for(int x=0;x<50;x++)for(int y=0;y<36;y++){if(pack.Get(18,x,y,13)==166)pack.Put(18,x,y,13,-1);if(pack.Get(18,x,y,14)==169)pack.Put(18,x,y,14,-1);}for(int x=22;x<28;x++)foreach(int y in new[]{3,4})pack.Put(18,x,y,13,166);pack.Put(18,25,6,14,169);}
         for(int x=22;x<28;x++)for(int y=0;y<14;y++)pack.Put(19,x,y,7,0);
-        var route=A(recipe,"route").Select(x=>(int)Num(x)).ToArray();var neighbors=route.Skip(6).ToDictionary(page=>page,_=>new Dictionary<char,int>());char Side(int source,int target)=>(target-source) switch{1=>'E',-1=>'W',5=>'S',-5=>'N',_=>throw new InvalidDataException("Invalid village route")};for(int i=0;i<route.Length-1;i++){int a=route[i],b=route[i+1];if(neighbors.TryGetValue(a,out var an))an[Side(a,b)]=b;if(neighbors.TryGetValue(b,out var bn))bn[Side(b,a)]=a;}
+        var route=A(recipe,"route").Select(x=>(int)Num(x)).ToArray();var neighbors=route.Skip(6).ToDictionary(page=>page,_=>new Dictionary<char,int>());char Side(int source,int target)=>(target-source) switch{1=>'E',-1=>'W',5=>'S',-5=>'N',_=>throw new InvalidDataException("Invalid village route")};for(int i=0;i<(sealFuture?Math.Min(route.Length,8):route.Length)-1;i++){int a=route[i],b=route[i+1];if(neighbors.TryGetValue(a,out var an))an[Side(a,b)]=b;if(neighbors.TryGetValue(b,out var bn))bn[Side(b,a)]=a;}
         foreach(var(page,directions) in neighbors)foreach(char side in new[]{'W','E','N','S'})
         {
             var exits=new List<(int X,int Y)>();var markers=new List<(int X,int Y)>();if(side is 'E' or 'W'){foreach(int x in side=='E'?new[]{48,49}:new[]{0,1})for(int y=14;y<21;y++)exits.Add((x,y));for(int y=14;y<21;y++)markers.Add((side=='E'?47:2,y));}else{for(int x=22;x<28;x++){foreach(int y in side=='S'?new[]{34,35}:new[]{0,1})exits.Add((x,y));markers.Add((x,side=='S'?33:2));}}
             bool linked=directions.TryGetValue(side,out var target);foreach(var(x,y) in exits){pack.Put(page,x,y,7,linked?0:1);pack.Put(page,x,y,10,linked?target:-1);}foreach(var(x,y) in markers){if(linked){pack.Put(page,x,y,7,0);pack.Put(page,x,y,10,-1);pack.Put(page,x,y,13,-1);}pack.Put(page,x,y,11,linked?target:-1);}
         }
         return pack.RestoreScene(recipe);
+    }
+    static bool VillageRouteParentMatches(byte[] bytes,long? size,string hash)
+    {
+        if(bytes.Length!=size)return false;
+        try
+        {
+            var recipe=Recipe();
+            if(!Same(bytes,PatchVillage(bytes,recipe)))return false;
+            var parent=PatchVillage(bytes,recipe,false);
+            if(Hash(parent).Equals(hash,StringComparison.OrdinalIgnoreCase))return true;
+            var pack=new Village(parent);
+            foreach(int x in Enumerable.Range(22,6))
+            {
+                foreach(int y in new[]{0,1}){pack.Put(19,x,y,7,1);pack.Put(19,x,y,10,-1);}
+                pack.Put(19,x,2,11,-1);
+                foreach(int y in new[]{34,35}){pack.Put(14,x,y,7,1);pack.Put(14,x,y,10,-1);}
+                pack.Put(14,x,33,11,-1);
+            }
+            return Hash(pack.Bytes).Equals(hash,StringComparison.OrdinalIgnoreCase);
+        }
+        catch(InvalidDataException){return false;}
     }
 }

@@ -322,7 +322,7 @@ def _strips(side: str):
     return [(x, y) for x in range(22, 28) for y in ys], [(x, marker_y) for x in range(22, 28)]
 
 
-def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
+def patch_village_pack(data: bytes, *, seal_future=True) -> tuple[bytes, dict]:
     """Build the validated P03 road layout directly from a structurally compatible pack."""
     pack = VillagePack(data)
     try:
@@ -367,7 +367,8 @@ def patch_village_pack(data: bytes) -> tuple[bytes, dict]:
 
     pages = ROUTE[6:]
     neighbors = {page: {} for page in pages}
-    for source, target in zip(ROUTE, ROUTE[1:]):
+    active_route = ROUTE[:8] if seal_future else ROUTE
+    for source, target in zip(active_route, active_route[1:]):
         if source in neighbors:
             neighbors[source][_side(source, target)] = target
         if target in neighbors:
@@ -1349,7 +1350,31 @@ def _verify_client_bytes(data: bytes, furniture: bool, revival_display: bool, du
     return checks
 
 
-def _verify_village_bytes(data: bytes):
+def village_route_parent_matches(data, expected_size, expected_hash):
+    if len(data) != expected_size:
+        return False
+    try:
+        if patch_village_pack(data)[0] != data:
+            return False
+        parent = patch_village_pack(data, seal_future=False)[0]
+        if sha256(parent).lower() == expected_hash.lower():
+            return True
+        # The original L7/L8-only installer also used a closed L8/L9 edge.
+        pack = VillagePack(parent)
+        candidate = bytearray(parent)
+        for page, other in ((19, 14), (14, 19)):
+            exits, markers = _strips(_side(page, other))
+            for x, y in exits:
+                struct.pack_into('<h', candidate, pack.offset(page, x, y, 7), 1)
+                struct.pack_into('<h', candidate, pack.offset(page, x, y, 10), -1)
+            for x, y in markers:
+                struct.pack_into('<h', candidate, pack.offset(page, x, y, 11), -1)
+        return sha256(candidate).lower() == expected_hash.lower()
+    except (CompatibilityError, ValueError, KeyError, struct.error):
+        return False
+
+
+def _verify_village_bytes(data: bytes, *, seal_future=True):
     pack = VillagePack(data)
     try:
         native_layout = lumineos_scenes.is_native_layout(data, pack)
@@ -1370,14 +1395,17 @@ def _verify_village_bytes(data: bytes):
         raise CompatibilityError(str(exc)) from exc
     checks.append(_check('dungeon7_no_generated_scene_artwork', scene_ok, 'pre-art entry behavior'))
     route_ok = True
-    for source, target in zip(ROUTE[6:-1], ROUTE[7:]):
+    for index, (source, target) in enumerate(zip(ROUTE[6:-1], ROUTE[7:])):
         for page, other in ((source, target), (target, source)):
             exits, markers = _strips(_side(page, other))
-            route_ok = route_ok and all(pack.field(page, x, y, 7) == 0 and
-                                        pack.field(page, x, y, 10) == other for x, y in exits)
-            route_ok = route_ok and all(pack.field(page, x, y, 7) == 0 and
-                                        pack.field(page, x, y, 11) == other for x, y in markers)
-    checks.append(_check('p03_route_chain', route_ok, 'bidirectional fifth-village challenge route'))
+            linked = index == 0 or not seal_future
+            route_ok = route_ok and all(pack.field(page, x, y, 7) == (0 if linked else 1) and
+                                        pack.field(page, x, y, 10) == (other if linked else -1)
+                                        for x, y in exits)
+            route_ok = route_ok and all((not linked or pack.field(page, x, y, 7) == 0) and
+                                        pack.field(page, x, y, 11) == (other if linked else -1)
+                                        for x, y in markers)
+    checks.append(_check('p03_route_chain', route_ok, 'L7/L8 connected; L9 and later roads sealed'))
     return checks
 
 

@@ -76,6 +76,64 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(self.install()['status'], 'installed')
         self.assertEqual(port.verify(self.client)['verified'], 3)
 
+    def prepare_registered_dialogue_upgrade(self):
+        import prepare_monk_dialogue as dialogue
+        self.install()
+        name = 'Village_map_image/Village_map_image.pack'
+        parent = compat.patch_village_pack(synthetic_pack(), seal_future=False)[0]
+        child = bytearray(parent)
+        pack = compat.VillagePack(parent)
+        child[pack.offset(0, 10, 10, 0)] ^= 1
+        child = bytes(child)
+        self.recipe['files'].append(dict(path=name, baseline_sha256='f'*64,
+            output_sha256=port.digest(parent), output_size=len(parent), transform='village-pages'))
+        self.recipe_path.write_bytes(port.encoded(self.recipe))
+        manifest = copy.deepcopy(self.manifest)
+        manifest['files'].append(dict(path=name, before_sha256='f'*64,
+            sha256=port.digest(child), size=len(child), transform='monk-visible-village-pages'))
+        manifest['monk_visible'] = dict(schema='openNanaimo.monk-visible-upgrade.v1',
+            parent_files={row['path']:row['before_sha256'] for row in manifest['files']},
+            additional_paths=[], village_sha256=port.digest(parent))
+        manifest.pop('id')
+        manifest['id'] = port.digest(port.encoded(manifest))
+        layer = dict(parent_pack_sha256=port.digest(parent), parent_files={name:port.digest(parent)},
+            files=[dict(path=name, size=len(child), sha256=port.digest(child))])
+        receipt = dict(schema=dialogue.SCHEMA, recipe_sha256=port.digest(port.encoded(layer)),
+                       files=layer['files'])
+        receipt['id'] = port.digest(port.encoded(receipt))
+        port.atomic(self.client/dialogue.MARKER, port.encoded(receipt))
+        port.atomic(self.client/name, compat.patch_village_pack(child)[0])
+        return manifest, layer
+
+    def test_registered_dialogue_child_and_sealed_roads_verify_together(self):
+        manifest, layer = self.prepare_registered_dialogue_upgrade()
+        self.assertEqual(port.verify(self.client, manifest, layer)['verified'], 4)
+
+    def test_dialogue_upgrade_requires_exact_registered_child(self):
+        manifest, layer = self.prepare_registered_dialogue_upgrade()
+        manifest['files'][-1]['sha256'] = '0'*64
+        manifest.pop('id')
+        manifest['id'] = port.digest(port.encoded(manifest))
+        with self.assertRaisesRegex(ValueError, 'village output mismatch'):
+            port.validate_manifest(manifest, layer)
+
+    def test_dialogue_upgrade_requires_installed_receipt(self):
+        import prepare_monk_dialogue as dialogue
+        manifest, layer = self.prepare_registered_dialogue_upgrade()
+        (self.client/dialogue.MARKER).unlink()
+        with self.assertRaises(FileNotFoundError):
+            port.verify(self.client, manifest, layer)
+
+    def test_dialogue_upgrade_rejects_edited_scene_bytes(self):
+        manifest, layer = self.prepare_registered_dialogue_upgrade()
+        path = self.client/'Village_map_image/Village_map_image.pack'
+        data = bytearray(path.read_bytes())
+        pack = compat.VillagePack(bytes(data))
+        data[pack.offset(0, 10, 10, 0)] ^= 2
+        path.write_bytes(data)
+        with self.assertRaisesRegex(ValueError, 'dialogue resource differs'):
+            port.verify(self.client, manifest, layer)
+
     def test_compatible_recipe_still_requires_exact_resource_contract(self):
         self.recipe['compatible_recipe_sha256s'] = [self.manifest['recipe_sha256']]
         self.recipe_path.write_bytes(port.encoded(self.recipe))

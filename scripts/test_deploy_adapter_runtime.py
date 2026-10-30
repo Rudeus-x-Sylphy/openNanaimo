@@ -12,15 +12,18 @@ class AdapterDeploymentTests(unittest.TestCase):
             for folder,content in ((source,b'new'),(target,b'old')):
                 (folder/'adapter_runtime').mkdir(parents=True);(folder/'manifest').mkdir()
                 (folder/'adapter_runtime/worker.exe').write_bytes(content)
-                for name in ('source_closure.json','open_release_manifest.json'):(folder/'manifest'/name).write_text('{}')
+                for name in ('source_closure.json','open_release_manifest.json','patch_allowlist.json'):(folder/'manifest'/name).write_text('{}')
+            (source/'manifest/patch_allowlist.json').write_text('{"generation":2}')
             (target/'game.exe').write_bytes(b'client');(target/'nanaimo_launcher_profile.ini').write_bytes(b'profile')
             (target/'adapter_data').mkdir();(target/'adapter_data/save.db').write_bytes(b'save')
             manifests=({'critical_files':{'adapter_runtime/worker.exe':{}}},{'files':[]})
             with patch.object(deploy,'ROOT',source),patch.object(deploy,'verify_root',return_value=manifests),patch.object(deploy,'stopped') as stopped:
-                self.assertEqual(deploy.deploy(target)['changed'],1);stopped.assert_not_called()
+                self.assertEqual(deploy.deploy(target)['changed'],2);stopped.assert_not_called()
                 result=deploy.deploy(target,True);self.assertEqual(result['status'],'installed')
                 journal=json.loads((target/result['receipt']).read_text('utf8'));self.assertEqual((target/'adapter_runtime/worker.exe').read_bytes(),b'new')
+                self.assertEqual((target/'manifest/patch_allowlist.json').read_text(),'{"generation":2}')
                 deploy.restore(target,journal);self.assertEqual((target/'adapter_runtime/worker.exe').read_bytes(),b'old')
+                self.assertEqual((target/'manifest/patch_allowlist.json').read_text(),'{}')
                 for name,value in [('game.exe',b'client'),('nanaimo_launcher_profile.ini',b'profile'),('adapter_data/save.db',b'save')]:self.assertEqual((target/name).read_bytes(),value)
     def test_running_adapter_refused_before_writes(self):
         with tempfile.TemporaryDirectory() as temp:

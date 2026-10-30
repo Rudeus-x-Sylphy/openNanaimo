@@ -126,16 +126,16 @@
     {
       "path": "gui_launcher/lumineos_resource_identity.ps1",
       "layer": "runtime",
-      "size": 9836,
-      "sha256": "4b26ee43fa9c04f4eaded398f275c34fdcdf00215026d6a4b97598764b0e3e0b",
+      "size": 10173,
+      "sha256": "0f889e86edb49469920e706d47539d18cb9959a7209e49dd64a604c53630c9af",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "gui_launcher/nanaimo_launcher.ps1",
       "layer": "runtime",
-      "size": 158972,
-      "sha256": "d01cc69f833ec7f7b45118be4495d2bf902b0b8531b29afc0347c8398f5c1825",
+      "size": 158969,
+      "sha256": "a3b617d78362f2be9887a441a76610c8e953ae2bee345940cd94f2069bc4c7f7",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1126,8 +1126,8 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5730\u5bab/\u8ba1\u5206\u4e0e\u7ed3\u7b97/\u8bc4\u7ea7\u95e8\u69db\u4e0e\u65e0\u4f24\u9501\u5b58.md",
       "layer": "knowledge",
-      "size": 5285,
-      "sha256": "7ec81b260d208d4359dffbc4f25a44c2b2bcd60bcc7f36519904928d5c39accb",
+      "size": 6160,
+      "sha256": "6f0ea52207f157d351a1c1b28032394f0326aaca492265cb6c3e6152f9cf2779",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1206,16 +1206,16 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u57ce\u9547/\u573a\u666f\u5207\u6362/\u6751\u5e84\u62d3\u6251\u4e0e\u517c\u5bb9\u8d44\u6e90.md",
       "layer": "knowledge",
-      "size": 11903,
-      "sha256": "a160ae0efbab655d41d7172e97e3cd706cfb0fc6e7d4775caebd39b7587fac9d",
+      "size": 14095,
+      "sha256": "d7ee645f7ca933116f6cd6ae25a661bd637a93f143148ada190384ef1f888475",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/\u4e1a\u52a1/\u57ce\u9547/\u573a\u666f\u5207\u6362/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 995,
-      "sha256": "98d62d960e19f5f0dd0d4c4f804ab192f6153b3aa941b80af5585e36349adbb3",
+      "size": 1045,
+      "sha256": "f1736fa5ee357871b342de907a86a480a09b833981d52c2edf66ee67e64374d3",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2646,8 +2646,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u5730\u5bab\u8d44\u6e90\u517c\u5bb9/\u8303\u56f4\u4e0e\u524d\u7f6e\u8fdb\u5ea6.md",
       "layer": "knowledge",
-      "size": 5503,
-      "sha256": "bc476846533bcb8f1dd5123923b9fe4d3819361f567b8fb7cc7146f7070e0738",
+      "size": 5371,
+      "sha256": "7b7b7221c8160e1c873664437407090db99688d899ffb632e8875602ff38bf3a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2662,8 +2662,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u5730\u5bab\u8d44\u6e90\u517c\u5bb9/\u9053\u8def\u4e0e\u8d44\u6e90\u522b\u540d.md",
       "layer": "knowledge",
-      "size": 3233,
-      "sha256": "a43bcedd0c9554ca8ccf1f4f31ee3b93876d8f430ed8ab86226ca9a4163fb0c8",
+      "size": 3200,
+      "sha256": "ee9dc097eaa09f7d959bf57268bc0ca82ebd6bef9e2b0076ac10eb81a38f66a1",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3038,8 +3038,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u5730\u5bab\u4e0e\u6210\u957f\u9a8c\u6536.md",
       "layer": "knowledge",
-      "size": 25044,
-      "sha256": "1c2c4d46095bd9728ea26f4c5caca1951630b46634c69a2835db949899f5e411",
+      "size": 26150,
+      "sha256": "db13507033f6f13cc5adaf98fe151111537dfa4504e939f1e2b392ddf60ec015",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3078,8 +3078,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 1165,
-      "sha256": "ba59256b152a5c711e46eac4253ba720e9da6db97f05a44e6ebdddfced48c0d4",
+      "size": 1195,
+      "sha256": "d09386d9c49f3ece78ab715ef59e95ee23b3a6aa6507495e31a2d6c335d76923",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3166,8 +3166,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01.md",
       "layer": "knowledge",
-      "size": 3800,
-      "sha256": "f7717dea791c977f9b9e511a8e2963392513ba9ef97e56a2bc8f27401813cc5e",
+      "size": 3989,
+      "sha256": "84e4cc9cb82cdb229ad8190f51c814c1985398e63265f9057a85fe0df84c061d",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3184,6 +3184,14 @@
       "layer": "knowledge",
       "size": 3164,
       "sha256": "18521b101b4914d1b1dd53ba2daeaf96a5a77dcfcdb3c8c3845d9c4b7ec36f22",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u4e94\u6751\u5730\u56fe\u4e0e\u987a\u5e8f\u89e3\u9501\u5b89\u88c5.md",
+      "layer": "knowledge",
+      "size": 8640,
+      "sha256": "200c8f7393c39ea340ad86c30b50596f49b92d1d0ab34970ed9b94928ca8a798",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3302,8 +3310,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 2304,
-      "sha256": "b0005b74989857d9da3d9e793c0bac8f330e862839175ff02124c362549d264e",
+      "size": 2516,
+      "sha256": "35075cbbbb156b7fffbac003ac999aadcd86cf1fc19b70b0dec78dd106160f8b",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3510,8 +3518,8 @@
     {
       "path": "knowledge/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 13599,
-      "sha256": "2b08c71dada61819e59e3defcf83cd5c26820222236b8051d6b3bc49cdf56cdd",
+      "size": 14003,
+      "sha256": "14d81b92ef9875f9b7691894c278ee17c6b8f01c034137679fcb2e9a1587f4d9",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3870,8 +3878,8 @@
     {
       "path": "managed-host/LauncherTools.Compatibility.cs",
       "layer": "source",
-      "size": 19243,
-      "sha256": "e415e200d25d8b7c9a12ae0b692097c63d7cca2b8d24365ce8e2071a86b70673",
+      "size": 19429,
+      "sha256": "63df099079f332f55bd5e8bb58c391f7bb46de6013e0f42461ad5a84a1b1b48c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3926,8 +3934,8 @@
     {
       "path": "managed-host/LauncherTools.Village.cs",
       "layer": "source",
-      "size": 8664,
-      "sha256": "b30829e693cf38e98d7fbf7e92ffc4d3cd5271baec68c5a65884222436fceaec",
+      "size": 9662,
+      "sha256": "c56004cdead5c16f60ebf86525ff48dd19422c6dd961a3e4ddcb480f3e6b4f06",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3942,8 +3950,8 @@
     {
       "path": "managed-host/LumineosChecks.cs",
       "layer": "source",
-      "size": 8725,
-      "sha256": "8d84ec6b2956b919800dd7b68187de88e3b6d9147bfdcc7e1afaebbc6492c1de",
+      "size": 11825,
+      "sha256": "375de0ff92583fb984d2ea4cf6969b3941f313621f5f057e894d6ceee6ec1936",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -4014,16 +4022,16 @@
     {
       "path": "managed-host/PetRevivalVillageChecks.cs",
       "layer": "source",
-      "size": 37997,
-      "sha256": "3e73ae445f66d71065d90c44a7fe5b8d901babc7142ba30c0c4d493b12dff756",
+      "size": 37962,
+      "sha256": "c5dc3e31da7dfab9a75537f9aba573daece1d1d0701bfd5e464b1ae8a3eb263e",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "managed-host/Program.cs",
       "layer": "source",
-      "size": 20944,
-      "sha256": "08220fcccb4bf631551b926a6b150a8968cfea4ddba37adb99abb17a57f258b3",
+      "size": 20945,
+      "sha256": "37b9858d83af8be0f52a5153e9fe868d79bf60fc85e96e5f0a7033af3a05c4b8",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -4742,8 +4750,8 @@
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",
       "layer": "source",
-      "size": 7506,
-      "sha256": "770a95d6db597f43cd23e0e2f9f21a245ebcb2bbc2853e251fa6d5945fbf9483",
+      "size": 8380,
+      "sha256": "ba6fb6bd483c2b2700f404ac9f160d3c8a92cd19eebdca74b83ed50cfc670399",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5366,8 +5374,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
       "layer": "source",
-      "size": 105880,
-      "sha256": "ffb05bc359f0cc1a5b096f807be617e3aa65e9c1c076d6d1fec6159f8fe412bc",
+      "size": 107658,
+      "sha256": "5ed33625ede5ff992d54405a02441820aea7cc45d4a5aae9776ca46b7df75f9a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5510,8 +5518,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.cs",
       "layer": "source",
-      "size": 1023119,
-      "sha256": "ec7d89f6447111d89cbba4479c59e40fd57a06402f47471fd84a82667fd4e311",
+      "size": 1024786,
+      "sha256": "d9d09c409099224d662a05ebb259525b10a33076048a80f0fe129ebda6181803",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5814,8 +5822,8 @@
     {
       "path": "manifest/source_closure.json",
       "layer": "source",
-      "size": 84794,
-      "sha256": "9e9b4b1de25aca81eccecf363440b31347a098e09aee5f54f6bfbb035f6cdf6e",
+      "size": 84795,
+      "sha256": "d9ade5e337ad088c6dcd785bae1a8780e39df6713c73e06846e8845ee7f4feda",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -6198,8 +6206,8 @@
     {
       "path": "release/components/combat_economy/combat_economy_policy.inc",
       "layer": "source",
-      "size": 6696,
-      "sha256": "2ad914a3a7469df29ae1075371fc00376ccc6572683ba7872c39a94dd2627edc",
+      "size": 6825,
+      "sha256": "cede0caadb58d89500d36ee418f54bbeed142997069548ce049f538c396d4191",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7102,8 +7110,8 @@
     {
       "path": "scripts/deploy_adapter_runtime.py",
       "layer": "source",
-      "size": 5785,
-      "sha256": "185e2b174aa3f2177eafb291a70f69ceb75e153c3e1a2f198f712d8bf051d506",
+      "size": 5856,
+      "sha256": "1693e8cf15106e33c9626c4db4967d36225e91b4e32d0dcab0e899741855eaf6",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7454,8 +7462,8 @@
     {
       "path": "scripts/port_lumineos_resources.py",
       "layer": "source",
-      "size": 23798,
-      "sha256": "eb51ab347415cf089df2c263c82979927c60f3dcaead984ab55f56f3a1565d03",
+      "size": 25122,
+      "sha256": "4e062a451075a70fbd8a77da00a37a7834bd6f0df8aec910ff10b604312e55dc",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7470,8 +7478,8 @@
     {
       "path": "scripts/prepare_client_compatibility.py",
       "layer": "source",
-      "size": 84975,
-      "sha256": "07af5c9c5adcdf634ea2e3cd24e051647b29c877496a07a753323138f23560d2",
+      "size": 86390,
+      "sha256": "5e3f4d71c69fba3281f655d74d5babd5db5eb7870a0b6ec105a10ea1f3f8f5fa",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7518,8 +7526,8 @@
     {
       "path": "scripts/prepare_monk_dialogue.py",
       "layer": "source",
-      "size": 17834,
-      "sha256": "ac0a147f664af599ea4cc7eb76c1fc967bf8d4f2c538324dd9d532b326eb61f6",
+      "size": 18093,
+      "sha256": "9a32a6eee15f59cf0913d182f745670430d670c9906a9c46c76ff1b932b15e8f",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7614,8 +7622,8 @@
     {
       "path": "scripts/refresh_manifest.py",
       "layer": "source",
-      "size": 24689,
-      "sha256": "469bb4b2673d0a9dcc0c990c1f24c6766996ceb48fed93cf6a025359dec92e23",
+      "size": 24829,
+      "sha256": "00f5229bc1ec9190fe531eea352ed35c06f97eceea38e3e5472d9ed793f3b094",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8030,8 +8038,8 @@
     {
       "path": "scripts/test_deploy_adapter_runtime.py",
       "layer": "source",
-      "size": 2773,
-      "sha256": "69493f33f50e9dfd81f8d0b17a01ebd4e223800c3e8b58584c2cc8794691ff5a",
+      "size": 3078,
+      "sha256": "f49fba9c87bdcdffb77c3cb22e7cbbbe9752cff1d35b75f2ab09c1293e06ae08",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8318,8 +8326,8 @@
     {
       "path": "scripts/test_lumineos_combat.py",
       "layer": "source",
-      "size": 6351,
-      "sha256": "9ac2e8eb65fc31f1d473a3d9d5965de208568042d2024106345d6af3a51ebd78",
+      "size": 9673,
+      "sha256": "455b72c4bb9ffd397c70c17e6d6651b5a7e41aa81cf116933def66839f8f51f9",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8342,8 +8350,8 @@
     {
       "path": "scripts/test_lumineos_resource_port.py",
       "layer": "source",
-      "size": 20911,
-      "sha256": "c965c804185deafcbcf2c5769cd4f37b8ebf622af65ca3edc0ef48871cc869e0",
+      "size": 24150,
+      "sha256": "68f2b6ac9ff36fa454c757d5afa437a2d8f547efddddde7f51bee89bec34a212",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8542,8 +8550,8 @@
     {
       "path": "scripts/test_prepare_client_compatibility.py",
       "layer": "source",
-      "size": 33538,
-      "sha256": "b6750b6567799b3c87517eb90f6e1c335a09a271cb3d37c8c63a6c7b732c3d6b",
+      "size": 34551,
+      "sha256": "33ceee73bfe97fa2797ed9ebae6907afdb9c911e6e4d6d829b8a98f1436d897e",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

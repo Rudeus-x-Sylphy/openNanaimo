@@ -363,7 +363,7 @@ if (!System.Net.IPAddress.TryParse(bindAddressText, out var bindAddress)
     || bindAddress.Equals(System.Net.IPAddress.Broadcast))
     throw new ArgumentException($"--bind-address must be a specific IPv4 address: {bindAddressText}");
 bindAddressText = bindAddress.ToString();
-bool unlockAllDungeons = ReadProfileBoolean(profile, "unlock_all_dungeons", defaultValue: true);
+bool unlockAllDungeons = ReadProfileBoolean(profile, "unlock_all_dungeons", defaultValue: false);
 bool requireMonkTravel = args.Contains("--require-monk-travel")
     || ReadProfileBoolean(profile, "require_monk_village_travel", defaultValue: false);
 var rewardReview = Option("--story-chapters-reward", ReadProfileValue(profile, "story_chapters_reward") ?? "");

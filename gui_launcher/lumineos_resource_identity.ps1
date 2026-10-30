@@ -50,10 +50,18 @@ function Assert-LumineosResourcePair([string]$SourceRoot,[string]$WorkRoot,[obje
     if([string]::IsNullOrWhiteSpace($relative)-or$relative.Contains('\')-or$relative.Contains(':')-or$relative.StartsWith('/')-or$relative-match'(^|/)(\.|\.\.|)(/|$)'-or[string]$Row.sha256-notmatch'^[0-9a-f]{64}$'){
         throw 'Unsafe L7/L8 manifest entry.'
     }
+    $expectedHash=[string]$Row.sha256
+    if($relative-eq'Village_map_image/Village_map_image.pack'){
+        $actualHash=Get-OptionalFileHash (Join-Path $SourceRoot $relative)
+        if($actualHash-and$actualHash-ne$expectedHash){
+            Assert-LumineosInstalledOverlay $SourceRoot
+            $expectedHash=$actualHash
+        }
+    }
     foreach($root in @($SourceRoot,$WorkRoot)){
         $path=Join-Path $root $relative
         Assert-ChildPath $root $path
-        if(-not(Test-Path -LiteralPath $path -PathType Leaf)-or(Get-Sha256 $path)-ne[string]$Row.sha256){
+        if(-not(Test-Path -LiteralPath $path -PathType Leaf)-or(Get-Sha256 $path)-ne$expectedHash){
             throw ('L7/L8 resource version mismatch; rebuild copied client before launch: '+$path)
         }
     }

@@ -330,7 +330,7 @@ $defaultFreeMagicKeyExpiry=Read-ProfileUInt64 $ini 'free_magic_key_expiry' 20991
 $defaultQuickbarExpiry=Read-ProfileUInt64 $ini 'quickbar_expiry' 0;if($defaultQuickbarExpiry-ne0-and($defaultQuickbarExpiry-lt2000010100-or$defaultQuickbarExpiry-gt2100123123)){throw 'quickbar_expiry must be 0 or YYYYMMDDHH in 2000010100..2100123123.'}
 $skillSlotExpiryConfigured=$ini.ContainsKey('skill_slot_expiry');$defaultSkillSlotExpiry=Read-ProfileUInt64 $ini 'skill_slot_expiry' 0;if($defaultSkillSlotExpiry-ne0-and($defaultSkillSlotExpiry-lt2000010100-or$defaultSkillSlotExpiry-gt2100123123)){throw 'skill_slot_expiry must be 0 or YYYYMMDDHH in 2000010100..2100123123.'}
 $defaultSkipTutorial=$ini.ContainsKey('skip_tutorial')-and([string]$ini.skip_tutorial-eq'1')
-$defaultUnlockAllDungeons=-not$ini.ContainsKey('unlock_all_dungeons')-or([string]$ini.unlock_all_dungeons-eq'1')
+$defaultUnlockAllDungeons=$ini.ContainsKey('unlock_all_dungeons')-and([string]$ini.unlock_all_dungeons-eq'1')
 $defaultPureNewPlayerUsername=Read-PureNewPlayerUsername
 $skillProfile=$ini
 if(-not($ini.ContainsKey('skill_config')-and[string]$ini.skill_config-eq'1')-and$ini.name_hex){$skillPath=Join-Path $Root ("skill_progress_state_v2_{0}.dat"-f([string]$ini.name_hex));$stored=Read-KeyValueFile $skillPath;if($stored.Count){$skillProfile=$stored}}

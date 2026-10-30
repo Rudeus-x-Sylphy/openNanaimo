@@ -13,6 +13,7 @@ internal static class LumineosChecks
 
     public static async Task RunAsync()
     {
+        CheckRoutes();
         for (byte stage = 0; stage < 2; stage++)
         for (byte slot = 0; slot < 9; slot++)
         {
@@ -100,6 +101,7 @@ internal static class LumineosChecks
             var session = Guid.NewGuid().ToString("N");
             Check(await db.BeginWorldSessionAsync(account, character.Id, session, 1, "127.0.0.1"), "authorized session");
             var before = NativeDungeonState.Create(character, [], []);
+            Check(await db.GetLumineosClearMaskAsync(character.Id) == 0, "fresh progress has no Lumineos clears");
             async Task<bool> Apply(byte stage, byte diff, byte rating, string id)
             {
                 var after = new NativeDungeonState(before.Bytes.ToArray());
@@ -110,6 +112,7 @@ internal static class LumineosChecks
                 return result.Applied;
             }
             Check(await Apply(1, 0, 0, "failed"), "failed result commits without a title");
+            Check(await db.GetLumineosClearMaskAsync(character.Id) == 0, "failed results never open a route");
             Check((await db.GetCharacterAsync(account))!.DungeonGrade < 24, "failed Boss cannot award R8");
             for (byte diff = 0; diff < 3; diff++)
             {
@@ -127,11 +130,55 @@ internal static class LumineosChecks
             Check(restored.Get(NativeDungeonState.DungeonGradeOffset) == 24, "R8 survives database reload");
             Check((await reopened.GetDungeonStageLeaderboardAsync(0, 100, 6, 1, 0)).Count == 0,
                 "L8 score does not overwrite L7");
+            Check(await reopened.GetLumineosClearMaskAsync(character.Id) == 0xC000,
+                "L8 clears survive reload without inventing L1-L7");
+            foreach (byte stage in new byte[] { 0, 1 })
+            {
+                var after = new NativeDungeonState(before.Bytes.ToArray());
+                var receipt = "d-rank-l1-" + stage;
+                var result = await db.ApplyNativeDungeonDeltaAsync(account, character.Id, session, before, after,
+                    CancellationToken.None, receipt, settlement: new NativeDungeonSettlementRecord(
+                        0, 100, 0, stage, stage, 1, 0, 0, SettlementId: receipt));
+                Check(result.Applied, "D-rated zero-score success commits independently of rank icons");
+                before = after;
+            }
+            Check(await reopened.GetLumineosClearMaskAsync(character.Id) == 0xC003,
+                "D clears across difficulties open L2 without manufacturing intermediate clears");
+            Check((await reopened.GetDungeonFrontierBestRatingsAsync(character.Id))[0] == 0,
+                "D-rated access does not forge a B/A/S icon");
         }
         finally
         {
             SqliteConnection.ClearAllPools();
             Directory.Delete(root, true);
         }
+    }
+
+    private static void CheckRoutes()
+    {
+        var ordinary = new byte[60];
+        for (var episode = 0; episode < 16; episode++) ordinary[episode * 3] = 15;
+        for (var clearedStages = 0; clearedStages <= 16; clearedStages++)
+        {
+            var mask = (ushort)((1u << clearedStages) - 1u);
+            var payload = NetworkAdapterService.BuildLoadNecessityPayload(null, ordinary,
+                new byte[60], new byte[4], null, false, lumineosClearMask: mask);
+            Check(BinaryPrimitives.ReadUInt64LittleEndian(payload.AsSpan(0x80 - 8, 8))
+                    == ((1UL << Math.Min(clearedStages, 14)) - 1),
+                "C355 restores only earned routes through L8");
+            for (byte dungeon = 0; dungeon < 9; dungeon++)
+            for (byte stage = 0; stage < 2; stage++)
+                Check(NetworkAdapterService.IsLumineosSelectionOpen(ordinary, mask, dungeon, stage)
+                    == (dungeon < 8 && dungeon * 2 + stage <= clearedStages),
+                    "each next stage requires every predecessor; L9 is always closed");
+            var frame = NativeDungeonClient.Frame(0xC355, payload);
+            NetworkAdapterService.NormalizeC355VillageAccessFrame(frame, false);
+            Check(frame.AsSpan(8).SequenceEqual(payload), "final C355 normalization is idempotent");
+        }
+        Check(NetworkAdapterService.BuildLumineosRouteMask(0xFFFC) == 0,
+            "out-of-order legacy clears cannot jump over missing L1");
+        ordinary[45] = 7;
+        Check(!NetworkAdapterService.IsLumineosSelectionOpen(ordinary, ushort.MaxValue, 0, 0),
+            "missing preceding Super-BOSS keeps village five closed even with legacy Lumineos clears");
     }
 }

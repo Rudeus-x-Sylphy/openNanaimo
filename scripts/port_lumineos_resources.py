@@ -116,7 +116,7 @@ def client_lock(root):
         path.unlink()
 
 
-def validate_manifest(manifest):
+def validate_manifest(manifest, dialogue_recipe=None):
     if manifest.get('schema') != SCHEMA:
         raise ValueError('unsupported resource manifest')
     identity = dict(manifest)
@@ -144,7 +144,13 @@ def validate_manifest(manifest):
                 raise ValueError('monk visible parent baseline mismatch: ' + path)
             if path == 'Village_map_image/Village_map_image.pack':
                 if row.get('sha256') != visible.get('village_sha256'):
-                    raise ValueError('monk visible village output mismatch')
+                    import prepare_monk_dialogue as dialogue
+                    layer = load(dialogue.RECIPE) if dialogue_recipe is None else dialogue_recipe
+                    parent = layer.get('parent_files', {}).get(path, layer.get('parent_pack_sha256'))
+                    pin = next((item for item in layer['files'] if item['path'] == path), None)
+                    if (parent != visible.get('village_sha256') or pin is None
+                            or (row.get('sha256'), row.get('size')) != (pin['sha256'], pin['size'])):
+                        raise ValueError('monk visible village output mismatch')
             elif (row.get('sha256'), row.get('size'), row.get('transform')) != (pin['output_sha256'], pin['output_size'], pin['transform']):
                 raise ValueError('monk visible retained resource differs: ' + path)
         for path in additional:
@@ -236,10 +242,10 @@ def build(source, client, output, recipe_path=RECIPE):
             merged = scenes.merge(current.read_bytes(), raw)
             if not scenes.is_native_layout(merged, compat.VillagePack(merged)):
                 raise ValueError('missing native entrance layout')
-            data, _ = compat.patch_village_pack(merged)
-            if not all(r['ok'] for r in compat._verify_village_bytes(data)):
+            data, _ = compat.patch_village_pack(merged, seal_future=False)
+            if not all(r['ok'] for r in compat._verify_village_bytes(data, seal_future=False)):
                 raise ValueError('village post-merge verification failed')
-            if compat.patch_village_pack(data)[0] != data:
+            if compat.patch_village_pack(data, seal_future=False)[0] != data:
                 raise ValueError('village compatibility is not idempotent')
         elif transform != 'copy':
             raise ValueError('unknown transform: ' + transform)
@@ -268,7 +274,12 @@ def verify(client, manifest=None, dialogue_recipe=None):
     client = clean_root(client)
     if manifest is None:
         manifest = load(safe(client, MARKER))
-    validate_manifest(manifest)
+    validate_manifest(manifest, dialogue_recipe)
+    visible = manifest.get('monk_visible')
+    if visible is not None and any(row['path'] == 'Village_map_image/Village_map_image.pack'
+            and row['sha256'] != visible['village_sha256'] for row in manifest['files']):
+        import prepare_monk_dialogue as dialogue
+        dialogue.verify(client, dialogue_recipe)
     cinematic_files = {}
     if (client / '.openNanaimo-dungeon-cinematics.json').is_file():
         import dungeon_cinematics as cinematic
@@ -299,6 +310,11 @@ def verify(client, manifest=None, dialogue_recipe=None):
         path = safe(client, row['path'])
         actual = file_hash(path)
         allowed_cinematic_overlay = cinematic_parent_matches(row)
+        allowed_route_overlay = False
+        if row['path'] == 'Village_map_image/Village_map_image.pack' and path.is_file():
+            import prepare_client_compatibility as compat
+            allowed_route_overlay = compat.village_route_parent_matches(
+                path.read_bytes(), row['size'], row['sha256'])
         allowed_monk_entry_overlay = (row['path'] == 'Village_map_image/Village_map_image.pack'
                                       and monk_entry_sha256
                                       and row['sha256'].lower() == monk_entry_base
@@ -311,7 +327,7 @@ def verify(client, manifest=None, dialogue_recipe=None):
             if row['sha256'] == parents.get(row['path']) and any(r['path']==row['path'] for r in recipe['files']):
                 dialogue.verify(client,recipe)
                 allowed_monk_entry_overlay = True
-        if (actual != row['sha256'] or path.stat().st_size != row['size']) and not (allowed_monk_entry_overlay or allowed_cinematic_overlay):
+        if (actual != row['sha256'] or path.stat().st_size != row['size']) and not (allowed_monk_entry_overlay or allowed_cinematic_overlay or allowed_route_overlay):
             raise ValueError('installed resource mismatch: ' + row['path'])
     for row in manifest['preserve_l7_combat']:
         if file_hash(safe(client, row['path'])) != row['sha256'] and not cinematic_parent_matches(row):

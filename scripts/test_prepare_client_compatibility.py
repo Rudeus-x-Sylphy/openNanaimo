@@ -188,6 +188,18 @@ def make_client_tree(root: Path):
 
 
 class PrepareClientCompatibilityTests(unittest.TestCase):
+    def test_sealed_roads_keep_exact_parent_identity(self):
+        parent = compat.patch_village_pack(synthetic_pack(), seal_future=False)[0]
+        sealed = compat.patch_village_pack(parent)[0]
+        self.assertNotEqual(parent, sealed)
+        self.assertTrue(compat.village_route_parent_matches(sealed, len(parent), compat.sha256(parent)))
+        self.assertFalse(compat.village_route_parent_matches(parent, len(parent), compat.sha256(parent)))
+        corrupted = bytearray(sealed)
+        pack = compat.VillagePack(sealed)
+        corrupted[pack.offset(19, 10, 15, 0)] ^= 1
+        self.assertFalse(compat.village_route_parent_matches(bytes(corrupted), len(parent), compat.sha256(parent)))
+        self.assertFalse(compat.village_route_parent_matches(sealed, len(parent), '0'*64))
+
     def test_furniture_patch_has_no_hash_gate(self):
         data, offset = synthetic_pe()
         output, report = compat.patch_furniture_getter(data)
@@ -257,6 +269,10 @@ class PrepareClientCompatibilityTests(unittest.TestCase):
         self.assertEqual(pack.field(18, 25, 3, 13), 166)
         self.assertEqual(pack.field(18, 25, 6, 14), 169)
         self.assertEqual(pack.field(18, 48, 14, 10), 19)
+        self.assertEqual(pack.field(19, 25, 0, 10), -1)
+        self.assertEqual(pack.field(19, 25, 0, 7), 1)
+        self.assertEqual(pack.field(14, 25, 35, 10), -1)
+        self.assertEqual(pack.field(14, 25, 35, 7), 1)
         self.assertEqual(pack.field(24, 48, 14, 10), -1)
         second, second_report = compat.patch_village_pack(output)
         self.assertEqual(second, output)

@@ -53,8 +53,11 @@ def deploy(client,apply=False,reviewed_before=None):
     if client==ROOT:raise ValueError('Choose the installed root, not the source workspace')
     manifest,source=verify_root(ROOT);old_manifest,old_source=verify_root(client)
     chapter_review_preflight(client, io.file_hash(ROOT / 'release/components/story_chapters/chapters.json'))
-    names=set(manifest['critical_files'])|{r['path'] for r in source['files']}|{'manifest/source_closure.json','manifest/open_release_manifest.json'}
-    known=set(old_manifest['critical_files'])|{r['path'] for r in old_source['files']}|{'manifest/source_closure.json','manifest/open_release_manifest.json'}
+    metadata={'manifest/source_closure.json','manifest/open_release_manifest.json'}
+    if (ROOT/'manifest/patch_allowlist.json').is_file():
+        metadata.add('manifest/patch_allowlist.json')
+    names=set(manifest['critical_files'])|{r['path'] for r in source['files']}|metadata
+    known=set(old_manifest['critical_files'])|{r['path'] for r in old_source['files']}|metadata
     if any(n=='game.exe' or n.startswith(('adapter_data/','adapter-data/','knowledge/evidence/','nanaimo_launcher_profile.')) for n in names):raise ValueError('Private or client payload in release contract')
     data={n:io.safe(ROOT,n).read_bytes() for n in sorted(names)}
     changed=[]

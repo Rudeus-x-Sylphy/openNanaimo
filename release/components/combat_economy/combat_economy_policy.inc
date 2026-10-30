@@ -57,9 +57,11 @@ static unsigned combat_economy_score_ordinary_terminal(struct battle_score_conte
     printf("  [ECONOMY] score-on-kill selector=%u target_type=%u points=%u total=%u policy=dcc7-authored-1x\n",selector,d->target_type,points,score->total);fflush(0);return score->total;
 }
 static const struct combat_score_profile_def*combat_economy_score_profile(const struct boss_hp_sync_context*c){
-    unsigned i;if(!c)return 0;
+    unsigned i,episode,dungeon;if(!c)return 0;
+    episode=c->stage;dungeon=c->dungeon;
+    lumineos_resource_identity(c->hd,c->stage_index,&episode,&dungeon);
     for(i=0u;i<COMBAT_SCORE_PROFILE_COUNT;i++){const struct combat_score_profile_def*p=&combat_score_profiles[i];
-        if((unsigned)p->hd==c->hd&&(unsigned)p->episode==c->stage&&(unsigned)p->dungeon==c->dungeon&&
+        if((unsigned)p->hd==c->hd&&(unsigned)p->episode==episode&&(unsigned)p->dungeon==dungeon&&
            (unsigned)p->stage_index==c->stage_index&&(unsigned)p->slot==c->absolute_slot)return p;}
     return 0;
 }

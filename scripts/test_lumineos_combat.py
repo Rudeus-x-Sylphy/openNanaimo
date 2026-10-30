@@ -18,6 +18,69 @@ CLIENT=Path(os.environ.get('NANAIMO_L8_CLIENT', ROOT/'build/lumineos-client'))
 
 
 class LumineosCombatTests(unittest.TestCase):
+    def test_native_wire_score_identity_and_zero_score_sentinels(self):
+        source = r'''
+#define main unused_server_main
+#include "adapter/nanaimo_gameplay_bridge.c"
+#undef main
+#include <assert.h>
+int main(void){
+ unsigned dg,st,slot,i,high=0u;struct boss_hp_sync_context wire,resource;
+ struct battle_score_context score;struct boss_hp_sync_result terminal;
+ teamplay_score_begin(1u);
+ for(dg=0;dg<8;dg++)for(st=0;st<2;st++)for(slot=0;slot<9;slot++){
+  const struct combat_score_profile_def *p,*q;
+  const struct hp_sync_profile_def *hp=hp_sync_find_profile(100,0,dg,st,slot/3,slot%3);
+  boss_hp_sync_init(&wire);boss_hp_sync_begin_game_domain(&wire,100,0,dg,st,slot/3,slot);
+  boss_hp_sync_init(&resource);boss_hp_sync_begin_game_domain(&resource,16+dg,0,(dg==6&&st==1)?1:0,st,slot/3,slot);
+  p=combat_economy_score_profile(&wire);q=combat_economy_score_profile(&resource);
+  assert(p&&p==q&&p->total_max>0&&p->boss_bonus>0);
+  assert(wire.stage==100&&wire.dungeon==dg);
+  assert(combat_economy_rating_for_member(p->total_max,1,&wire,-1)==5);
+  assert(combat_economy_rating_for_member(p->total_max*4u/5u+1u,1,&wire,-1)==4);
+  assert(combat_economy_rating_for_member(p->total_max,0,&wire,-1)==0);
+  memset(&score,0,sizeof(score));memset(&terminal,0,sizeof(terminal));terminal.first_terminal=1;
+  assert(combat_economy_score_boss_terminal(&score,&wire,&terminal)==p->boss_bonus);
+  assert(hp);
+  if((dg==1||dg==2)&&st==1){
+   unsigned mode,j;unsigned char req[32];struct boss_hp_sync_result hit;
+   for(mode=0;mode<wire.mode_count;mode++){
+    const struct boss_component_boss_mode*m=boss_component_boss_mode_def(wire.profile,mode);
+    for(j=0;j<m->component_count;j++){
+     const struct boss_component_boss_component*x=&boss_component_boss_components[m->first_component+j];
+     if(!x->scaled_hp)continue;
+     memset(req,0,sizeof(req));req[0x12]=(unsigned char)mode;req[0x13]=x->child;
+     boss_hp_sync_put32(req,0x14,x->ordinal);
+     assert(boss_hp_sync_apply_d011_attack(&wire,req,32,x->scaled_hp+x->basis+1u,1,&hit)==BOSS_HP_SYNC_OK);
+    }
+   }
+   assert(boss_hp_sync_final_terminal_seen(&wire));
+   assert(dungeon_settlement_progress_allowed(1u,wire.battle_epoch,1u,
+      boss_hp_sync_requires_final_terminal(&wire),boss_hp_sync_final_terminal_seen(&wire)));
+  }
+  for(i=0;i<hp->target_count;i++){
+   unsigned row=hp->first_row+i;
+   const struct hp_sync_target_def*t=&hp_sync_target_defs[row];
+   if(t->raw_hp==999999||t->raw_hp==9999999){
+    assert((dg==1||dg==2)&&st==1);
+    assert(combat_score_target_scores[row]==0u);high++;
+   }
+  }
+ }
+ assert(high==36u);
+ puts("LUMINEOS_SCORE_IDENTITY_PASS tuples=144 zero-score-sentinels=36 D-is-not-a-clear-failure");return 0;
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='nanaimo-lumineos-score-') as directory:
+            path = Path(directory)
+            (path/'test.c').write_text(source)
+            for command in ([str(ROOT/'tools/tcc/tcc.exe'), '-I', str(ROOT),
+                             str(path/'test.c'), '-o', str(path/'test.exe')],
+                            [str(path/'test.exe')]):
+                result = subprocess.run(command, cwd=path, capture_output=True,
+                                        text=True, errors='replace', timeout=120)
+                self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+
     def test_contact_generation_keeps_peer_section_order(self):
         original=[];replacement=[]
         for size in (28,16,34,30):

@@ -93,6 +93,27 @@ public sealed partial class DatabaseService
         return ratings;
     }
 
+    public async Task<ushort> GetLumineosClearMaskAsync(long characterId,
+        CancellationToken token = default)
+    {
+        await using var connection = await OpenConnectionAsync(token);
+        await EnsureLumineosPerformanceAsync(connection, null, token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT DISTINCT ArchiveSlot FROM LumineosStagePerformance
+            WHERE CharacterId=$id AND Episode=100 AND BestRating>0
+            """;
+        command.Parameters.AddWithValue("$id", characterId);
+        await using var reader = await command.ExecuteReaderAsync(token);
+        ushort mask = 0;
+        while (await reader.ReadAsync(token))
+        {
+            var slot = reader.GetInt32(0);
+            if ((uint)slot < 16) mask |= (ushort)(1 << slot);
+        }
+        return mask;
+    }
+
     internal async Task<byte> GetLumineosReadyRoomRankAsync(long characterId,
         byte dungeon, byte stage, byte difficulty, CancellationToken token = default)
     {

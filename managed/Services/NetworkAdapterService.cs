@@ -2341,6 +2341,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 var dungeonFrontierBestRatings = session.Character is null
                     ? new byte[C355FrontierRatingsLength]
                     : await _database.GetDungeonFrontierBestRatingsAsync(session.Character.Id, token);
+                var lumineosClearMask = session.Character is null ? (ushort)0
+                    : await _database.GetLumineosClearMaskAsync(session.Character.Id, token);
                 var coupleRelation = session.Character is null
                     ? null
                     : await _database.GetActiveCoupleRelationAsync(session.Character.Id, token);
@@ -2359,7 +2361,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     dungeonClearMasks,
                     dungeonBestRatings,
                     dungeonSecretBestRatings,
-                    coupleRelation, mentorProfile, dungeonFrontierBestRatings);
+                    coupleRelation, mentorProfile, dungeonFrontierBestRatings, lumineosClearMask);
                 await RestoreNativeFriendNamesAsync(loadNecessityFrames, session, token);
                 // C355 full-frame +0xF3 is the client's persisted story-medal byte.
                 // The numeric source is the committed story-claim ledger, not C59A
@@ -5075,6 +5077,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 }
 
                 var sourceTownId = session.TownId;
+                if (townId == 4 && (!UnlockAllDungeons || IsPureNewProfile(session))
+                    && !HasCompletedFifthVillagePrerequisites(BuildClientDungeonClearMasks(
+                        await _database.GetDungeonClearMasksAsync(session.Character.Id, token))))
+                    return BuildNativeFrame(frame, 0xC366,
+                        BuildTownEnterPayload(TownEnterStatusGenericFailure, session.TownId, session.TownPage, 0),
+                        session);
                 if (RequireMonkChallengeForVillageTravel
                     && !await _database.AuthorizeMonkVillageTravelAsync(session.AccountId,
                         session.Character.Id, session.SessionId, sourceTownId, townId, token))
@@ -14256,11 +14264,12 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         byte[] dungeonSecretBestRatings,
         CoupleRelationRecord? coupleRelation,
         (string TeacherName, int Graduates, int Students) mentorship,
-        byte[] dungeonFrontierBestRatings)
+        byte[] dungeonFrontierBestRatings,
+        ushort lumineosClearMask = 0)
     {
         var payload = BuildLoadNecessityPayload(session.Character, dungeonClearMasks,
             dungeonBestRatings, dungeonSecretBestRatings, coupleRelation, UnlockAllDungeons && !IsPureNewProfile(session),
-            dungeonFrontierBestRatings);
+            dungeonFrontierBestRatings, lumineosClearMask);
         payload[2] = mentorship.TeacherName.Length > 0 ? (byte)3
             : mentorship.Graduates > 0 || mentorship.Students > 0 ? (byte)2 : (byte)4;
         payload[3] = (byte)Math.Min(255, mentorship.Students);
@@ -16333,7 +16342,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         byte[] dungeonSecretBestRatings,
         CoupleRelationRecord? coupleRelation,
         bool unlockAllDungeons = true,
-        byte[]? dungeonFrontierBestRatings = null)
+        byte[]? dungeonFrontierBestRatings = null,
+        ushort lumineosClearMask = 0)
     {
         var payload = new byte[C355FrameLength - NativeHeaderLength];
         // The C355 consumer passes frame+13 to the client's pet-carry setter.
@@ -16414,6 +16424,9 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
         // Keep access carriers independent from the cached score-board ranks.
         // The final writer repeats the idempotent access normalization before checksum.
+        BinaryPrimitives.WriteUInt64LittleEndian(
+            payload.AsSpan(C355VillagePrerequisiteFrameOffset - NativeHeaderLength, 8),
+            lumineosClearMask);
         NormalizeC355VillageAccessPayload(payload, unlockAllDungeons);
         return payload;
     }
@@ -16442,16 +16455,13 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         if (unlockAllDungeons)
             ordinaryAccess.Fill(0x0F);
 
-        // Keep the fifth-village compatibility gate, but in progression mode
-        // satisfy it only after every preceding ordinary episode is complete.
-        var fifthVillageUnlocked = unlockAllDungeons
-            || HasCompletedFifthVillagePrerequisites(ordinaryAccess);
         var prerequisiteOffset = C355VillagePrerequisiteFrameOffset - NativeHeaderLength;
         var prerequisites = BinaryPrimitives.ReadUInt64LittleEndian(
             payload.Slice(prerequisiteOffset, C355VillagePrerequisiteLength));
-        prerequisites = fifthVillageUnlocked
-            ? prerequisites | C355VillagePrerequisiteLow44Mask
-            : prerequisites & ~C355VillagePrerequisiteLow44Mask;
+        var access = unlockAllDungeons ? C355VillagePrerequisiteLow44Mask
+            : HasCompletedFifthVillagePrerequisites(ordinaryAccess)
+                ? BuildLumineosRouteMask((ushort)prerequisites) : 0UL;
+        prerequisites = (prerequisites & ~C355VillagePrerequisiteLow44Mask) | access;
         BinaryPrimitives.WriteUInt64LittleEndian(
             payload.Slice(prerequisiteOffset, C355VillagePrerequisiteLength),
             prerequisites);
@@ -16479,6 +16489,29 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return false;
         }
         return true;
+    }
+
+    internal static ulong BuildLumineosRouteMask(ushort clearMask)
+    {
+        ulong routes = 0;
+        // Both stage0 and stage1 finish a dungeon. L8 never opens the L9 road.
+        for (var dungeon = 0; dungeon < 7; dungeon++)
+        {
+            var pair = (ulong)((clearMask >> (dungeon * 2)) & 3);
+            routes |= pair << (dungeon * 2);
+            if (pair != 3) break;
+        }
+        return routes;
+    }
+
+    internal static bool IsLumineosSelectionOpen(ReadOnlySpan<byte> ordinaryAccess,
+        ushort clearMask, byte dungeon, byte stage)
+    {
+        if (dungeon >= 8 || stage >= 2 || !HasCompletedFifthVillagePrerequisites(ordinaryAccess))
+            return false;
+        var requiredBits = dungeon * 2 + stage;
+        var required = (1u << requiredBits) - 1;
+        return (clearMask & required) == required;
     }
 
     private static void WriteC355CoupleState(

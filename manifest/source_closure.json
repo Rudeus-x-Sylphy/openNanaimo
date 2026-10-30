@@ -10,15 +10,15 @@
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
       "size": 25783296,
-      "sha256": "450D5BA3ABDC062D462A203293765C2527E6DA730B9C163C0498DAC75D2ADA57"
+      "sha256": "4248A8C9E4EB82EB4046885B49BD2EAFF2BE6EABF7EF8B27EB416B2EB0BB27FC"
     },
     "adapter/nanaimo_adapter_testports.exe": {
       "size": 25783296,
-      "sha256": "A7CB496902EB86B91148B02DF16C91BE420E9D1517AA89F4EB0B48AEF7327B3A"
+      "sha256": "6D5FB79CE934A6D6B157BB2232F70AA215837F92CABECAC8963070C8F8675F3D"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
       "size": 25878016,
-      "sha256": "965510D6D92159800324C1AD370C2E7FCB7921591BA0532F001C112930A7D9EA"
+      "sha256": "F4B407EBA0201183BBDF536AEA464B4949783F27D12E007F8F2D76E3466A60FD"
     }
   },
   "files": [
@@ -259,8 +259,8 @@
     },
     {
       "path": "managed-host/LauncherTools.Compatibility.cs",
-      "size": 19243,
-      "sha256": "E415E200D25D8B7C9A12AE0B692097C63D7CCA2B8D24365CE8E2071A86B70673"
+      "size": 19429,
+      "sha256": "63DF099079F332F55BD5E8BB58C391F7BB46DE6013E0F42461AD5A84A1B1B48C"
     },
     {
       "path": "managed-host/LauncherTools.Inventory.cs",
@@ -294,8 +294,8 @@
     },
     {
       "path": "managed-host/LauncherTools.Village.cs",
-      "size": 8664,
-      "sha256": "B30829E693CF38E98D7FBF7E92FFC4D3CD5271BAEC68C5A65884222436FCEAEC"
+      "size": 9662,
+      "sha256": "C56004CDEAD5C16F60EBF86525FF48DD19422C6DD961A3E4DDCB480F3E6B4F06"
     },
     {
       "path": "managed-host/LiveDungeonExperienceChecks.cs",
@@ -304,8 +304,8 @@
     },
     {
       "path": "managed-host/LumineosChecks.cs",
-      "size": 8725,
-      "sha256": "8D84EC6B2956B919800DD7B68187DE88E3B6D9147BFDCC7E1AFAEBBC6492C1DE"
+      "size": 11825,
+      "sha256": "375DE0FF92583FB984D2EA4CF6969B3941F313621F5F057E894D6CEEE6EC1936"
     },
     {
       "path": "managed-host/MigrationChecks.cs",
@@ -349,13 +349,13 @@
     },
     {
       "path": "managed-host/PetRevivalVillageChecks.cs",
-      "size": 37997,
-      "sha256": "3E73AE445F66D71065D90C44A7FE5B8D901BABC7142BA30C0C4D493B12DFF756"
+      "size": 37962,
+      "sha256": "C5DC3E31DA7DFAB9A75537F9ABA573DAECE1D1D0701BFD5E464B1AE8A3EB263E"
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 20944,
-      "sha256": "08220FCCCB4BF631551B926A6B150A8968CFEA4DDBA37ADB99ABB17A57F258B3"
+      "size": 20945,
+      "sha256": "37B9858D83AF8BE0F52A5153E9FE868D79BF60FC85E96E5F0A7033AF3A05C4B8"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -804,8 +804,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.Lumineos.cs",
-      "size": 7506,
-      "sha256": "770A95D6DB597F43CD23E0E2F9F21A245EBCB2BBC2853E251FA6D5945FBF9483"
+      "size": 8380,
+      "sha256": "BA6FB6BD483C2B2700F404AC9F160D3C8A92CD19EEBDCA74B83ED50CFC670399"
     },
     {
       "path": "managed/Services/DatabaseService.Mentorship.cs",
@@ -1194,8 +1194,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 105880,
-      "sha256": "FFB05BC359F0CC1A5B096F807BE617E3AA65E9C1C076D6D1FEC6159F8FE412BC"
+      "size": 107658,
+      "sha256": "5ED33625EDE5FF992D54405A02441820AEA7CC45D4A5AAE9776CA46B7DF75F9A"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
@@ -1284,8 +1284,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 1023119,
-      "sha256": "EC7D89F6447111D89CBBA4479C59E40FD57A06402F47471FD84A82667FD4E311"
+      "size": 1024786,
+      "sha256": "D9D09C409099224D662A05EBB259525B10A33076048A80F0FE129EBDA6181803"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1639,8 +1639,8 @@
     },
     {
       "path": "release/components/combat_economy/combat_economy_policy.inc",
-      "size": 6696,
-      "sha256": "2AD914A3A7469DF29AE1075371FC00376CCC6572683BA7872C39A94DD2627EDC"
+      "size": 6825,
+      "sha256": "CEDE0CAADB58D89500D36EE418F54BBEED142997069548CE049F538C396D4191"
     },
     {
       "path": "release/components/combat_economy/combat_score_resource_data.inc",
@@ -2229,8 +2229,8 @@
     },
     {
       "path": "scripts/port_lumineos_resources.py",
-      "size": 23798,
-      "sha256": "EB51AB347415CF089DF2C263C82979927C60F3DCAEAD984AB55F56F3A1565D03"
+      "size": 25122,
+      "sha256": "4E062A451075A70FBD8A77DA00A37A7834BD6F0DF8AEC910FF10B604312E55DC"
     },
     {
       "path": "scripts/prepare_kobe_wardrobe.py",

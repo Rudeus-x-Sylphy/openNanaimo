@@ -178,8 +178,8 @@ internal static class PetRevivalVillageChecks
         var progressiveUnlocked = NetworkAdapterService.BuildLoadNecessityPayload(
             character, progressiveMasks, ratings, secretRatings, null, unlockAllDungeons: false);
         Check(progressiveUnlocked.AsSpan(0x3C - 8, 60).SequenceEqual(progressiveMasks)
-            && BinaryPrimitives.ReadUInt64LittleEndian(progressiveUnlocked.AsSpan(0x80 - 8, 8)) == (1UL << 44) - 1UL,
-            "progression mode retains the fifth-village compatibility gate after all prior episodes are complete");
+            && BinaryPrimitives.ReadUInt64LittleEndian(progressiveUnlocked.AsSpan(0x80 - 8, 8)) == 0,
+            "progression mode opens the fifth village without fabricating any Lumineos clears");
 
         // A final access normalization must not mutate the independent cached
         // score-board tables. Reproduce a zero-rating profile with open village
