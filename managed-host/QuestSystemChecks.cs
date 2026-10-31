@@ -9,6 +9,8 @@ internal static class QuestSystemChecks
     public static async Task RunAsync()
     {
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+        await CheckNativeMonsterHitProgressAsync();
+        await QuestMonsterChecks.RunAsync();
         await CheckDefaultChapterStartupAsync();
         var root = Path.Combine(Path.GetTempPath(), "nanaimo-quest-system-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -406,6 +408,114 @@ internal static class QuestSystemChecks
         finally
         {
             try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    private static async Task CheckNativeMonsterHitProgressAsync()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "nanaimo-quest-hits-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            File.WriteAllBytes(Path.Combine(root, "game.db"), []);
+            var db = new DatabaseService(root);
+            await db.InitializeAsync();
+            var account = await db.OpenLocalAccountAsync("quest-hit-check");
+            var characterId = await db.CreateLocalCharacterAsync(account, "QuestHits", 1);
+            await using var adapter = new NetworkAdapterService(db, Console.WriteLine, root)
+                { StoryChaptersAutoStart = false };
+            var type = typeof(NetworkAdapterService);
+            var sessionType = type.GetNestedType("ConnectionSession", BindingFlags.NonPublic)!;
+            var session = Activator.CreateInstance(sessionType, true)!;
+            var sessionId = (string)Get(session, "SessionId")!;
+            Check(await db.BeginWorldSessionAsync(account, characterId, sessionId, 1, "127.0.0.1"),
+                "monster-hit fixture owns an isolated session");
+            await using (var sql = new SqliteConnection($"Data Source={db.DatabasePath}"))
+            {
+                await sql.OpenAsync();
+                using var command = sql.CreateCommand();
+                command.CommandText = "UPDATE Characters SET Hans=1000000 WHERE Id=$id";
+                command.Parameters.AddWithValue("$id", characterId);
+                await command.ExecuteNonQueryAsync();
+            }
+            const uint questId = 70_000_169;
+            Check(QuestCatalog.TryGetMonsterHitObjective(questId, out var objective)
+                && objective.TargetCode == 20017 && objective.RequiredCount == 200,
+                "retail rooster quest requires 200 hits against MMO code 20017");
+            var scroll = QuestCatalog.Scrolls.Single(row => row.QuestId == questId);
+            Check((await db.PurchaseQuestScrollAsync(account, characterId, sessionId, scroll)).Status
+                == QuestScrollPurchaseStatus.Success, "purchase rooster scroll");
+            Check((await db.ActivateQuestTaskAsync(account, characterId, sessionId, questId, 3, 0)).Success,
+                "activate rooster scroll");
+            Set(session, "AccountId", account);
+            Set(session, "Character", (await db.GetCharacterAsync(account))!);
+            Set(session, "OnlineTracked", true);
+            Set(session, "NativeBattleEpoch", 7L);
+            var worker = type.GetMethod("HandleNativeWorkerFrameAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var dispatch = type.GetMethod("HandleNativeFrameAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            // F103 regression tuple: hd=0/ep=2/dg=0/st=0/slot=6/selector=10.
+            var hit = NativeDungeonClient.Frame(0xF103, new byte[16]);
+            hit[9] = 2;
+            BinaryPrimitives.WriteUInt16LittleEndian(hit.AsSpan(12), 6);
+            BinaryPrimitives.WriteUInt32LittleEndian(hit.AsSpan(16), 10);
+            BinaryPrimitives.WriteUInt32LittleEndian(hit.AsSpan(20), 98);
+            async Task Hit(byte[]? frame = null, long epoch = 7)
+                => await (Task)worker.Invoke(adapter, [session, frame ?? hit, epoch, CancellationToken.None])!;
+            async Task CheckProgress(uint expected, string name)
+            {
+                var request = NativeDungeonClient.Frame(0xC59B, []);
+                var frames = await (Task<byte[]?>)dispatch.Invoke(adapter,
+                    [request, (ushort)0xC59B, "WorldAdapter", "127.0.0.1:30000", "127.0.0.1", session, CancellationToken.None])!;
+                var list = FindFrame(frames!, 0xC59C);
+                var task = (await db.GetCharacterTasksAsync(account, characterId, sessionId))
+                    .Single(row => row.QuestId == questId);
+                var ready = expected == 200;
+                Check(task.Progress3 == expected && task.Progress1 == (ready ? 1 : 0)
+                    && task.State3 == 0 && task.RuntimeState == (ready ? 1 : 0)
+                    && BinaryPrimitives.ReadUInt32LittleEndian(list.AsSpan(12 + 12)) == questId
+                    && BinaryPrimitives.ReadUInt32LittleEndian(list.AsSpan(12 + 8)) == expected,
+                    name);
+            }
+            await Hit();
+            Check((await db.GetCharacterTasksAsync(account, characterId, sessionId))
+                .Single(row => row.QuestId == questId).Progress3 == 1,
+                "worker F103 persists one rooster hit before list evaluation");
+            await CheckProgress(1, "C59B retains and encodes 1/200");
+            await CheckProgress(1, "repeated C59B preserves 1/200");
+            await Hit(epoch: 6);
+            await Hit(hit[..23]);
+            Set(session, "OnlineTracked", false);
+            await Hit();
+            Set(session, "OnlineTracked", true);
+            var other = hit.ToArray();
+            BinaryPrimitives.WriteUInt32LittleEndian(other.AsSpan(16), 494);
+            await Hit(other);
+            await CheckProgress(1, "epoch, length, session and target gates preserve progress");
+            for (var i = 1; i < 100; i++) await Hit();
+            await db.EvaluateQuestObjectivesAsync(account, characterId, sessionId, true,
+                new QuestRunRestrictions(false, false, false, true, 2, 2, 0, 1000));
+            await CheckProgress(100, "settlement evaluation preserves 100/200 across dungeons");
+            var reopened = new DatabaseService(root);
+            await reopened.InitializeAsync();
+            Check(await reopened.BeginWorldSessionAsync(account, characterId, sessionId, 1, "127.0.0.1"),
+                "reopened monster-hit database restores session authorization");
+            Check((await reopened.GetCharacterTasksAsync(account, characterId, sessionId))
+                .Single(row => row.QuestId == questId).Progress3 == 100,
+                "partial monster hits survive database reopen");
+            for (var i = 100; i < 199; i++) await Hit();
+            await CheckProgress(199, "199/200 remains unready after refresh");
+            await Hit();
+            await CheckProgress(200, "the 200th hit sets readiness and completion state");
+            await Hit();
+            await CheckProgress(200, "extra hits preserve completed 200/200");
+            Check(Get(session, "QuestCompletionNoticePending") is true,
+                "completion notice remains pending during combat");
+            Console.WriteLine("NATIVE_QUEST_MONSTER_HIT_CHECKS_PASS");
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            Directory.Delete(root, true);
         }
     }
 

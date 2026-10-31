@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 469,
+  "count": 470,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -354,8 +354,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 20945,
-      "sha256": "37B9858D83AF8BE0F52A5153E9FE868D79BF60FC85E96E5F0A7033AF3A05C4B8"
+      "size": 21070,
+      "sha256": "D0720CA2FE51D27A007B4FAC19B0A7A06279CA9077E112B50424D597FE835705"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -363,9 +363,14 @@
       "sha256": "9DEE25200C01C112A1553464BF06782699EDCEF5310B7610D6BFCBBD2D1BA8B9"
     },
     {
+      "path": "managed-host/QuestMonsterChecks.cs",
+      "size": 12342,
+      "sha256": "57AEE43496532071841F6E2A51E97566B03796AB70FB6B146CBABEF9910DC7FA"
+    },
+    {
       "path": "managed-host/QuestSystemChecks.cs",
-      "size": 54079,
-      "sha256": "0BE023DB0E15ED9A857E46E046DBF92CDAF2B490F29926CE08CE9CC2C6CE37F5"
+      "size": 60912,
+      "sha256": "5D5A17112EEAA57A08977E55B3363A7AC6894BC0E4FF21661D0FAC511BE1E424"
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
@@ -884,8 +889,8 @@
     },
     {
       "path": "managed/Services/DatabaseService.cs",
-      "size": 608391,
-      "sha256": "63F51DDA86BCDF04E1546D1B66DF7ACBAF02F008E0B58B4037ED432ECF90CD25"
+      "size": 608697,
+      "sha256": "E6339B3BF576D6ED5D8335A4F2318A0781FFD712D5FDDD85B6FAFD59DAB0C4D2"
     },
     {
       "path": "managed/Services/DungeonCombatCatalog.cs",
@@ -1194,8 +1199,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 107658,
-      "sha256": "5ED33625EDE5FF992D54405A02441820AEA7CC45D4A5AAE9776CA46B7DF75F9A"
+      "size": 107637,
+      "sha256": "7C98A89A63EA4CC90B7FBA6026D6B52676F8147D38DD785FCE4EAF00794677A1"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
@@ -1284,8 +1289,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 1024786,
-      "sha256": "D9D09C409099224D662A05EBB259525B10A33076048A80F0FE129EBDA6181803"
+      "size": 1024627,
+      "sha256": "E0ECFB065C596178C1573048B01D258FD481CD40BE8D2D7FC1A31D2FC4147891"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
@@ -1324,8 +1329,8 @@
     },
     {
       "path": "managed/Services/QuestMonsterCatalog.cs",
-      "size": 4921,
-      "sha256": "02BC2117A6D922129DD224E04649ECD980F96CAC72A98DC2504A81C2B6D124D4"
+      "size": 722,
+      "sha256": "CAC0D0CA2E821823EAA96289296D8F95FE0AD93F7B4DFB392A3D593ABF40A658"
     },
     {
       "path": "managed/Services/SkillCatalog.cs",

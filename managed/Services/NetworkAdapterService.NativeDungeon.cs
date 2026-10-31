@@ -1934,7 +1934,7 @@ public sealed partial class NetworkAdapterService
         if (frame.Length != 24 || session.Character is null || !session.OnlineTracked) return;
         if (!DungeonCombatCatalog.TryGetRuntime(frame[8], frame[9], frame[10], frame[11],
             BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(12)), BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(16)),
-            out var resource, out _) || !QuestMonsterCatalog.TryResolveTarget(frame[9], frame[10], resource, out var target)) return;
+            out _, out var template) || !QuestMonsterCatalog.TryResolveTarget(template, out var target)) return;
         var result = await _database.AdvanceQuestMonsterHitAsync(session.AccountId, session.Character.Id, session.SessionId, target, token);
         if (result.Authorized && result.Changed)
             BuildQuestProgressFrames(frame, result.Tasks, session, result.NewlyCompleted);

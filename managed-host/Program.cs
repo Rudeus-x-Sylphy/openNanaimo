@@ -112,6 +112,11 @@ static async Task RunAsync(string[] args)
         await NativeDungeonExperienceChecks.RunAsync();
         return;
     }
+    if (args.Contains("--quest-monster-self-test"))
+    {
+        await QuestMonsterChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--quest-system-self-test"))
     {
         await QuestSystemChecks.RunAsync();

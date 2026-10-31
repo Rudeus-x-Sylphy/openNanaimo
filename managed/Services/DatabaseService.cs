@@ -8972,8 +8972,8 @@ public sealed partial class DatabaseService
             }
             switch (objective.ObjectiveType)
             {
-                // Monster hits are counted by AdvanceQuestMonsterHitAsync, which owns their
-                // own C59C/C59D frames; here they only report their stored progress.
+                // Monster hits are counted by AdvanceQuestMonsterHitAsync;
+                // evaluation only projects their stored count and readiness.
                 case 26:
                     return storedProgress >= objective.RequiredCount;
                 case 3:
@@ -9033,6 +9033,10 @@ public sealed partial class DatabaseService
                     // objective. Preserve 1/2 in C59C while the task stays unready.
                     if (objective.ObjectiveType == 11)
                         completed = checked(completed + Math.Min(objectiveUnits, checked((uint)mentorStudents)));
+                    // The hit ledger owns this single-objective count. Passive
+                    // refreshes and settlements preserve partial hits.
+                    if (objective.ObjectiveType == 26 && quest.Objectives.Count == 1)
+                        completed = checked(completed + Math.Min(objectiveUnits, progress));
                     met = false;
                     if (firstUnmetIndex < 0) firstUnmetIndex = index;
                     continue;

@@ -7187,11 +7187,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                     : baseAttack;
                 _log($"{channel}:{remote} Dungeon projectile collision resolved: room={collisionRoom.Id} map={mapIndex} mode={mode} secondary={secondary} source={collisionSourceCode} targetIndex={targetIndex} flags=0x{flags:X2} runtime={npcRuntimeUid} resource={npcResourceUid} category={combatTemplate.AttackCategory} attackSource={(activeSkillCode == 0 ? "pet" : "skill")} skill={activeSkillCode} grade={activeSkillGrade} attack={baseAttack}->{loggedEffectiveAttack} defense={combatTemplate.Defense}->{effectiveDefense} damage={damage} hp={remainingHp}/{combatTemplate.Hp} defeated={defeated} terminalNow={terminalNow} scoreReward={(terminalNow ? combatTemplate.Score : 0)} cardDropBonus={cardDropBonusPercent}% sceneDrop={normalDropCardCode} targetLedger={npcTargetKey} scores={string.Join(',', collisionScores)}");
                 var collisionFrame = BuildNativeFrame(frame, 0xD00E, collisionResponsePayload, session);
-                if (!QuestMonsterCatalog.TryResolveTarget(
-                        collisionRoom.BattleEpisode,
-                        collisionRoom.BattleDungeon,
-                        npcResourceUid,
-                        out var questTargetCode))
+                if (!QuestMonsterCatalog.TryResolveTarget(combatTemplate, out var questTargetCode))
                     return collisionFrame;
 
                 try
