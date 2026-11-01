@@ -119,8 +119,8 @@
     },
     {
       "path": "managed-host/ChannelReentryChecks.cs",
-      "size": 12268,
-      "sha256": "D51C63BC7F02610C6CB758DA0CFE9B94EA47F660398F1A576D9EC4DC98B81FD7"
+      "size": 17351,
+      "sha256": "30B904927E53280363F5235A04A0072BEBA3F6F89A23F2CAA44BA08C0CBEEF86"
     },
     {
       "path": "managed-host/ChapterMonkChecks.cs",

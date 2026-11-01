@@ -88,28 +88,109 @@ internal static class ChannelReentryChecks
             Set(reentered, "ListenerPort", 12050);
             byte[] identity = new byte[16];
             Encoding.GetEncoding(936).GetBytes(firstCharacter.Name).CopyTo(identity, 0);
-            _ = Task.Run(async () =>
+            var teardown = Task.Run(async () =>
             {
                 await Task.Delay(50);
                 Set(active, "OnlineTracked", false);
                 clearPresences.Invoke(presences, null);
             });
             byte[] reconnect = (await Dispatch(reentered, 0xC351, identity, "WorldAdapter"))!;
+            await teardown;
             Check(ReadOpcode(reconnect) == 0xC352 && reconnect[8] == 100, "channel reentry restores C351/C352 after prior world teardown");
-            byte[] profile = (await Dispatch(reentered, 0xC354, [], "WorldAdapter"))!;
-            finalize.Invoke(service, [profile, reentered]);
-            var c355Frame = FindFrame(profile, 0xC355);
-            Check(c355Frame.Length == 728,
-                "channel reentry preserves the request-driven C355 chain after story-guide restoration");
-            Check(c355Frame.AsSpan(0x3C, 60).ToArray().All(value => value == 0x0F)
-                  && c355Frame.AsSpan(0x88, 0xDF - 0x88).ToArray().All(value => value == 0),
-                "channel reentry keeps access open without fabricating score-board ranks");
-            Check((BinaryPrimitives.ReadUInt64LittleEndian(c355Frame.AsSpan(0x80, 8))
-                    & ((1UL << 44) - 1UL)) == (1UL << 44) - 1UL,
-                "channel reentry receives all 22 village predecessor pairs");
-            Check(c355Frame.AsSpan(0xDF, 17).ToArray().All(value => value == 0)
-                  && BinaryPrimitives.ReadUInt16LittleEndian(c355Frame.AsSpan(0xF0, 2)) == 0,
-                "channel reentry all-open fill stops before couple name and ring");
+            var expectedClears = new byte[60];
+            var expectedRatings = new byte[60];
+            var expectedSecretRatings = new byte[4];
+            var expectedFrontierRatings = new byte[23];
+            Check(!service.UnlockAllDungeons, "channel reentry defaults to persisted progression");
+
+            async Task CheckProfile(object session, ulong expectedRoutes, string name, bool unlockAll = false)
+            {
+                var character = (CharacterRecord)Get(session, "Character")!;
+                var clearsBefore = await database.GetDungeonClearMasksAsync(character.Id);
+                var lumineosBefore = await database.GetLumineosClearMaskAsync(character.Id);
+                byte[] profile = (await Dispatch(session, 0xC354, [], "WorldAdapter"))!;
+                finalize.Invoke(service, [profile, session]);
+                var c355Frame = FindFrame(profile, 0xC355);
+                Check(c355Frame.Length == 728, name + ": C355 frame length");
+                var clears = unlockAll ? Enumerable.Repeat((byte)0x0F, 60).ToArray() : expectedClears;
+                Check(c355Frame.AsSpan(0x3C, 60).SequenceEqual(clears), name + ": exact ordinary progression");
+                Check(BinaryPrimitives.ReadUInt64LittleEndian(c355Frame.AsSpan(0x80, 8)) == expectedRoutes,
+                    name + ": exact village prerequisite routes");
+                Check(c355Frame.AsSpan(0x88, 60).SequenceEqual(expectedRatings)
+                    && c355Frame.AsSpan(0xC4, 4).SequenceEqual(expectedSecretRatings)
+                    && c355Frame.AsSpan(0xC8, 23).SequenceEqual(expectedFrontierRatings),
+                    name + ": independent ordinary, secret and frontier ratings");
+                Check(c355Frame.AsSpan(0xDF, 17).ToArray().All(value => value == 0)
+                    && BinaryPrimitives.ReadUInt16LittleEndian(c355Frame.AsSpan(0xF0, 2)) == 0,
+                    name + ": couple fields retain their own boundary");
+                Check((await database.GetDungeonClearMasksAsync(character.Id)).SequenceEqual(clearsBefore)
+                    && await database.GetLumineosClearMaskAsync(character.Id) == lumineosBefore,
+                    name + ": stored progression remains exact");
+            }
+
+            async Task Reenter()
+            {
+                var channelList = (await Dispatch(freshLogin, 0x271B, new byte[4], "GameAdapter"))!;
+                Check(ReadOpcode(channelList) == 0x271C, "repeated channel selection returns the channel list");
+                await (Task)disconnect.Invoke(service, [reentered])!;
+                reentered = Activator.CreateInstance(sessionType, nonPublic: true)!;
+                Set(reentered, "ChannelId", 1);
+                Set(reentered, "ListenerPort", 12050);
+                var response = (await Dispatch(reentered, 0xC351, identity, "WorldAdapter"))!;
+                Check(ReadOpcode(response) == 0xC352 && response[8] == 100
+                    && (long)Get(reentered, "AccountId")! == firstAccount,
+                    "repeated channel reentry restores the same account");
+            }
+
+            var nativeState = NativeDungeonState.Create(firstCharacter, [], []);
+            async Task Clear(byte hd, byte episode, byte dungeon, byte stage, byte difficulty, byte rating)
+            {
+                var after = new NativeDungeonState(nativeState.Bytes.ToArray());
+                var receipt = Guid.NewGuid().ToString("N");
+                var result = await database.ApplyNativeDungeonDeltaAsync(firstAccount, firstCharacter.Id,
+                    (string)Get(reentered, "SessionId")!, nativeState, after, CancellationToken.None, receipt,
+                    settlement: new NativeDungeonSettlementRecord(hd, episode, dungeon, stage, difficulty,
+                        rating, 0, 0, SettlementId: receipt));
+                Check(result.Applied, $"progress committed {hd}/{episode}/{dungeon}/{stage}/{difficulty}/{rating}");
+                nativeState = after;
+            }
+
+            await CheckProfile(reentered, 0, "fresh character");
+            await Clear(0, 0, 0, 0, 0, 3);
+            expectedClears[2] = 1;
+            expectedRatings[2] = 1;
+            await Clear(1, 2, 0, 0, 0, 4);
+            expectedSecretRatings[2] = 2;
+            await Clear(0, 100, 0, 0, 0, 5);
+            await Clear(0, 100, 0, 1, 1, 1);
+            expectedFrontierRatings[0] = 3;
+            await Reenter();
+            await CheckProfile(reentered, 0, "partial progress with fifth-village prerequisites pending");
+
+            for (byte episode = 0; episode < 16; episode++)
+            {
+                byte difficulty = (byte)(episode % 3);
+                foreach (var slot in new (byte Dungeon, byte Stage)[] { (0, 0), (1, 0), (2, 0), (2, 1) })
+                    await Clear(0, episode, slot.Dungeon, slot.Stage, difficulty, 1);
+                int clientDifficulty = difficulty switch { 0 => 2, 1 => 0, _ => 1 };
+                expectedClears[episode * 3 + clientDifficulty] = 0x0F;
+            }
+            await Reenter();
+            await CheckProfile(reentered, 3, "completed prerequisites and earned L1 routes");
+
+            for (byte dungeon = 1; dungeon < 8; dungeon++)
+            {
+                await Clear(0, 100, dungeon, 0, 1, 1);
+                await Clear(0, 100, dungeon, 1, 2, 1);
+            }
+            await Reenter();
+            await CheckProfile(reentered, 0x3FFF, "L8 completion and terminal route boundary");
+            service.UnlockAllDungeons = true;
+            await Reenter();
+            await CheckProfile(reentered, (1UL << 44) - 1, "explicit unlock-all mode", unlockAll: true);
+            service.UnlockAllDungeons = false;
+            await Reenter();
+            await CheckProfile(reentered, 0x3FFF, "persisted mode restored after unlock-all");
             await (Task)disconnect.Invoke(service, [reentered])!;
 
             clearPresences.Invoke(presences, null);
@@ -126,6 +207,11 @@ internal static class ChannelReentryChecks
             byte[] disconnectFirstConnect = (await Dispatch(disconnectFirstWorld, 0xC351, secondIdentity, "WorldAdapter"))!;
             Check(ReadOpcode(disconnectFirstConnect) == 0xC352 && disconnectFirstConnect[8] == 100,
                 "disconnect-first channel selection consumes the short handoff ticket");
+            Array.Clear(expectedClears);
+            Array.Clear(expectedRatings);
+            Array.Clear(expectedSecretRatings);
+            Array.Clear(expectedFrontierRatings);
+            await CheckProfile(disconnectFirstWorld, 0, "second account isolated progression");
             await (Task)disconnect.Invoke(service, [disconnectFirstWorld])!;
 
             clearPresences.Invoke(presences, null);
@@ -144,7 +230,7 @@ internal static class ChannelReentryChecks
             Check(ReadOpcode(ambiguousConnect) == 0xC352 && ambiguousConnect[8] == 0, "same-IP ambiguity keeps world identities separate");
             clearPresences.Invoke(presences, null);
 
-            Console.WriteLine("CHANNEL_REENTRY_CHECKS_PASS fresh-271B disconnect-first ticket teardown-wait c351-c355-final-unlock ambiguity");
+            Console.WriteLine("CHANNEL_REENTRY_CHECKS_PASS fresh-271B disconnect-first ticket teardown-wait persisted-progression ratings fifth-village unlock-all account-isolation ambiguity");
         }
         finally
         {
