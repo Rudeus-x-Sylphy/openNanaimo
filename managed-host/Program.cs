@@ -309,6 +309,11 @@ static async Task RunAsync(string[] args)
     await PetRevivalVillageChecks.RunAsync();
     return;
 }
+if (args.Contains("--card-key-purchase-self-test"))
+{
+    await CardKeyPurchaseChecks.RunAsync();
+    return;
+}
 if (args.Contains("--card-synthesis-self-test"))
 {
     await CardSynthesisChecks.RunAsync();

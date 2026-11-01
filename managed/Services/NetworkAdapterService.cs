@@ -4360,6 +4360,21 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return BuildNativeFrame(frame, 0xC3F4, saleResultPayload, session);
             }
 
+            case 0xC3F9: // REQ_BUY_SUMMON
+            {
+                if (!session.OnlineTracked || session.Character is null) return null;
+                var status = CardKeyPurchasePolicy.Rejected;
+                if (CardKeyPurchasePolicy.TryReadQuantity(payload, out var quantity))
+                    status = await _database.PurchaseCardKeysAsync(session.AccountId,
+                        session.Character.Id, session.SessionId, quantity, token);
+                if (status == CardKeyPurchasePolicy.Success)
+                {
+                    await RefreshSessionCharacterAsync(session, token);
+                    AccountStateChanged?.Invoke();
+                }
+                return BuildNativeFrame(frame, 0xC3FA, CardKeyPurchasePolicy.BuildResult(status), session);
+            }
+
             case 0xC3E9: // REQ_MY_SUMMON_INFO
                 if (!session.OnlineTracked || session.Character is null)
                     return null;
@@ -19651,6 +19666,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     private static string? GetRequiredInboundChannel(ushort opcode) => opcode switch
     {
+        0xC3F9 => "WorldAdapter",
         0x2713 or 0x2717 or 0x2719 or 0x271B or 0x2725 or 0x2730 or 0x2732 => "GameAdapter",
         0xCF0B or 0xCF0D or 0xCF11 or 0xCF13 or 0xCF17 or 0xCF19
             or 0xCF79 or 0xCF85 or 0xCF89 or 0xCF8F or 0xCF97 or 0xCFE5 or 0xD014 or 0xD036 => "ArenaAdapter",
@@ -19725,6 +19741,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         0xC46D => "special-token-use",
         0xC3E7 => "card-list",
         0xC3E9 => "card-summon-info",
+        0xC3F9 => "card-key-purchase",
         0xC3ED => "card-item-synthesis",
         0xC3FD => "event-card-redemption",
         0xC3EF => "card-item-synthesis-finish",

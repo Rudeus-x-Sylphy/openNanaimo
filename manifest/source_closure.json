@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 470,
+  "count": 472,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -106,6 +106,11 @@
       "path": "managed-host/BattleResourceSnapshotChecks.cs",
       "size": 17318,
       "sha256": "6D0ADBB04F8A5EB9086851BA2CB8B8C53CDD1F049CC84BE411084C4D837A1D54"
+    },
+    {
+      "path": "managed-host/CardKeyPurchaseChecks.cs",
+      "size": 8410,
+      "sha256": "416164515E38C5974BFDBEC87E3EF6BEBBFF2E1E3AECD3C9B08A3ACA22D36E3D"
     },
     {
       "path": "managed-host/CardSynthesisChecks.cs",
@@ -354,8 +359,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 21070,
-      "sha256": "D0720CA2FE51D27A007B4FAC19B0A7A06279CA9077E112B50424D597FE835705"
+      "size": 21182,
+      "sha256": "83869EBA3A6F329B6F181D3B8FE01AE23A1BC2FFBA9E265D23C8BB4431167A6B"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -721,6 +726,11 @@
       "path": "managed/Services/DatabaseService.CardExchange.cs",
       "size": 25723,
       "sha256": "8C37F957B46E67D22AFC3C748B2697F1C357AC83173A3FBB67CB66A5BF1330FA"
+    },
+    {
+      "path": "managed/Services/DatabaseService.CardKeyPurchase.cs",
+      "size": 3351,
+      "sha256": "DB94A6D66F47CE8244D1093B40CCD2F77E7CE732826CC11AD332367CE3D71C11"
     },
     {
       "path": "managed/Services/DatabaseService.CardPageUnion.cs",
@@ -1289,8 +1299,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 1024627,
-      "sha256": "E0ECFB065C596178C1573048B01D258FD481CD40BE8D2D7FC1A31D2FC4147891"
+      "size": 1025519,
+      "sha256": "7F858839971E1557F3B750D61E3C2D91F78F2639C6640127C2DA049F0AAFEA9C"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",
