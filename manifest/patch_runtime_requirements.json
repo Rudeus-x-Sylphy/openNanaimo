@@ -8,11 +8,22 @@
     "supplied_by_user": true,
     "launcher_gate": "presence-only",
     "size_or_hash_gate": false,
-    "reason": "Different users may use different legitimate unpacking implementations."
+    "reason": "Native-layout clients use exact-site validation; supported original-layout conversion checks its declared input and output identities."
   },
   "compatibility_derivation": {
     "tool": "adapter_runtime/Nanaimo.Adapter.exe",
     "hash_gate": false,
+    "original_layout_conversion": {
+      "argument": "--legacy-startup",
+      "resource": "managed-host/Resources/client-startup.json.gz",
+      "input_size": 11310408,
+      "input_sha256": "d56c80ca893990761bbb7faf412f54d8cb56763ad2d2d74aefc3f9fe63187515",
+      "output_size": 14198272,
+      "output_sha256": "786e70b6afe815b9de4d494a5a338d48c03f843027be2b5ebd7918725ffebc01",
+      "validation": "exact-original-input-and-rebuilt-output-identities",
+      "native_layout_validation": "PE32-layout-and-exact-startup-sites",
+      "documentation": "knowledge/指南/客户端二进制补丁/陈旧组件兼容安装与恢复.md"
+    },
     "source_inputs": [
       "game.exe",
       "Village_map_image/Village_map_image.pack",
@@ -95,6 +106,7 @@
     "output_distribution": "user-derived client files remain local; generated dungeon7 artwork is retired and excluded from installation dependencies",
     "launcher_selection": {
       "arguments": [
+        "--legacy-startup",
         "--character-creation",
         "--furniture",
         "--native-state",
@@ -128,7 +140,7 @@
       "scripts/dungeon7_visuals.py",
       "scripts/dungeon_experience_compat.py"
     ],
-    "bundled_resources": [],
+    "bundled_resources": ["managed-host/Resources/client-startup.json.gz"],
     "arguments": [
       "--tools",
       "compatibility"

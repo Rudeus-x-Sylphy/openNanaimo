@@ -14,6 +14,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = 'adapter_runtime'
 REPOSITORY_FILES = [
+    'scripts/build_client_startup_recipe.py',
+    'scripts/test_client_startup.py',
+    'knowledge/工程/客户端兼容/陈旧组件启动兼容.md',
+    'knowledge/指南/客户端二进制补丁/陈旧组件兼容安装与恢复.md',
     'knowledge/指南/客户端二进制补丁/99页库存安装与恢复.md',
     'scripts/inventory_storage_compat.py',
     'scripts/test_inventory_storage_compat.py',

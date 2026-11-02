@@ -6262,6 +6262,106 @@
   },
   "sites": [
     {
+      "group": "legacy-startup",
+      "va": 11864981,
+      "target": "e846948eff",
+      "known": [
+        "e887ba8bff"
+      ],
+      "operation": "legacy_startup_native_main",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 11857303,
+      "target": "9090",
+      "known": [
+        "740b"
+      ],
+      "operation": "legacy_startup_float_initialization",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10924094,
+      "target": "31c0909090",
+      "known": [
+        "e853419aff"
+      ],
+      "operation": "legacy_startup_object_create",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10924128,
+      "target": "31c0c3",
+      "known": [
+        "558bec"
+      ],
+      "operation": "legacy_startup_object_destroy",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10922784,
+      "target": "890d8436d70031c089018bc1c3",
+      "known": [
+        "558bec51894dfc8b45fca38436"
+      ],
+      "operation": "legacy_startup_interface_create",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10922848,
+      "target": "31c0c3",
+      "known": [
+        "558bec"
+      ],
+      "operation": "legacy_startup_interface_destroy",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10922896,
+      "target": "31c0c20400",
+      "known": [
+        "558bec81ec"
+      ],
+      "operation": "legacy_startup_interface_setup_a",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10923136,
+      "target": "31c0c20400",
+      "known": [
+        "558bec81ec"
+      ],
+      "operation": "legacy_startup_interface_setup_b",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10923392,
+      "target": "b802000000c20400",
+      "known": [
+        "558becb830100000"
+      ],
+      "operation": "legacy_startup_interface_native_mode",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10923728,
+      "target": "83c8ffc20c00",
+      "known": [
+        "558bec81ec70"
+      ],
+      "operation": "legacy_startup_interface_fallback",
+      "known_hashes": []
+    },
+    {
       "group": "character-creation",
       "va": 10910579,
       "target": "e96b000000",

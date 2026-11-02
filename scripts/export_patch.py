@@ -202,6 +202,7 @@ def payload_policy(value: str, layer: str) -> None:
         good = ((parts[0] in {"release", "adapter"} and p.suffix in {".c", ".h", ".inc"})
                 or (parts[0] in {"managed", "managed-host"} and p.suffix in {".cs", ".csproj"})
                 or value in {"managed-host/Resources/client-compatibility.json",
+                             "managed-host/Resources/client-startup.json.gz",
                              "gui_launcher/projectile_resources.cs", "manifest/projectile_diy_patch.json",
                              "scripts/combat-score-generator/Program.cs",
                              "scripts/combat-score-generator/CombatScoreGenerator.csproj"}
@@ -422,7 +423,8 @@ def validated_closure(closure: dict) -> list[dict]:
         build_script = rel in {"scripts/build_complete_adapter.ps1",
                                "scripts/combat-score-generator/Program.cs",
                                "scripts/combat-score-generator/CombatScoreGenerator.csproj"}
-        embedded_recipe = rel == "managed-host/Resources/client-compatibility.json"
+        embedded_recipe = rel in {"managed-host/Resources/client-compatibility.json",
+                                 "managed-host/Resources/client-startup.json.gz"}
         card_distribution = rel in {
             "release/components/cards/card_drop_cn.csv",
             "release/components/dungeon_progression/character_experience.csv",

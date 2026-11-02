@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 472,
+  "count": 474,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -263,9 +263,14 @@
       "sha256": "A5ECEB934B830AD9053C1C9AA0E6B634341DD84FD28194F97D3F3453602AB140"
     },
     {
+      "path": "managed-host/LauncherTools.ClientStartup.cs",
+      "size": 7807,
+      "sha256": "A976AF7EDE00F25863B69EF2B5C73203B40B8DB52BBC925F36F1B37F417B79DA"
+    },
+    {
       "path": "managed-host/LauncherTools.Compatibility.cs",
-      "size": 19429,
-      "sha256": "63DF099079F332F55BD5E8BB58C391F7BB46DE6013E0F42461AD5A84A1B1B48C"
+      "size": 19701,
+      "sha256": "252887727A5587110CD6E4D3C1BB78F51D342D67FD10123152E8200E11EF0DE8"
     },
     {
       "path": "managed-host/LauncherTools.Inventory.cs",
@@ -324,8 +329,8 @@
     },
     {
       "path": "managed-host/Nanaimo.Adapter.csproj",
-      "size": 804,
-      "sha256": "07353C45823F460DDB9F926118263EE82A1D5B7BF4A1C2E459CB632BC851A406"
+      "size": 911,
+      "sha256": "6E014726736B2D181CB84409758E7AE6A9730EAE6AB2AEC68DF4F11867BFB431"
     },
     {
       "path": "managed-host/NativeDungeonExperienceChecks.cs",
@@ -379,8 +384,13 @@
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
-      "size": 1052952,
-      "sha256": "C9CECDAD2839E585A71A82783D5533996A638AB40E9EF862D299010632A1A8D9"
+      "size": 1055216,
+      "sha256": "23627F21F9C1A1E903C7388DCD4D4CC6BCFBE8CCD662A5AFFB7F6431AE279283"
+    },
+    {
+      "path": "managed-host/Resources/client-startup.json.gz",
+      "size": 49152,
+      "sha256": "C2B40C07269709A98517366DB796CB3CB87C8EB179E445146341C16E7AE53404"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",

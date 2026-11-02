@@ -705,13 +705,14 @@ function Ensure-ClientCompatibility($selectedPet=$null) {
     $fingerprint=Get-CompatibilityFingerprint
     if($LauncherSessionCache.compatibilityReport.session_inputs-and(Read-ProjectileSettings (Join-Path $Root 'nanaimo_projectile.ini')).enabled-ne1-and$LauncherSessionCache.compatibilityFingerprint-eq$fingerprint){return $LauncherSessionCache.compatibilityReport}
     if($LauncherProgress){$LauncherProgress.Stage='准备并校验共享客户端兼容资源'}
-    $arguments=@('--tools','compatibility','--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--character-creation','--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--apartment-recommendation','--dungeon7','--overwrite','--apply')
+    $arguments=@('--tools','compatibility','--source-root',$Root,'--output-root',$ClientCompatibilityOverlay,'--legacy-startup','--character-creation','--furniture','--native-state','--dungeon-state','--inventory-gift-display','--land-purchase','--apartment-exterior','--apartment-recommendation','--dungeon7','--overwrite','--apply')
     if(Test-Path -LiteralPath (Join-Path $Root '.openNanaimo-monk-dialogue.json')){$arguments+='--monk-dialogue'}
     $output=@(& $ClientCompatibilityTool @arguments 2>&1)
     if($LASTEXITCODE-ne0){throw ("Client compatibility preparation refused:`r`n"+($output-join"`r`n"))}
     if(-not(Test-Path -LiteralPath $ClientCompatibilityReport -PathType Leaf)){throw 'Client compatibility report was not generated.'}
     $report=Get-Content -LiteralPath $ClientCompatibilityReport -Raw -Encoding UTF8|ConvertFrom-Json
     if(-not$report.verification.all_pass){throw 'Client compatibility post-apply verification failed.'}
+    foreach($required in @('legacy_startup_layout','legacy_startup_native_main','legacy_startup_float_initialization','legacy_startup_object_create','legacy_startup_object_destroy','legacy_startup_interface_create','legacy_startup_interface_destroy','legacy_startup_interface_setup_a','legacy_startup_interface_setup_b','legacy_startup_interface_native_mode','legacy_startup_interface_fallback')){if(-not @($report.operations|Where-Object{$_.operation-eq$required}).Count){throw '陈旧组件兼容配方需要配套的适配器，请更新运行包后启动。'}}
     if(-not @($report.operations|Where-Object{$_.operation-eq'fifth_village_land'}).Count){throw 'Fifth-village land requires the matching adapter resource installer; old runtime refused.'}
     foreach($required in @('level200_town_title_mask','level200_town_level_shift','level200_town_level_mask','level200_entry_code','level200_entry_hook')){if(-not @($report.operations|Where-Object{$_.operation-eq$required}).Count){throw 'Level200 requires a matching newly built adapter compatibility recipe; old runtime refused.'}}
     & (Join-Path $Root 'gui_launcher\level200_client_check.ps1') -Client $Client | Out-Host

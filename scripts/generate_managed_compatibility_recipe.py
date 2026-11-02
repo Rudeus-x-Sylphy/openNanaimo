@@ -18,6 +18,19 @@ def generate():
         rows.append(dict(group=group,va=va,target=target.hex(),known=[x.hex() for x in known],operation=operation,known_hashes=[]))
         return data,dict(changed=False,operation=operation)
     old_site,old_migration=p._patch_site,p._migrate_site
+    group='legacy-startup'
+    site(b'',0xB50B95,bytes.fromhex('e887ba8bff'),bytes.fromhex('e846948eff'),'legacy_startup_native_main','')
+    site(b'',0xB4ED97,bytes.fromhex('740b'),bytes.fromhex('9090'),'legacy_startup_float_initialization','')
+    for name,va,old,new in (
+        ('object_create',0xA6B03E,'e853419aff','31c0909090'),
+        ('object_destroy',0xA6B060,'558bec','31c0c3'),
+        ('interface_create',0xA6AB20,'558bec51894dfc8b45fca38436','890d8436d70031c089018bc1c3'),
+        ('interface_destroy',0xA6AB60,'558bec','31c0c3'),
+        ('interface_setup_a',0xA6AB90,'558bec81ec','31c0c20400'),
+        ('interface_setup_b',0xA6AC80,'558bec81ec','31c0c20400'),
+        ('interface_native_mode',0xA6AD80,'558becb830100000','b802000000c20400'),
+        ('interface_fallback',0xA6AED0,'558bec81ec70','83c8ffc20c00')):
+        site(b'',va,bytes.fromhex(old),bytes.fromhex(new),'legacy_startup_'+name,'')
     try:
         p._patch_site=site;p._migrate_site=migration
         groups=[('character-creation',[p.patch_character_creation,p.patch_referral_dialog]),('furniture',[p.patch_furniture_getter]),('native-state',[p.restore_native_state]),('dungeon-state',[p.patch_dungeon_state_controls]),('inventory-gift-display',[p.patch_inventory_gift_display]),('land-purchase',[p.patch_land_purchase]),('apartment-recommendation',[p.patch_apartment_recommendation]),('apartment-exterior',[p.patch_apartment_room_resource_guard,p.patch_apartment_exterior,p.patch_apartment_exterior_layout,p.patch_apartment_decoration])]

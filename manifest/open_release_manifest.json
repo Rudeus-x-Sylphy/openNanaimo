@@ -162,16 +162,16 @@
         "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
       },
       "adapter_runtime/Nanaimo.Adapter.dll": {
-        "size": 6087680,
-        "sha256": "41A34B4B380714E1295F02BBBCD112E35A25581EB155E4E4377F078C04DCE3E6"
+        "size": 6147584,
+        "sha256": "645109932BE3B4235B0C940FA811ECFC0B865F89DDE2DF41599B1F2CC9442E80"
       },
       "adapter_runtime/Nanaimo.Adapter.exe": {
         "size": 151552,
-        "sha256": "B1C0230F266541DB7E6A51A063D87BD3CC377F25AA19CC0C0BA9C14E6FCC76EE"
+        "sha256": "14BEA8B896A28DB210356A2B40AA424A3B4C6120D18295A04C1D75E62BB08FA0"
       },
       "adapter_runtime/Nanaimo.Adapter.pdb": {
-        "size": 283100,
-        "sha256": "A05916D78EAC0F2D1838888C9286B57A59DCA079E2B4D42B50744240F4ADE64D"
+        "size": 285068,
+        "sha256": "690450A8FF1C7C4793908C51ADB66BA56003ABFD2B878E87FAE5E88B9295C346"
       },
       "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
         "size": 372,
@@ -179,11 +179,11 @@
       },
       "adapter_runtime/Nanaimo.Gameplay.dll": {
         "size": 6341632,
-        "sha256": "815E377A384EB9BEDA67FC24CC3FC93C2F1C5A4D59B2C9B3798C9C4B4E8EAA78"
+        "sha256": "6FDC5365BCF2688DEAB028D43B237774DB60C9E6935605E206AAE3CC3C953F89"
       },
       "adapter_runtime/Nanaimo.Gameplay.pdb": {
         "size": 617844,
-        "sha256": "13F8FBC24EFBE87657C65D0A129F71DF1C10150DCE2EE9F065AB452722143EB3"
+        "sha256": "DC6267DB02DDB56E9333A8817598AE5EEDDEBAC9DB617C948E7FC7B7C921E811"
       },
       "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
         "size": 5120,
@@ -847,7 +847,7 @@
       },
       "adapter_runtime/adapter_manifest.json": {
         "size": 52662,
-        "sha256": "003D8D7A2FF88DECBEC0EAA1239C10283B255BD7DADA0A3ABE74A845BFD95062"
+        "sha256": "E841B4A2114ED17677F70B63DBDDF39823577BE2688C77BE0C2D8543569F2978"
       },
       "adapter_runtime/clretwrc.dll": {
         "size": 310568,
@@ -3179,8 +3179,8 @@
       "sha256": "0F889E86EDB49469920E706D47539D18CB9959A7209E49DD64A604C53630C9AF"
     },
     "gui_launcher/nanaimo_launcher.ps1": {
-      "size": 158969,
-      "sha256": "A3B617D78362F2BE9887A441A76610C8E953AE2BEE345940CD94F2069BC4C7F7"
+      "size": 159553,
+      "sha256": "BFCA096DBD0A19537876581AD4B9343F1574B79F91E778D30E77E2E9F44B1D45"
     },
     "gui_launcher/projectile_browser.ps1": {
       "size": 11534,
@@ -3482,6 +3482,10 @@
       "size": 599,
       "sha256": "3AB01750F2C104617B740ED517EB46E278B43F80700894BD7495182DA20A3FE4"
     },
+    "knowledge/工程/客户端兼容/陈旧组件启动兼容.md": {
+      "size": 2758,
+      "sha256": "BE5CB82517F03BB4CA2D941C0AEA37F4F54F0E1C9D7B1DC4268347CD6C9F5B51"
+    },
     "knowledge/工程/构建发布.md": {
       "size": 5850,
       "sha256": "F743F226D40E6785F9C898645855726CDAB9566A8FCB5766BC5AAD1A4F0C2F33"
@@ -3546,6 +3550,10 @@
       "size": 10970,
       "sha256": "08C1DC0CE027A8C7E51FE181383EA9A92F82CBC6552408F46E75866814F575DD"
     },
+    "knowledge/指南/客户端二进制补丁/陈旧组件兼容安装与恢复.md": {
+      "size": 7553,
+      "sha256": "E1F0DE4A8B7CB069EA6F0F8156D255BB0E9E26E9B883DD7FBD68B2C23FF6CE6A"
+    },
     "knowledge/指南/文件清单与导出工具.md": {
       "size": 9507,
       "sha256": "1C98ABF1E164D63BE8B2F8DEFEF2AE45B00C36130D74947475166BF12EFD6632"
@@ -3579,8 +3587,8 @@
       "sha256": "51FFE0E499D2431DE20E2E2ADFA1368A62FD8BAE9A1C3435C2BAAB577E9789BA"
     },
     "knowledge/索引.md": {
-      "size": 15118,
-      "sha256": "5C5949B317448A91D6C5432C65DE5358A2C4AF9F65333CFCDCA1880F815054A5"
+      "size": 15373,
+      "sha256": "7507E91907ED12B6FF8318C44AB2DE38E014B3C73900E8C463FF1A3146DACA54"
     },
     "managed/Services/ArenaTargetCatalog.cs": {
       "size": 1948,
@@ -3699,8 +3707,8 @@
       "sha256": "192CD7E7DA91ED3468D367FCD4ABCD5BAB4E9CCF4908F065B9B1CA8993A10DFE"
     },
     "manifest/patch_runtime_requirements.json": {
-      "size": 11009,
-      "sha256": "7C9EEBE4C4174094E1C910CC20F3E75D478138CDDDC3BC025D1696AD74DC1908"
+      "size": 11788,
+      "sha256": "3282789056BB3609296776C80F84BBF6F93891BCE1D78CEF06A4BEAC090562DC"
     },
     "manifest/projectile_diy_patch.json": {
       "size": 34355,
@@ -3830,6 +3838,10 @@
       "size": 6683,
       "sha256": "11D60202BA7185441A6F5CC6199674B07EB3255C8E853D2294811F4DC0A78AF8"
     },
+    "scripts/build_client_startup_recipe.py": {
+      "size": 5761,
+      "sha256": "B353A910B3FB70E5D101ACB314C3E183A735689DE2BDA3CF7B72201F675EB81E"
+    },
     "scripts/cinematic_codec.py": {
       "size": 7509,
       "sha256": "93A09AD525B53ED8F3CB9EF4800BF5112BC515AF7811E6DD78E94991B20719C5"
@@ -3883,8 +3895,8 @@
       "sha256": "032774731901A7C0F6B3793C3381DEE4369115E65AC254BCAD8F4694D5517570"
     },
     "scripts/export_patch.py": {
-      "size": 34241,
-      "sha256": "8D999686B1216AC2E5FD9F79E434360FD281C45F9626D715F36F0C2BC2911D37"
+      "size": 34403,
+      "sha256": "AF794FCA6149B91ADBBD41C8AA8ED9E6CBF4568F923017AA68106C8805FD1E43"
     },
     "scripts/generate_arena_targets.py": {
       "size": 2986,
@@ -3907,8 +3919,8 @@
       "sha256": "DEB4E52677FC609CB48817A206DCCD15ADED4B1567198AD17E35354E329A6D2E"
     },
     "scripts/generate_managed_compatibility_recipe.py": {
-      "size": 4344,
-      "sha256": "289507840B1FE6A0DAFBBC78E78DE2892E5D3DEE25724E3AAB50865517ECBF1E"
+      "size": 5262,
+      "sha256": "FF72E4127AF1C64C5278CD97F28AE6BFB3A212C4CA0DA3BAA7C2A3846F1371D7"
     },
     "scripts/generate_monk_combat.py": {
       "size": 32611,
@@ -4091,8 +4103,8 @@
       "sha256": "585D776882D9565222EEE85261768CCC06CF11ECA4BF98701823FD2362ECE93E"
     },
     "scripts/refresh_manifest.py": {
-      "size": 24829,
-      "sha256": "00F5229BC1EC9190FE531EEA352ED35C06F97ECEEA38E3E5472D9ED793F3B094"
+      "size": 25071,
+      "sha256": "D5A16F7F36910B99DF642FA59995E77187C249D0A2AD38DBC7FC32A8CC4CA69C"
     },
     "scripts/refresh_patch_manifest.py": {
       "size": 12919,
@@ -4173,6 +4185,10 @@
     "scripts/test_charge_mp_wire.py": {
       "size": 5993,
       "sha256": "C3C921B3972BBD47E53AE794E8D4D8696FBC5BDB6FB6ABD769D2AB4BABA45B44"
+    },
+    "scripts/test_client_startup.py": {
+      "size": 10689,
+      "sha256": "FAAF9EE517335F56371A6BFF2777EB6E92EBBEC40DFE7F40EC926ED2EBF9FEA8"
     },
     "scripts/test_clover_descriptions.py": {
       "size": 9099,
@@ -5655,8 +5671,8 @@
       "sha256": "BC443F6AA0CF2A107F9F543F78A4F8E56E0B25A26B959A5AA2963B1FAC9C21F6"
     },
     "knowledge/工程/客户端兼容/索引.md": {
-      "size": 3119,
-      "sha256": "20095675F75F90AE8B58BB91E4BAE13CC0E5E5F5B872C7E69DEA61C910F3CCB8"
+      "size": 3259,
+      "sha256": "88F0854C7E9ECB967136861DF9083C943C4E8634A2628EA0254FECDBFF9366BA"
     },
     "knowledge/工程/客户端兼容/组队结果入口与排序.md": {
       "size": 6090,
@@ -5667,8 +5683,8 @@
       "sha256": "29A8BD0672B8822FB423A8539E3DDF67129D8E22662B30CF2A7A521F7C40FE93"
     },
     "knowledge/工程/客户端兼容/自动兼容清单.md": {
-      "size": 9085,
-      "sha256": "64390800944AEE90CD7854D821CE87C2A75227BCB35D11C17CDE74D7E91087C1"
+      "size": 9403,
+      "sha256": "CB176217EC0315B62D9886180D7514A8B5762CB973C27229503DB72A0845DF40"
     },
     "knowledge/工程/客户端兼容/连续挑战状态清理.md": {
       "size": 2343,
@@ -5751,8 +5767,8 @@
       "sha256": "3D1C03E40D79570BC19DB5E402659873861C4005FB5A3ECD8A72F4D3587EC008"
     },
     "knowledge/工程/验证状态/层级与版本归属.md": {
-      "size": 19205,
-      "sha256": "CD0B03924A4EE996A3771EAC54204213EA664EC7E1A51B63022C09B5A6585FB7"
+      "size": 20545,
+      "sha256": "9F5CC0524536C755C1490AEF6D2F338F40F59EEED58917F76BB2ECCEB3D4F856"
     },
     "knowledge/工程/验证状态/文档与静态调查记录.md": {
       "size": 8627,
@@ -5843,8 +5859,8 @@
       "sha256": "9656BA4660832B58FADF013A4EDE89AC6EB6B7935FDA3ECF89512A39C392C331"
     },
     "knowledge/指南/客户端二进制补丁/索引.md": {
-      "size": 2516,
-      "sha256": "35075CBBBB156B7FFFBAC003AC999AADCD86CF1FC19B70B0DEC78DD106160F8B"
+      "size": 2693,
+      "sha256": "63C3B20ABD3D9AA1D0148DD6D71FC893BEF4B918CC88F0CD006489CE2520A928"
     },
     "knowledge/指南/客户端二进制补丁/统一安装与恢复.md": {
       "size": 8243,
@@ -5947,16 +5963,16 @@
       "sha256": "6B60AF0002EF06557A41988975881DFA8BAEC7394C9CFB85C7A4759D66CD42F3"
     },
     "adapter_runtime/Nanaimo.Adapter.dll": {
-      "size": 6087680,
-      "sha256": "41A34B4B380714E1295F02BBBCD112E35A25581EB155E4E4377F078C04DCE3E6"
+      "size": 6147584,
+      "sha256": "645109932BE3B4235B0C940FA811ECFC0B865F89DDE2DF41599B1F2CC9442E80"
     },
     "adapter_runtime/Nanaimo.Adapter.exe": {
       "size": 151552,
-      "sha256": "B1C0230F266541DB7E6A51A063D87BD3CC377F25AA19CC0C0BA9C14E6FCC76EE"
+      "sha256": "14BEA8B896A28DB210356A2B40AA424A3B4C6120D18295A04C1D75E62BB08FA0"
     },
     "adapter_runtime/Nanaimo.Adapter.pdb": {
-      "size": 283100,
-      "sha256": "A05916D78EAC0F2D1838888C9286B57A59DCA079E2B4D42B50744240F4ADE64D"
+      "size": 285068,
+      "sha256": "690450A8FF1C7C4793908C51ADB66BA56003ABFD2B878E87FAE5E88B9295C346"
     },
     "adapter_runtime/Nanaimo.Adapter.runtimeconfig.json": {
       "size": 372,
@@ -5964,11 +5980,11 @@
     },
     "adapter_runtime/Nanaimo.Gameplay.dll": {
       "size": 6341632,
-      "sha256": "815E377A384EB9BEDA67FC24CC3FC93C2F1C5A4D59B2C9B3798C9C4B4E8EAA78"
+      "sha256": "6FDC5365BCF2688DEAB028D43B237774DB60C9E6935605E206AAE3CC3C953F89"
     },
     "adapter_runtime/Nanaimo.Gameplay.pdb": {
       "size": 617844,
-      "sha256": "13F8FBC24EFBE87657C65D0A129F71DF1C10150DCE2EE9F065AB452722143EB3"
+      "sha256": "DC6267DB02DDB56E9333A8817598AE5EEDDEBAC9DB617C948E7FC7B7C921E811"
     },
     "adapter_runtime/SQLitePCLRaw.batteries_v2.dll": {
       "size": 5120,
@@ -6632,7 +6648,7 @@
     },
     "adapter_runtime/adapter_manifest.json": {
       "size": 52662,
-      "sha256": "003D8D7A2FF88DECBEC0EAA1239C10283B255BD7DADA0A3ABE74A845BFD95062"
+      "sha256": "E841B4A2114ED17677F70B63DBDDF39823577BE2688C77BE0C2D8543569F2978"
     },
     "adapter_runtime/clretwrc.dll": {
       "size": 310568,
@@ -6787,7 +6803,7 @@
       "sha256": "921D1FCC9A42F0EE6940E4EE620479A630F357BAC509384E749102AD18085EC3"
     }
   },
-  "source_closure_count": 472,
+  "source_closure_count": 474,
   "public_export_policy": {
     "mode": "explicit-reviewed-allowlist-only",
     "exclude_private_profiles_states_logs_backups": true,
