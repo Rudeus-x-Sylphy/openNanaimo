@@ -65,7 +65,7 @@ int main(int argc,char**argv){
         native_cf72_continue_room();CHECK(native_cf72_phase_for_socket(100)==NATIVE_CF72_CONTINUATION);
         count=0;send_cf71_member(100,21,21,0);CHECK(count==2&&word(frames[1],0x64)==0);
         count=0;inventory_instances_send_skill_epoch_refresh(100,"host-pre-CF80");
-        CHECK(count==1&&sizes[0]==0x74&&word(frames[0],0x64)==0);CHECK(frames[0][0x73]==7);
+        CHECK(count==1&&sizes[0]==0x78&&word(frames[0],0x64)==0&&dword(frames[0],0x74)==0x31544956u);CHECK(frames[0][0x73]==7);
         CHECK(word(frames[0],0x0A)>0&&word(frames[0],0x0C)>0&&frames[0][0x72]==1);
     }else if(test==3){
         refresh(NATIVE_CF72_PROFILE);native_cf72_continue_room();

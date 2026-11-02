@@ -24,6 +24,17 @@
       "native_layout_validation": "PE32-layout-and-exact-startup-sites",
       "documentation": "knowledge/指南/客户端二进制补丁/陈旧组件兼容安装与恢复.md"
     },
+    "flight_effect_resource_refresh": {
+      "argument": "--dungeon-state",
+      "resource_update_length": 120,
+      "resource_update_tag": "VIT1",
+      "resource_update_apply": 0,
+      "initialization_length": 116,
+      "client_sites": ["0x006F5B1E", "0x006F5B68", "0x006E3100", "0x006E3140"],
+      "preserves": ["quickbar effects", "team effects", "independent protection list", "combat Power", "layout"],
+      "documentation": "knowledge/指南/客户端二进制补丁/飞行效果与资源刷新安装.md",
+      "runtime_acceptance": false
+    },
     "source_inputs": [
       "game.exe",
       "Village_map_image/Village_map_image.pack",

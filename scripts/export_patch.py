@@ -430,6 +430,7 @@ def validated_closure(closure: dict) -> list[dict]:
             "release/components/dungeon_progression/character_experience.csv",
             "release/components/dungeon_progression/character_experience_v2.csv",
             "scripts/generate_character_experience.py",
+            "scripts/generate_flight_item_catalog.py",
             "scripts/generate_lumineos_combat.py",
             "scripts/normalize_combat_score_resources.py",
             "scripts/normalize_couple_monster_catalog.py",

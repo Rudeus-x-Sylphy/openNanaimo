@@ -12,6 +12,10 @@ struct native_cf72_view_state {
     struct native_cf72_actor_state actor[MULTI_MAX_PLAYERS];
 };
 static struct native_cf72_view_state g_native_cf72_views[MULTI_MAX_PLAYERS];
+struct native_cf72_quickbar_state {
+    unsigned valid,viewer_join,actor_join,battle_epoch;SOCKET socket;unsigned char frame[0x74];
+};
+static struct native_cf72_quickbar_state g_native_cf72_quickbars[MULTI_MAX_PLAYERS][MULTI_MAX_PLAYERS];
 static char g_native_revival_account[MULTI_MAX_PLAYERS][48];
 static unsigned g_native_revival_join[MULTI_MAX_PLAYERS];
 static int native_actor_index(unsigned uid){
@@ -25,6 +29,8 @@ static int native_view_index(SOCKET c){
 static void native_cf72_reset_actor(int idx){
     int i;if(idx<0||idx>=MULTI_MAX_PLAYERS)return;
     memset(&g_native_cf72_views[idx],0,sizeof(g_native_cf72_views[idx]));
+    memset(g_native_cf72_quickbars[idx],0,sizeof(g_native_cf72_quickbars[idx]));
+    for(i=0;i<MULTI_MAX_PLAYERS;i++)memset(&g_native_cf72_quickbars[i][idx],0,sizeof(g_native_cf72_quickbars[i][idx]));
     for(i=0;i<MULTI_MAX_PLAYERS;i++)memset(&g_native_cf72_views[i].actor[idx],0,sizeof(g_native_cf72_views[i].actor[idx]));
 }
 static void native_actor_bind_revival_account_current(void){
@@ -34,6 +40,29 @@ static void native_actor_bind_revival_account_current(void){
 static unsigned native_cf72_phase_for_socket(SOCKET c){
     int v=native_view_index(c);
     return v>=0&&g_native_cf72_views[v].socket==c&&g_native_cf72_views[v].join_order==g_multi_conn[v].join_order&&g_native_cf72_views[v].continuation?NATIVE_CF72_CONTINUATION:NATIVE_CF72_PROFILE;
+}
+static int native_cf72_equal_bytes(const unsigned char *a,const unsigned char *b,unsigned size){
+    unsigned i;for(i=0;i<size;i++)if(a[i]!=b[i])return 0;return 1;
+}
+static unsigned native_cf72_resource_only(SOCKET c,unsigned actor_uid,const unsigned char *frame,unsigned phase){
+    int vi=native_view_index(c),ai=native_actor_index(actor_uid);unsigned same;
+    struct native_cf72_quickbar_state *state;
+    if(vi<0||ai<0)return 0u;
+    state=&g_native_cf72_quickbars[vi][ai];
+    same=state->valid&&state->socket==c&&state->viewer_join==g_multi_conn[vi].join_order&&state->actor_join==g_multi_conn[ai].join_order&&state->battle_epoch==multiplayer_shared_boss_context()->battle_epoch;
+    same=same&&phase!=NATIVE_CF72_REVIVE&&!frame[0x64]&&!frame[0x65]&&
+        native_cf72_equal_bytes(state->frame+0x14,frame+0x14,0x50)&&native_cf72_equal_bytes(state->frame+0x66,frame+0x66,2);
+    state->valid=1u;state->socket=c;state->viewer_join=g_multi_conn[vi].join_order;state->actor_join=g_multi_conn[ai].join_order;
+    state->battle_epoch=multiplayer_shared_boss_context()->battle_epoch;
+    memcpy(state->frame,frame,sizeof(state->frame));return same;
+}
+static void native_cf72_note_item_use(SOCKET c,unsigned actor_uid){
+    int vi=native_view_index(c),ai=native_actor_index(actor_uid);unsigned i,codes[6];struct native_cf72_quickbar_state *state;
+    if(vi<0||ai<0||actor_uid!=multiplayer_current_uid())return;
+    state=&g_native_cf72_quickbars[vi][ai];
+    if(!state->valid||state->socket!=c||state->viewer_join!=g_multi_conn[vi].join_order||state->actor_join!=g_multi_conn[ai].join_order)return;
+    quickbar_export_battle_codes(codes);
+    for(i=0;i<6u;i++)stable_put32((char*)state->frame,0x38+i*4u,codes[i]);
 }
 static void native_cf72_continue_room(void){
     int i;for(i=0;i<MULTI_MAX_PLAYERS;i++)if(g_multi_conn[i].active&&g_multi_transport_alive[i]&&g_multi_conn[i].room_active){
@@ -650,7 +679,19 @@ static void gs_thread(void* arg){
                         printf("  [GS %d] GOT C46C legacy cash refresh; no response (old S2C C46D-list attribution retracted)\n",port);fflush(0);
                     } else if(type==0xCF93 && len==12){
                         unsigned slot=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8),code=0u,remaining=0u,dh=0u,dm=0u;int ok=quickbar_consume_slot_gameitem(slot,&code,&remaining,&dh,&dm);
-                        if(ok){unsigned before_hp=combat_hp,before_mp=pet_crafting_pet_effective_mp_current();g_profile_mp_current=before_mp;combat_hp+=dh;if(combat_hp>pet_crafting_pet_effective_hp_max())combat_hp=pet_crafting_pet_effective_hp_max();g_profile_hp_current=combat_hp;g_profile_mp_current+=dm;if(g_profile_mp_current>pet_crafting_pet_effective_mp_max())g_profile_mp_current=pet_crafting_pet_effective_mp_max();if(code/1000000u==21u)item_effects_flight_activate(code,dungeon_room_epoch,boss_ctx.battle_epoch,tickms());printf("  [QUICKBAR_GAMEITEM] CF93 use slot=%u code=%u remaining=%u domain=%u hp=%u->%u mp=%u->%u\n",slot,code,remaining,code/1000000u,before_hp,combat_hp,before_mp,g_profile_mp_current);fflush(0);}else{printf("  [QUICKBAR_GAMEITEM] CF93 reject slot=%u\n",slot);fflush(0);}sleep(0);send_cf94_gameitem_result(c,ok,code,slot,dh,dm);if(ok)quickbar_share_couple_gameitem(c,code,slot,dh,dm);sleep(0);send_c379_profile_profile_snapshot(c);if(ok)multiplayer_broadcast_actor_resources_current();
+                        if(ok){
+                            unsigned before_hp=combat_hp,before_mp=pet_crafting_pet_effective_mp_current();
+                            g_profile_mp_current=before_mp;combat_hp+=dh;
+                            if(combat_hp>pet_crafting_pet_effective_hp_max())combat_hp=pet_crafting_pet_effective_hp_max();
+                            g_profile_hp_current=combat_hp;g_profile_mp_current+=dm;
+                            if(g_profile_mp_current>pet_crafting_pet_effective_mp_max())g_profile_mp_current=pet_crafting_pet_effective_mp_max();
+                            if(code/1000000u==21u)flight_items_activate_room(code,dungeon_room_epoch,boss_ctx.battle_epoch,tickms());
+                            printf("  [QUICKBAR_GAMEITEM] CF93 use slot=%u code=%u remaining=%u domain=%u hp=%u->%u mp=%u->%u\n",slot,code,remaining,code/1000000u,before_hp,combat_hp,before_mp,g_profile_mp_current);fflush(0);
+                        }else{printf("  [QUICKBAR_GAMEITEM] CF93 reject slot=%u\n",slot);fflush(0);}
+                        sleep(0);send_cf94_gameitem_result(c,ok,code,slot,dh,dm);
+                        if(ok)quickbar_share_couple_gameitem(c,code,slot,dh,dm);
+                        sleep(0);send_c379_profile_profile_snapshot(c);
+                        if(ok){native_cf72_note_item_use(c,multiplayer_current_uid());multiplayer_broadcast_actor_resources_current();}
                     } else if(type==0xC46D && len==16){
                         unsigned code=(unsigned char)buf[off+8]|((unsigned char)buf[off+9]<<8)|((unsigned char)buf[off+10]<<16)|((unsigned char)buf[off+11]<<24);unsigned row_token=(unsigned char)buf[off+12]|((unsigned char)buf[off+13]<<8)|((unsigned char)buf[off+14]<<16)|((unsigned char)buf[off+15]<<24);unsigned available=0u,active_after=0u,item_after=0u,remaining=0u;int key_idx=card_key_item_index(code),native_cash=inventory_migration_native_cash_domain(code),ok=0;if(key_idx>=0){available=card_item_quantity_card_item_quantity(code);item_after=available;if(row_token==quickbar_item_handle(code))ok=card_key_item_activate(code,available,&active_after,&item_after);}else{available=quickbar_reward_quantity(code);if(native_cash)ok=(code/1000000u==48u)?game_session_consume_revival_bundle(code,row_token,&remaining):inventory_migration_consume_native_cash_item(code,row_token,&remaining);else if(code/1000000u==14u){unsigned dh=0u,dm=0u;if(quickbar_gameitem_effect(code,&dh,&dm))ok=quickbar_consume_reward(code,row_token,&remaining);}else ok=quickbar_consume_reward(code,row_token,&remaining);item_after=remaining;if(ok&&!native_cash){unsigned hp_before=combat_hp,mp_before=pet_crafting_pet_effective_mp_current();g_profile_mp_current=mp_before;int applied=(code/1000000u==14u)?quickbar_apply_gameitem_effect(code,&combat_hp,&g_profile_mp_current):quickbar_apply_effect(code,&combat_hp,&g_profile_mp_current);if(applied){g_profile_hp_current=combat_hp;printf("  [QUICKBAR_EFFECT] applied code=%u hp %u->%u mp %u->%u\n",code,hp_before,combat_hp,mp_before,g_profile_mp_current);fflush(0);}}}printf("  [GS %d] GOT C46D inventory-item use code=%u row_token=%u available=%u kind=%s success=%d active_after=%u item_after=%u -> C46E\n",port,code,row_token,available,key_idx>=0?"magic-key":(native_cash?"native-cash":"quickbar"),ok,active_after,item_after);fflush(0);sleep(0);send_c46e_item_use_result(c,ok,code,row_token);if(ok&&key_idx<0&&!native_cash){sleep(0);send_d010_profile_hp_echo(c,(const unsigned char*)&buf[off],combat_hp);}
                     } else if(type==0xC469 && len==8){

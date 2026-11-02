@@ -174,7 +174,7 @@ public sealed partial class NetworkAdapterService
         if (frame.Length < 8 || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4)) != frame.Length) return false;
         var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6));
         var offset = opcode == 0xCF71 && frame.Length == 0xB8 ? 0x58
-            : opcode == 0xCF72 && frame.Length == 0x74 ? 0x6C : -1;
+            : IsNativeActorRefreshFrame(frame) ? 0x6C : -1;
         if (offset < 0 || BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(opcode == 0xCF71 ? 0x1A : 8))
             != GetSceneEntityId(character)) return false;
         BinaryPrimitives.WriteInt32LittleEndian(frame.AsSpan(offset), durability ?? GetPetBattleDurability(character));

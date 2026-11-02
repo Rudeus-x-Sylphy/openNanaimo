@@ -121,14 +121,21 @@ static int quickbar_consume_reward(unsigned code,unsigned row_token,unsigned*rem
 /* CF94 case53140 applies adapter-provided WORD +0x10 HP and +0x12 MP.
    MEAT_DAMAGE_POLICY uses the complete 2001-row GI._D6 definition map instead of a code whitelist. */
 #include "../cards/gameitem_effect_data.inc"
-static int quickbar_gameitem_effect(unsigned code,unsigned*hp,unsigned*mp){if(gameitem_effect_lookup(code,hp,mp)){if(hp)*hp=couple_recovery_amount(*hp);if(mp)*mp=couple_recovery_amount(*mp);return 1;}if(code/1000000u==21u){if(hp)*hp=0u;if(mp)*mp=0u;return 1;}return 0;}
+static int quickbar_gameitem_effect(unsigned code,unsigned*hp,unsigned*mp){if(gameitem_effect_lookup(code,hp,mp)){if(hp)*hp=couple_recovery_amount(*hp);if(mp)*mp=couple_recovery_amount(*mp);return 1;}if(flight_item_find(code)){if(hp)*hp=0u;if(mp)*mp=0u;return 1;}return 0;}
 static int quickbar_apply_gameitem_effect(unsigned code,unsigned*hp,unsigned*mp){unsigned dh=0u,dm=0u;if(!hp||!mp||!quickbar_gameitem_effect(code,&dh,&dm))return 0;*hp+=dh;if(*hp>pet_crafting_pet_effective_hp_max())*hp=pet_crafting_pet_effective_hp_max();*mp+=dm;if(*mp>pet_crafting_pet_effective_mp_max())*mp=pet_crafting_pet_effective_mp_max();return 1;}
 
 static int quickbar_consume_slot_gameitem(unsigned slot,unsigned*code,unsigned*remaining,unsigned*dh,unsigned*dm){unsigned c,identity,victim;quickbar_load();quickbar_handles_load();if(slot>=QUICKBAR_SLOT_COUNT)return 0;c=g_quickbar_code[slot];identity=g_quickbar_instance[slot];if(!c||!identity||g_quickbar_handles[identity]!=c||!quickbar_gameitem_effect(c,dh,dm))return 0;/* QUICKBAR ruling: CF93 carries only the slot, so the slot's own identity is the one consumed. */
     if(!inventory_instances_instance_exchange(c,identity,0u,remaining))return 0;if(code)*code=c;return 1;}
 /* CF94 case53140 consumes actor_uid:u16 +8, slot:u16 +0A, code:u32 +0C,
    HP/MP deltas:u16 +10/+12 and two further u16 values +14/+16. */
-static void send_cf94_gameitem_result(SOCKET c,int ok,unsigned code,unsigned slot,unsigned dh,unsigned dm){char p[4096];unsigned actor_uid=multiplayer_current_uid();mkpkt(p,0xCF94,24,1);stable_resource_put16(p,8,actor_uid);stable_resource_put16(p,0x0A,slot);stable_put32(p,0x0C,ok?code:0u);stable_resource_put16(p,0x10,ok?dh:0u);stable_resource_put16(p,0x12,ok?dm:0u);stable_resource_put16(p,0x14,0u);stable_resource_put16(p,0x16,0u);sendbuf(c,p,24);printf("  S0xCF94 ITEM_EFFECTS success=%d actor_uid=%u code=%u domain=%u slot=%u hp_delta=%u mp_delta=%u exact-code=%u len=24 t=%lds\n",ok,actor_uid,code,code/1000000u,slot,dh,dm,(unsigned)(ok&&code/1000000u==21u),sec());fflush(0);}
+static void send_cf94_gameitem_result(SOCKET c,int ok,unsigned code,unsigned slot,unsigned dh,unsigned dm){
+    char p[4096];unsigned actor_uid=multiplayer_current_uid();mkpkt(p,0xCF94,24,1);
+    stable_resource_put16(p,8,actor_uid);stable_resource_put16(p,0x0A,slot);stable_put32(p,0x0C,ok?code:0u);
+    stable_resource_put16(p,0x10,ok?dh:0u);stable_resource_put16(p,0x12,ok?dm:0u);stable_resource_put16(p,0x14,0u);stable_resource_put16(p,0x16,0u);
+    sendbuf(c,p,24);
+    if(ok&&flight_item_find(code))multiplayer_broadcast_raw(0xCF94,(const unsigned char*)p,24);
+    printf("  S0xCF94 ITEM_EFFECTS success=%d actor_uid=%u code=%u domain=%u slot=%u hp_delta=%u mp_delta=%u exact-code=%u len=24 t=%lds\n",ok,actor_uid,code,code/1000000u,slot,dh,dm,(unsigned)(ok&&code/1000000u==21u),sec());fflush(0);
+}
 /* A shared item never consumes the partner's inventory or starts flight-item
    effects. Both actor deltas use the consuming actor's resolved recovery. */
 static void quickbar_share_couple_gameitem(SOCKET c,unsigned code,unsigned slot,unsigned dh,unsigned dm){

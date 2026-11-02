@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 474,
+  "count": 476,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -9,16 +9,16 @@
   ],
   "build_outputs": {
     "adapter/nanaimo_adapter.exe": {
-      "size": 25783296,
-      "sha256": "4248A8C9E4EB82EB4046885B49BD2EAFF2BE6EABF7EF8B27EB416B2EB0BB27FC"
+      "size": 25787392,
+      "sha256": "7BC51B89B49DD6FAF29CD75AE56C2D1942AF3533464E3F97AB9D1B2AB0BD925C"
     },
     "adapter/nanaimo_adapter_testports.exe": {
-      "size": 25783296,
-      "sha256": "6D5FB79CE934A6D6B157BB2232F70AA215837F92CABECAC8963070C8F8675F3D"
+      "size": 25787392,
+      "sha256": "72A1F13E36CE75AE018067DC9C9C166326024CECB0AAAD58788670928C7A3975"
     },
     "adapter/nanaimo_gameplay_bridge.exe": {
-      "size": 25878016,
-      "sha256": "F4B407EBA0201183BBDF536AEA464B4949783F27D12E007F8F2D76E3466A60FD"
+      "size": 25882112,
+      "sha256": "638B14796772F25223B2ED0560AFB68C8E717B1DE049D17BF0A023FD8BF4EA39"
     }
   },
   "files": [
@@ -384,8 +384,8 @@
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
-      "size": 1055944,
-      "sha256": "CE4368CC688C1AE315EC912C2CE10A000CB56C909F646D269005A393415DAA53"
+      "size": 1056441,
+      "sha256": "07EC86F1401C26B70B1DC5FA785027D905BC7908EDC820B4FD02D92193C18F99"
     },
     {
       "path": "managed-host/Resources/client-startup.json.gz",
@@ -1219,8 +1219,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
-      "size": 107637,
-      "sha256": "7C98A89A63EA4CC90B7FBA6026D6B52676F8147D38DD785FCE4EAF00794677A1"
+      "size": 108120,
+      "sha256": "136BD68D54FCFA790030FDBA144FB49CDD84D0C9FF78610508EDD92F9ECFA075"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeonConsumables.cs",
@@ -1239,8 +1239,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeInventory.cs",
-      "size": 6976,
-      "sha256": "5D0286460473A61CD664DA8A8E39091F14B34324AD046F7CCD112A29A2FB9DA2"
+      "size": 6915,
+      "sha256": "062A88C452F6449E12DC6B6C42F85E1BD537E5991AC4312DEB262CB5488CD2BB"
     },
     {
       "path": "managed/Services/NetworkAdapterService.NativeMentorship.cs",
@@ -1274,8 +1274,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.PetLifetime.cs",
-      "size": 9747,
-      "sha256": "F8F9749DC845D911006B25053C379F046954A306F409F080CC817C86003644BF"
+      "size": 9739,
+      "sha256": "6F6EF390AB73F7DD9E0167886BA47A233DFC04534572426F7AE44BE45162AB78"
     },
     {
       "path": "managed/Services/NetworkAdapterService.PetMaterials.cs",
@@ -1743,9 +1743,14 @@
       "sha256": "32634877E9DAAA877F8A96A6D3B9A6BF7AA18948F7874903DAA497D31129F149"
     },
     {
+      "path": "release/components/flight_items/flightitem_data.inc",
+      "size": 3766,
+      "sha256": "CD213C2603633CA3172DD98810D742AF0353486117BFE6AFBD2B1D3B460969DB"
+    },
+    {
       "path": "release/components/flight_items/flightitem_runtime.inc",
-      "size": 4327,
-      "sha256": "C84BB7F78DEF8FAEEAC327C7DCDAEB3577BC584F7311A274954384057367696F"
+      "size": 6408,
+      "sha256": "82078AB9CD9A19A97210E92E8E3853CE3F3026767ECD5A13AFEE4494F9593B12"
     },
     {
       "path": "release/components/flight_items/protocol_overrides.inc",
@@ -1759,8 +1764,8 @@
     },
     {
       "path": "release/components/game_session/gs_runtime.inc",
-      "size": 156584,
-      "sha256": "B90BC649B68FC562CE51CFBBD0B7313351FD9417A5694D0818155767A8B1B0A6"
+      "size": 159125,
+      "sha256": "15D9CB44427389079E2FD91A9ECBCE16A56C7872EF338A819E5A727551B5EA44"
     },
     {
       "path": "release/components/game_session/managed_bridge.inc",
@@ -1924,8 +1929,8 @@
     },
     {
       "path": "release/components/protocol/protocol_state_sync_base.inc",
-      "size": 11715,
-      "sha256": "0967C97796FA7BB58764E8621F77702B0D35CE89DFE453BF45D28B0CE5628BAB"
+      "size": 12095,
+      "sha256": "DD92731B0403C4BB4DF15F24E733B312BF2FC1E63E26A84F789703F7928CB8FA"
     },
     {
       "path": "release/components/protocol_extensions/protocol_overrides.inc",
@@ -1934,8 +1939,8 @@
     },
     {
       "path": "release/components/quickbar/quickbar_runtime.inc",
-      "size": 26164,
-      "sha256": "680EEC28BC2EBF68C90A7D8DB06229FA66F9D5E75193678DB3DCA8F47846C6FE"
+      "size": 26290,
+      "sha256": "4B216DE3DCEB30B93B4D9581B00C02997B759BEB8321F2FC406017D4DDD0463C"
     },
     {
       "path": "release/components/settlement/battle_score_runtime.inc",
@@ -2196,6 +2201,11 @@
       "path": "scripts/generate_cn_card_drops.py",
       "size": 9274,
       "sha256": "08ADEFC7D2A58BE9194E6AE14E202193575FEAA7F3422176029681545003A45E"
+    },
+    {
+      "path": "scripts/generate_flight_item_catalog.py",
+      "size": 1592,
+      "sha256": "8EE885CBAEE112EFA1CEAFFD748097D44F9C171D1930DA998E17E1A73E2B425A"
     },
     {
       "path": "scripts/generate_inventory_card_catalog.py",

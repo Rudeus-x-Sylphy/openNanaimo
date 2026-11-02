@@ -1730,6 +1730,14 @@ public sealed partial class NetworkAdapterService
         return true;
     }
 
+    internal static bool IsNativeActorRefreshFrame(byte[] frame)
+        => frame.Length is 0x74 or 0x78
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(4)) == frame.Length
+            && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6)) == 0xCF72
+            && (frame.Length == 0x74
+                || (BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(0x74)) == 0x31544956
+                    && BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(0x64)) == 0));
+
     internal static bool PatchNativeRevivalCountFrame(byte[] frame, CharacterRecord? owner)
     {
         if (owner is null || frame.Length < 8
@@ -1737,7 +1745,7 @@ public sealed partial class NetworkAdapterService
             return false;
         var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2));
         var countOffset = opcode == 0xCF71 && frame.Length == 0xB8 ? 0xA8
-            : opcode == 0xCF72 && frame.Length == 0x74 ? 0x73 : -1;
+            : IsNativeActorRefreshFrame(frame) ? 0x73 : -1;
         if (countOffset < 0)
             return false;
         var uidOffset = opcode == 0xCF71 ? 0x1A : 8;
@@ -1753,7 +1761,7 @@ public sealed partial class NetworkAdapterService
         if (frame.Length < 8) return null;
         var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6));
         var offset = opcode == 0xCF71 && frame.Length == 184 ? 0x1A
-            : opcode == 0xCF72 && frame.Length == 116 ? 8 : -1;
+            : IsNativeActorRefreshFrame(frame) ? 8 : -1;
         if (offset < 0) return null;
         var uid = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(offset));
         if (viewer.Character is { } local && GetSceneEntityId(local) == uid) return viewer;
@@ -1769,7 +1777,7 @@ public sealed partial class NetworkAdapterService
             return null;
         var opcode = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(6, 2));
         var uidOffset = opcode == 0xCF71 && frame.Length == 0xB8 ? 0x1A
-            : opcode == 0xCF72 && frame.Length == 0x74 ? 8 : -1;
+            : IsNativeActorRefreshFrame(frame) ? 8 : -1;
         if (uidOffset < 0)
             return null;
         var uid = BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(uidOffset, 2));

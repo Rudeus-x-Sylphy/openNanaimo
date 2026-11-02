@@ -59,7 +59,8 @@ int main(int argc,char**argv){
  for(i=0;i<count;i++){
   if(sockets[i]==100){
    if(local==0)CHECK(word(frames[i],6)==0xD035&&sizes[i]==24);
-   else {CHECK(local==1&&word(frames[i],6)==0xCF72&&sizes[i]==116);
+   else {CHECK(local==1&&word(frames[i],6)==0xCF72&&sizes[i]==120);
+    CHECK(!memcmp(frames[i]+116,"VIT1",4));
     CHECK(word(frames[i],8)==33&&word(frames[i],0x64)==0);
     CHECK(word(frames[i],0xA)==13684&&word(frames[i],0xE)==hp);
     CHECK(word(frames[i],0x10)==g_profile_mp_current);

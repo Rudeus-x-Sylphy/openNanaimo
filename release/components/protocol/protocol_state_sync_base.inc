@@ -34,6 +34,8 @@ enum native_cf72_phase { NATIVE_CF72_PROFILE=0, NATIVE_CF72_CONTINUATION=1, NATI
 static unsigned native_cf72_phase_for_socket(SOCKET c);
 static unsigned native_cf72_rebuild_required(SOCKET c,unsigned actor_uid,unsigned pet_stage,unsigned pet_stage_cap,unsigned phase);
 static unsigned native_actor_revival_count(unsigned actor_uid);
+static unsigned native_cf72_resource_only(SOCKET c,unsigned actor_uid,const unsigned char *frame,unsigned phase);
+static void native_cf72_note_item_use(SOCKET c,unsigned actor_uid);
 
 #if TEAMPLAY_FEATURE_DYNAMIC_ROOM_CF72
 /* Static case53106 at 0x006F594E looks up the existing room actor by WORD+0x08.
@@ -41,7 +43,7 @@ static unsigned native_actor_revival_count(unsigned actor_uid);
    still consumed with apply=0. BYTE+0x66 is PetLevel, not a P carrier.  Unlike the retired UID1
    experiment, this refresh targets the dynamic UID that CF71 just created. */
 static void send_cf72_dynamic_actor_refresh_phase(SOCKET c,unsigned actor_uid,unsigned phase){
-    char p[4096];unsigned i,hm,hc,mm,mc,apply,qb[6]={0,0,0,0,0,0};
+    char p[4096];unsigned i,hm,hc,mm,mc,apply,length=0x74,qb[6]={0,0,0,0,0,0};
     unsigned pet_stage=g_stable_pet_age_a,pet_stage_cap=g_stable_pet_age_b;
     /* CF72 +0x66/+0x67 select the pet model stage/cap.  Combat Power is
        maintained by the D035 attack-mode lifecycle and must not be projected
@@ -68,14 +70,17 @@ static void send_cf72_dynamic_actor_refresh_phase(SOCKET c,unsigned actor_uid,un
     stable_resource_put16(p,0x56,0u);
 #endif
     stable_put32(p,0x58,0u);stable_put32(p,0x5C,0u);stable_put32(p,0x60,0u);stable_resource_put16(p,0x64,apply);p[0x66]=(char)pet_stage;p[0x67]=(char)pet_stage_cap;stable_put32(p,0x68,0u);stable_put32(p,0x6C,native_pet_durability_current());p[0x72]=1;p[0x73]=(char)native_actor_revival_count(actor_uid);
-    sendbuf(c,p,0x74);
+    if(native_cf72_resource_only(c,actor_uid,(const unsigned char*)p,phase)){
+        length=0x78;stable_resource_put16(p,4,length);stable_put32(p,0x74,0x31544956u);
+    }
+    sendbuf(c,p,length);
 #if TEAMPLAY_FEATURE_QUICKBAR_BATTLE_UNLOCK
     printf("  [QUICKBAR_BATTLE_GATE] CF72 actor=%u local=%u gate=%u\n",actor_uid,multiplayer_current_uid(),(unsigned)((unsigned char)p[0x56]|((unsigned char)p[0x57]<<8)));fflush(0);
 #endif
 #if TEAMPLAY_FEATURE_ROOM_ACTOR_BASE_GENDER
-    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetStage=%u/%u effect=%u base_gender=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,apply,STABLE_PET,pet_stage,pet_stage_cap,g_effect_equipped,g_stable_gender&1u,hc,hm,mc,mm,sec());
+    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetStage=%u/%u effect=%u base_gender=%u hp=%u/%u mp=%u/%u len=%u t=%lds\n",actor_uid,apply,STABLE_PET,pet_stage,pet_stage_cap,g_effect_equipped,g_stable_gender&1u,hc,hm,mc,mm,length,sec());
 #else
-    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetStage=%u/%u effect=%u hp=%u/%u mp=%u/%u len=116 t=%lds\n",actor_uid,apply,STABLE_PET,pet_stage,pet_stage_cap,g_effect_equipped,hc,hm,mc,mm,sec());
+    printf("  S0xCF72 PET_CRAFTING actor=%u apply=%u pet=%u PetStage=%u/%u effect=%u hp=%u/%u mp=%u/%u len=%u t=%lds\n",actor_uid,apply,STABLE_PET,pet_stage,pet_stage_cap,g_effect_equipped,hc,hm,mc,mm,length,sec());
 #endif
     fflush(0);
 }

@@ -332,6 +332,7 @@ _fusion_documents = json.loads((ROOT / 'manifest/document_fusion.json').read_tex
 REPOSITORY_FILES += list(_fusion_documents['validation']['current_documents'])
 REPOSITORY_FILES += [
     'README.md', 'resource-packs/README.md',
+    'scripts/generate_flight_item_catalog.py', 'scripts/test_flight_item_effects.py',
     'scripts/export_patch.py', 'scripts/refresh_patch_manifest.py', 'scripts/test_export_patch.py',
     'scripts/package_korean_resource_kit.py', 'scripts/test_package_korean_resource_kit.py',
     'scripts/test_pet_localization_levels.py',

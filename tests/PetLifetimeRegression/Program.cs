@@ -165,10 +165,12 @@ Check(await Call<bool>("ObserveNativePetMapAsync", session, map, 10L, Cancellati
     && PetProgression.GetState((await Load())!, code).Durability == 48, "authorized continuation has a distinct lifespan receipt");
 Check(!await Call<bool>("ObserveNativePetMapAsync", session, map, 9L, CancellationToken.None), "old worker epoch cannot publish or debit");
 var actor = (await Load())!;
-foreach (var pair in new[] { (Opcode: (ushort)0xCF71, Length: 184, Offset: 0x58, Uid: 0x1A), (Opcode: (ushort)0xCF72, Length: 116, Offset: 0x6C, Uid: 8) })
+foreach (var pair in new[] { (Opcode: (ushort)0xCF71, Length: 184, Offset: 0x58, Uid: 0x1A), (Opcode: (ushort)0xCF72, Length: 116, Offset: 0x6C, Uid: 8), (Opcode: (ushort)0xCF72, Length: 120, Offset: 0x6C, Uid: 8) })
 {
     var frame = NativeDungeonClient.Frame(pair.Opcode, new byte[pair.Length - 8]);
     BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(pair.Uid), checked((ushort)id));
+    if (pair.Length == 120)
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(116), 0x31544956);
     Check(NetworkAdapterService.PatchNativePetDurabilityFrame(frame, actor)
         && BinaryPrimitives.ReadInt32LittleEndian(frame.AsSpan(pair.Offset)) == 48,
         $"{pair.Opcode:X4} carries instance lifespan, not pet code or 100");

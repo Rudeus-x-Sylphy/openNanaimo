@@ -99,6 +99,9 @@ SETTLEMENT_MEMBER_TOWN_SITES = (
 QUICKBAR_REFRESH_CAVE_VA = 0x006E3100
 QUICKBAR_REFRESH_CAVE_SPAN = 64
 QUICKBAR_REFRESH_CALLS = (0x006F5B1E, 0x006F5B68)
+QUICKBAR_RESOURCE_CAVE_VA = 0x006E3140
+QUICKBAR_RESOURCE_CAVE_SPAN = 64
+QUICKBAR_RESOURCE_TAG = b'VIT1'
 # Exact previously published unconditional wrapper, accepted only for migration.
 QUICKBAR_REFRESH_LEGACY = bytes.fromhex(
     '558BEC51FF751CFF7518FF7514FF7510FF750CFF7508E8359EFFFF508B4DFC'
@@ -122,11 +125,35 @@ def quickbar_refresh_sites():
     code += bytes.fromhex('588BE55DC21800')
     assert len(code) <= QUICKBAR_REFRESH_CAVE_SPAN
     code = bytes(code).ljust(QUICKBAR_REFRESH_CAVE_SPAN, b'\xCC')
+    # The receiving controller owns the current update at EBP-0xE34.
+    guard = bytearray(bytes.fromhex('8B85CCF1FFFF85C0'))
+    jumps = []
+    def fallback(opcode):
+        jumps.append(len(guard) + 1)
+        guard.extend(bytes((opcode, 0)))
+    fallback(0x74)
+    guard += bytes.fromhex('6683780478')
+    fallback(0x75)
+    guard += bytes.fromhex('6681780672CF')
+    fallback(0x75)
+    guard += bytes.fromhex('817874') + QUICKBAR_RESOURCE_TAG
+    fallback(0x75)
+    guard += bytes.fromhex('6683786400')
+    fallback(0x75)
+    guard += bytes.fromhex('8BC1C21800')
+    end = len(guard)
+    for offset in jumps:
+        guard[offset] = end - offset - 1
+    guard += relative(0xE9, QUICKBAR_RESOURCE_CAVE_VA + len(guard), QUICKBAR_REFRESH_CAVE_VA)
+    assert len(guard) <= QUICKBAR_RESOURCE_CAVE_SPAN
     return [('quickbar_refresh_layout', QUICKBAR_REFRESH_CAVE_VA,
-             b'\xCC' * QUICKBAR_REFRESH_CAVE_SPAN, code)] + [
+             b'\xCC' * QUICKBAR_REFRESH_CAVE_SPAN, code),
+            ('quickbar_resource_preserve', QUICKBAR_RESOURCE_CAVE_VA,
+             b'\xCC' * QUICKBAR_RESOURCE_CAVE_SPAN,
+             bytes(guard).ljust(QUICKBAR_RESOURCE_CAVE_SPAN, b'\xCC'))] + [
         (f'quickbar_refresh_call_{va:08x}', va,
          relative(0xE8, va, 0x0041F28A),
-         relative(0xE8, va, QUICKBAR_REFRESH_CAVE_VA))
+         relative(0xE8, va, QUICKBAR_RESOURCE_CAVE_VA))
         for va in QUICKBAR_REFRESH_CALLS]
 
 
@@ -134,6 +161,8 @@ def patch_quickbar_refresh(data: bytes) -> tuple[bytes, dict]:
     results = {}
     for name, va, old, new in quickbar_refresh_sites():
         known = (old, QUICKBAR_REFRESH_LEGACY) if va == QUICKBAR_REFRESH_CAVE_VA else (old,)
+        if va in QUICKBAR_REFRESH_CALLS:
+            known += (b'\xE8' + struct.pack('<i', QUICKBAR_REFRESH_CAVE_VA - va - 5),)
         data, results[name] = _migrate_site(data, va, new, known, name,
             'the actor quickbar refresh layout differs')
     return data, _migration_report('patch_quickbar_refresh', **results)

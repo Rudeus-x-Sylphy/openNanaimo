@@ -193,7 +193,7 @@ class UserOwnedNativeWindowTests(unittest.TestCase):
                          (0x66CD45, 2), (0x77744D, 6), (0x6E3240, 256),
                          (0x763E3E, 6), (0x7653E3, 2),  # member town input and display
                          (0x763E3A, 10), (0x7653DF, 6),  # member town control gates
-                         (0x6F5B1E, 5), (0x6F5B68, 5), (0x6E3100, 64),  # actor refresh layout
+                         (0x6F5B1E, 5), (0x6F5B68, 5), (0x6E3100, 64), (0x6E3140, 64),  # actor refresh
                          (0x74C19A, 3),  # score-derived EXP; full setter is guarded
                          (0x701BB4, 51),  # C60D local-actor level fallback
                          (0x40B37A, 5), (0x6E31E0, 96), (0x66CD71, 2),  # lucky meter and result entry

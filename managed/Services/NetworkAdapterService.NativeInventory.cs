@@ -97,7 +97,7 @@ public sealed partial class NetworkAdapterService
         var frames = new List<byte[]>();
         foreach (var response in refresh.Frames)
         {
-            if (response.Length == 0x74 && BinaryPrimitives.ReadUInt16LittleEndian(response.AsSpan(6)) == 0xCF72)
+            if (IsNativeActorRefreshFrame(response))
             {
                 PatchNativePetDurabilityFrame(response, character);
                 frames.Add(BuildNativeFrame(response, 0xCF72, response[8..], session));

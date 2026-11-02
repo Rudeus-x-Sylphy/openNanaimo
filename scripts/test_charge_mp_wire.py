@@ -80,6 +80,9 @@ class ChargeMpWireTests(unittest.TestCase):
                     state = bytearray(support.seed(4, 0))
                     for offset, value in ((20, 2000), (24, 2760), (28, 2760)):
                         struct.pack_into('<I', state, offset, value)
+                    for offset, value in ((224, 21000006), (1956, 21000006), (1960, 1),
+                                          (4004, 21000006), (4008, 0), (4012, 0)):
+                        struct.pack_into('<I', state, offset, value)
                     exchange(0xF100, state, 0xF102)
                     shot(20, 0, 1)
                     self.assertEqual(snapshot(), 2760)  # Before the battle barrier.
@@ -93,6 +96,14 @@ class ChargeMpWireTests(unittest.TestCase):
                     exchange(0xCFD3, b'', 0xCFD4)
                     exchange(0xCFD5, struct.pack('<I', 1), 0xCFD6)
                     exchange(0xCF7F, b'', 0xCF80)
+                    activated = time.monotonic()
+                    result = exchange(0xCF93, bytes(4), 0xCF94)
+                    self.assertEqual(struct.unpack_from('<I', result, 12)[0], 21000006)
+                    support.receive(connection, 0xC379)
+                    refresh = exchange(0xF108, b'', 0xCF72)
+                    self.assertEqual(len(refresh), 120)
+                    self.assertEqual(refresh[116:120], b'VIT1')
+                    self.assertEqual(struct.unpack_from('<H', refresh, 0x64)[0], 0)
                     shot(20, 2716, 100)
                     self.assertEqual(snapshot(), 2716)  # Charged miss, no target report.
                     shot(20, 2716, 100)
@@ -104,6 +115,14 @@ class ChargeMpWireTests(unittest.TestCase):
                     self.assertEqual(snapshot(), 2716)
                     shot(20, 2672, 120)
                     self.assertEqual(snapshot(), 2672)
+                    injury = bytearray(20)
+                    injury[0] = 10
+                    connection.sendall(support.frame(0xD00F, injury))
+                    self.assertEqual(snapshot(), 2672)
+                    time.sleep(max(0, activated + 5.1 - time.monotonic()))
+                    result = exchange(0xD00F, injury, 0xD010)
+                    self.assertEqual(len(result), 36)
+                    self.assertLess(struct.unpack_from('<H', result, 16)[0], 2000)
                     connection.sendall(support.frame(0xCF73))
                     shot(20, 0, 130)
                     self.assertEqual(snapshot(), 2672)  # Leaving disarms resource spending.

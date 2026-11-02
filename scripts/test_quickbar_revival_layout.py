@@ -43,6 +43,8 @@ class QuickbarRefreshTests(unittest.TestCase):
             known = [old.hex()]
             if va == compat.QUICKBAR_REFRESH_CAVE_VA:
                 known.append(compat.QUICKBAR_REFRESH_LEGACY.hex())
+            if va in compat.QUICKBAR_REFRESH_CALLS:
+                known.append((b'\xE8' + struct.pack('<i', compat.QUICKBAR_REFRESH_CAVE_VA-va-5)).hex())
             self.assertEqual(row['known'], known)
 
     def test_legacy_wrapper_migrates_without_touching_other_callers(self):
@@ -71,6 +73,75 @@ class QuickbarRefreshTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, '0.6'):
             self._execute_refresh_matrix(use_legacy=True)
 
+    def test_resource_updates_preserve_active_effects(self):
+        data = CLIENT.read_bytes()
+        pe = pefile.PE(data=data)
+        for length, tag, apply, opcode in (
+                (120, b'VIT1', 0, 0xCF72), (116, b'VIT1', 0, 0xCF72),
+                (120, b'NONE', 0, 0xCF72), (120, b'VIT1', 1, 0xCF72),
+                (119, b'VIT1', 0, 0xCF72), (120, b'VIT1', 0, 0xCF71)):
+            with self.subTest(length=length, tag=tag, apply=apply, opcode=opcode):
+                m = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_32)
+                base = pe.OPTIONAL_HEADER.ImageBase
+                m.mem_map(base, (pe.OPTIONAL_HEADER.SizeOfImage+4095)&~4095)
+                m.mem_write(base, pe.get_memory_mapped_image())
+                for _, va, _, new in compat.quickbar_refresh_sites():
+                    m.mem_write(va, new)
+                m.mem_map(0, 4096)
+                m.mem_map(0x2000000, 0x500000)
+                actor, manager = 0x2010000, 0x2040000
+                packet, ebp, stack, stop = 0x2200000, 0x2228000, 0x23F0000, 0x2400000
+                def put(address, value):
+                    m.mem_write(address, struct.pack('<I', value))
+                def get(address):
+                    return struct.unpack('<I', m.mem_read(address, 4))[0]
+                put(0xD72CE4, 1)
+                put(0xD72CE8, manager)
+                put(manager+0x10F0, 4)
+                put(actor+0x7F7C, 0x2050000)
+                put(actor+0x7BB4, 3)
+                put(ebp-0xE34, packet)
+                m.mem_write(packet+4, struct.pack('<HH', length, opcode))
+                m.mem_write(packet+0x64, struct.pack('<H', apply))
+                m.mem_write(packet+0x74, tag)
+                flags = [actor+0x7DD8+i*32 for i in range(6)]
+                flags += [actor+0x7EB8+i*32 for i in range(5)]
+                for address in flags:
+                    put(address, 1)
+                    put(address+4, 1)
+                calls = []
+                def callback(machine, address, size, unused):
+                    if address == stop:
+                        machine.emu_stop()
+                    if address == 0x6DCF50:
+                        calls.append(address)
+                    cleanup = {0x415CE4: 0, 0x413B0B: 0, 0xB479CC: 0, 0x41E2B8: 4}
+                    if address in cleanup:
+                        esp = machine.reg_read(x86.UC_X86_REG_ESP)
+                        machine.reg_write(x86.UC_X86_REG_EAX, 0)
+                        machine.reg_write(x86.UC_X86_REG_EIP, get(esp))
+                        machine.reg_write(x86.UC_X86_REG_ESP, esp+4+cleanup[address])
+                m.hook_add(uc.UC_HOOK_CODE, callback)
+                for call in compat.QUICKBAR_REFRESH_CALLS:
+                    for address in flags:
+                        put(address, 1)
+                        put(address+4, 1)
+                    put(stack, stop)
+                    for offset in range(4, 28, 4):
+                        put(stack+offset, 0)
+                    m.reg_write(x86.UC_X86_REG_ESP, stack)
+                    m.reg_write(x86.UC_X86_REG_EBP, ebp)
+                    m.reg_write(x86.UC_X86_REG_ECX, actor)
+                    target = call+5+struct.unpack('<i', m.mem_read(call+1, 4))[0]
+                    m.emu_start(target, stop+1, count=10000)
+                    preserve = length == 120 and tag == b'VIT1' and apply == 0 and opcode == 0xCF72
+                    self.assertEqual([get(a+4) for a in flags], [int(preserve)]*11)
+                    self.assertEqual(get(actor+0x7F7C), 0x2050000)
+                    self.assertEqual(get(actor+0x7BB4), 3)
+                    self.assertEqual(m.reg_read(x86.UC_X86_REG_ESP), stack+28)
+                    self.assertEqual(m.reg_read(x86.UC_X86_REG_EBP), ebp)
+                self.assertEqual(bool(calls), not preserve)
+
     def test_prebattle_regression_detects_legacy_even_in_compact_mode(self):
         with self.assertRaisesRegex(AssertionError, '0.6'):
             self._execute_refresh_matrix(use_legacy=True, phase=0, modes=(0,))
@@ -86,6 +157,8 @@ class QuickbarRefreshTests(unittest.TestCase):
         machine.mem_write(base, image)
         for _, va, old, new in compat.quickbar_refresh_sites():
             known = (old, new, compat.QUICKBAR_REFRESH_LEGACY) if va == compat.QUICKBAR_REFRESH_CAVE_VA else (old, new)
+            if va in compat.QUICKBAR_REFRESH_CALLS:
+                known += (b'\xE8' + struct.pack('<i', compat.QUICKBAR_REFRESH_CAVE_VA-va-5),)
             self.assertIn(pe.get_data(va-base, len(old)), known)
             machine.mem_write(va, compat.QUICKBAR_REFRESH_LEGACY
                 if use_legacy and va == compat.QUICKBAR_REFRESH_CAVE_VA else new)
@@ -135,7 +208,9 @@ class QuickbarRefreshTests(unittest.TestCase):
                         codes = [22000001+i if call == compat.QUICKBAR_REFRESH_CALLS[0] else 0 for i in range(6)]
                         for i, code in enumerate(codes): put(stack+4+i*4, code)
                         machine.reg_write(x86.UC_X86_REG_ESP, stack)
-                        machine.reg_write(x86.UC_X86_REG_EBP, 0x22222222)
+                        put(0x2228000-0xE34, 0x2200000)
+                        machine.mem_write(0x2200004, struct.pack('<H', 116))
+                        machine.reg_write(x86.UC_X86_REG_EBP, 0x2228000)
                         machine.reg_write(x86.UC_X86_REG_ECX, actor)
                         for register in (x86.UC_X86_REG_EBX, x86.UC_X86_REG_ESI, x86.UC_X86_REG_EDI):
                             machine.reg_write(register, 0x13579BDF)
@@ -144,7 +219,7 @@ class QuickbarRefreshTests(unittest.TestCase):
                         machine.emu_start(target, sentinel+1, count=10000)
                         self.assertEqual(machine.reg_read(x86.UC_X86_REG_EIP), sentinel)
                         self.assertEqual(machine.reg_read(x86.UC_X86_REG_ESP), stack+28)
-                        self.assertEqual(machine.reg_read(x86.UC_X86_REG_EBP), 0x22222222)
+                        self.assertEqual(machine.reg_read(x86.UC_X86_REG_EBP), 0x2228000)
                         self.assertEqual(machine.reg_read(x86.UC_X86_REG_EAX), results[-1])
                         self.assertEqual(get(0), 0)
                         for register in (x86.UC_X86_REG_EBX, x86.UC_X86_REG_ESI, x86.UC_X86_REG_EDI):

@@ -153,6 +153,8 @@ def collect(root=ROOT):
             if not path.is_file(): raise ValueError('missing wardrobe input: ' + rel)
             seen.add(path.resolve())
     complete_build = root / 'scripts/build_complete_adapter.ps1'
+    if (root / 'release/components/flight_items/flightitem_data.inc').resolve() in seen:
+        seen.add((root / 'scripts/generate_flight_item_catalog.py').resolve())
     if (root / 'release/components/multiplayer/special_encounters.inc').resolve() in seen:
         for rel in ('scripts/normalize_couple_monster_catalog.py', 'scripts/test_special_encounters.py'):
             seen.add((root / rel).resolve())

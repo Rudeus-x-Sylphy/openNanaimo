@@ -6,7 +6,7 @@
   "official_baseline_verified": false,
   "binary_delta_implemented": false,
   "complete_playable_game": false,
-  "source_closure_count_observed": 474,
+  "source_closure_count_observed": 476,
   "default_layers": [
     "runtime",
     "source",
@@ -1350,16 +1350,16 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5ba0\u7269/\u53d1\u5c04\u5668/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 645,
-      "sha256": "b3b6e60df58d8b2781f9e834e9365e588ebd581b643cb3ada50209e3b2484840",
+      "size": 628,
+      "sha256": "8b7d292be2126b438998a9a08d97798eb8a8247f0ab82d5efda1a402e06ff213",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/\u4e1a\u52a1/\u5ba0\u7269/\u53d1\u5c04\u5668/\u84c4\u529b\u53d1\u5c04\u4e0eMP\u8d26\u672c.md",
       "layer": "knowledge",
-      "size": 5926,
-      "sha256": "c323768770d937b10135e111e3ae064c6e2dd871f525488682d44fee776b65d5",
+      "size": 6266,
+      "sha256": "4da3cd5b5ad90e0557e29122b1a921ae9517502dc0ace136eb3557d60c37ad2f",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1518,8 +1518,8 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5e93\u5b58/\u5feb\u6377\u680f/\u5e03\u5c40\u5237\u65b0\u4e0e\u4fdd\u62a4.md",
       "layer": "knowledge",
-      "size": 6062,
-      "sha256": "a3ffe7a16a63d6dd4efc8a55497b6d2c263810ebaf7ce35849ad6fa01653229d",
+      "size": 6325,
+      "sha256": "98411ea6ce0cff1ea7c88fcd40fac8dffa1889e64f3e0f4c558468cb375cf1d9",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1566,8 +1566,8 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5e93\u5b58/\u6d88\u8017\u54c1/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 1016,
-      "sha256": "4f4980a6a26479caf38bcdc39d9a21a3d53644820d9b0589a0cd5d60fc1d0579",
+      "size": 1037,
+      "sha256": "00495b114155389eae455ec79e04031737820bd779eeff42a748a24df081a9af",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -1582,16 +1582,16 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5e93\u5b58/\u6d88\u8017\u54c1/\u98de\u884c\u9053\u5177.md",
       "layer": "knowledge",
-      "size": 3578,
-      "sha256": "72db7bcd38e4b5dce6a8ca12dffef2797293d1d4e5baaf74967be41a7871c78a",
+      "size": 4873,
+      "sha256": "3e7fccab1c7bd8eecc2e85544373fbbc22698a5ff2e0ef14b7217d30866ca533",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/\u4e1a\u52a1/\u5e93\u5b58/\u6d88\u8017\u54c1/\u98df\u7269\u4e0e\u901a\u7528\u4f7f\u7528.md",
       "layer": "knowledge",
-      "size": 9651,
-      "sha256": "dfe1095724b588d1cbb630817b0d39c788b7008786eb5bf1207db6950b61cb86",
+      "size": 9636,
+      "sha256": "4c4179584e7b7b6b86a92c3d693c9a0ac315b85cba8803ba16baedc4456446cf",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2126,8 +2126,8 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u89d2\u8272/\u6280\u80fd/\u6fc0\u6d3b\u6e05\u7406\u4e0e\u78b0\u649e.md",
       "layer": "knowledge",
-      "size": 9034,
-      "sha256": "626b980e5ecc4c3967799f319f713b593f66a0a9dd8c9392fea5fe655db9fd26",
+      "size": 9205,
+      "sha256": "025c3000b573bcf7391712f302cef909b951200cc0fc96abd25b03c4956b7f1b",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2734,8 +2734,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u5ba2\u6237\u7aef\u517c\u5bb9/\u590d\u6d3b\u5feb\u6377\u680f\u5e03\u5c40.md",
       "layer": "knowledge",
-      "size": 4530,
-      "sha256": "16cdfb3bf85da012aedacbb7c421921313212706210be11cb8f884182a00b5d0",
+      "size": 5330,
+      "sha256": "ef8e4f7d77755d39aaa28bd32bc63ef2a6eec65b69c2ad9feb63f8bba2c3d0e2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2806,8 +2806,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u5ba2\u6237\u7aef\u517c\u5bb9/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 3280,
-      "sha256": "f6b00973acf6035035203755b48e3b0029d374d037ec2bdf8d84b53b58dce237",
+      "size": 3295,
+      "sha256": "37d691ab28cc535427b6c5acc6fef456e84bd2e5d5866e7078ed98db3028a41e",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2878,8 +2878,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u6784\u5efa\u53d1\u5e03/\u53d1\u5e03\u8eab\u4efd\u4e0e\u6e05\u5355.md",
       "layer": "knowledge",
-      "size": 7083,
-      "sha256": "dabae113b63d777e84f705ebbbb856b1524981f3ae5b2df117c6d650f8a5a7f2",
+      "size": 7461,
+      "sha256": "e85ee425141251500a360d6cc2a521a4a4711578306e420070287d6284db6229",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3046,8 +3046,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u5730\u5bab\u4e0e\u6210\u957f\u9a8c\u6536.md",
       "layer": "knowledge",
-      "size": 29184,
-      "sha256": "3d1c03e40d79570bc19db5e402659873861c4005fb5a3ecd8a72f4d3587ec008",
+      "size": 30436,
+      "sha256": "b3e0fe1ef866d68bf53e2bb04f7e30d3e65bd655fa789a4392ffcda9375037c4",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3318,8 +3318,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 2708,
-      "sha256": "32b8d22375c7a7023fa135fe9118e9aa7d381d0d4b37efb5118de9c8e05c071c",
+      "size": 2891,
+      "sha256": "01ceaf2d628c357ddce89c211a9988447428a9c52a0d2d5d538eeddfecffdd69",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3344,6 +3344,14 @@
       "layer": "knowledge",
       "size": 12019,
       "sha256": "b0bfffebf75b9c42b6098bacf794ec592b1a62462a2528bda8ba41e1b2fe77d2",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u98de\u884c\u6548\u679c\u4e0e\u8d44\u6e90\u5237\u65b0\u5b89\u88c5.md",
+      "layer": "knowledge",
+      "size": 5359,
+      "sha256": "5dce0c4dc79e57fe1133b1712312ae3f83ccd82bcd52519889969d8e581bf30a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3534,8 +3542,8 @@
     {
       "path": "knowledge/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 15635,
-      "sha256": "73b8006e95ee49938c23dd5df424d5ecfd169b945a2579b5c9f78e5a33a4d19f",
+      "size": 15872,
+      "sha256": "85da0904b4915a2a789fbdffd4a4d2302c462ab473959c6d6272cc6b861c5419",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -4094,8 +4102,8 @@
     {
       "path": "managed-host/Resources/client-compatibility.json",
       "layer": "source",
-      "size": 1055944,
-      "sha256": "ce4368cc688c1ae315ec912c2ce10a000cb56c909f646d269005a393415daa53",
+      "size": 1056441,
+      "sha256": "07ec86f1401c26b70b1dc5fa785027d905bc7908edc820b4fd02d92193c18f99",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5430,8 +5438,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.NativeDungeon.cs",
       "layer": "source",
-      "size": 107637,
-      "sha256": "7c98a89a63ea4cc90b7fba6026d6b52676f8147d38dd785fce4eaf00794677a1",
+      "size": 108120,
+      "sha256": "136bd68d54fcfa790030fdba144fb49cdd84d0c9ff78610508edd92f9ecfa075",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5462,8 +5470,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.NativeInventory.cs",
       "layer": "source",
-      "size": 6976,
-      "sha256": "5d0286460473a61cd664da8a8e39091f14b34324ad046f7ccd112a29a2fb9da2",
+      "size": 6915,
+      "sha256": "062a88c452f6449e12dc6b6c42f85e1bd537e5991ac4312deb262cb5488cd2bb",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5518,8 +5526,8 @@
     {
       "path": "managed/Services/NetworkAdapterService.PetLifetime.cs",
       "layer": "source",
-      "size": 9747,
-      "sha256": "f8f9749dc845d911006b25053c379f046954a306f409f080cc817c86003644bf",
+      "size": 9739,
+      "sha256": "6f6ef390ab73f7dd9e0167886ba47a233dfc04534572426f7ae44be45162ab78",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5878,8 +5886,8 @@
     {
       "path": "manifest/source_closure.json",
       "layer": "source",
-      "size": 85676,
-      "sha256": "72347cbf8394cc7a158e8ee11b57d69b8d1c440c981d003fe263b75d12e3a3f2",
+      "size": 86034,
+      "sha256": "014bfd5c9e535feb7f67bf394c1c11aa0c45f45e6179cf4d69ff2ff8dedf19c6",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -6388,10 +6396,18 @@
       "approval": "required_per_file"
     },
     {
+      "path": "release/components/flight_items/flightitem_data.inc",
+      "layer": "source",
+      "size": 3766,
+      "sha256": "cd213c2603633ca3172dd98810d742af0353486117bfe6afbd2b1d3b460969db",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
       "path": "release/components/flight_items/flightitem_runtime.inc",
       "layer": "source",
-      "size": 4327,
-      "sha256": "c84bb7f78def8faeeac327c7dcdaeb3577bc584f7311a274954384057367696f",
+      "size": 6408,
+      "sha256": "82078ab9cd9a19a97210e92e8e3853ce3f3026767ecd5a13afee4494f9593b12",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -6414,8 +6430,8 @@
     {
       "path": "release/components/game_session/gs_runtime.inc",
       "layer": "source",
-      "size": 156584,
-      "sha256": "b90bc649b68fc562ce51cfbbd0b7313351fd9417a5694d0818155767a8b1b0a6",
+      "size": 159125,
+      "sha256": "15d9cb44427389079e2fd91a9ecbce16a56c7872ef338a819e5a727551b5ea44",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -6678,8 +6694,8 @@
     {
       "path": "release/components/protocol/protocol_state_sync_base.inc",
       "layer": "source",
-      "size": 11715,
-      "sha256": "0967c97796fa7bb58764e8621f77702b0d35ce89dfe453bf45d28b0ce5628bab",
+      "size": 12095,
+      "sha256": "dd92731b0403c4bb4df15f24e733b312bf2fc1e63e26a84f789703f7928cb8fa",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -6694,8 +6710,8 @@
     {
       "path": "release/components/quickbar/quickbar_runtime.inc",
       "layer": "source",
-      "size": 26164,
-      "sha256": "680eec28bc2ebf68c90a7d8db06229fa66f9d5e75193678db3dca8f47846c6fe",
+      "size": 26290,
+      "sha256": "4b216de3dceb30b93b4d9581b00c02997b759beb8321f2fc406017d4ddd0463c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7262,8 +7278,8 @@
     {
       "path": "scripts/export_patch.py",
       "layer": "source",
-      "size": 34403,
-      "sha256": "af794fca6149b91adbbd41c8aa8ed9e6cbf4568f923017aa68106c8805fd1e43",
+      "size": 34458,
+      "sha256": "97089c705d70573097a866bd44004bb02a193add91422da6447338358e771ebd",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7328,6 +7344,14 @@
       "layer": "source",
       "size": 9274,
       "sha256": "08adefc7d2a58be9194e6ae14e202193575feaa7f3422176029681545003a45e",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/generate_flight_item_catalog.py",
+      "layer": "source",
+      "size": 1592,
+      "sha256": "8ee885cbaee112efa1ceaffd748097d44f9c171d1930da998e17e1a73e2b425a",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7542,8 +7566,8 @@
     {
       "path": "scripts/prepare_client_compatibility.py",
       "layer": "source",
-      "size": 86390,
-      "sha256": "5e3f4d71c69fba3281f655d74d5babd5db5eb7870a0b6ec105a10ea1f3f8f5fa",
+      "size": 87618,
+      "sha256": "f876c37dc4679ece37eb574f5034ec27e9b21ee833bb2c018158f4d310ce8d5c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7686,8 +7710,8 @@
     {
       "path": "scripts/refresh_manifest.py",
       "layer": "source",
-      "size": 25071,
-      "sha256": "d5a16f7f36910b99df642fa59995e77187c249d0a2ad38dbc7fc32a8cc4ca69c",
+      "size": 25158,
+      "sha256": "8ad22e56f186379ac945fb8e1170ac4b35601e730eb17e8795f905aba7d12a0f",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7702,8 +7726,8 @@
     {
       "path": "scripts/refresh_source_manifest.py",
       "layer": "source",
-      "size": 13468,
-      "sha256": "87e120a77ed6a06df1aeb42413db6e04deb67fb80dda781f03c2c3be42905b26",
+      "size": 13636,
+      "sha256": "c735036fd008bb7f429c034fcf0948709869c5f2af5fec59b71e8551c61bda63",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8030,8 +8054,8 @@
     {
       "path": "scripts/test_charge_mp_wire.py",
       "layer": "source",
-      "size": 5993,
-      "sha256": "c3c921b3972bbd47e53ae794e8d4d8696fbc5bdb6fb6abd769d2ab4baba45b44",
+      "size": 7231,
+      "sha256": "6792af04763546613e903b8ef6d2cd6155cd5663255a81e875d1955fac29e4c2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8046,8 +8070,8 @@
     {
       "path": "scripts/test_client_binary_migrations.py",
       "layer": "source",
-      "size": 20668,
-      "sha256": "8718cfcbac3da3e6e22ecb957e20ece8d805ddbb9310c43ed802391140027fa4",
+      "size": 20677,
+      "sha256": "2826d328bfc2cc126790d449559221a529689f2799d4881dd133c3b46bb17a0f",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8264,6 +8288,14 @@
       "layer": "source",
       "size": 3990,
       "sha256": "8844f1f8029304fba15d41d37be7d741bf42e89164f201149cea260dcf5baf5d",
+      "provenance": "project_or_derived_material_requires_review",
+      "approval": "required_per_file"
+    },
+    {
+      "path": "scripts/test_flight_item_effects.py",
+      "layer": "source",
+      "size": 8304,
+      "sha256": "e58e6b351a45ec414aa450e9bf116c243a78eb03e1654c4822e799bc78cc4c61",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8502,8 +8534,8 @@
     {
       "path": "scripts/test_native_cf72_lifecycle.py",
       "layer": "source",
-      "size": 13802,
-      "sha256": "3cce087fa44336676d7a1f189063eadc529c7ad2690b68324332b8cf4958bc11",
+      "size": 13838,
+      "sha256": "9434a351ce297c8c7376b68bf4a0c4c02f9cf55a8d056d3f17e948b52bd7a7d8",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8590,8 +8622,8 @@
     {
       "path": "scripts/test_pickup_resource_sync.py",
       "layer": "source",
-      "size": 5813,
-      "sha256": "7f1d8a66471e8ea45895583dd634ce9ac9b157ca94b12a4936473e4a2e3e29f2",
+      "size": 5857,
+      "sha256": "31e677c5ad9ba25827e12f7db5c36d7b9fb3bbc33d2af6df2ad13684991e2d97",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8638,8 +8670,8 @@
     {
       "path": "scripts/test_quickbar_revival_layout.py",
       "layer": "source",
-      "size": 9098,
-      "sha256": "9050c1d13b10fc7a5f186028f5c25362d24122a0b0f680bbd39775f478e15cec",
+      "size": 13344,
+      "sha256": "404eef43bda23a35dcac7feb0ad8fba5c6579fe4f4c238a2e55c7eda8fe11da7",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8966,8 +8998,8 @@
     {
       "path": "tests/PetLifetimeRegression/Program.cs",
       "layer": "source",
-      "size": 12295,
-      "sha256": "be9c503d866e234eb104e25230dd3ddae0efe983d7c90fa54d5415e118b98c02",
+      "size": 12465,
+      "sha256": "5152ec128f56926c6b1ee630617c5d666017035e7515da072d32fe45b305dab2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

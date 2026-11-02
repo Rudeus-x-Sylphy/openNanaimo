@@ -7055,10 +7055,21 @@
     },
     {
       "group": "dungeon-state",
-      "va": 7297822,
-      "target": "e8ddd5feff",
+      "va": 7221568,
+      "target": "8b85ccf1ffff85c074246683780478751d6681780672cf751581787456495431750c668378640075058bc1c21800e98dffffffcccccccccccccccccccccccccc",
       "known": [
-        "e86797d2ff"
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "operation": "quickbar_resource_preserve",
+      "known_hashes": []
+    },
+    {
+      "group": "dungeon-state",
+      "va": 7297822,
+      "target": "e81dd6feff",
+      "known": [
+        "e86797d2ff",
+        "e8ddd5feff"
       ],
       "operation": "quickbar_refresh_call_006f5b1e",
       "known_hashes": []
@@ -7066,9 +7077,10 @@
     {
       "group": "dungeon-state",
       "va": 7297896,
-      "target": "e893d5feff",
+      "target": "e8d3d5feff",
       "known": [
-        "e81d97d2ff"
+        "e81d97d2ff",
+        "e893d5feff"
       ],
       "operation": "quickbar_refresh_call_006f5b68",
       "known_hashes": []
