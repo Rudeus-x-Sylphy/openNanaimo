@@ -28,12 +28,137 @@ def recipe():
     return json.loads(gzip.decompress(RESOURCE.read_bytes()))
 
 
+@unittest.skipIf(unicorn is None, 'Unicorn is required for isolated x86 execution')
+class CallerChecks(unittest.TestCase):
+    # Channel-entry contract after the SEH prologue. Helper models check
+    # arguments, ordering and stack cleanup.
+    LOGIN_VA = 0x4DFACB
+    LOGIN = bytes.fromhex(
+        '898dc4feffff8b45080fb6480883f9640f85e20100008b55080fb7420a50'
+        '8b0dd469d800e850bcf2ff8b4d080fb6510983fa01750d6a018b0dd469d800'
+        'e8458ff3ff6a028b8dc4feffffe8ea50f3ff8b0d8036d700e866f1f3ff'
+        '8945f08b45080fb7480a894dec8b0d8036d700e88fa1f3ff8985c0feffff'
+        '8b0d8036d700e8b0b6f2ff508b55ec528b45f0508b8dc0feffff8b118b8d'
+        'c0feffff8b02ffd08b0d8036d700e858a1f3ff8985bcfeffff8b8dbcfeffff'
+        '8b118b8dbcfeffff8b4204ffd08b8dc4feffff83b98c000000ff0f8414010000')
+
+    def sites(self):
+        data = json.loads((ROOT / 'managed-host/Resources/client-compatibility.json').read_text('utf-8'))
+        return {s['operation']: s for s in data['sites'] if s['group'] == 'legacy-startup'}
+
+    def login(self, patched, status=100, flag=0, session=57):
+        from unicorn import x86_const as x86
+        uc = unicorn.Uc(unicorn.UC_ARCH_X86, unicorn.UC_MODE_32)
+        for address, size in ((0x400000, 0x100000), (0xD60000, 0x30000),
+                              (0x200000, 0x10000), (0x300000, 0x10000)):
+            uc.mem_map(address, size)
+        uc.mem_write(self.LOGIN_VA, self.LOGIN)
+        uc.mem_write(0x4DFCB4, bytes.fromhex('8b8dc4feffffc6413005'))
+        if patched:
+            uc.mem_write(0x4DFB1A, bytes.fromhex(self.sites()['legacy_startup_channel_login']['target']))
+        frame, controller, ebp, esp = 0x300000, 0x301000, 0x208000, 0x207E00
+        uc.mem_write(frame, bytes(8) + struct.pack('<BBH', status, flag, session))
+        uc.mem_write(controller + 0x8C, struct.pack('<I', 0xFFFFFFFF))
+        uc.mem_write(ebp + 8, struct.pack('<I', frame))
+        uc.reg_write(x86.UC_X86_REG_ECX, controller)
+        uc.reg_write(x86.UC_X86_REG_EBP, ebp)
+        uc.reg_write(x86.UC_X86_REG_ESP, esp)
+        calls = []
+
+        def hook(machine, address, size, data):
+            if address == 0x4DFCC3:
+                machine.emu_stop()
+            if address not in (0x40B744, 0x418A52, 0x414C04, 0x41EC8B, 0x419CCC, 0x40B1FE):
+                return
+            stack = machine.reg_read(x86.UC_X86_REG_ESP)
+            ret, arg = struct.unpack('<II', machine.mem_read(stack, 8))
+            clean = 4 if address in (0x40B744, 0x418A52, 0x414C04) else 0
+            calls.append((address, arg if clean else None))
+            machine.reg_write(x86.UC_X86_REG_EAX, 0)
+            machine.reg_write(x86.UC_X86_REG_ESP, stack + 4 + clean)
+            machine.reg_write(x86.UC_X86_REG_EIP, ret)
+
+        uc.hook_add(unicorn.UC_HOOK_CODE, hook)
+        error = None
+        try:
+            uc.emu_start(self.LOGIN_VA, 0x4DFCBE, count=300)
+        except unicorn.UcError as exc:
+            error = exc
+        return uc, calls, error, esp, controller
+
+    def test_legacy_login_requires_component_compatibility(self):
+        from unicorn import x86_const as x86
+        uc, _, error, _, _ = self.login(False)
+        self.assertIsNotNone(error)
+        self.assertEqual(uc.reg_read(x86.UC_X86_REG_EIP), 0x4DFB5D)
+
+    def test_login_keeps_session_guide_flag_stack_and_next_state(self):
+        from unicorn import x86_const as x86
+        for flag in (0, 1):
+            for session in (0, 57, 0xABCD):
+                with self.subTest(flag=flag, session=session):
+                    uc, calls, error, esp, controller = self.login(True, flag=flag, session=session)
+                    self.assertIsNone(error)
+                    expected = [(0x40B744, session)]
+                    if flag:
+                        expected.append((0x418A52, 1))
+                    expected.append((0x414C04, 2))
+                    self.assertEqual(calls, expected)
+                    self.assertEqual(bytes(uc.mem_read(controller + 0x30, 1)), b'\x05')
+                    self.assertEqual(uc.reg_read(x86.UC_X86_REG_ESP), esp)
+
+    def test_failed_login_does_not_enter_success_path(self):
+        for status in (0, 1, 99, 255):
+            uc, calls, error, _, controller = self.login(True, status=status)
+            self.assertIsNone(error)
+            self.assertEqual(calls, [])
+            self.assertEqual(bytes(uc.mem_read(controller + 0x30, 1)), b'\x00')
+
+    def test_both_receive_routes_keep_object_release_and_ret4(self):
+        from unicorn import x86_const as x86
+        for va, thunk, target, name in (
+            (0x4D6610, 0x4073FB, 0xA6B0A0, 'a'), (0x4DAC50, 0x4073FB, 0xA6B0A0, 'a'),
+            (0x4D6670, 0x40DCBA, 0xA6B120, 'b'), (0x4DACB0, 0x40DCBA, 0xA6B120, 'b')):
+            with self.subTest(callback=hex(va)):
+                uc = unicorn.Uc(unicorn.UC_ARCH_X86, unicorn.UC_MODE_32)
+                for address, size in ((0x400000, 0x100000), (0xA60000, 0x80000),
+                                      (0xD70000, 0x20000), (0x200000, 0x10000)):
+                    uc.mem_map(address, size)
+                code = bytearray.fromhex('558bec83ec08894df88b4508508b0d8036d700e8000000008945fc8b0d78ced800e8000000008b45fc8be55dc20400')
+                struct.pack_into('<i', code, 20, thunk - (va + 24))
+                struct.pack_into('<i', code, 34, 0xADA730 - (va + 38))
+                uc.mem_write(va, bytes(code))
+                uc.mem_write(thunk, b'\xe9' + struct.pack('<i', target - thunk - 5))
+                uc.mem_write(target, bytes.fromhex(self.sites()['legacy_startup_object_receive_' + name]['target']))
+                uc.mem_write(0x208000, struct.pack('<II', 0x490000, 0x12345678))
+                uc.reg_write(x86.UC_X86_REG_ESP, 0x208000)
+                uc.reg_write(x86.UC_X86_REG_EBP, 0x13579)
+                released = []
+
+                def release(machine, address, size, data):
+                    if address == 0xADA730:
+                        stack = machine.reg_read(x86.UC_X86_REG_ESP)
+                        ret, = struct.unpack('<I', machine.mem_read(stack, 4))
+                        released.append(address)
+                        machine.reg_write(x86.UC_X86_REG_EAX, 0)
+                        machine.reg_write(x86.UC_X86_REG_ESP, stack + 4)
+                        machine.reg_write(x86.UC_X86_REG_EIP, ret)
+
+                uc.hook_add(unicorn.UC_HOOK_CODE, release)
+                uc.emu_start(va, 0x490000, count=100)
+                self.assertEqual(released, [0xADA730])
+                self.assertEqual(uc.reg_read(x86.UC_X86_REG_EAX), 1)
+                self.assertEqual(uc.reg_read(x86.UC_X86_REG_ESP), 0x208008)
+                self.assertEqual(uc.reg_read(x86.UC_X86_REG_EBP), 0x13579)
+
+
 class ResourceChecks(unittest.TestCase):
     @unittest.skipIf(unicorn is None, 'Unicorn is required for isolated x86 execution')
     def test_interface_stubs_preserve_registers_and_stack_contracts(self):
         from unicorn import x86_const as x86
         embedded = json.loads((ROOT / 'managed-host/Resources/client-compatibility.json').read_text('utf-8'))
-        sites = [s for s in embedded['sites'] if s['group'] == 'legacy-startup'][2:]
+        sites = [s for s in embedded['sites'] if s['group'] == 'legacy-startup'
+                 and s['operation'] != 'legacy_startup_channel_login'][2:]
         for site in sites:
             with self.subTest(operation=site['operation']):
                 machine = unicorn.Uc(unicorn.UC_ARCH_X86, unicorn.UC_MODE_32)
@@ -57,8 +182,8 @@ class ResourceChecks(unittest.TestCase):
                 for register in preserved:
                     self.assertEqual(machine.reg_read(register), 0x13579)
                 suffix = site['operation'].removeprefix('legacy_startup_')
-                clean = 4 if suffix in ('interface_setup_a', 'interface_setup_b', 'interface_native_mode') else 12 if suffix == 'interface_fallback' else 0
-                expected = 0x300000 if suffix == 'interface_create' else 2 if suffix == 'interface_native_mode' else 0xFFFFFFFF if suffix == 'interface_fallback' else 0
+                clean = 4 if suffix in ('interface_setup_a', 'interface_setup_b', 'interface_native_mode', 'object_receive_a', 'object_receive_b') else 12 if suffix == 'interface_fallback' else 0
+                expected = 0x300000 if suffix == 'interface_create' else 2 if suffix == 'interface_native_mode' else 0xFFFFFFFF if suffix == 'interface_fallback' else 1 if suffix in ('object_receive_a', 'object_receive_b') else 0
                 self.assertEqual(machine.reg_read(x86.UC_X86_REG_EAX), expected)
                 self.assertEqual(machine.reg_read(x86.UC_X86_REG_ESP), 0x200804 + clean)
                 if suffix == 'interface_create':
@@ -92,14 +217,16 @@ class ResourceChecks(unittest.TestCase):
         embedded = json.loads((ROOT / 'managed-host/Resources/client-compatibility.json').read_text('utf-8'))
         self.assertEqual(embedded, generator.generate())
         sites = [s for s in embedded['sites'] if s['group'] == 'legacy-startup']
-        self.assertEqual(len(sites), 10)
+        self.assertEqual(len(sites), 13)
         self.assertEqual([(s['va'], s['target']) for s in sites[:2]],
                          [(0xB50B95, 'e846948eff'), (0xB4ED97, '9090')])
         gui = (ROOT / 'gui_launcher/nanaimo_launcher.ps1').read_text('utf-8-sig')
         start = gui.index('function Ensure-ClientCompatibility')
         body = gui[start:gui.index('function Send-LocalLaunchRegistration', start)]
         for name in ('--legacy-startup', 'legacy_startup_layout',
-                     'legacy_startup_native_main', 'legacy_startup_float_initialization'):
+                     'legacy_startup_native_main', 'legacy_startup_float_initialization',
+                     'legacy_startup_channel_login', 'legacy_startup_object_receive_a',
+                     'legacy_startup_object_receive_b'):
             self.assertIn(name, body)
 
     def test_resource_is_explicit_export_and_build_input(self):
@@ -188,6 +315,41 @@ class NativeToolChecks(unittest.TestCase):
                 self.assertNotEqual(failed.returncode, 0)
                 self.assertEqual(target.read_bytes(), bytes(image))
                 self.assertFalse(output.exists())
+
+    def test_channel_caller_migration_and_conflicts_are_transactional(self):
+        import prepare_client_compatibility as mapping
+        embedded = json.loads((ROOT / 'managed-host/Resources/client-compatibility.json').read_text('utf-8'))
+        sites = [s for s in embedded['sites'] if s['operation'] in (
+            'legacy_startup_channel_login', 'legacy_startup_object_receive_a',
+            'legacy_startup_object_receive_b')]
+        with tempfile.TemporaryDirectory() as temp:
+            root, output = Path(temp) / 'client', Path(temp) / 'overlay'
+            root.mkdir()
+            target = root / 'game.exe'
+            target.write_bytes(Path(ORIGINAL).read_bytes())
+            result = self.call(root, output, '--apply')
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            corrected = target.read_bytes()
+            for known_index in (0, 1):
+                image = bytearray(corrected)
+                for site in sites:
+                    value = bytes.fromhex(site['known'][min(known_index, len(site['known']) - 1)])
+                    offset = mapping._va_offset(image, site['va'], len(value))
+                    image[offset:offset + len(value)] = value
+                target.write_bytes(image)
+                result = self.call(root, output, '--overwrite', '--apply')
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(target.read_bytes(), corrected)
+            for index, site in enumerate(sites):
+                with self.subTest(operation=site['operation']):
+                    image = bytearray(corrected)
+                    image[mapping._va_offset(image, site['va'], 1)] ^= 1
+                    target.write_bytes(image)
+                    refused = Path(temp) / ('refused-' + str(index))
+                    result = self.call(root, refused, '--apply')
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(target.read_bytes(), image)
+                    self.assertFalse(refused.exists())
 
 
 if __name__ == '__main__':

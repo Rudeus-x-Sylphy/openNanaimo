@@ -31,6 +31,15 @@ def generate():
         ('interface_native_mode',0xA6AD80,'558becb830100000','b802000000c20400'),
         ('interface_fallback',0xA6AED0,'558bec81ec70','83c8ffc20c00')):
         site(b'',va,bytes.fromhex(old),bytes.fromhex(new),'legacy_startup_'+name,'')
+    # Preserve native login flow and callback calling conventions.
+    site(b'',0x4DFB1A,bytes.fromhex('8b0d8036d700'),bytes.fromhex('e96e00000090'),
+         'legacy_startup_channel_login','')
+    rows[-1]['known'].append('e96e00000000')
+    for name,va,old in (
+        ('object_receive_a',0xA6B0A0,'558bec81ec1c0c0000'),
+        ('object_receive_b',0xA6B120,'558bec81ec1c040000')):
+        site(b'',va,bytes.fromhex(old),bytes.fromhex('b801000000c2040090'),
+             'legacy_startup_'+name,'')
     try:
         p._patch_site=site;p._migrate_site=migration
         groups=[('character-creation',[p.patch_character_creation,p.patch_referral_dialog]),('furniture',[p.patch_furniture_getter]),('native-state',[p.restore_native_state]),('dungeon-state',[p.patch_dungeon_state_controls]),('inventory-gift-display',[p.patch_inventory_gift_display]),('land-purchase',[p.patch_land_purchase]),('apartment-recommendation',[p.patch_apartment_recommendation]),('apartment-exterior',[p.patch_apartment_room_resource_guard,p.patch_apartment_exterior,p.patch_apartment_exterior_layout,p.patch_apartment_decoration])]

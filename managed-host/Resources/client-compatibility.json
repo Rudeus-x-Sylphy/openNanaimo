@@ -6362,6 +6362,37 @@
       "known_hashes": []
     },
     {
+      "group": "legacy-startup",
+      "va": 5110554,
+      "target": "e96e00000090",
+      "known": [
+        "8b0d8036d700",
+        "e96e00000000"
+      ],
+      "operation": "legacy_startup_channel_login",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10924192,
+      "target": "b801000000c2040090",
+      "known": [
+        "558bec81ec1c0c0000"
+      ],
+      "operation": "legacy_startup_object_receive_a",
+      "known_hashes": []
+    },
+    {
+      "group": "legacy-startup",
+      "va": 10924320,
+      "target": "b801000000c2040090",
+      "known": [
+        "558bec81ec1c040000"
+      ],
+      "operation": "legacy_startup_object_receive_b",
+      "known_hashes": []
+    },
+    {
       "group": "character-creation",
       "va": 10910579,
       "target": "e96b000000",

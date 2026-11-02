@@ -134,8 +134,8 @@
     {
       "path": "gui_launcher/nanaimo_launcher.ps1",
       "layer": "runtime",
-      "size": 159553,
-      "sha256": "bfca096dbd0a19537876581ad4b9343f1574b79f91e778d30e77e2e9f44b1d45",
+      "size": 159652,
+      "sha256": "feef03dfb52f56cdfb58e0a73b2aae860c1ce6f0cfdb8be24e99d2b3553d331c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2806,8 +2806,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u5ba2\u6237\u7aef\u517c\u5bb9/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 3259,
-      "sha256": "88f0854c7e9ecb967136861df9083c943c4e8634a2628ea0254fecdbff9366ba",
+      "size": 3280,
+      "sha256": "f6b00973acf6035035203755b48e3b0029d374d037ec2bdf8d84b53b58dce237",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -2846,8 +2846,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u5ba2\u6237\u7aef\u517c\u5bb9/\u9648\u65e7\u7ec4\u4ef6\u542f\u52a8\u517c\u5bb9.md",
       "layer": "knowledge",
-      "size": 2758,
-      "sha256": "be5cb82517f03bb4ca2d941c0aea37f4f54f0e1c9d7b1dc4268347cd6c9f5b51",
+      "size": 2999,
+      "sha256": "10ac64e481c552973c338b8adf621b4a83eba8956fd91e9dd2dce2291497f9ec",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3054,8 +3054,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u5c42\u7ea7\u4e0e\u7248\u672c\u5f52\u5c5e.md",
       "layer": "knowledge",
-      "size": 20545,
-      "sha256": "9f5cc0524536c755c1490aef6d2f338f40f59eeed58917f76bb2ecceb3d4f856",
+      "size": 21251,
+      "sha256": "3c1d5b34bbfab729d624473cd1a0b05cc1c6b492226f990c6749a6640646f274",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3318,8 +3318,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 2693,
-      "sha256": "63c3b20abd3d9aa1d0148dd6d71fc893bef4b918cc88f0cd006489ce2520a928",
+      "size": 2708,
+      "sha256": "32b8d22375c7a7023fa135fe9118e9aa7d381d0d4b37efb5118de9c8e05c071c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3342,8 +3342,8 @@
     {
       "path": "knowledge/\u6307\u5357/\u5ba2\u6237\u7aef\u4e8c\u8fdb\u5236\u8865\u4e01/\u9648\u65e7\u7ec4\u4ef6\u517c\u5bb9\u5b89\u88c5\u4e0e\u6062\u590d.md",
       "layer": "knowledge",
-      "size": 7553,
-      "sha256": "e1f0de4a8b7cb069ea6f0f8156d255bb0e9e26e9b883dd7fbd68b2c23ff6ce6a",
+      "size": 12019,
+      "sha256": "b0bfffebf75b9c42b6098bacf794ec592b1a62462a2528bda8ba41e1b2fe77d2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3534,8 +3534,8 @@
     {
       "path": "knowledge/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 15373,
-      "sha256": "7507e91907ed12b6ff8318c44ab2de38e014b3c73900e8c463ff1a3146daca54",
+      "size": 15635,
+      "sha256": "73b8006e95ee49938c23dd5df424d5ecfd169b945a2579b5c9f78e5a33a4d19f",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -4094,8 +4094,8 @@
     {
       "path": "managed-host/Resources/client-compatibility.json",
       "layer": "source",
-      "size": 1055216,
-      "sha256": "23627f21f9c1a1e903c7388dcd4d4cc6bcfbe8ccd662a5affb7f6431ae279283",
+      "size": 1055944,
+      "sha256": "ce4368cc688c1ae315ec912c2ce10a000cb56c909f646d269005a393415daa53",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5879,7 +5879,7 @@
       "path": "manifest/source_closure.json",
       "layer": "source",
       "size": 85676,
-      "sha256": "83697752b50edf2aa35b3ae35bfb16990c241c2ca8b054809d79b29f32aa4b81",
+      "sha256": "72347cbf8394cc7a158e8ee11b57d69b8d1c440c981d003fe263b75d12e3a3f2",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7358,8 +7358,8 @@
     {
       "path": "scripts/generate_managed_compatibility_recipe.py",
       "layer": "source",
-      "size": 5262,
-      "sha256": "ff72e4127af1c64c5278cd97f28ae6bfb3a212c4ca0da3baa7c2a3846f1371d7",
+      "size": 5763,
+      "sha256": "974fef4dd1f1b5b3e1457bf70da08c643b32daf79f52c630fe6ec2069b6c04fe",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -8054,8 +8054,8 @@
     {
       "path": "scripts/test_client_startup.py",
       "layer": "source",
-      "size": 10689,
-      "sha256": "faaf9ee517335f56371a6bff2777eb6e92ebbec40dfe7f40ec926ed2ebf9fea8",
+      "size": 19810,
+      "sha256": "595d64277774d1f60ff24fcb184621d2999c32f8a2beb07f960b068a8e8cdb77",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

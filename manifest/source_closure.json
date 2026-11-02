@@ -384,8 +384,8 @@
     },
     {
       "path": "managed-host/Resources/client-compatibility.json",
-      "size": 1055216,
-      "sha256": "23627F21F9C1A1E903C7388DCD4D4CC6BCFBE8CCD662A5AFFB7F6431AE279283"
+      "size": 1055944,
+      "sha256": "CE4368CC688C1AE315EC912C2CE10A000CB56C909F646D269005A393415DAA53"
     },
     {
       "path": "managed-host/Resources/client-startup.json.gz",
