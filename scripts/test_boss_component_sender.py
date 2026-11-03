@@ -12,10 +12,10 @@ HARNESS = r'''
 #include "adapter/nanaimo_gameplay_bridge.c"
 #undef main
 #define CHECK(x) do { if(!(x)){printf("FAIL %d: %s\n",__LINE__,#x);return 1;} } while(0)
-static unsigned char frames[8][256];static unsigned sizes[8],count;
+static unsigned char frames[8][256];static unsigned sizes[8],recipients[8],count;
 static int __attribute__((stdcall)) capture(SOCKET c,const char*p,int n,int flags){
     if(n<0||n>256||count>=8)return -1;
-    memcpy(frames[count],p,n);sizes[count++]=(unsigned)n;return n;
+    memcpy(frames[count],p,n);recipients[count]=(unsigned)c;sizes[count++]=(unsigned)n;return n;
 }
 static DWORD __attribute__((stdcall)) clock_fixed(void){return 123400u;}
 static int scalar_retired;
@@ -86,6 +86,53 @@ static int gate_lifecycle(void){
     CHECK(!boss_hp_sync_is_gate_frame_profile(c));
     return 0;
 }
+static int fireball_scenery_lifecycle(void){
+    static const unsigned orders[6][3]={{0,2,4},{0,4,2},{2,0,4},{2,4,0},{4,0,2},{4,2,0}};
+    struct boss_hp_sync_context*c=multiplayer_shared_boss_context();struct boss_hp_sync_result r;
+    unsigned slot,contact_hit,order,scenery,fireballs,i,j,initial,epoch,paths=0;
+    g_multi_conn[1]=g_multi_conn[0];g_multi_conn[1].uid=2;g_multi_conn[1].socket=101;
+    g_multi_conn[1].join_order=2;g_multi_transport_alive[1]=1;
+    for(slot=0;slot<9;slot++)for(contact_hit=0;contact_hit<2;contact_hit++)for(order=0;order<6;order++){
+        boss_hp_sync_begin_game_domain(c,3u,0u,2u,0u,slot/3u,slot);scalar_retired=0;
+        scenery=slot<6u?0u:1u;fireballs=1u-scenery;initial=c->hp;epoch=c->battle_epoch;
+        CHECK(c->profile&&c->execution_core_count==3u&&c->child_max_hp[scenery]==0u);
+        for(i=0;i<13;i++){
+            CHECK(!gate_hit(scenery,i,0,&r));
+            CHECK(r.zero_hp_gate&&r.scripted_report_suppressed&&!r.component_first_terminal&&count==0);
+            CHECK(c->hp==initial&&!c->child_terminal_sent[scenery]);
+        }
+        for(i=0;i<3;i++){
+            CHECK(!gate_hit(fireballs,orders[order][i],contact_hit,&r));
+            CHECK(r.component_first_terminal&&r.final_terminal==(i==2u));
+            CHECK(count==(i==2u?4u:2u)&&!scalar_retired);
+            if(i==2u){
+                CHECK(r.execution_cleanup&&!r.executed&&!r.execution_residual_hp);
+                CHECK(boss_hp_sync_get16(frames[0],6)==0xD013&&boss_hp_sync_get16(frames[0],12)==fireballs);
+                CHECK(sizes[2]==64u&&boss_hp_sync_get32(frames[2],0x28)==0u);
+            }
+            for(j=0;j<count;j++){
+                CHECK(recipients[j]==100u+j%2u);
+                if(boss_hp_sync_get16(frames[j],6)==0xD013)CHECK(boss_hp_sync_get16(frames[j],12)==fireballs);
+                else CHECK(boss_hp_sync_get16(frames[j],6)==0xD012&&frames[j][0x19]==fireballs);
+            }
+            CHECK(boss_hp_sync_get16(frames[count-1],6)==0xD012&&frames[count-1][0x19]==fireballs);
+            CHECK(boss_hp_sync_get16(frames[count-1],0x1A)==orders[order][i]);
+            CHECK(!c->child_terminal_sent[scenery]);
+            for(j=0;j<c->component_count;j++){
+                const struct boss_component_boss_component*x=&boss_component_boss_components[c->component_def_index[j]];
+                if(x->child==scenery)CHECK(!c->component_terminal_sent[j]);
+            }
+            if(i<2u){CHECK(!gate_hit(scenery,i,0,&r));CHECK(count==0&&r.scripted_report_suppressed);}
+        }
+        CHECK(c->hp==0u&&c->cumulative_damage==initial&&c->final_terminal_seen);
+        boss_hp_sync_begin_game_domain(c,3u,0u,2u,0u,slot/3u,slot);
+        CHECK(c->battle_epoch==epoch+1u&&c->hp==initial&&!c->final_terminal_seen);
+        CHECK(!gate_hit(scenery,0,0,&r));CHECK(count==0&&r.scripted_report_suppressed);
+        paths++;
+    }
+    printf("FIREBALL_SCENERY_PASS slots=9 paths=%u hit_channels=2 scenery_rows=13 fireballs=3 members=2\n",paths);
+    return 0;
+}
 int main(void){
     struct boss_hp_sync_context*c=multiplayer_shared_boss_context();unsigned i;struct boss_hp_sync_result r;
     pSd=capture;pT=(void*)clock_fixed;g_account_name[0]=0;g_multi_current=0;
@@ -115,6 +162,7 @@ int main(void){
     }
     CHECK(!contact(1,0,2,1000000,1,0,1,0));
     CHECK(!gate_lifecycle());
+    CHECK(!fireball_scenery_lifecycle());
     return 0;
 }
 '''
@@ -130,6 +178,7 @@ class BossComponentSenderTests(unittest.TestCase):
             for command in ([str(TCC), "-I", str(ROOT), "-I", str(ROOT / "adapter"), "-I", str(ROOT / "release"), str(source), "-o", str(binary)], [str(binary)]):
                 result = subprocess.run(command, cwd=directory, capture_output=True, text=True, errors="replace", timeout=180)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            print(next(line for line in result.stdout.splitlines() if line.startswith("FIREBALL_SCENERY_PASS")))
 
 
 if __name__ == "__main__":

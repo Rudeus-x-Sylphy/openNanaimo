@@ -646,16 +646,16 @@
     {
       "path": "knowledge/\u4e1a\u52a1/\u5730\u5bab/BOSS/\u7d22\u5f15.md",
       "layer": "knowledge",
-      "size": 2308,
-      "sha256": "557ccf51b38aa847c2a0befdde0b44798b0e7e66c2a1b637afaf3660e6ec0262",
+      "size": 2335,
+      "sha256": "ee93b10f2ff8a561a639cf8352ff6fdaa9765a1362f0ea6182c41292dcbfc84c",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
     {
       "path": "knowledge/\u4e1a\u52a1/\u5730\u5bab/BOSS/\u7ec4\u4ef6\u4e0e\u96f6\u751f\u547d\u9644\u4ef6.md",
       "layer": "knowledge",
-      "size": 16326,
-      "sha256": "15ee971884890461562edc7abf00e34c298fa224b1261cf7050d443e0d67d4c4",
+      "size": 17076,
+      "sha256": "283c5e80fe72d9caa8d921e2f18e8883b965eec1bf4ca74240b2481d6e40fa8b",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -3046,8 +3046,8 @@
     {
       "path": "knowledge/\u5de5\u7a0b/\u9a8c\u8bc1\u72b6\u6001/\u5730\u5bab\u4e0e\u6210\u957f\u9a8c\u6536.md",
       "layer": "knowledge",
-      "size": 30436,
-      "sha256": "b3e0fe1ef866d68bf53e2bb04f7e30d3e65bd655fa789a4392ffcda9375037c4",
+      "size": 30728,
+      "sha256": "a62ce7139767151d6114f8d2bbdc70aa53781b45f4dda509ea87fa6b0aaa6484",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -5887,7 +5887,7 @@
       "path": "manifest/source_closure.json",
       "layer": "source",
       "size": 86034,
-      "sha256": "014bfd5c9e535feb7f67bf394c1c11aa0c45f45e6179cf4d69ff2ff8dedf19c6",
+      "sha256": "ada3bef090f9e1436930df17925b3dfbb1758460b3eb15e9a54a2a293b42d512",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -6974,8 +6974,8 @@
     {
       "path": "release/components/winter_boss/boss_hp_sync_runtime.inc",
       "layer": "source",
-      "size": 64055,
-      "sha256": "2800f30911fdb43fc98d196424e6a6c37ef2352c8bee3813e07b340ecfb0a17d",
+      "size": 64866,
+      "sha256": "9d1a9ed6e4efa2cbf49a4537f9409b72eecee1750622d51fd8184186a2da6d69",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },
@@ -7942,8 +7942,8 @@
     {
       "path": "scripts/test_boss_component_sender.py",
       "layer": "source",
-      "size": 8532,
-      "sha256": "744d1599cb5a6d31f72f2016286dbd4412296a5aea812864bb7ba9561393f1ee",
+      "size": 11733,
+      "sha256": "5af00eded61e58157c7f17a8b15a2aacba02ccc9cd0d81da206a4cfc70e88b19",
       "provenance": "project_or_derived_material_requires_review",
       "approval": "required_per_file"
     },

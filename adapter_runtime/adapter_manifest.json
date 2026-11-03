@@ -149,8 +149,8 @@
                   },
                   {
                       "name":  "nanaimo_gameplay_bridge.exe",
-                      "size":  25882112,
-                      "sha256":  "638B14796772F25223B2ED0560AFB68C8E717B1DE049D17BF0A023FD8BF4EA39"
+                      "size":  25882624,
+                      "sha256":  "03F563118C233D16AEFFC70B53A0DA440E308AF681AAB4CD7F469FC42809A6BD"
                   },
                   {
                       "name":  "netstandard.dll",

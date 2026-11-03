@@ -237,22 +237,33 @@ static int boss_hp_sync_load_execution_cores(struct boss_hp_sync_context*c,unsig
     }
     return c->execution_core_count&&(!p||found==p->core_count);
 }
+static int boss_hp_sync_is_fireball_machine_profile(const struct boss_hp_sync_context*c){
+    return c&&c->profile&&c->profile->hd==0u&&c->profile->episode==3u&&
+        c->profile->dungeon==2u&&c->profile->stage_index==0u&&c->mode_index==0u;
+}
+static int boss_hp_sync_preserve_fireball_scenery(const struct boss_hp_sync_context*c,const struct boss_component_boss_component*def){
+    return boss_hp_sync_is_fireball_machine_profile(c)&&def&&def->target_type==4u&&
+        !def->scaled_hp&&def->child==(c->profile->slot<6u?0u:1u);
+}
 /* Finishing the required core set clears residual durability, not damage.
-   The same request publishes zero recording and retires every remaining child. */
+   Authored persistent scenery stays outside component and child retirement. */
 static void boss_hp_sync_execute_if_complete(struct boss_hp_sync_context*c,struct boss_hp_sync_result*r){
     unsigned i,child,remaining,live=0u;if(!c||!r||!c->execution_core_count)return;
     for(i=0u;i<c->component_count;i++)if(c->component_hp[i])live++;
     if(c->hp){for(i=0u;i<c->component_count;i++)if(c->execution_core[i]&&c->component_hp[i])return;}
-    else if(!live)return;
+    else if(!live&&!boss_hp_sync_is_fireball_machine_profile(c))return;
     remaining=c->hp;c->hp=0u;c->mode_execution_residual_hp=remaining;r->execution_cleanup=1u;
     r->executed=remaining?1u:0u;r->execution_residual_hp=remaining;r->recording_damage+=remaining;r->hp=0u;
     for(i=0u;i<c->component_count;i++){
         const struct boss_component_boss_component*x=&boss_component_boss_components[c->component_def_index[i]];child=x->child;
+        if(boss_hp_sync_preserve_fireball_scenery(c,x))continue;
         if(!c->component_terminal_sent[i]&&!c->child_terminal_sent[child])r->execution_retire_mask[child>>5]|=1u<<(child&31u);
         c->component_hp[i]=0u;c->component_terminal_sent[i]=1u;
     }
     for(i=0u;i<c->component_count;i++){
-        child=boss_component_boss_components[c->component_def_index[i]].child;
+        const struct boss_component_boss_component*x=&boss_component_boss_components[c->component_def_index[i]];
+        if(boss_hp_sync_preserve_fireball_scenery(c,x))continue;
+        child=x->child;
         c->child_hp[child]=0u;c->child_terminal_sent[child]=1u;
     }
     r->component_hp=0u;r->child_hp=0u;
@@ -494,7 +505,7 @@ static int boss_hp_sync_apply_d011_attack(struct boss_hp_sync_context*c,const un
              retired objects. Their first D011 receives one D012 routed to
              the exact child/ordinal while the Boss recording HP is unchanged.
            Repeats are suppressed by the per-mode component ledger. */
-        if(def->target_type==4u&&c->child_max_hp[def->child]==0u&&!boss_hp_sync_defer_winter_body(c,def)&&!boss_hp_sync_defer_gate_frame(c,def)){
+        if(def->target_type==4u&&c->child_max_hp[def->child]==0u&&!boss_hp_sync_defer_winter_body(c,def)&&!boss_hp_sync_defer_gate_frame(c,def)&&!boss_hp_sync_preserve_fireball_scenery(c,def)){
             if(!c->component_terminal_sent[loaded_slot]){c->component_terminal_sent[loaded_slot]=1u;r->component_first_terminal=1u;}
             else{r->component_repeated_terminal=1u;r->scripted_report_suppressed=1u;}
         }else r->scripted_report_suppressed=1u;
