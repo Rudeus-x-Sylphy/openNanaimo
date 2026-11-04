@@ -414,6 +414,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         public byte TownId { get; set; }
         public byte TownPage { get; set; }
         public bool TownSceneActive { get; set; }
+        public SecretEntryAttempt? SecretEntry { get; set; }
         public bool NativeContinuationRosterRequested { get; set; }
         public bool NativeCoupleIdentityRetained { get; set; }
         public bool TownPetSceneCompletionPending { get; set; }
@@ -3766,7 +3767,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 ActivateNonCombatHealthRecovery(session, HealthRecoveryScene.Apartment);
                 QueueUserAutoHealing(session, session, "synchronize apartment HP/MP after C38D");
                 _log($"{channel}:{remote} apartment entered: mode={moveMode} owner={requestedOwner} character={apartmentOwner.Name} objects={apartmentPlacements.Count(item => item.InteriorType >= 2)}; returning complete C38E room state");
-                var roomEntry = BuildMiniRoomMovePayload(apartmentOwner, true, apartmentPlacements);
+                var roomEntry = BuildMiniRoomMovePayload(apartmentOwner, true, apartmentPlacements,
+                    session.ApartmentRecoveryParameters);
                 ApplyApartmentHouseState(roomEntry, apartmentOwner.Id == session.Character!.Id,
                     streetHouse, DateTimeOffset.UtcNow);
                 // C38E carries room counters separately from recommendation points:
@@ -5182,6 +5184,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
                 if (TryGetDungeonTransition(session, out var bridgeRoomId, out var bridgeAction))
                 {
+                    session.SecretEntry = null;
                     // Retail dungeon transitions unload the completed battle through
                     // the transient dungeon-entrance page. A room response sent beside
                     // C368 is consumed before that page finishes initializing, so
@@ -5346,28 +5349,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
                 return null;
 
             case 0xC5AA: // scene move request -> scene move answer
-                if (!session.OnlineTracked || session.Character is null)
-                {
-                    _log($"{channel}:{remote} 拒绝未建立世界会话的场景跳转请求");
-                    return null;
-                }
-                if (payload.Length != SceneTransitionRequestPayloadLength)
-                {
-                    _log($"{channel}:{remote} 场景跳转请求长度无效：期望 {SceneTransitionRequestPayloadLength}，实际 {payload.Length}；未响应且未修改场景状态");
-                    return null;
-                }
-
-                var sceneTransitionMode = BinaryPrimitives.ReadUInt32LittleEndian(payload);
-                var sceneTransitionAction = sceneTransitionMode switch
-                {
-                    1 => (ushort)20,
-                    10 => (ushort)11,
-                    _ => (ushort)0
-                };
-                var sceneTransitionPayload = new byte[SceneTransitionResponsePayloadLength];
-                BinaryPrimitives.WriteUInt16LittleEndian(sceneTransitionPayload, sceneTransitionAction);
-                _log($"{channel}:{remote} 场景跳转请求已处理：mode={sceneTransitionMode} action={sceneTransitionAction}；场景状态交由后续进入包更新");
-                return BuildNativeFrame(frame, 0xC5AB, sceneTransitionPayload, session);
+                return await HandleSecretEntryAsync(frame, payload, session, token);
 
             case 0xC5B0:
             case 0xC5B2:
@@ -11389,6 +11371,7 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
 
     private void LeaveTownScene(ConnectionSession session, string reason)
     {
+        session.SecretEntry = null;
         // Invalidate even an unfinished page: it may never have sent C36C.
         session.TownPetSceneCompletionPending = false;
         session.LastTownMovement = null;
@@ -19075,7 +19058,8 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
     private static byte[] BuildMiniRoomMovePayload(
         CharacterRecord? owner,
         bool success,
-        IReadOnlyList<ApartmentPlacementRecord>? placements = null)
+        IReadOnlyList<ApartmentPlacementRecord>? placements = null,
+        HealthRecoveryParameters? recoveryParameters = null)
     {
         // ANS_MOVE_MINIROOM is a fixed 112-byte frame. The client switches to
         // ROOM_STATE only for result 10, then consumes every field through the
@@ -19102,10 +19086,11 @@ public sealed partial class NetworkAdapterService : IAsyncDisposable
         // must not be reused for a local-member marker.
         payload[22] = checked((byte)ownerNameLength);
 
-        // Apartment entry coordinates are transient room coordinates and must
-        // not reuse or overwrite the character's persisted town position.
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(28, 2), 320);
-        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(30, 2), 240);
+        // The client stores frame+36/+38 as its apartment recovery cache. The
+        // actor's transient entry coordinates arrive separately through C38F.
+        var rates = recoveryParameters ?? HealthRecoveryPolicy.Apartment;
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(28, 2), checked((ushort)rates.HpStep));
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(30, 2), checked((ushort)rates.MpStep));
 
         // C38E applies the floor and wall before C392 requests the room's
         // ordinary furniture objects. Both descriptors use the same 12-byte

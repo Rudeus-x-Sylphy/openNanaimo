@@ -1,6 +1,6 @@
 {
   "channel": "release",
-  "count": 476,
+  "count": 479,
   "entrypoints": [
     "adapter/nanaimo_adapter.c",
     "adapter/nanaimo_adapter_testports.c",
@@ -44,8 +44,8 @@
     },
     {
       "path": "managed-host/ApartmentGameplayChecks.cs",
-      "size": 39728,
-      "sha256": "0C2E9339DD8F0DA391A3B9F24D01370524995FC41602989ECEB9A06A4391DC42"
+      "size": 39866,
+      "sha256": "9B71E671A0AE1FAA18B5C3A857F2C61C96D3B72C4C62C9499B9291215EED11D4"
     },
     {
       "path": "managed-host/ApartmentGuideLifecycleChecks.cs",
@@ -199,8 +199,8 @@
     },
     {
       "path": "managed-host/HealthRecoveryChecks.cs",
-      "size": 20742,
-      "sha256": "CC5F16200A335C37EFAAAA2B87B6795C1666B244262ADFBA93D61A059944031C"
+      "size": 23087,
+      "sha256": "2AD83CF3091FFE933E48EB7E3C6287014A32005FDD4DCFC9337F002E81ADE11D"
     },
     {
       "path": "managed-host/InventoryDiscardChecks.cs",
@@ -319,8 +319,8 @@
     },
     {
       "path": "managed-host/MigrationChecks.cs",
-      "size": 34068,
-      "sha256": "2F7E67ED75B36D9FA9A7AA663600C5805041B2B9DA1A4E8D8473897D94E5AE15"
+      "size": 34112,
+      "sha256": "538413FAE55131E17E34F71F29407F1E5CD4750143218E0114BFFDE35B40B4CC"
     },
     {
       "path": "managed-host/MonkVillageTravelChecks.cs",
@@ -364,8 +364,8 @@
     },
     {
       "path": "managed-host/Program.cs",
-      "size": 21182,
-      "sha256": "83869EBA3A6F329B6F181D3B8FE01AE23A1BC2FFBA9E265D23C8BB4431167A6B"
+      "size": 21305,
+      "sha256": "2D009328B2D7FCADAE1323181F9161F7285FE0D7E7F23D4641590D475E5B2CA3"
     },
     {
       "path": "managed-host/PureNewPlayerChecks.cs",
@@ -391,6 +391,11 @@
       "path": "managed-host/Resources/client-startup.json.gz",
       "size": 49152,
       "sha256": "C2B40C07269709A98517366DB796CB3CB87C8EB179E445146341C16E7AE53404"
+    },
+    {
+      "path": "managed-host/SecretEntryChecks.cs",
+      "size": 12959,
+      "sha256": "8B399F215BBD19FD73593137F1EC18D6F41CBE251C0840BEEE98B13C52518DF4"
     },
     {
       "path": "managed-host/ShopCurrencyPaginationChecks.cs",
@@ -888,6 +893,11 @@
       "sha256": "671BF58CC3A7DEF1E1217ACEB0F1C3DA063F38AAA74F30AEB576CF7677823228"
     },
     {
+      "path": "managed/Services/DatabaseService.SecretEntry.cs",
+      "size": 3583,
+      "sha256": "801F0D7CBE5194CB26D31E5195F6998B488029F884A178AF212D4A48A7E756F5"
+    },
+    {
       "path": "managed/Services/DatabaseService.SkillPointCards.cs",
       "size": 9822,
       "sha256": "63D2F8F652C402C04420C19EBCA3F191CC1F98435C4A077E9A6AC8AB10301D87"
@@ -1288,6 +1298,11 @@
       "sha256": "8F1F498E001DC4ED62E1C01679157E8F96E3BF0E934939A5D3661E0AFA9C9581"
     },
     {
+      "path": "managed/Services/NetworkAdapterService.SecretEntry.cs",
+      "size": 3015,
+      "sha256": "28493E62D7E44B9055B962248EEC2C8BCEF43698AAB48CA17ED9204F250137FE"
+    },
+    {
       "path": "managed/Services/NetworkAdapterService.SettlementBonuses.cs",
       "size": 976,
       "sha256": "0808BB7FE551D59713C65CCAE1A8A2E2CA2EB818785376B769293E1837FA1290"
@@ -1309,8 +1324,8 @@
     },
     {
       "path": "managed/Services/NetworkAdapterService.cs",
-      "size": 1025519,
-      "sha256": "7F858839971E1557F3B750D61E3C2D91F78F2639C6640127C2DA049F0AAFEA9C"
+      "size": 1024636,
+      "sha256": "E979CCB3780FC8BEF820DF90A36501325FF35E9A5112AAD5301A75A810F38862"
     },
     {
       "path": "managed/Services/PasswordHasher.cs",

@@ -91,6 +91,8 @@ internal static class ApartmentGameplayChecks
             {
                 var own = One(await Send(service, who, 0xC38D, Move(1)), 0xC38E);
                 Check(own.Length == 112 && own[8] == 10 && own[9] == 20, "own apartment permits decoration without land");
+                Check(U16(own, 36) == 70 && U16(own, 38) == 20,
+                    "room entry publishes the apartment recovery cache");
                 Check(U64(own, 64) == 1000 && own.AsSpan(32, 4).ToArray().All(x => x == 0), "room balance and absent street address");
                 Check(own[30] == Gbk.GetByteCount(_characters[who].Name),
                     "single-room entry publishes the bounded owner-name length");

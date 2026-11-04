@@ -83,6 +83,11 @@ static async Task RunAsync(string[] args)
         }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
         return;
     }
+    if (args.Contains("--secret-entry-self-test"))
+    {
+        await SecretEntryChecks.RunAsync();
+        return;
+    }
     if (args.Contains("--chapter-story-reward-audit"))
     {
         ChapterStoryRewardAudit.Run();

@@ -43,7 +43,8 @@ internal static class HealthRecoveryChecks
 
         var emptyCharacter = new CharacterRecord
         {
-            Level = 4, MaxHp = ushort.MaxValue, MaxMp = ushort.MaxValue, CurrentHp = 0, CurrentMp = 0
+            Id = 1, Name = "Recovery", Level = 4,
+            MaxHp = ushort.MaxValue, MaxMp = ushort.MaxValue, CurrentHp = 0, CurrentMp = 0
         };
         var emptyResources = new BattleResourceSnapshot(0, 0, 0)
         {
@@ -75,6 +76,12 @@ internal static class HealthRecoveryChecks
                 && BinaryPrimitives.ReadUInt16LittleEndian(display.AsSpan(12)) == hp
                 && BinaryPrimitives.ReadUInt16LittleEndian(display.AsSpan(14)) == mp,
                 "room thermometer carries the exact recovery rate at visit boundary " + visits);
+            var entryBuilder = typeof(NetworkAdapterService).GetMethod("BuildMiniRoomMovePayload",
+                BindingFlags.Static | BindingFlags.NonPublic)!;
+            var entry = (byte[])entryBuilder.Invoke(null, entryBuilder.GetParameters().Length == 4
+                ? [emptyCharacter, true, null, rate] : [emptyCharacter, true, null])!;
+            Check(entry.Length == 104 && entry.AsSpan(28, 4).SequenceEqual(display.AsSpan(16, 4)),
+                "C38E cached rates and D8FF instance rates agree at visit boundary " + visits);
         }
 
         var town = HealthRecoveryPolicy.Resolve(character, HealthRecoveryScene.Town, true, false);
@@ -212,8 +219,12 @@ internal static class HealthRecoveryChecks
 
             byte[] c38d = new byte[20];
             BinaryPrimitives.WriteUInt16LittleEndian(c38d, 1);
-            Check((await Dispatch(0xC38D, c38d)) is { } c38e && ReadOpcode(c38e) == 0xC38E,
+            var c38e = (await Dispatch(0xC38D, c38d))!;
+            Check(ReadOpcode(c38e) == 0xC38E,
                 "C38D apartment entry returns C38E");
+            Check(BinaryPrimitives.ReadUInt16LittleEndian(c38e.AsSpan(36, 2)) == 70
+                  && BinaryPrimitives.ReadUInt16LittleEndian(c38e.AsSpan(38, 2)) == 20,
+                "C38E recovery cache matches the apartment recovery policy");
             CheckResources(await database.GetCharacterAsync(accountId), 950, 385,
                 "C38D only synchronizes and does not heal immediately");
             Check(schedule.TryGetActiveScene(out var activeApartment)
@@ -227,6 +238,10 @@ internal static class HealthRecoveryChecks
                 "C38F apartment refresh returns C390");
             CheckResources(await database.GetCharacterAsync(accountId), 950, 385,
                 "C38F only synchronizes and does not heal immediately");
+            var movedActor = (await Dispatch(0xC38F, c38f))!;
+            Check(BinaryPrimitives.ReadUInt16LittleEndian(movedActor.AsSpan(120, 2)) == 320
+                  && BinaryPrimitives.ReadUInt16LittleEndian(movedActor.AsSpan(122, 2)) == 240,
+                "C390 retains room actor coordinates independently of C38E recovery rates");
 
             await WriteResourcesAsync(database.DatabasePath, characterId, 5400, 520, 5390, 515);
             var capped = await database.ApplyHealthRecoveryStepAsync(
@@ -264,6 +279,21 @@ internal static class HealthRecoveryChecks
                 accountId, characterId, sessionId, ownerCharacterId);
             Check(popularTick.Applied && popularTick.CurrentHp == 1005 && popularTick.CurrentMp == 396,
                 "apartment persistence applies the room owner's total-based HP and MP recovery");
+            byte[] visitRequest = new byte[20];
+            BinaryPrimitives.WriteUInt16LittleEndian(visitRequest, 2);
+            System.Text.Encoding.GetEncoding(936).GetBytes("PopularRoom").CopyTo(visitRequest, 4);
+            for (var visit = 0; visit < 2; ++visit)
+            {
+                var popularEntry = (await Dispatch(0xC38D, visitRequest))!;
+                var currentVisits = await database.GetApartmentVisitIndexAsync(ownerCharacterId);
+                var rate = ApartmentPopularityPolicy.GetRecoveryParameters(currentVisits.Total);
+                var sessionRate = (HealthRecoveryParameters)Get(session, "ApartmentRecoveryParameters")!;
+                Check(ReadOpcode(popularEntry) == 0xC38E && popularEntry[8] == 10
+                      && BinaryPrimitives.ReadUInt16LittleEndian(popularEntry.AsSpan(36)) == rate.HpStep
+                      && BinaryPrimitives.ReadUInt16LittleEndian(popularEntry.AsSpan(38)) == rate.MpStep
+                      && sessionRate == rate && rate.HpStep > 70 && rate.MpStep > 20,
+                    "visitor entry and re-entry cache the room owner's current non-floor rate " + visit);
+            }
 
             await WriteResourcesAsync(database.DatabasePath, characterId, 5400, 520, 1000, 385);
             var reconnectState = new CharacterRuntimeState(1000, 385, 1, 0, 400, 96, 1);
