@@ -178,21 +178,21 @@ class ExportPatchTests(unittest.TestCase):
 
     def test_chinese_knowledge_filenames_export_round_trip(self):
         expected = {
-            "knowledge/索引.md": "# 知识库索引\n",
-            "knowledge/业务/索引.md": "# 业务索引\n",
+            "knowledge/README.md": "# 知识库索引\n",
+            "knowledge/业务/README.md": "# 业务索引\n",
             "knowledge/基础/内部桥接.md": "# 内部桥接\n",
-            "knowledge/业务/地宫/关卡与房间.md": "# 关卡与房间\n",
-            "knowledge/业务/宠物/所有权.md": "# 所有权\n",
-            "knowledge/工程/验证状态.md": "# 验证状态\n",
-            "knowledge/工程/历史验证/既有记录.md": "# 既有记录\n",
-            "knowledge/工程/历史验证/索引.md": "# 历史验证\n",
-            "knowledge/工程/子弹DIY兼容/索引.md": "# 子弹DIY兼容\n",
+            "knowledge/业务/地宫/关卡与房间/README.md": "# 关卡与房间\n",
+            "knowledge/业务/宠物/所有权/README.md": "# 所有权\n",
+            "knowledge/工程/验证状态/README.md": "# 验证状态\n",
+            "knowledge/工程/历史验证/既有记录/README.md": "# 既有记录\n",
+            "knowledge/工程/历史验证/README.md": "# 历史验证\n",
+            "knowledge/工程/子弹DIY兼容/README.md": "# 子弹DIY兼容\n",
             "knowledge/指南/文件清单与导出工具.md": "# 导出指南\n",
-            "knowledge/指南/level200/索引.md": "# 桥接操作\n",
-            "knowledge/业务/DIY/索引.md": "# DIY专题\n",
-            "knowledge/业务/DIY/子弹/索引.md": "# 子弹DIY\n",
-            "knowledge/业务/DIY/NPC/索引.md": "# NPC DIY\n",
-            "knowledge/业务/DIY/地宫/索引.md": "# 地宫DIY\n",
+            "knowledge/指南/level200/README.md": "# 桥接操作\n",
+            "knowledge/业务/DIY/README.md": "# DIY专题\n",
+            "knowledge/业务/DIY/子弹/README.md": "# 子弹DIY\n",
+            "knowledge/业务/DIY/NPC/README.md": "# NPC DIY\n",
+            "knowledge/业务/DIY/地宫/README.md": "# 地宫DIY\n",
             "knowledge/工程/子弹DIY兼容/配置生命周期.md": "# 子弹配置\n",
             "knowledge/指南/客户端二进制补丁/修道僧四村对白安装/安装与恢复.md": "# 四村安装\n",
         }
@@ -239,7 +239,7 @@ class ExportPatchTests(unittest.TestCase):
                 patch.payload_policy(name, "source")
 
     def test_topic_document_export_keeps_review_and_directory_boundaries(self):
-        index = 'knowledge/业务/地宫/关卡与房间/索引.md'
+        index = 'knowledge/业务/地宫/关卡与房间/README.md'
         leaf = 'knowledge/业务/地宫/关卡与房间/房间身份.md'
         self.add(index, 'knowledge', '[房间身份](房间身份.md)\n'.encode('utf-8'))
         self.add(leaf, 'knowledge', '# 房间身份\n'.encode('utf-8'))
@@ -405,7 +405,7 @@ class ExportPatchTests(unittest.TestCase):
 
     def test_privacy_markers_cannot_be_overridden_by_review(self):
         # Split literals so public-text review of this test does not contain a real host path.
-        self.add("knowledge/索引.md", "knowledge", ("X:" + "/Use" + "rs/" + "person/secret\n").encode())
+        self.add("knowledge/README.md", "knowledge", ("X:" + "/Use" + "rs/" + "person/secret\n").encode())
         self.assertEqual(self.plan({"knowledge"})["files"][0]["status"], "privacy_marker_blocked")
 
     def test_public_download_urls_are_not_drive_paths(self):
@@ -423,7 +423,7 @@ class ExportPatchTests(unittest.TestCase):
         self.assertTrue(all(entry['status'] == 'privacy_marker_blocked' for entry in records))
 
     def test_knowledge_approval_expires_when_bytes_change(self):
-        p = self.add("knowledge/索引.md", "knowledge", b"Reviewed knowledge index.\n")
+        p = self.add("knowledge/README.md", "knowledge", b"Reviewed knowledge index.\n")
         self.assertTrue(self.plan({"knowledge"})["export_ready"])
         p.write_bytes(b"New knowledge snapshot NOT reviewed.\n")
         self.assertFalse(self.plan({"knowledge"})["export_ready"])

@@ -216,18 +216,18 @@ def payload_policy(value: str, layer: str) -> None:
                 or value in card_generation_sources
                 or value in STORY_SOURCES
                 or value in DUNGEON_CINEMATIC_SOURCES
-                or value in {"manifest/source_closure.json", "manifest/lumineos_combat.json", "manifest/l7_combat.json", "manifest/lumineos_resource_port.json", "manifest/korean_pet_resources.json",
+                or value in {"manifest/knowledge_routes.json", "manifest/source_closure.json", "manifest/lumineos_combat.json", "manifest/l7_combat.json", "manifest/lumineos_resource_port.json", "manifest/korean_pet_resources.json",
                              "manifest/knowledge_migration.json", "manifest/knowledge_baseline.json.gz",
                              "manifest/document_fusion.json", "manifest/document_fusion_baseline.json.gz",
                              "manifest/monk_dialogue_resources.json",
                              "manifest/korean_wardrobe_resources.json", "manifest/korean_wardrobe_catalog.json",
                              "manifest/kobe_wardrobe.json"})
     elif layer == "docs":
-        good = value == "README.md"
+        good = value in {"README.md", "CHANGELOG.md"}
     elif layer == "knowledge":
         modules = {"角色", "城镇", "库存", "卡片", "宠物", "经济", "社交", "住宅", "地宫", "竞技", "娱乐"}
         good = p.suffix == ".md" and (
-            value in {"knowledge/索引.md", "knowledge/业务/索引.md"}
+            value in {"knowledge/README.md", "knowledge/业务/README.md"}
             or (len(parts) == 3 and parts[:2] in (["knowledge", "基础"], ["knowledge", "工程"], ["knowledge", "指南"]))
             or (len(parts) == 4 and parts[:3] == ["knowledge", "指南", "level200"])
             or (len(parts) == 4 and parts[:2] == ["knowledge", "业务"] and parts[2] in modules)

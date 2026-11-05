@@ -37,8 +37,8 @@ COMPATIBILITY_RECIPES = ('monk_dialogue_resources.json', 'monk_localization.json
 CHAPTER_FILES = ('release/components/story_chapters/chapters.json',)
 GUIDE = 'knowledge/指南/韩服L7-L8与宠物资源说明.md'
 EXTRA_DOCS = (GUIDE, 'knowledge/指南/韩服宠物佩戴等级下放方案.md',
-              'knowledge/指南/完整适配器与客户端兼容说明.md', 'knowledge/指南/客户端二进制补丁.md',
-              'knowledge/指南/level200/索引.md', 'knowledge/基础/桥接布局.md',
+              'knowledge/指南/完整适配器与客户端兼容说明.md', 'knowledge/指南/客户端二进制补丁/README.md',
+              'knowledge/指南/level200/README.md', 'knowledge/基础/桥接布局.md',
               'knowledge/指南/L7-L8资源移植.md')
 SCHEMA = 'openNanaimo.korean-resource-kit.v1'
 DOCUMENT_ASSETS = frozenset({'LICENSE'})

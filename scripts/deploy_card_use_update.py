@@ -24,7 +24,7 @@ MANAGED = (
 )
 BINARIES = tuple('adapter_runtime/' + n for n in (
     'Nanaimo.Adapter.dll', 'Nanaimo.Adapter.pdb', 'Nanaimo.Gameplay.dll', 'Nanaimo.Gameplay.pdb'))
-EXTRAS = ('knowledge/指南/活动卡奖池安装.md', 'knowledge/业务/卡片/兑换.md',
+EXTRAS = ('knowledge/指南/活动卡奖池安装.md', 'knowledge/业务/卡片/兑换/README.md',
           'tests/CardUseRegression/CardUseRegression.csproj',
           'tests/CardUseRegression/Program.cs', 'tests/CardPageUnionRegression/CardPageUnionRegression.csproj',
           'tests/CardPageUnionRegression/Program.cs')

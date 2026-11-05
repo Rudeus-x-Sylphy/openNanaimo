@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import unittest
 
-from verify_knowledge import anchors
+from verify_knowledge import Report, anchors, verify_hierarchy
 import export_patch
 import package_korean_resource_kit as resource_kit
 
@@ -253,10 +253,22 @@ for _path, _anchors in {
 
 class KnowledgeRoutingTests(unittest.TestCase):
     def test_legacy_section_links_remain_addressable(self):
+        routes = json.loads((ROOT / 'manifest/knowledge_routes.json').read_text('utf-8'))
         for name, expected in LEGACY_ANCHORS.items():
             with self.subTest(path=name):
-                current = anchors((ROOT / name).read_text('utf-8'))
-                self.assertFalse(set(expected) - current, sorted(set(expected) - current))
+                for anchor in expected:
+                    route = routes['heading_routes'].get(name + '#' + anchor)
+                    if route:
+                        target, target_anchor = route.split('#', 1)
+                    else:
+                        target = routes['path_mapping'].get(name, name)
+                        target_anchor = anchor
+                    self.assertIn(target_anchor, anchors((ROOT / target).read_text('utf-8')))
+
+    def test_directory_entries_and_migration_routes_are_complete(self):
+        report = Report()
+        verify_hierarchy(ROOT, report)
+        self.assertEqual(report.errors, [])
 
     def test_release_and_export_records_match_repository_bytes(self):
         release = json.loads((ROOT / 'manifest/open_release_manifest.json').read_text('utf-8'))

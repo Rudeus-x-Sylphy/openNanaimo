@@ -48,4 +48,4 @@ python -B scripts/test_launcher_incremental_save.py
 专项覆盖SQLite实际写表／行、称号SQL失败整体回滚，以及含空格目录中的GUI请求复用。受测对象为隔离数据库与匹配版本的离线工具。
 <!-- FUSION END df-14-021 -->
 
-返回[构建与验证目录](索引.md)。
+返回[构建与验证目录](README.md)。

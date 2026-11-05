@@ -23,8 +23,11 @@ adapter_runtime/Nanaimo.Adapter.exe --card-synthesis-self-test
 
 <!-- FUSION END df-14-016 -->
 
-返回[构建与验证目录](索引.md)。
+返回[构建与验证目录](README.md)。
 
 <!-- 保留术语修订前的章节链接 -->
 <a id="库存与首领状态专项"></a>
 <a id="构建与验证库存与首领专项"></a>
+
+<!-- 迁移前的章节锚点；当前导航见本页。 -->
+<a id="既有文档入口"></a>

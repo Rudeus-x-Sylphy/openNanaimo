@@ -148,7 +148,7 @@ def verify_links(root: Path, report: Report) -> None:
         if directory.exists():
             paths.update(p for p in directory.rglob("*.md")
                          if not p.is_relative_to(root / "knowledge" / "evidence"))
-    for name in ("README.md", "README.MD"):
+    for name in ("README.md", "README.MD", "CHANGELOG.md"):
         if (root / name).is_file():
             paths.add(root / name)
     cache = {}
@@ -181,6 +181,76 @@ def verify_links(root: Path, report: Report) -> None:
                         report.errors.append(f"{source.relative_to(root)}: missing anchor {raw}")
         except (OSError, UnicodeError, ValueError) as exc:
             report.errors.append(f"{source.relative_to(root)}: link check failed: {exc}")
+
+
+def verify_hierarchy(root: Path, report: Report) -> None:
+    """Require one directory entry and direct navigation to each current child."""
+    root = root.resolve()
+    knowledge = root / 'knowledge'
+    pages = {p.resolve(): p.read_text('utf-8') for p in knowledge.rglob('*.md')
+             if not p.is_relative_to(knowledge / 'evidence')}
+    directories = {knowledge}
+    for page in pages:
+        directory = page.parent
+        while directory.is_relative_to(knowledge):
+            directories.add(directory)
+            directory = directory.parent
+    for directory in sorted(directories):
+        entry = directory / 'README.md'
+        name = directory.relative_to(root).as_posix()
+        if entry not in pages:
+            report.errors.append(f'{name}: missing README.md directory entry')
+            continue
+        children = {p for p in pages if p.parent == directory and p != entry}
+        children.update(child / 'README.md' for child in directories if child.parent == directory)
+        targets = set()
+        visible = without_fences(pages[entry])
+        visible = re.sub(r'(`+).*?\1', '', visible)
+        for pattern in (LINK, REFERENCE):
+            for match in pattern.finditer(visible):
+                url = urlsplit(match[1].strip('<>'))
+                if url.scheme or url.netloc or not url.path:
+                    continue
+                path = unquote(url.path)
+                target = root / path.lstrip('/') if path.startswith('/') else directory / path
+                targets.add(target.resolve())
+        for child in sorted(children - targets):
+            report.errors.append(f'{name}/README.md: child missing from navigation: {child.name}')
+        sibling = directory.with_suffix('.md')
+        if sibling in pages:
+            report.errors.append(f'{name}: duplicate sibling topic entry {sibling.name}')
+    for path, text in pages.items():
+        if path.name.lower() in ('索引.md', 'index.md') or text.startswith('# 既有文档入口\n'):
+            report.errors.append(f'{path.relative_to(root)}: retired navigation stub')
+
+    routes_path = root / 'manifest/knowledge_routes.json'
+    try:
+        routes = json.loads(routes_path.read_text('utf-8'))
+        if routes.get('schema_version') != 1:
+            raise ValueError('knowledge routes schema_version must be 1')
+        mapping, headings = routes['path_mapping'], routes['heading_routes']
+        if not isinstance(mapping, dict) or not isinstance(headings, dict):
+            raise ValueError('knowledge routes must contain path and heading mappings')
+        for old, new in mapping.items():
+            source = safe_path(root, old, knowledge=True)
+            destination = safe_path(root, new, knowledge=True)
+            if source.exists() or new in mapping or destination not in pages:
+                report.errors.append(f'{old}: stale or chained knowledge route to {new}')
+        cached = {}
+        for old, new in headings.items():
+            if not isinstance(old, str) or not isinstance(new, str):
+                raise ValueError('knowledge heading routes must contain strings')
+            source, old_anchor = old.split('#', 1)
+            destination, anchor = new.split('#', 1)
+            if source not in mapping or not old_anchor or not anchor:
+                raise ValueError(f'invalid knowledge heading route: {old}')
+            target = safe_path(root, destination, knowledge=True)
+            if target not in cached:
+                cached[target] = anchors(pages.get(target, ''))
+            if anchor not in cached[target]:
+                report.errors.append(f'{old}: missing migrated heading {new}')
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        report.errors.append(f'knowledge hierarchy: {exc}')
 
 
 def verify(root: Path, *, strict: bool = False, manifest: str = MANIFEST) -> Report:
@@ -289,6 +359,8 @@ def verify(root: Path, *, strict: bool = False, manifest: str = MANIFEST) -> Rep
                 report.errors.append(f"{source}: incomplete character coverage ({position}/{metadata['chars']})")
     except (KeyError, TypeError, ValueError, AttributeError, OSError, UnicodeError, EOFError) as exc:
         report.errors.append(f"migration check failed: {exc}")
+    if (root / 'manifest/knowledge_routes.json').exists():
+        verify_hierarchy(root, report)
     verify_links(root, report)
     return report
 

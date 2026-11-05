@@ -137,17 +137,17 @@ class KitTests(unittest.TestCase):
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(b'tool-or-doc')
         (repo / 'README.md').write_text('# Fixture\n\n## 使用边界\n\nFixture usage.\n', encoding='utf-8')
-        facts = repo / 'knowledge/工程/资源安装.md'
+        facts = repo / 'knowledge/工程/资源安装/README.md'
         facts.parent.mkdir(parents=True, exist_ok=True)
-        facts.write_text('# 安装事实\n\n## 事务\n\n[返回](../指南/韩服L7-L8与宠物资源说明.md)\n', encoding='utf-8')
-        (repo / kit.GUIDE).write_text('# 安装指南\n\n[事实](../工程/资源安装.md#事务)\n', encoding='utf-8')
+        facts.write_text('# 安装事实\n\n## 事务\n\n[返回](../../指南/韩服L7-L8与宠物资源说明.md)\n', encoding='utf-8')
+        (repo / kit.GUIDE).write_text('# 安装指南\n\n[事实](../工程/资源安装/README.md#事务)\n', encoding='utf-8')
         (repo / 'knowledge/工程/unlinked.md').write_text('unreferenced', encoding='utf-8')
         return source, bundle, repo
 
     def test_documentation_closure_keeps_links_without_unreferenced_files(self):
         _, _, repo = self.fixture()
         plan = kit.documentation_plan(repo)
-        self.assertIn('knowledge/工程/资源安装.md', plan)
+        self.assertIn('knowledge/工程/资源安装/README.md', plan)
         self.assertNotIn('knowledge/工程/unlinked.md', plan)
         self.assertTrue(all(name.endswith('.md') or name in kit.DOCUMENT_ASSETS for name in plan))
 
@@ -155,7 +155,7 @@ class KitTests(unittest.TestCase):
         _, _, repo = self.fixture()
         for destination, message in [('../../../../outside.md', 'escapes root'),
                                      ('../../accounts.dat', 'unsupported'),
-                                     ('../工程/资源安装.md#absent', 'missing documentation anchor')]:
+                                     ('../工程/资源安装/README.md#absent', 'missing documentation anchor')]:
             with self.subTest(destination=destination):
                 (repo / kit.GUIDE).write_text('[bad](' + destination + ')', encoding='utf-8')
                 with self.assertRaisesRegex(ValueError, message):
@@ -164,10 +164,10 @@ class KitTests(unittest.TestCase):
     def test_current_documentation_closure_and_tool_imports(self):
         plan = kit.documentation_plan()
         # Follow the canonical leaves rather than require retired routing stubs.
-        self.assertIn('knowledge/业务/宠物/所有权/索引.md', plan)
+        self.assertIn('knowledge/业务/宠物/所有权/README.md', plan)
         self.assertIn('knowledge/业务/宠物/所有权/追加宠物对照表.md', plan)
-        self.assertIn('knowledge/工程/资源安装/索引.md', plan)
-        self.assertIn('knowledge/业务/角色/等级经验/索引.md', plan)
+        self.assertIn('knowledge/工程/资源安装/README.md', plan)
+        self.assertIn('knowledge/业务/角色/等级经验/README.md', plan)
         tree = ast.parse((kit.ROOT / 'scripts/package_korean_resource_kit.py').read_text('utf-8'))
         imports = {alias.name + '.py' for node in ast.walk(tree) if isinstance(node, ast.Import)
                    for alias in node.names if (kit.ROOT / 'scripts' / (alias.name + '.py')).is_file()}
@@ -202,7 +202,7 @@ class KitTests(unittest.TestCase):
                 for name in kit.COMPATIBILITY_RECIPES:
                     self.assertIn('manifest/' + name, z.namelist())
                 self.assertNotIn('source-kr/accounts.dat', z.namelist())
-                self.assertIn('knowledge/工程/资源安装.md', z.namelist())
+                self.assertIn('knowledge/工程/资源安装/README.md', z.namelist())
                 self.assertNotIn('knowledge/工程/unlinked.md', z.namelist())
                 self.assertEqual(z.read('README.md'), kit.archive_readme(repo))
             with self.assertRaisesRegex(ValueError, 'exists'):

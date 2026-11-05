@@ -1,6 +1,8 @@
 # openNanaimo
 韩国飞行射击游戏 **Nanaimo** 的客户端行为研究与本地协议适配工程，包含 Windows 图形启动器、完整适配器源码、构建脚本、验证脚本和工程知识库。
 
+[知识库](knowledge/README.md) · [变更记录](CHANGELOG.md)
+
 ## 使用边界
 
 1. 本仓库仅用于本地研究、兼容性分析和非营利体验，禁止盈利、对外运营、商业化使用和未经授权的网络节点运营。
@@ -33,7 +35,7 @@ gui_launcher/nanaimo_launcher.ps1
 
 ## 启动时的客户端补丁
 
-**“进入 Nanaimo”准备客户端兼容组件时，会修改磁盘上的 `game.exe` 并保存本地备份。** 自动修改包括以下类型，适用范围由已登记的客户端布局与目标站点共同确定；完整集合见[客户端兼容](knowledge/工程/客户端兼容/索引.md)。
+**“进入 Nanaimo”准备客户端兼容组件时，会修改磁盘上的 `game.exe` 并保存本地备份。** 自动修改包括以下类型，适用范围由已登记的客户端布局与目标站点共同确定；完整集合见[客户端兼容](knowledge/工程/客户端兼容/README.md)。
 
 - 新账号建角：按账号角色状态进入原生外观选择与角色命名界面。
 - 家具交互：重定向家具 Index 读取，避开拖动卡死路径。
@@ -77,7 +79,7 @@ gui_launcher/nanaimo_launcher.ps1
 | 新账号名称 | 初次登录进入人物形象创建和角色命名界面 |
 | 已有用户名 | 继续对应档案，保留已有角色存档值 |
 
-初始数值及引导状态见[角色创建](knowledge/业务/角色/角色创建.md)和[新手引导](knowledge/业务/角色/新手引导/索引.md)。
+初始数值及引导状态见[角色创建](knowledge/业务/角色/角色创建.md)和[新手引导](knowledge/业务/角色/新手引导/README.md)。
 
 ## 功能范围
 
@@ -95,7 +97,7 @@ gui_launcher/nanaimo_launcher.ps1
 - 怪物及BOSS卡片掉落与库存提交。
 - 频道切换、位置保存及旧连接状态隔离。
 
-上述功能已有实现及相应自动检查；各项检查的覆盖范围和原客户端画面、交互的验收边界见[验证状态](knowledge/工程/验证状态.md)。具体数值、协议字段及业务规则从[知识库](knowledge/索引.md)维护。
+上述功能已有实现及相应自动检查；各项检查的覆盖范围和原客户端画面、交互的验收边界见[验证状态](knowledge/工程/验证状态/README.md)。具体数值、协议字段及业务规则从[知识库](knowledge/README.md)维护。
 
 ## 快速开始
 
@@ -143,7 +145,7 @@ python -B scripts/deploy_story_release.py apply --client '<客户端根目录>'
   --apartment-recommendation --dungeon7 --dry-run
 ```
 
-此命令选择与启动器相同的兼容操作，只校验和报告，不写入客户端或覆盖目录。实际启动时，工具按已登记的 PE 布局与补丁位置校验原始字节，生成兼容文件、保存 SHA-256 标识的备份并复核应用结果。完整修改范围见[客户端兼容](knowledge/工程/客户端兼容/索引.md)，运行依赖见[运行依赖](knowledge/指南/运行依赖.md)。
+此命令选择与启动器相同的兼容操作，只校验和报告，不写入客户端或覆盖目录。实际启动时，工具按已登记的 PE 布局与补丁位置校验原始字节，生成兼容文件、保存 SHA-256 标识的备份并复核应用结果。完整修改范围见[客户端兼容](knowledge/工程/客户端兼容/README.md)，运行依赖见[运行依赖](knowledge/指南/运行依赖.md)。
 
 ### 韩服追加宠物与 L7／L8 资源（可选，资源本体已提供）
 
@@ -185,7 +187,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_complete_adapt
   -SelfTest
 ```
 
-该命令生成 `adapter_runtime`，并检查隔离状态库、登录、资料注册、任务、商城、地宫桥接、宠物成长和持久化。构建使用`.NET 8 SDK`，当前发布为自包含的`net8.0/win-x64`运行包，可直接在Windows运行。脚本也支持net6.0目标，见[构建与验证](knowledge/指南/构建与验证/索引.md)。完整仓库提供`adapter_runtime/资源/数据/`，构建默认读取该目录；`-ResourceDataRoot`可指定匹配的外部数据，独立源码导出包须配套准备当前PET等资源目录。
+该命令生成 `adapter_runtime`，并检查隔离状态库、登录、资料注册、任务、商城、地宫桥接、宠物成长和持久化。构建使用`.NET 8 SDK`，当前发布为自包含的`net8.0/win-x64`运行包，可直接在Windows运行。脚本也支持net6.0目标，见[构建与验证](knowledge/指南/构建与验证/README.md)。完整仓库提供`adapter_runtime/资源/数据/`，构建默认读取该目录；`-ResourceDataRoot`可指定匹配的外部数据，独立源码导出包须配套准备当前PET等资源目录。
 
 ### 3. 一键启动
 
@@ -227,19 +229,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_adapter.ps1 `
   -TccPath '<TCC目录>/tcc.exe' -KeepOutputs
 ```
 
-当前源码清单和已审核构建摘要位于 `manifest/source_closure.json`。详细命令见[构建与验证](knowledge/指南/构建与验证/索引.md)。
+当前源码清单和已审核构建摘要位于 `manifest/source_closure.json`。详细命令见[构建与验证](knowledge/指南/构建与验证/README.md)。
 
-库存实例与迁移见[物品实例](knowledge/业务/库存/物品实例/索引.md)，HP/MP、复活与续关见[战斗资源](knowledge/业务/地宫/战斗资源/索引.md)，掉落资格见[掉落](knowledge/业务/地宫/掉落/索引.md)。发布身份与检查范围见[构建发布](knowledge/工程/构建发布.md)。
+库存实例与迁移见[物品实例](knowledge/业务/库存/物品实例/README.md)，HP/MP、复活与续关见[战斗资源](knowledge/业务/地宫/战斗资源/README.md)，掉落资格见[掉落](knowledge/业务/地宫/掉落/README.md)。发布身份与检查范围见[构建发布](knowledge/工程/构建发布/README.md)。
 
 ## 文档导航
 
 | 文档 | 内容 |
 |---|---|
-| [知识库](knowledge/索引.md) | 全部文档入口；基础机制、业务规则、工程事实与操作指南 |
-| [操作指南](knowledge/指南/索引.md) | 启动、配置、安装、构建、验证与回退步骤 |
+| [知识库](knowledge/README.md) | 全部文档入口；基础机制、业务规则、工程事实与操作指南 |
+| [操作指南](knowledge/指南/README.md) | 启动、配置、安装、构建、验证与回退步骤 |
 | [完整适配器与客户端兼容说明](knowledge/指南/完整适配器与客户端兼容说明.md) | 适配器架构、家具边界与拉米诺斯村地宫7兼容链 |
 | [启动流程与源码索引](knowledge/指南/启动流程与源码索引.md) | GUI、资料注册、适配器模块和端口 |
-| [构建与验证](knowledge/指南/构建与验证/索引.md) | 构建、自测和发布校验 |
+| [构建与验证](knowledge/指南/构建与验证/README.md) | 构建、自测和发布校验 |
 | [运行依赖](knowledge/指南/运行依赖.md) | 客户端、资源、数据和工具依赖 |
 | [文件清单与导出工具](knowledge/指南/文件清单与导出工具.md) | 导出器分层、候选清单与逐文件审核要求 |
 | [第三方与许可说明](knowledge/指南/第三方与许可说明.md) | 第三方组件与许可边界 |

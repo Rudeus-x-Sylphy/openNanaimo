@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from verify_knowledge import anchors, digest, verify
+from verify_knowledge import Report, anchors, digest, verify, verify_hierarchy
 
 
 class KnowledgeVerifierTests(unittest.TestCase):
@@ -74,8 +74,8 @@ class KnowledgeVerifierTests(unittest.TestCase):
         self.manifest["baseline_archive_sha256"] = hashlib.sha256(archive).hexdigest()
         self.manifest["navigation_sources"] = {
             source: {"chars": len(original), "sha256": digest(original),
-                     "target": "knowledge/索引.md", "query_count": 2}}
-        (self.root / "knowledge/索引.md").write_text("# 新索引\n\n中文检索词\nanother query\n", encoding="utf-8")
+                     "target": "knowledge/README.md", "query_count": 2}}
+        (self.root / "knowledge/README.md").write_text("# 新索引\n\n中文检索词\nanother query\n", encoding="utf-8")
         self.write_manifest()
         return source
 
@@ -95,7 +95,7 @@ class KnowledgeVerifierTests(unittest.TestCase):
 
     def test_navigation_query_loss_and_count_mismatch_are_rejected(self):
         source = self.add_navigation()
-        (self.root / "knowledge/索引.md").write_text("# 新索引\n中文检索词\n", encoding="utf-8")
+        (self.root / "knowledge/README.md").write_text("# 新索引\n中文检索词\n", encoding="utf-8")
         self.manifest["navigation_sources"][source]["query_count"] = 1
         self.write_manifest()
         errors = verify(self.root).errors
@@ -104,7 +104,7 @@ class KnowledgeVerifierTests(unittest.TestCase):
 
     def test_navigation_targets_must_exist_and_be_safe(self):
         source = self.add_navigation()
-        (self.root / "knowledge/索引.md").unlink()
+        (self.root / "knowledge/README.md").unlink()
         self.assertFalse(verify(self.root).ok)
         self.manifest["navigation_sources"][source]["target"] = "docs/索引.md"
         self.write_manifest()
@@ -193,6 +193,75 @@ class KnowledgeVerifierTests(unittest.TestCase):
         path = self.root / self.target
         path.write_text(path.read_text(encoding="utf-8").replace("<!-- END 01-001-1 -->", ""), encoding="utf-8")
         self.assertTrue(any("fragment markers" in error for error in verify(self.root).errors))
+
+
+class HierarchyVerifierTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / 'knowledge/topic').mkdir(parents=True)
+        (self.root / 'manifest').mkdir()
+        self.write('knowledge/README.md', '# Knowledge\n\n[Topic](topic/README.md)\n')
+        self.write('knowledge/topic/README.md', '# Topic\n\n[Rule](rule.md)\n')
+        self.write('knowledge/topic/rule.md', '# Rule\n')
+        self.routes = {'schema_version': 1, 'path_mapping': {}, 'heading_routes': {}}
+
+    def write(self, name, text):
+        (self.root / name).write_text(text, encoding='utf-8')
+
+    def check(self):
+        self.write('manifest/knowledge_routes.json', json.dumps(self.routes))
+        report = Report()
+        verify_hierarchy(self.root, report)
+        return report.errors
+
+    def test_complete_hierarchy(self):
+        self.assertEqual(self.check(), [])
+
+    def test_missing_directory_entry(self):
+        (self.root / 'knowledge/topic/README.md').unlink()
+        self.assertTrue(any('missing README.md' in error for error in self.check()))
+
+    def test_unlisted_child_is_rejected(self):
+        self.write('knowledge/topic/orphan.md', '# Orphan\n')
+        self.assertTrue(any('child missing from navigation' in error for error in self.check()))
+
+    def test_intermediate_directory_requires_an_entry(self):
+        nested = self.root / 'knowledge/missing/nested'
+        nested.mkdir(parents=True)
+        self.write('knowledge/missing/nested/README.md', '# Nested\n')
+        self.assertTrue(any('knowledge/missing: missing README.md' in error for error in self.check()))
+
+    def test_code_example_is_not_navigation(self):
+        self.write('knowledge/topic/README.md', '# Topic\n\n```markdown\n[Rule](rule.md)\n```\n')
+        self.assertTrue(any('child missing from navigation' in error for error in self.check()))
+
+    def test_reference_links_and_encoded_paths(self):
+        (self.root / 'knowledge/topic/rule.md').rename(self.root / 'knowledge/topic/a rule.md')
+        self.write('knowledge/topic/README.md', '# Topic\n\n[Rule][rule]\n\n[rule]: <a%20rule.md>\n')
+        self.assertEqual(self.check(), [])
+
+    def test_duplicate_entry_and_retired_index_are_rejected(self):
+        self.write('knowledge/topic.md', '# Topic\n')
+        self.write('knowledge/topic/index.md', '# Old index\n')
+        errors = self.check()
+        self.assertTrue(any('duplicate sibling' in error for error in errors))
+        self.assertTrue(any('retired navigation stub' in error for error in errors))
+
+    def test_heading_routes_require_existing_destination(self):
+        self.routes['path_mapping'] = {'knowledge/old.md': 'knowledge/topic/README.md'}
+        self.routes['heading_routes'] = {'knowledge/old.md#rule': 'knowledge/topic/rule.md#rule'}
+        self.assertEqual(self.check(), [])
+        self.routes['heading_routes']['knowledge/old.md#rule'] = 'knowledge/topic/rule.md#absent'
+        self.assertTrue(any('missing migrated heading' in error for error in self.check()))
+
+    def test_stale_and_chained_routes_are_rejected(self):
+        self.routes['path_mapping'] = {'knowledge/topic/rule.md': 'knowledge/topic/README.md'}
+        self.assertTrue(any('stale or chained' in error for error in self.check()))
+        self.routes['path_mapping'] = {'knowledge/old.md': 'knowledge/old2.md',
+                                       'knowledge/old2.md': 'knowledge/topic/README.md'}
+        self.assertTrue(any('stale or chained' in error for error in self.check()))
 
 
 if __name__ == "__main__":

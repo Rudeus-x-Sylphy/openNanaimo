@@ -8,16 +8,16 @@
     "docs/event-card-rewards.md": "knowledge/指南/活动卡奖池安装.md",
     "docs/L7-L8资源移植.md": "knowledge/指南/L7-L8资源移植.md",
     "docs/level200/internal-layout.md": "knowledge/基础/桥接布局.md",
-    "docs/level200/README.md": "knowledge/指南/level200/索引.md",
+    "docs/level200/README.md": "knowledge/指南/level200/README.md",
     "docs/住宅土地卡片与温度计恢复.md": "knowledge/指南/住宅土地卡片与温度计恢复.md",
     "docs/单身公寓.md": "knowledge/指南/单身公寓.md",
     "docs/启动流程与源码索引.md": "knowledge/指南/启动流程与源码索引.md",
     "docs/地宫与背包更新说明.md": "knowledge/指南/地宫与背包更新说明.md",
     "docs/子弹DIY与篮球试玩.md": "knowledge/指南/子弹DIY与篮球试玩.md",
     "docs/完整适配器与客户端兼容说明.md": "knowledge/指南/完整适配器与客户端兼容说明.md",
-    "docs/客户端二进制补丁.md": "knowledge/指南/客户端二进制补丁.md",
+    "docs/客户端二进制补丁.md": "knowledge/指南/客户端二进制补丁/README.md",
     "docs/文件清单与导出工具.md": "knowledge/指南/文件清单与导出工具.md",
-    "docs/构建与验证.md": "knowledge/指南/构建与验证.md",
+    "docs/构建与验证.md": "knowledge/指南/构建与验证/README.md",
     "docs/第三方与许可说明.md": "knowledge/指南/第三方与许可说明.md",
     "docs/运行依赖.md": "knowledge/指南/运行依赖.md",
     "docs/韩服L7-L8与宠物资源说明.md": "knowledge/指南/韩服L7-L8与宠物资源说明.md",
@@ -1398,7 +1398,7 @@
       "start": 0,
       "end": 85,
       "source_sha256": "91a37bbfd6677f6877cb3c299393d723a503d922466d71b36799fbf3943d2715",
-      "target": "knowledge/指南/构建与验证.md",
+      "target": "knowledge/指南/构建与验证/README.md",
       "initial_target": "knowledge/指南/构建与验证.md",
       "initial_sha256": "91a37bbfd6677f6877cb3c299393d723a503d922466d71b36799fbf3943d2715",
       "content_sha256": "91a37bbfd6677f6877cb3c299393d723a503d922466d71b36799fbf3943d2715"
@@ -5563,7 +5563,7 @@
     },
     {
       "from": "knowledge/业务/角色/等级经验.md#200级经验状态与内部版本边界",
-      "to": "knowledge/业务/角色/等级经验/协议载体.md#200级经验状态与内部版本边界"
+      "to": "knowledge/业务/角色/等级经验/协议载体/权威状态与对外字段.md#200级经验状态与内部版本边界"
     },
     {
       "from": "knowledge/业务/角色/等级经验.md#cnkr经验位宽与战斗计分对照",
@@ -5711,7 +5711,7 @@
     },
     {
       "from": "knowledge/业务/角色/等级经验.md#对外经验载体扫描及落点",
-      "to": "knowledge/业务/角色/等级经验/协议载体.md#对外经验载体扫描及落点"
+      "to": "knowledge/业务/角色/等级经验/协议载体/权威状态与对外字段.md#对外经验载体扫描及落点"
     },
     {
       "from": "knowledge/业务/角色/等级经验.md#数据与边界",
@@ -5743,7 +5743,7 @@
     },
     {
       "from": "knowledge/业务/角色/等级经验.md#玩家经验载体和hud静态调用链闭合",
-      "to": "knowledge/业务/角色/等级经验/协议载体.md#玩家经验载体和hud静态调用链闭合"
+      "to": "knowledge/业务/角色/等级经验/协议载体/客户端经验与HUD消费链.md#玩家经验载体和hud静态调用链闭合"
     },
     {
       "from": "knowledge/业务/角色/等级经验.md#玩家经验载体和hud静态调用链闭合--cnkr经验位宽与战斗计分对照",
@@ -5947,7 +5947,7 @@
     },
     {
       "from": "knowledge/工程/住宅与家具客户端兼容.md#df-11-003",
-      "to": "knowledge/工程/住宅与家具客户端兼容/索引.md#df-11-003"
+      "to": "knowledge/工程/住宅与家具客户端兼容/README.md#df-11-003"
     },
     {
       "from": "knowledge/工程/住宅与家具客户端兼容.md#df-11-003-exterior",
@@ -6679,7 +6679,7 @@
     },
     {
       "from": "knowledge/工程/地宫资源兼容.md#df-11-004",
-      "to": "knowledge/工程/地宫资源兼容/索引.md#df-11-004"
+      "to": "knowledge/工程/地宫资源兼容/README.md#df-11-004"
     },
     {
       "from": "knowledge/工程/地宫资源兼容.md#df-11-004-access",
@@ -6819,7 +6819,7 @@
     },
     {
       "from": "knowledge/工程/客户端兼容.md#df-11-002",
-      "to": "knowledge/工程/客户端兼容/索引.md#df-11-002"
+      "to": "knowledge/工程/客户端兼容/README.md#df-11-002"
     },
     {
       "from": "knowledge/工程/客户端兼容.md#df-11-002-creation",
@@ -7403,7 +7403,7 @@
     },
     {
       "from": "knowledge/指南/level200/README.md#200级成长与发布合同",
-      "to": "knowledge/业务/角色/等级经验.md#200级成长与发布合同"
+      "to": "knowledge/业务/角色/等级经验/README.md#200级成长与发布合同"
     },
     {
       "from": "knowledge/指南/level200/README.md#客户端兼容",
@@ -7411,7 +7411,7 @@
     },
     {
       "from": "knowledge/指南/level200/README.md#对外经验载体扫描及落点",
-      "to": "knowledge/业务/角色/等级经验/协议载体.md#对外经验载体扫描及落点"
+      "to": "knowledge/业务/角色/等级经验/协议载体/权威状态与对外字段.md#对外经验载体扫描及落点"
     },
     {
       "from": "knowledge/指南/level200/README.md#数据与边界",
@@ -7419,7 +7419,7 @@
     },
     {
       "from": "knowledge/指南/level200/README.md#曲线迁移合同",
-      "to": "knowledge/业务/角色/等级经验.md#曲线迁移合同"
+      "to": "knowledge/业务/角色/等级经验/README.md#曲线迁移合同"
     },
     {
       "from": "knowledge/指南/level200/README.md#验证范围",
@@ -7615,7 +7615,7 @@
     },
     {
       "from": "knowledge/指南/地宫与背包更新说明.md#称号",
-      "to": "knowledge/业务/角色/称号.md#称号"
+      "to": "knowledge/业务/角色/称号/持久进度与显示资源.md#称号"
     },
     {
       "from": "knowledge/指南/地宫与背包更新说明.md#验证范围",
@@ -7623,7 +7623,7 @@
     },
     {
       "from": "knowledge/指南/子弹DIY与篮球试玩.md#功能与配置",
-      "to": "knowledge/工程/子弹DIY兼容.md#功能与配置"
+      "to": "knowledge/工程/子弹DIY兼容/配置生命周期.md#功能与配置"
     },
     {
       "from": "knowledge/指南/子弹DIY与篮球试玩.md#子弹-diy-与篮球试玩",
@@ -7635,7 +7635,7 @@
     },
     {
       "from": "knowledge/指南/子弹DIY与篮球试玩.md#篮球资源与反向范围",
-      "to": "knowledge/工程/子弹DIY兼容.md#篮球资源与反向范围"
+      "to": "knowledge/工程/子弹DIY兼容/篮球资源.md#篮球资源与反向范围"
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#1-完整-adapter-结构",
@@ -7767,15 +7767,15 @@
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#5-当前发布结果",
-      "to": "knowledge/工程/验证状态.md#5-当前发布结果"
+      "to": "knowledge/工程/验证状态/README.md#5-当前发布结果"
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#二进制修改合同",
-      "to": "knowledge/工程/客户端兼容.md#二进制修改合同"
+      "to": "knowledge/工程/客户端兼容/README.md#二进制修改合同"
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#二进制合同与完整修改集合",
-      "to": "knowledge/工程/子弹DIY兼容.md#二进制合同与完整修改集合"
+      "to": "knowledge/工程/子弹DIY兼容/README.md#二进制合同与完整修改集合"
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#关内人物脚边等级同步",
@@ -7787,7 +7787,7 @@
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#可选子弹diy二进制与资源修改",
-      "to": "knowledge/工程/子弹DIY兼容.md#可选子弹diy二进制与资源修改"
+      "to": "knowledge/工程/子弹DIY兼容/位点与安装.md#可选子弹diy二进制与资源修改"
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#地宫复活快捷栏布局二进制修改",
@@ -7803,7 +7803,7 @@
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#安装配置校验与回退",
-      "to": "knowledge/工程/子弹DIY兼容.md#安装配置校验与回退"
+      "to": "knowledge/工程/子弹DIY兼容/位点与安装.md#安装配置校验与回退"
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#完整-adapter-与客户端兼容说明",
@@ -7843,7 +7843,7 @@
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#资源派生与旧版迁移",
-      "to": "knowledge/工程/子弹DIY兼容.md#资源派生与旧版迁移"
+      "to": "knowledge/工程/子弹DIY兼容/位点与安装.md#资源派生与旧版迁移"
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#连续关卡保留原生-p避免重复重建",
@@ -7855,7 +7855,7 @@
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#配方与资源构建",
-      "to": "knowledge/工程/子弹DIY兼容.md#配方与资源构建"
+      "to": "knowledge/工程/子弹DIY兼容/README.md#配方与资源构建"
     },
     {
       "from": "knowledge/指南/完整适配器与客户端兼容说明.md#首领权威血条二进制修改",
@@ -7863,11 +7863,11 @@
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#1-预检与生成",
-      "to": "knowledge/指南/客户端二进制补丁.md#1-预检与生成"
+      "to": "knowledge/指南/客户端二进制补丁/统一安装与恢复.md#1-预检与生成"
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#2-配方与安装一致性",
-      "to": "knowledge/指南/客户端二进制补丁.md#2-配方与安装一致性"
+      "to": "knowledge/指南/客户端二进制补丁/统一安装与恢复.md#2-配方与安装一致性"
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#200级字段入口与显示",
@@ -7875,11 +7875,11 @@
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#3-专项校验",
-      "to": "knowledge/指南/客户端二进制补丁.md#3-专项校验"
+      "to": "knowledge/指南/客户端二进制补丁/统一安装与恢复.md#3-专项校验"
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#4-恢复",
-      "to": "knowledge/指南/客户端二进制补丁.md#4-恢复"
+      "to": "knowledge/指南/客户端二进制补丁/统一安装与恢复.md#4-恢复"
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#l7l8-资源与配套程序",
@@ -7907,11 +7907,11 @@
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#安装验证与恢复",
-      "to": "knowledge/指南/客户端二进制补丁.md#安装验证与恢复"
+      "to": "knowledge/指南/客户端二进制补丁/统一安装与恢复.md#安装验证与恢复"
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#客户端二进制补丁",
-      "to": "knowledge/指南/客户端二进制补丁.md#客户端二进制补丁"
+      "to": "knowledge/指南/客户端二进制补丁/统一安装与恢复.md#客户端二进制补丁"
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#局内经验预览与本地角色等级",
@@ -7939,11 +7939,11 @@
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#配套运行包合同",
-      "to": "knowledge/工程/构建发布.md#配套运行包合同"
+      "to": "knowledge/工程/构建发布/README.md#配套运行包合同"
     },
     {
       "from": "knowledge/指南/客户端二进制补丁.md#验证层级",
-      "to": "knowledge/工程/验证状态.md#验证层级"
+      "to": "knowledge/工程/验证状态/层级与版本归属.md#验证层级"
     },
     {
       "from": "knowledge/指南/文件清单与导出工具.md#候选清单更新",
@@ -7983,7 +7983,7 @@
     },
     {
       "from": "knowledge/指南/构建与验证.md#1-source-closure-与-package",
-      "to": "knowledge/指南/构建与验证.md#1-source-closure-与-package"
+      "to": "knowledge/指南/构建与验证/README.md#1-source-closure-与-package"
     },
     {
       "from": "knowledge/指南/构建与验证.md#1-源码依赖闭包与发布包",
@@ -8155,7 +8155,7 @@
     },
     {
       "from": "knowledge/指南/构建与验证.md#成套构建合同",
-      "to": "knowledge/指南/构建与验证.md#成套构建合同"
+      "to": "knowledge/指南/构建与验证/README.md#成套构建合同"
     },
     {
       "from": "knowledge/指南/构建与验证.md#成套构建约定",
@@ -8179,7 +8179,7 @@
     },
     {
       "from": "knowledge/指南/构建与验证.md#构建与验证",
-      "to": "knowledge/指南/构建与验证.md#构建与验证"
+      "to": "knowledge/指南/构建与验证/README.md#构建与验证"
     },
     {
       "from": "knowledge/指南/构建与验证.md#独立地宫诊断",
